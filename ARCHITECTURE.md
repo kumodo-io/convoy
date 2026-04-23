@@ -57,11 +57,11 @@ Watches for changes in external sources:
 
 Change detection is via **periodic polling** or **webhooks** where the source supports them.
 
-On change, emits a `SourceSyncRequest` CR targeting the affected `Application`.
+On change, sets the `Source /sync` subresource state to `NotSynced`.
 
 ### Render Controller
 
-Processes `SourceSyncRequest`s. Executes the rendering pipeline:
+Watches `Source` resources and reacts when the `/sync` subresource state transitions to `NotSynced`. Executes the rendering pipeline:
 
 1. Fetch source artifact (Helm chart, raw manifests, Kustomization, etc.)
 2. Render to a manifest set
@@ -88,9 +88,7 @@ Periodically polls the target cluster for managed resources. Compares live clust
 
 Diff is computed only over **rendered fields** — fields listed in `ignoreFields` are excluded. Live cluster noise (`resourceVersion`, `uid`, `managedFields`, controller-set annotations) is stripped before diffing.
 
-On drift detection, emits a `DriftSyncRequest` CR.
-
-`DriftSyncRequest` handling **skips re-rendering** — the stored rendered artifact from S3/local FS is re-applied directly.
+On drift detection, sets the `Application /sync` subresource state to `NotSynced`. The Deploy Controller watches `Application` resources and reacts to this state — **skipping re-rendering** and re-applying the stored rendered artifact from local FS (or S3 if cache is cold) directly.
 
 ### Notification Controller *(future)*
 
@@ -100,14 +98,22 @@ All controllers emit structured events from day one so that plugging in the noti
 
 ---
 
-## Sync Request Types
+## Sync States
 
-| Type | Trigger | Re-render? |
-|---|---|---|
-| `SourceSyncRequest` | Source changed (Git push, new registry tag) | Yes |
-| `DriftSyncRequest` | Cluster state diverged from stored state | No — re-apply stored artifact |
+Sync signaling is state-based, carried on subresources rather than separate objects. Both `Source` and `Application` expose a `/sync` subresource with the following states:
 
-`SourceSyncRequest` supersedes a pending `DriftSyncRequest` for the same application (source sync is a superset of drift correction).
+| State | Meaning |
+|---|---|
+| `Synced` | Last sync completed successfully |
+| `NotSynced` | Sync required — set by controllers or user |
+| `Syncing` | Sync in progress |
+| `Failed` | Last sync failed — includes reason and message |
+
+**Source `/sync`** is set to `NotSynced` by the Source Controller on detected change, or by the user to force a re-fetch and re-render. The Render Controller reacts and sets it to `Syncing` then `Synced` (or `Failed`).
+
+**Application `/sync`** is set to `NotSynced` by the Sync Controller on detected drift, or by the user to force drift correction. The Deploy Controller reacts and re-applies the stored rendered artifact without re-rendering.
+
+A source sync supersedes a pending application sync for the same application — a source sync produces a new artifact and deploys it, which also corrects any drift.
 
 ---
 
@@ -152,22 +158,18 @@ All resources are backed by etcd via the generic registry, preserving standard w
 
 Separating `Source` and `Patch` from `Application` allows them to be shared across multiple applications — a common Helm chart source or a standard labeling patch can be defined once and referenced many times.
 
-### Application Subresources
+### Subresources
 
-Operations on an `Application` are exposed as subresources rather than ephemeral CRs — they are imperative verbs, not declarative state:
+Sync signaling and imperative operations are exposed as subresources. Controllers watch the parent resources and react to subresource state changes — no separate internal objects required.
 
-| Subresource | Method | Purpose |
-|---|---|---|
-| `/sync` | POST | Trigger source sync |
-| `/drift-sync` | POST | Trigger drift correction |
-| `/diff` | GET | Return live computed diff |
-| `/rollback` | POST | Roll back to a previous artifact version |
+| Resource | Subresource | Method | Purpose |
+|---|---|---|---|
+| `Source` | `/sync` | POST | Trigger source fetch + render |
+| `Application` | `/sync` | POST | Trigger drift correction |
+| `Application` | `/diff` | GET | Return live computed diff |
+| `Application` | `/rollback` | POST | Roll back to a previous artifact version |
 
-This enables richer `kubectl get applications` output and eliminates throwaway CR lifecycle management.
-
-### Internal Resources
-
-`SourceSyncRequest` and `DriftSyncRequest` exist as internal AA resources (etcd-backed, not user-facing) used for communication between the API server subresource handlers and controllers. Controllers watch them via standard informers; the API server creates them when subresources are invoked.
+See [Sync States](#sync-states) for the state machine carried by `/sync` subresources.
 
 ---
 
@@ -189,7 +191,7 @@ This enables richer `kubectl get applications` output and eliminates throwaway C
 
 ## Patch Templating
 
-`Patch` CRs support Go template syntax in patch values. Before patches are applied, the Render Controller executes template rendering with a well-defined context:
+`Patch` resources support Go template syntax in patch values. Before patches are applied, the Render Controller executes template rendering with a well-defined context:
 
 | Variable | Source |
 |---|---|
@@ -233,13 +235,13 @@ This allows a single `Patch` object to serve many applications and clusters with
 
 ## Rollback
 
-A `Rollback` CR references an `Application` and a target artifact version (S3 object version or timestamp). The Deploy Controller re-applies the referenced artifact directly, skipping the render pipeline. On success, `current.yaml` in S3 is updated to the rolled-back state.
+Rollback is triggered via the `Application /rollback` subresource. The request body specifies a target artifact version (S3 object version or timestamp). The Deploy Controller re-applies the referenced artifact directly, skipping the render pipeline. On success, `current.yaml` in S3 is updated to the rolled-back state.
 
 ---
 
 ## RBAC
 
-Access control is delegated to native Kubernetes RBAC. Users define `Role`/`ClusterRole` bindings on kumo-cd CRDs as they would for any other Kubernetes resource. No custom RBAC layer is introduced.
+Access control is delegated to native Kubernetes RBAC. Users define `Role`/`ClusterRole` bindings on kumo-cd resources as they would for any other Kubernetes resource. No custom RBAC layer is introduced.
 
 ---
 

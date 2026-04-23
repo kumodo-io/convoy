@@ -7,10 +7,10 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 ### In Scope
 
 **Controllers**
-- [ ] Source Controller — Git polling, triggers source sync via internal AA resource
+- [ ] Source Controller — Git polling, sets `Source /sync` state to `NotSynced` on change
 - [ ] Render Controller — Helm rendering + Go template rendering on patches + JSON/strategic-merge/Kustomize patching, S3 artifact storage
 - [ ] Deploy Controller — SSA-based apply, S3 state storage, local FS cache
-- [ ] Sync Controller — periodic drift detection, triggers drift sync via internal AA resource, `ignoreFields` support
+- [ ] Sync Controller — periodic drift detection, sets `Application /sync` state to `NotSynced` on drift, `ignoreFields` support
 
 **Storage**
 - [ ] S3 state backend (rendered artifacts + deployed state)
@@ -33,8 +33,8 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 **API**
 - [ ] Aggregation API server setup (auth delegation, APIService registration, generic registry)
 - [ ] User-facing resources: `Source`, `Patch`, `Application`, `ClusterRegistration`
-- [ ] Application subresources: `/sync`, `/drift-sync`, `/diff`, `/rollback`
-- [ ] Internal resources: `SourceSyncRequest`, `DriftSyncRequest`
+- [ ] `Source` subresource: `/sync` (state: `Synced`, `NotSynced`, `Syncing`, `Failed`)
+- [ ] `Application` subresources: `/sync`, `/diff`, `/rollback`
 
 **Observability**
 - [ ] Structured Kubernetes event emission from all controllers (required foundation for future notification controller)
