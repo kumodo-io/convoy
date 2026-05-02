@@ -415,10 +415,10 @@ status:
   
   conditions:
     - type: Ready
-      status: "True"
-      lastTransitionTime: 2026-04-29T10:00:05Z
-      reason: SyncSucceeded
-      message: "Release synced successfully"
+      status: "False"
+      lastTransitionTime: 2026-04-29T10:01:15Z
+      reason: NotHealthy
+      message: "Release is applied and in-sync but workloads are not healthy"
     - type: SourceResolved
       status: "True"
       lastTransitionTime: 2026-04-29T10:00:01Z
@@ -428,9 +428,21 @@ status:
     - type: Rendered
       status: "True"
       lastTransitionTime: 2026-04-29T10:00:03Z
-    - type: Synced
+    - type: Applied
       status: "True"
       lastTransitionTime: 2026-04-29T10:00:05Z
+      reason: ApplySucceeded
+      message: "Last apply at 10:00:05; 14 resources applied successfully"
+    - type: InSync
+      status: "True"
+      lastTransitionTime: 2026-04-29T10:00:30Z
+      reason: NoDriftDetected
+      message: "All managed resources match rendered state"
+    - type: Healthy
+      status: "False"
+      lastTransitionTime: 2026-04-29T10:01:15Z
+      reason: WorkloadsDegraded
+      message: "1 of 14 resources degraded: Deployment payments-api has 0/3 ready replicas (image pull failed)"
 
     # Dedicated condition making the pinned state loudly visible.
     - type: Pinned
@@ -570,6 +582,155 @@ status:
   
   historyTruncated: false
 ```
+
+### Release State Model
+
+A deployed `Release` has three orthogonal state signals reflecting different aspects of the deployment. They are reported as separate conditions in `Release.status.conditions`, and aggregated into a composite `Ready` condition.
+
+#### The Three Signals
+
+##### Applied
+
+**Question answered:** "Did the controller successfully apply the rendered manifests to the cluster?"
+
+**Type:** Past-tense fact about the controller's action.
+
+`Applied: True` means the most recent apply attempt succeeded — the kube-apiserver accepted all create/update/patch operations for every resource in the rendered manifest set. This is the boundary of the controller's responsibility: it's about whether the tool did its job, not whether the resulting deployment is working.
+
+`Applied: False` means the most recent apply failed in whole or in part. Common causes: RBAC denial, admission webhook rejection, validation failure, network failure between controller and target cluster.
+
+`Applied` does not imply that the cluster currently matches the manifests (drift may have occurred since the apply) or that workloads are functioning (apply success is independent of runtime state).
+
+##### InSync
+
+**Question answered:** "Does the cluster currently match the rendered manifests?"
+
+**Type:** Present-tense fact about cluster state vs desired state.
+
+`InSync: True` means drift detection compared the live state of managed resources against the most recently rendered manifest set and found them equivalent. No external modifications, no manual edits, no field-ownership conflicts.
+
+`InSync: False` means drift was detected. The resources still exist in the cluster, but their current state diverges from what was last applied. Causes:
+
+- A user ran `kubectl edit` on a managed resource
+- Another controller (HPA, KEDA, custom operator) modified a field your Release manages
+- Server-side apply field-ownership conflict where another field manager won
+- A resource was deleted out-of-band
+
+Drift may be transient (the controller will re-apply on next reconciliation) or persistent (when there's a genuine ownership conflict). The distinction is visible in repeated `InSync: False` transitions.
+
+`InSync` does not imply healthy workloads — a Deployment can match its manifest exactly while having zero ready replicas.
+
+##### Healthy
+
+**Question answered:** "Are the deployed workloads functioning as intended?"
+
+**Type:** Present-tense fact about runtime state of workloads.
+
+`Healthy: True` means every resource managed by the Release has reached its intended runtime state per its kind-specific health rule:
+
+- `Deployment` — `readyReplicas == replicas`, `observedGeneration` current
+- `StatefulSet` — all replicas at current revision and ready
+- `Job` — completed successfully (`succeeded > 0`)
+- `Pod` — `Running` phase, all containers ready
+- `PersistentVolumeClaim` — `Bound`
+- `Service` (LoadBalancer) — `loadBalancer.ingress` populated
+- Custom resources — controller-defined readiness (e.g., `Certificate.status.conditions[Ready]`)
+
+`Healthy: False` means at least one resource is degraded — failing to come up, stuck progressing past a deadline, or in a known-bad state.
+
+`Healthy: Unknown` is a meaningful third value here: a Pod that's still pulling its image isn't unhealthy, it's progressing. A Deployment that just started rolling out isn't unhealthy. The health assessment must distinguish "still working on it" from "broken."
+
+`Healthy` is independent of `Applied` and `InSync`. A Release can be applied, in-sync, and unhealthy (manifest is correct, workloads aren't working). A Release can be unapplied (apply failed) but its previously-deployed workloads are still healthy (cluster still has the prior version running).
+
+#### Composite Condition
+
+##### Ready
+
+`Ready: True` requires all three:
+
+| `Applied` | `InSync` | `Healthy` | `Ready` | Meaning                                                         |
+|-----------|----------|-----------|---------|-----------------------------------------------------------------|
+| `True`    | `True`   | `True`    | `True`  | Steady state — deployed and working                             |
+| `True`    | `True`   | `Unknown` | `False` | Progressing — workloads coming up                               |
+| `True`    | `True`   | `False`   | `False` | Deployment broken — manifests applied but workloads not working |
+| `True`    | `False`  | *         | `False` | Drift — cluster has diverged from desired                       |
+| `False`   | *        | *         | `False` | Apply failed — manifests not in cluster                         |
+
+`Ready` is the signal most tooling and dashboards should watch. The three underlying conditions provide diagnostic detail when `Ready: False`.
+
+#### Why Three Signals, Not One
+
+Operators ask three distinct questions during deployment troubleshooting:
+
+| Question                             | Signal    | Diagnostic path                                         |
+|--------------------------------------|-----------|---------------------------------------------------------|
+| Did my deploy go through?            | `Applied` | Controller logs, RBAC, admission webhooks, network      |
+| Is something modifying my resources? | `InSync`  | Drift inspection, field-ownership, external controllers |
+| Are my workloads working?            | `Healthy` | Pod logs, events, resource constraints, image issues    |
+
+Different failure modes, different remediation. Collapsing into a single signal loses diagnostic clarity and forces tooling to re-derive the underlying signals to be useful.
+
+#### Why These Names
+
+| Name      | Why this name                                                             | Names rejected and why                                                                                                                             |
+|-----------|---------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Applied` | Plain English; describes what the controller did. No CD-tool baggage.     | `Synced` — ambiguous between "manifests pushed" (ArgoCD) and "fully converged" (intuitive reading). Causes recurring user confusion.               |
+| `InSync`  | Plain English; describes the cluster's current state relative to desired. | `Reconciled` — k8s vocabulary error. Reconciliation is the controller's *process*, not an outcome. Every Release is being reconciled at all times. |
+| `Healthy` | Standard term across infrastructure tooling. Unambiguous.                 | `Available`, `Working`, `Functional` — all mean roughly the same thing; `Healthy` is the most established.                                         |
+
+#### Example Status Block
+
+```yaml
+status:
+  conditions:
+    - type: Applied
+      status: "True"
+      lastTransitionTime: 2026-04-29T10:00:05Z
+      reason: ApplySucceeded
+      message: "Last apply at 10:00:05; 14 resources applied successfully"
+    
+    - type: InSync
+      status: "True"
+      lastTransitionTime: 2026-04-29T10:00:30Z
+      reason: NoDriftDetected
+      message: "All managed resources match rendered state"
+    
+    - type: Healthy
+      status: "False"
+      lastTransitionTime: 2026-04-29T10:01:15Z
+      reason: WorkloadsDegraded
+      message: "1 of 14 resources degraded: Deployment payments-api has 0/3 ready replicas (image pull failed)"
+    
+    - type: Ready
+      status: "False"
+      lastTransitionTime: 2026-04-29T10:01:15Z
+      reason: NotHealthy
+      message: "Release is applied and in-sync but workloads are not healthy"
+```
+
+#### Vocabulary Mapping for Users Coming from Other Tools
+
+| Concept                        | This tool | ArgoCD                 | Flux                                     |
+|--------------------------------|-----------|------------------------|------------------------------------------|
+| Manifests successfully applied | `Applied` | `Synced`               | (implicit; not a separate condition)     |
+| Cluster matches desired state  | `InSync`  | (implicit in `Synced`) | `Ready` (partial — also includes health) |
+| Workloads running correctly    | `Healthy` | `Healthy`              | (folded into `Ready`)                    |
+| Aggregate "all good"           | `Ready`   | `Synced + Healthy`     | `Ready`                                  |
+
+ArgoCD users will recognize `Healthy`. The split between `Applied` and `InSync` is more granular than ArgoCD's `Synced` (which conflates "applied" with "matches" — fine in practice but loses signal during drift events). Flux users will find the three-way split more granular than Flux's combined `Ready`.
+
+#### Field Reference
+
+These three conditions appear in `Release.status.conditions` as standard k8s `Condition` objects:
+
+| Field                | Description                                                                                                                             |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `type`               | One of `Applied`, `InSync`, `Healthy`, `Ready`.                                                                                         |
+| `status`             | `True`, `False`, or `Unknown`. `Unknown` is meaningful for `Healthy` (progressing) and for `Applied`/`InSync` before any apply attempt. |
+| `lastTransitionTime` | When the status last changed.                                                                                                           |
+| `reason`             | Standardized machine-readable code (e.g., `ApplySucceeded`, `DriftDetected`, `WorkloadsDegraded`).                                      |
+| `message`            | Human-readable detail. May reference specific resources for `Healthy` and `InSync`.                                                     |
+| `observedGeneration` | The `metadata.generation` of the Release at the time this condition was set. Allows consumers to detect stale conditions.               |
 
 ## Sources
 
