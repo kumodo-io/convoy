@@ -1,6 +1,99 @@
-# API Design
-
 This document contains the description and examples of the API types and their usage within the project. It serves as a reference for developers working with the API, providing clear guidelines on how to interact with the system effectively.
+
+Table of content:
+<!-- TOC -->
+  * [Cluster](#cluster)
+  * [Release](#release)
+    * [Release State Model](#release-state-model)
+      * [The Three Signals](#the-three-signals)
+        * [Applied](#applied)
+        * [InSync](#insync)
+        * [Healthy](#healthy)
+      * [Composite Condition](#composite-condition)
+        * [Ready](#ready)
+      * [Why Three Signals, Not One](#why-three-signals-not-one)
+      * [Why These Names](#why-these-names)
+      * [Example Status Block](#example-status-block)
+      * [Vocabulary Mapping for Users Coming from Other Tools](#vocabulary-mapping-for-users-coming-from-other-tools)
+      * [Field Reference](#field-reference)
+    * [Health Assessment](#health-assessment)
+      * [Purpose](#purpose)
+      * [Health States](#health-states)
+      * [How Health Is Determined](#how-health-is-determined)
+        * [Built-in Rules](#built-in-rules)
+        * [kstatus Fallback](#kstatus-fallback)
+        * [Custom Rules via `HealthRule`](#custom-rules-via-healthrule)
+      * [`HealthRule` Resource](#healthrule-resource)
+      * [Aggregation: Per-Resource → Release-Level `Healthy`](#aggregation-per-resource--release-level-healthy)
+      * [Status Shape](#status-shape)
+        * [`health.summary`](#healthsummary)
+        * [`health.resources`](#healthresources)
+          * [Per-resource fields](#per-resource-fields)
+      * [What's Not Covered](#whats-not-covered)
+      * [Comparison with Other Tools](#comparison-with-other-tools)
+  * [Sources](#sources)
+    * [GitSource](#gitsource)
+      * [Purpose](#purpose-1)
+      * [Example](#example)
+      * [Field Reference](#field-reference-1)
+        * [`spec`](#spec)
+      * [`/webhooks`](#webhooks)
+        * [`status`](#status)
+      * [Subresources](#subresources)
+    * [HelmRegistry](#helmregistry)
+      * [Purpose](#purpose-2)
+      * [Example](#example-1)
+      * [Field Reference](#field-reference-2)
+        * [`spec`](#spec-1)
+      * [`/webhooks`](#webhooks-1)
+        * [`status`](#status-1)
+      * [Subresources](#subresources-1)
+    * [OCIRegistry](#ociregistry)
+      * [Purpose](#purpose-3)
+      * [Example](#example-2)
+      * [Field Reference](#field-reference-3)
+        * [`spec`](#spec-2)
+      * [`/webhooks`](#webhooks-2)
+        * [`status`](#status-2)
+      * [Subresources](#subresources-2)
+  * [Cross-references at a glance](#cross-references-at-a-glance)
+  * [AuthValid Condition](#authvalid-condition)
+    * [Resources](#resources)
+    * [Status Semantics](#status-semantics)
+    * [Standardized Reason Codes](#standardized-reason-codes)
+      * [Success reasons (`status: True`)](#success-reasons-status-true)
+      * [Failure reasons (`status: False`)](#failure-reasons-status-false)
+      * [Unknown reasons (`status: Unknown`)](#unknown-reasons-status-unknown)
+    * [Relationship to Other Conditions](#relationship-to-other-conditions)
+      * [Triage flow](#triage-flow)
+      * [Aggregation](#aggregation)
+    * [Examples](#examples)
+      * [GitSource — successful SSH key auth](#gitsource--successful-ssh-key-auth)
+      * [HelmRegistry — OIDC client credentials failure](#helmregistry--oidc-client-credentials-failure)
+      * [OCIRegistry — public registry, no auth](#ociregistry--public-registry-no-auth)
+      * [Cluster — workload identity success](#cluster--workload-identity-success)
+      * [GitSource — secret missing](#gitsource--secret-missing)
+    * [Implementation Notes](#implementation-notes)
+      * [Controller code](#controller-code)
+      * [Token caching](#token-caching)
+      * [Avoiding misclassification](#avoiding-misclassification)
+  * [Source Webhooks (`/webhooks` subresource)](#source-webhooks-webhooks-subresource)
+    * [Purpose](#purpose-4)
+    * [Schema](#schema)
+    * [Verbs](#verbs)
+    * [Common Fields](#common-fields)
+    * [Per-Kind Variations](#per-kind-variations)
+      * [`GitSource` webhooks](#gitsource-webhooks)
+      * [`HelmRegistry` webhooks](#helmregistry-webhooks)
+      * [`OCIRegistry` webhooks](#ociregistry-webhooks)
+    * [Status Reflection](#status-reflection)
+    * [Status Fields per Entry](#status-fields-per-entry)
+    * [RBAC](#rbac)
+    * [Defaults and Auto-Generation](#defaults-and-auto-generation)
+    * [URL Generation](#url-generation)
+<!-- TOC -->
+
+
 
 ## Cluster
 
@@ -732,6 +825,244 @@ These three conditions appear in `Release.status.conditions` as standard k8s `Co
 | `message`            | Human-readable detail. May reference specific resources for `Healthy` and `InSync`.                                                     |
 | `observedGeneration` | The `metadata.generation` of the Release at the time this condition was set. Allows consumers to detect stale conditions.               |
 
+### Health Assessment
+
+#### Purpose
+
+Health assessment is the controller's evaluation of whether the workloads deployed by a `Release` are functioning as intended. It is distinct from `Applied` (manifests pushed) and `InSync` (cluster matches desired state). A Release can be applied and in-sync but still unhealthy — the manifest is correct, but Pods are crashlooping, PVCs are unbound, or custom resources haven't reached their `Ready` condition.
+
+Health assessment provides:
+
+- A trustworthy signal that a deploy actually worked, not just that it was applied
+- Per-resource visibility into what's wrong when something fails
+- The foundation for downstream features: auto-rollback, sync-wave gating, fleet-level health views
+
+#### Health States
+
+Each managed resource is evaluated to one of five states:
+
+| State         | Meaning                                         | Example                                                                                  |
+|---------------|-------------------------------------------------|------------------------------------------------------------------------------------------|
+| `Healthy`     | Resource has reached its intended runtime state | `Deployment` with all replicas ready, `observedGeneration` current                       |
+| `Progressing` | Working toward intended state, no failure yet   | `Deployment` rolling out a new revision; `Pod` pulling its image                         |
+| `Degraded`    | Failed or in a known-bad state                  | `Deployment` with `ProgressDeadlineExceeded`; `Pod` in `CrashLoopBackOff` past threshold |
+| `Suspended`   | Intentionally paused                            | `CronJob` with `spec.suspend: true`                                                      |
+| `Unknown`     | Health cannot be determined                     | Custom resource with no rule and no standard conditions                                  |
+
+`Suspended` is a deliberate distinction from `Degraded` — operators shouldn't be alerted for resources that are intentionally not running.
+
+`Unknown` is a deliberate distinction from `Healthy` — the controller is honest about what it doesn't know rather than defaulting optimistically.
+
+#### How Health Is Determined
+
+For each managed resource, the controller resolves a health rule in this order:
+
+1. **User-defined `HealthRule`** matching the resource's `(apiGroup, kind, version)` — highest priority
+2. **Built-in rule** for standard kinds — used when no user rule applies
+3. **kstatus fallback** for resources following Kubernetes API conventions
+4. **`Unknown`** — when none of the above can determine state
+
+The first matching layer is used; lower layers are consulted only when higher ones don't apply.
+
+##### Built-in Rules
+
+The controller ships with rules for ~18 standard kinds covering 95% of typical deployments:
+
+**Workloads:** `Deployment`, `StatefulSet`, `DaemonSet`, `ReplicaSet`, `Pod`, `Job`, `CronJob`
+
+**Networking:** `Service`, `Ingress`
+
+**Storage:** `PersistentVolumeClaim`, `PersistentVolume`
+
+**Configuration:** `ConfigMap`, `Secret`
+
+**RBAC:** `ServiceAccount`, `Role`, `RoleBinding`, `ClusterRole`, `ClusterRoleBinding`
+
+**Autoscaling/Reliability:** `HorizontalPodAutoscaler`, `PodDisruptionBudget`
+
+Rules incorporate kind-appropriate progress deadlines (e.g., `Deployment.spec.progressDeadlineSeconds` for Deployments; 10m default for StatefulSets) and look at child-resource events for fast failure detection (e.g., `ImagePullBackOff` on Pods triggers `Degraded` on the parent without waiting for the parent's deadline).
+
+Built-in rule logic is documented per kind so users can predict behavior.
+
+##### kstatus Fallback
+
+For resources not covered by a built-in rule, the controller uses Google's `kstatus` library, which infers health from common Kubernetes API conventions:
+
+- Presence and value of a `Ready` condition
+- Generic `Failed`, `Reconciling`, `Stalled` conditions
+- `observedGeneration` vs `metadata.generation`
+
+This handles convention-following CRDs automatically with zero per-CRD configuration. Resources that don't follow conventions fall through to `Unknown`.
+
+##### Custom Rules via `HealthRule`
+
+For CRDs with non-standard status (or to override built-in behavior), users define `HealthRule` resources. See the `HealthRule` resource summary for full schema.
+
+#### `HealthRule` Resource
+
+`HealthRule` is **cluster-scoped**. Health rules describe properties of resource kinds, which are inherently cluster-scoped concepts. This is the only cluster-scoped resource in the API; all others remain namespaced.
+
+**Targeting:** Each `HealthRule` targets exactly one `(apiGroup, kind, version)`. Validating admission rejects creation of a second `HealthRule` with the same target. To change behavior, edit the existing rule.
+
+**Relationship to Release:** None. Releases do not reference `HealthRule` resources. The controller looks up the applicable rule by the resource's kind, regardless of which Release manages it. This ensures consistent health verdicts across the system.
+
+**Expression language:** CEL, with bindings for the live resource (`object`) and current time (`now`). Returns one of `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Unknown`.
+
+```yaml
+apiVersion: cd.kumodo.io/v1alpha1
+kind: HealthRule
+metadata:
+  name: certificate-health
+spec:
+  target:
+    apiGroup: cert-manager.io
+    kind: Certificate
+    version: v1
+  
+  expression: |
+    has(object.status.conditions) && object.status.conditions.exists(c, 
+      c.type == "Ready" && c.status == "True"
+    ) ? "Healthy" :
+    has(object.status.conditions) && object.status.conditions.exists(c,
+      c.type == "Ready" && c.status == "False"
+    ) ? "Degraded" :
+    "Progressing"
+  
+  progressDeadline: 5m
+  
+  messageExpression: |
+    has(object.status.conditions) && object.status.conditions.exists(c, c.type == "Ready") 
+      ? object.status.conditions.filter(c, c.type == "Ready")[0].message
+      : "Waiting for Certificate to become ready"
+```
+
+#### Aggregation: Per-Resource → Release-Level `Healthy`
+
+Per-resource health verdicts aggregate into the Release-level `Healthy` condition:
+
+| Resource states                                | Release `Healthy` condition |
+|------------------------------------------------|-----------------------------|
+| Any `Degraded`                                 | `False`                     |
+| All `Healthy` (and/or `Suspended`)             | `True`                      |
+| Any `Progressing`, no `Degraded`               | `Unknown`                   |
+| Any `Unknown`, no `Degraded`, no `Progressing` | `Unknown`                   |
+
+Key rules:
+
+- **`Suspended` doesn't count against `Healthy: True`.** Intentional pause is intentional; suspended resources are a normal steady state, not a failure.
+- **`Unknown` doesn't count toward `Healthy: True`.** The controller doesn't fabricate confidence; if any resource's state is unknown, the Release-level verdict is also `Unknown`.
+- **`Progressing` produces `Unknown`, not `True` or `False`.** Active progress is genuine indeterminacy — the deploy is in flight. `Healthy: Unknown` during deploys is normal, not an alert condition.
+
+`Healthy: Unknown` is meaningful and distinct from `False`. Tooling watching for failures should alert on `Healthy: False`, not on any non-`True` state.
+
+#### Status Shape
+
+The Release status reports health in two parts: an always-present summary and a conditionally-populated resource list.
+
+```yaml
+status:
+  conditions:
+    - type: Healthy
+      status: "False"
+      reason: WorkloadsDegraded
+      lastTransitionTime: 2026-04-29T10:01:15Z
+      message: "1 of 14 resources degraded"
+  
+  health:
+    summary:
+      total: 14
+      healthy: 11
+      progressing: 1
+      degraded: 1
+      suspended: 1
+      unknown: 0
+    
+    resources:
+      - kind: Deployment
+        apiGroup: apps
+        version: v1
+        name: payments-api
+        namespace: payments-team
+        health: Degraded
+        since: 2026-04-29T10:01:15Z
+        message: "0/3 ready replicas; CrashLoopBackOff on container 'api' (exit code 1)"
+        ruleUsed:
+          type: builtin
+      
+      - kind: CronJob
+        apiGroup: batch
+        version: v1
+        name: payments-cleanup
+        namespace: payments-team
+        health: Suspended
+        since: 2026-04-15T08:00:00Z
+        message: "spec.suspend is true"
+        ruleUsed:
+          type: builtin
+```
+
+##### `health.summary`
+
+Always present. Aggregate counts by state across all managed resources. Lets tooling answer "is anything wrong" at a glance and produce dashboards without parsing the resource list.
+
+| Field         | Description                                      |
+|---------------|--------------------------------------------------|
+| `total`       | Total number of resources managed by the Release |
+| `healthy`     | Count of resources in `Healthy` state            |
+| `progressing` | Count of resources in `Progressing` state        |
+| `degraded`    | Count of resources in `Degraded` state           |
+| `suspended`   | Count of resources in `Suspended` state          |
+| `unknown`     | Count of resources in `Unknown` state            |
+
+##### `health.resources`
+
+Conditionally populated. Contains only entries that need operator attention:
+
+| Health state  | Included in `resources`?                             |
+|---------------|------------------------------------------------------|
+| `Healthy`     | No — nothing to surface                              |
+| `Progressing` | No — transient noise during deploys                  |
+| `Degraded`    | Yes — needs attention                                |
+| `Suspended`   | Yes — operators should know what's paused            |
+| `Unknown`     | Yes — indicates missing rule or non-conventional CRD |
+
+This bounds status size and makes the per-resource view directly actionable. A Release with 200 healthy resources and 1 degraded one shows 1 entry, not 201.
+
+###### Per-resource fields
+
+| Field                         | Description                                                  |
+|-------------------------------|--------------------------------------------------------------|
+| `kind`, `apiGroup`, `version` | Resource kind identification                                 |
+| `name`, `namespace`           | Resource identity                                            |
+| `health`                      | One of `Degraded`, `Suspended`, `Unknown`                    |
+| `since`                       | When this state was first observed (transitions reset this)  |
+| `message`                     | Human-readable detail from the health rule                   |
+| `ruleUsed.type`               | One of `customRule`, `builtin`, `kstatus`, `fallbackUnknown` |
+| `ruleUsed.ref`                | Reference to the `HealthRule` (only when `type: customRule`) |
+
+The `ruleUsed` field makes assessment auditable. Users debugging unexpected health verdicts can immediately see which rule produced them.
+
+#### What's Not Covered
+
+Health assessment scope is deliberately narrow:
+
+- **Liveness/readiness probes** are kubelet-internal mechanisms; health assessment reads their resulting state (`readyReplicas`) but doesn't replace them.
+- **Application-level health** (e.g., `/metrics` endpoints showing healthy business metrics) is out of scope. Health assessment evaluates whether k8s resources reached intended state, not whether application logic is correct.
+- **Smoke tests / integration tests** are active probing, handled by post-sync hooks (separate feature).
+- **SLO/SLA monitoring** belongs to observability tooling (Prometheus, etc.).
+
+Health assessment is passive observation of resource state, not active testing.
+
+#### Comparison with Other Tools
+
+| Concept                    | This tool                                        | ArgoCD                       | Flux                            |
+|----------------------------|--------------------------------------------------|------------------------------|---------------------------------|
+| Per-resource health        | Yes, in status (degraded/suspended/unknown only) | Yes, full list               | Limited                         |
+| Custom health rules        | CEL via cluster-scoped `HealthRule`              | Lua via ConfigMap            | None native                     |
+| Five health states         | Yes                                              | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
+| `Unknown` as honest signal | Yes                                              | Sometimes (for unknown CRDs) | Often defaults optimistic       |
+| Bounded status size        | Yes (excludes healthy/progressing)               | No (full list)               | Compact (less detail)           |
+
 ## Sources
 
 ### GitSource
@@ -1302,11 +1633,11 @@ See reference at [Webhooks](#webhooks)
 - `Release.status.resolvedCluster` → snapshot derived from the referenced `Cluster`'s spec at render time
 - `Release.status.resolvedDeletionPolicy` → snapshot of `Cluster.spec.deletionPolicy` at render time with overrides from `Release.spec.deletionPolicyOverrides`
 
-# AuthValid Condition
+## AuthValid Condition
 
 A standardized condition reflecting authentication state, present on all resources that authenticate to remote systems.
 
-## Resources
+### Resources
 
 `AuthValid` appears on:
 
@@ -1317,7 +1648,7 @@ A standardized condition reflecting authentication state, present on all resourc
 
 The condition is always present (never omitted), even on resources without configured authentication. This makes consumer logic simpler — no need to handle a missing-condition case.
 
-## Status Semantics
+### Status Semantics
 
 | Status    | Meaning                                                                                                     |
 |-----------|-------------------------------------------------------------------------------------------------------------|
@@ -1327,11 +1658,11 @@ The condition is always present (never omitted), even on resources without confi
 
 The `Unknown` state is meaningful and should not be conflated with `False`. Distinguishing "credentials are bad" from "we couldn't test the credentials" prevents operators from chasing the wrong problem.
 
-## Standardized Reason Codes
+### Standardized Reason Codes
 
 All resources use the same vocabulary for the `reason` field. Resource-specific detail goes in `message`.
 
-### Success reasons (`status: True`)
+#### Success reasons (`status: True`)
 
 | Reason                | Meaning                                                                           |
 |-----------------------|-----------------------------------------------------------------------------------|
@@ -1339,7 +1670,7 @@ All resources use the same vocabulary for the `reason` field. Resource-specific 
 | `CredentialsAccepted` | Authentication succeeded with simple credentials (basic auth, SSH key, etc.)      |
 | `NoAuthRequired`      | No authentication is configured; resource is public                               |
 
-### Failure reasons (`status: False`)
+#### Failure reasons (`status: False`)
 
 | Reason                   | Meaning                                                                           |
 |--------------------------|-----------------------------------------------------------------------------------|
@@ -1351,14 +1682,14 @@ All resources use the same vocabulary for the `reason` field. Resource-specific 
 | `TokenExpired`           | Known-expired token; refresh attempt failed                                       |
 | `AuthMisconfigured`      | Configuration error detected without contacting remote (e.g., invalid issuer URL) |
 
-### Unknown reasons (`status: Unknown`)
+#### Unknown reasons (`status: Unknown`)
 
 | Reason              | Meaning                                                        |
 |---------------------|----------------------------------------------------------------|
 | `NotYetAttempted`   | Resource is new; auth has not yet been tested                  |
 | `RemoteUnreachable` | Could not contact remote to test auth (network, DNS, firewall) |
 
-## Relationship to Other Conditions
+### Relationship to Other Conditions
 
 `AuthValid` is one of three connection-related conditions that together provide diagnostic clarity:
 
@@ -1366,7 +1697,7 @@ All resources use the same vocabulary for the `reason` field. Resource-specific 
 - **`AuthValid`** — authentication state
 - **`Ready`** — composite: resource is fully functional
 
-### Triage flow
+#### Triage flow
 
 | Reachable | AuthValid | Action                                                                           |
 |-----------|-----------|----------------------------------------------------------------------------------|
@@ -1374,14 +1705,14 @@ All resources use the same vocabulary for the `reason` field. Resource-specific 
 | `True`    | `False`   | Fix credentials or auth configuration                                            |
 | `True`    | `True`    | If `Ready: False`, look beyond auth (rate limits, IdP misconfig, content errors) |
 
-### Aggregation
+#### Aggregation
 
 - `Ready: True` requires `AuthValid: True` (and `Reachable: True`).
 - `AuthValid: False` should always cause `Ready: False`, with `Ready.reason: AuthFailed` pointing at the underlying auth issue.
 
-## Examples
+### Examples
 
-### GitSource — successful SSH key auth
+#### GitSource — successful SSH key auth
 
 ```yaml
 status:
@@ -1397,7 +1728,7 @@ status:
       message: "SSH key authentication successful"
 ```
 
-### HelmRegistry — OIDC client credentials failure
+#### HelmRegistry — OIDC client credentials failure
 
 ```yaml
 status:
@@ -1413,7 +1744,7 @@ status:
       message: "Failed to acquire OIDC token from https://auth.example.com/realms/internal: invalid_client (client authentication failed)"
 ```
 
-### OCIRegistry — public registry, no auth
+#### OCIRegistry — public registry, no auth
 
 ```yaml
 status:
@@ -1429,7 +1760,7 @@ status:
       message: "Registry is public; no authentication configured"
 ```
 
-### Cluster — workload identity success
+#### Cluster — workload identity success
 
 ```yaml
 status:
@@ -1445,7 +1776,7 @@ status:
       message: "EKS GetToken succeeded via IRSA role arn:aws:iam::123456789012:role/cd-eks-deployer"
 ```
 
-### GitSource — secret missing
+#### GitSource — secret missing
 
 ```yaml
 status:
@@ -1462,9 +1793,9 @@ status:
       message: "Secret 'payments-git-ssh' not found in namespace 'payments-team'"
 ```
 
-## Implementation Notes
+### Implementation Notes
 
-### Controller code
+#### Controller code
 
 Factor a shared auth-result type so all controllers report consistently:
 
@@ -1478,7 +1809,7 @@ type AuthResult struct {
 
 Each resource's auth handler returns `AuthResult`; the reconciler maps it to a condition update uniformly. This prevents drift in reason codes over time — adding a new code happens in one place, every controller stays consistent.
 
-### Token caching
+#### Token caching
 
 For auth methods that produce short-lived tokens (OIDC, workload identity):
 
@@ -1487,7 +1818,7 @@ For auth methods that produce short-lived tokens (OIDC, workload identity):
 - Token refresh failures should update `AuthValid` to `False` with `reason: TokenExpired`
 - Use exponential backoff with jitter for refresh retries to avoid thundering-herd against the IdP
 
-### Avoiding misclassification
+#### Avoiding misclassification
 
 A common mistake is reporting any failure as `AuthValid: False`. Be precise:
 
@@ -1496,9 +1827,9 @@ A common mistake is reporting any failure as `AuthValid: False`. Be precise:
 - 403 from remote → `AuthValid: False, reason: PermissionDenied`
 - Local config errors (bad issuer URL, missing secret) → `AuthValid: False` with the appropriate config reason; `Reachable` may still be `Unknown` if the remote was never contacted
 
-# Source Webhooks (`/webhooks` subresource)
+## Source Webhooks (`/webhooks` subresource)
 
-## Purpose
+### Purpose
 
 The `/webhooks` subresource manages webhook configurations for a Source, enabling push-based notifications from upstream systems (Git providers, registries) that trigger source refreshes. Multiple webhooks can be configured per Source, supporting scenarios like multi-mirror Git setups, provider migrations, and chained CI/CD pipelines.
 
@@ -1510,7 +1841,7 @@ Webhook configuration lives behind a subresource (rather than inline in `spec`) 
 - Different sensitivity (webhook secrets are credentials)
 - Audit clarity (webhook config changes distinguishable from Source spec changes)
 
-## Schema
+### Schema
 
 The subresource holds a list of named webhook entries under `items`.
 
@@ -1545,7 +1876,7 @@ items:
 
 Each entry's `url` is server-generated and returned by GET/POST; it is not accepted as input. Users copy the URL into the upstream provider's webhook configuration.
 
-## Verbs
+### Verbs
 
 | Path               | Verb   | Purpose                                                                 |
 |--------------------|--------|-------------------------------------------------------------------------|
@@ -1556,7 +1887,7 @@ Each entry's `url` is server-generated and returned by GET/POST; it is not accep
 | `/webhooks/<name>` | PUT    | Update a specific webhook entry.                                        |
 | `/webhooks/<name>` | DELETE | Remove a specific webhook entry.                                        |
 
-## Common Fields
+### Common Fields
 
 These fields apply to webhook entries on all Source kinds.
 
@@ -1571,9 +1902,9 @@ These fields apply to webhook entries on all Source kinds.
 | `filters`        | object   | no                   | —                                   | Optional payload-based filtering. Specific fields vary by Source kind.                                                                              |
 | `url`            | string   | server-generated     | —                                   | Endpoint URL for the upstream provider to call. Returned in GET/POST responses; mirrored in `status.webhooks[].url`. Each entry has a distinct URL. |
 
-## Per-Kind Variations
+### Per-Kind Variations
 
-### `GitSource` webhooks
+#### `GitSource` webhooks
 
 **Provider enum values:**
 
@@ -1596,7 +1927,7 @@ These fields apply to webhook entries on all Source kinds.
 
 **Default events:** `["push"]`
 
-### `HelmRegistry` webhooks
+#### `HelmRegistry` webhooks
 
 **Provider enum values:**
 
@@ -1615,7 +1946,7 @@ Public Helm registries (e.g., `charts.bitnami.com`) typically don't support webh
 |------------------|----------|---------------------------------------------------------|
 | `filters.charts` | []string | Only trigger sync when matching chart names are pushed. |
 
-### `OCIRegistry` webhooks
+#### `OCIRegistry` webhooks
 
 **Provider enum values:**
 
@@ -1640,7 +1971,7 @@ Public Helm registries (e.g., `charts.bitnami.com`) typically don't support webh
 
 **Note on ECR / GAR:** AWS ECR uses EventBridge; Google Artifact Registry uses Pub/Sub. Neither sends direct HTTP webhooks. A small bridge component (Lambda or Cloud Function) consumes events from these systems and POSTs to the `generic` webhook endpoint. Bridge implementation is provided as an optional, separately-installable helper.
 
-## Status Reflection
+### Status Reflection
 
 Each Source's `status.webhooks` mirrors operational state per webhook entry. Sensitive config (secret reference, filters) stays behind the subresource; status surfaces only non-sensitive operational facts.
 
@@ -1679,7 +2010,7 @@ status:
 
 The `WebhookConfigured` condition is `True` if at least one webhook is configured. Per-entry health is in `status.webhooks[].rejectedCount` and `lastRejection`; aggregate failures across entries trigger condition transitions to `False` with appropriate reasons.
 
-## Status Fields per Entry
+### Status Fields per Entry
 
 | Field                   | Type      | Description                                                                                      |
 |-------------------------|-----------|--------------------------------------------------------------------------------------------------|
@@ -1696,7 +2027,7 @@ The `WebhookConfigured` condition is `True` if at least one webhook is configure
 | `lastRejection.reason`  | string    | Standardized reason: `SignatureMismatch`, `MalformedPayload`, `UnknownEvent`, `SecretNotFound`.  |
 | `lastRejection.message` | string    | Human-readable detail.                                                                           |
 
-## RBAC
+### RBAC
 
 Standard Kubernetes RBAC operates at the subresource level — `gitsources/webhooks`, `helmregistries/webhooks`, `ociregistries/webhooks` — not at individual entry granularity. Granting webhook-edit permissions on a Source allows managing all webhook entries on that Source.
 
@@ -1719,14 +2050,14 @@ For per-webhook access control (rare), users can:
 - Use separate Sources (recommended for cleanly isolated webhooks).
 - Apply `ValidatingAdmissionPolicy` with CEL expressions on the subresource (Kubernetes 1.30+).
 
-## Defaults and Auto-Generation
+### Defaults and Auto-Generation
 
 To avoid penalizing the common case of one webhook per Source:
 
 - POST without a `name` auto-generates a name based on `provider` (e.g., `github-1`, `harbor-1`). Subsequent POSTs of the same provider increment the suffix.
 - Single-webhook users can ignore names entirely and treat the subresource as effectively singular by addressing the auto-generated entry.
 
-## URL Generation
+### URL Generation
 
 Webhook URLs use opaque, server-generated identifiers: `https://<control-plane-host>/webhooks/<webhook-uuid>`
 
