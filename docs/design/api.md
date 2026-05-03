@@ -424,6 +424,13 @@ spec:
       initial: 30s
       max: 10m
       factor: 2
+
+    # Defines the order in which resources are applied and their health monitoring strategy.
+    waveStrategy:
+      # strategy: waitForApplied | waitForHealthy | waitForHealthyWithTimeout
+      strategy: waitForApplied
+      # used only with waitForHealthyWithTimeout
+      waveTimeout: 10m
   
   # How many historical (rendered, applied) records to retain in S3.
   # Drives /history pagination depth and rollback range.
@@ -668,6 +675,30 @@ status:
     intent: freeze | rollback
     renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
     pinnedAt: 2026-04-29T10:00:00Z
+
+  # Waves reflects the order in which resources were applied and their health status.
+  # Each wave entry represents a group of resources applied together, with a state indicating
+  # whether they have been fully applied and healthy, are in progress, or have failed.
+  waves:
+    - number: -10
+      resources: 1                      # CRD
+      state: Completed
+      startedAt: 2026-04-29T10:00:00Z
+      completedAt: 2026-04-29T10:00:15Z
+      transitionReason: AppliedAndHealthy
+
+    - number: 0
+      resources: 12                     # most resources
+      state: Completed
+      startedAt: 2026-04-29T10:00:15Z
+      completedAt: 2026-04-29T10:00:45Z
+      transitionReason: AppliedAndHealthy
+
+    - number: 10
+      resources: 1                      # Certificate (CR of the CRD above)
+      state: InProgress
+      startedAt: 2026-04-29T10:00:45Z
+      transitionReason: ""
   
   # Last reconciliation timestamp, even when nothing changed.
   # Distinct from lastAttempted (which only updates on actual change attempts).
