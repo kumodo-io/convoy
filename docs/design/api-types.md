@@ -1,3 +1,5 @@
+**API Types**
+
 This document contains the description and examples of the API types and their usage within the project. It serves as a reference for developers working with the API, providing clear guidelines on how to interact with the system effectively.
 
 Table of content:

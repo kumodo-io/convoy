@@ -1,4 +1,21 @@
-# Sync Waves
+**Sync Waves**
+
+<!-- TOC -->
+  * [Purpose](#purpose)
+  * [Scope](#scope)
+  * [Wave Specification via Annotations](#wave-specification-via-annotations)
+    * [Wave Numbering](#wave-numbering)
+    * [Annotations Recognized](#annotations-recognized)
+    * [Helm Hook Compatibility](#helm-hook-compatibility)
+  * [Wave Transition Strategies](#wave-transition-strategies)
+    * [Why Wave Strategies Matter](#why-wave-strategies-matter)
+  * [Status Reflection](#status-reflection)
+  * [Resource Selection by Wave](#resource-selection-by-wave)
+  * [Interaction with `/preview` and `/diff`](#interaction-with-preview-and-diff)
+  * [Mutation Pipeline Interaction](#mutation-pipeline-interaction)
+  * [What's Not Addressed Here](#whats-not-addressed-here)
+  * [Summary Table](#summary-table)
+<!-- TOC -->
 
 ## Purpose
 
