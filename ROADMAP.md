@@ -7,34 +7,45 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 ### In Scope
 
 **Controllers**
-- [ ] Source Controller — Git polling, sets `Source /sync` state to `NotSynced` on change
-- [ ] Render Controller — Helm rendering + Go template rendering on patches + JSON/strategic-merge/Kustomize patching, S3 artifact storage
-- [ ] Deploy Controller — SSA-based apply, S3 state storage, local FS cache
-- [ ] Sync Controller — periodic drift detection, sets `Application /sync` state to `NotSynced` on drift, `ignoreFields` support
+- [ ] Source Controller — Git polling, sets `GitSource /sync` state to `NotSynced` on change
+- [ ] Render Controller — Helm rendering + mutation pipeline (helmValues, goTemplate, jsonPatch, strategicMergePatch), S3 artifact storage
+- [ ] Executor — SSA-based apply, S3 state storage, local FS cache, health assessment
+- [ ] Sync Controller — periodic drift detection, sets `Release /sync` state to `NotSynced` on drift, `ignoreFields` support
 
 **Storage**
 - [ ] S3 state backend (rendered artifacts + deployed state)
 - [ ] Local FS cache with S3 hydration on startup
+- [ ] Control plane proxies S3 content to executors
 
 **Deployment**
 - [ ] Server-Side Apply with field manager
 - [ ] `ignoreFields` mechanism
+- [ ] Sync waves (`cd.kumodo.io/sync-wave` annotation, `waitForApplied` strategy)
 
 **Health Checking**
 - [ ] Built-in CEL rules for standard resources (Deployment, StatefulSet, DaemonSet, Pod, PVC, Job)
-- [ ] User-defined CEL rules for custom resources
+- [ ] `HealthRule` resource for user-defined CEL rules
 
 **Multi-Cluster**
-- [ ] Cluster registration resource
-- [ ] Pluggable auth interface
+- [ ] `Cluster` resource with pluggable auth interface
 - [ ] Kubeconfig auth provider
 - [ ] Workload Identity auth provider (IRSA / GKE)
+- [ ] Agentless executor mode
+
+**Pin and Rollback**
+- [ ] `/pin` subresource — `freeze` and `rollback` intents
+
+**Lifecycle Hooks**
+- [ ] `/lifecycle` subresource on `Release`
+- [ ] `PreSync`, `PostSync`, `SyncFail` phases
+- [ ] `Job` hook type with CEL `when` conditions
 
 **API**
 - [ ] Aggregation API server setup (auth delegation, APIService registration, generic registry)
-- [ ] User-facing resources: `Source`, `Patch`, `Application`, `ClusterRegistration`
-- [ ] `Source` subresource: `/sync` (state: `Synced`, `NotSynced`, `Syncing`, `Failed`)
-- [ ] `Application` subresources: `/sync`, `/diff`, `/rollback`
+- [ ] User-facing resources: `GitSource`, `HelmRegistry`, `OCIRegistry`, `HealthRule`, `Release`, `Cluster`
+- [ ] `Release` subresources: `/mutations`, `/sync`, `/preview`, `/diff`, `/pin`, `/history`, `/lifecycle`
+- [ ] Source subresources: `/sync`, `/webhooks`
+- [ ] Internal resources: `SourceSyncRequest`, `ReleaseSyncRequest`
 
 **Observability**
 - [ ] Structured Kubernetes event emission from all controllers (required foundation for future notification controller)
@@ -43,8 +54,13 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 
 - CLI / kubectl plugin
 - Notification controller
-- App grouping / templating (ApplicationSet-like)
-- OCI registry source
+- `ReleaseSet` — app grouping / fleet templating
+- Agent executor mode
+- `celTransform` mutation type
+- `PreRender`, `PostRender`, `PreDelete`, `PostDelete` lifecycle hook phases
+- `Pod` hook type
+- `waitForHealthy` / `waitForHealthyWithTimeout` wave strategies
+- OCI registry source (`OCIRegistry`)
 - Webhook-based source triggering
 
 ---
@@ -59,33 +75,43 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 - Designed as a standalone component — no changes required to existing controllers
 
 **Source Enhancements**
-- OCI registry source support
-- Webhook receivers for push-based triggering (GitHub, GitLab, Harbor, etc.)
-- Source composition — combine multiple sources into a single render
+- `OCIRegistry` source support
+- Webhook receivers for push-based triggering (`/webhooks` subresource on all source kinds)
+- `celTransform` mutation type
+
+**Lifecycle Hook Phases**
+- `PreRender`, `PostRender`, `PreDelete`, `PostDelete` phases
+- `Pod` hook type
+
+**Wave Strategies**
+- `waitForHealthy` and `waitForHealthyWithTimeout` transition strategies
 
 **CLI / kubectl Plugin**
-- `kubectl kumo` plugin for common operations: list apps, trigger sync, view diff, rollback
+- `kubectl kumo` plugin for common operations: list releases, trigger sync, view diff, pin/unpin, view history
 - Standalone binary as an alternative distribution
-- Both can coexist
 
 ### Phase 3 — Scale and UX
 
-**App Grouping / Templating**
-- Higher-level `ApplicationSet`-like resource
-- Generates per-cluster `Application` objects from a template + cluster selector
+**Agent Executor Mode**
+- In-cluster executor deployment
+- Agent registration and identity (`Cluster.spec.agent.registrationTokenRef`)
+- Mixed agentless + agent fleets
+
+**`ReleaseSet` — Fleet Templating**
+- Higher-level resource generating per-cluster `Release` objects from a template + cluster selector
 - Enables fleet-wide deployments from a single definition
-- Particularly valuable for multi-cluster setups
+- Cross-Release ordering (`ReleaseSet` dependency graph)
 
 ### Phase 4 — Ecosystem
+
+**Agent Protocol**
+- Full wire format, registration flow, identity verification, reconnect semantics
+- mTLS and OIDC service-account auth schemes
 
 **Additional Auth Providers**
 - Certificate-based auth
 - Token projection / bound service account tokens
 
-**Additional Source Types**
-- Flux-compatible `GitRepository` / `HelmRepository` source references (migration path)
-- S3 / GCS as manifest sources
-
 **UI**
-- Web dashboard for application overview, sync history, diff viewer
+- Web dashboard for release overview, sync history, diff viewer, health status
 - Read-only initially; write operations via CLI or kubectl
