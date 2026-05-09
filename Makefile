@@ -1,5 +1,5 @@
 MODULE := github.com/kumodo-io/convoy
-TOOLS_BIN := internal/tools/bin
+TOOLS_BIN := bin
 
 CODE_GEN_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/code-generator 2>/dev/null)
 KUBE_OPENAPI_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/kube-openapi 2>/dev/null)
