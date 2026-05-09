@@ -31,5 +31,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&OCIRegistry{},
 		&OCIRegistryList{},
 	)
+
 	return nil
 }

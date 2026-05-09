@@ -4,16 +4,20 @@ BOILERPLATE := hack/boilerplate.go.txt
 
 CODE_GEN_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/code-generator 2>/dev/null)
 KUBE_OPENAPI_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/kube-openapi 2>/dev/null)
+GOLANGCI_LINT_VERSION := $(shell go list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2 2>/dev/null)
 
 CODE_GEN_TOOLS := applyconfiguration-gen client-gen conversion-gen deepcopy-gen informer-gen lister-gen
 
 # Tools
 
 .PHONY: tools
-tools: $(addprefix $(TOOLS_BIN)/,$(CODE_GEN_TOOLS)) $(TOOLS_BIN)/openapi-gen
+tools: $(addprefix $(TOOLS_BIN)/,$(CODE_GEN_TOOLS)) $(TOOLS_BIN)/openapi-gen $(TOOLS_BIN)/golangci-lint
 
 $(TOOLS_BIN)/openapi-gen:
 	GOBIN=$(abspath $(TOOLS_BIN)) go install k8s.io/kube-openapi/cmd/openapi-gen@$(KUBE_OPENAPI_VERSION)
+
+$(TOOLS_BIN)/golangci-lint:
+	GOBIN=$(abspath $(TOOLS_BIN)) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 $(TOOLS_BIN)/%:
 	GOBIN=$(abspath $(TOOLS_BIN)) go install k8s.io/code-generator/cmd/$*@$(CODE_GEN_VERSION)
@@ -91,5 +95,5 @@ test:
 	go test ./...
 
 .PHONY: lint
-lint:
-	golangci-lint run ./...
+lint: $(TOOLS_BIN)/golangci-lint
+	$(TOOLS_BIN)/golangci-lint run ./...

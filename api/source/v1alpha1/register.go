@@ -34,6 +34,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&OCIRegistryList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+
 	return nil
 }
 

@@ -29,5 +29,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ResourceHealthRule{},
 		&ResourceHealthRuleList{},
 	)
+
 	return nil
 }

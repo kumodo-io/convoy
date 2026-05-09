@@ -32,6 +32,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ResourceHealthRuleList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+
 	return nil
 }
 
