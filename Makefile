@@ -4,7 +4,7 @@ TOOLS_BIN := internal/tools/bin
 CODE_GEN_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/code-generator 2>/dev/null)
 KUBE_OPENAPI_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/kube-openapi 2>/dev/null)
 
-CODE_GEN_TOOLS := applyconfiguration-gen client-gen conversion-gen deepcopy-gen defaulting-gen informer-gen lister-gen
+CODE_GEN_TOOLS := applyconfiguration-gen client-gen conversion-gen deepcopy-gen informer-gen lister-gen
 
 # Tools
 
@@ -27,10 +27,6 @@ generate: tools
 
 	$(TOOLS_BIN)/conversion-gen \
 		--output-file zz_generated.conversion.go \
-		$(MODULE)/api/...
-
-	$(TOOLS_BIN)/defaulting-gen \
-		--output-file zz_generated.defaults.go \
 		$(MODULE)/api/...
 
 	$(TOOLS_BIN)/applyconfiguration-gen \

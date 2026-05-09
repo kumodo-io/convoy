@@ -67,7 +67,7 @@ See [`docs/architecture/health-assessment.md`](docs/architecture/health-assessme
 
 ### Source Controller
 
-Watches `GitSource`, `HelmRegistry`, and `OCIRegistry` resources. Change detection is via **periodic polling** or **webhooks** (configured via the `/webhooks` subresource on each source).
+Watches `GitRepository`, `HelmRegistry`, and `OCIRegistry` resources. Change detection is via **periodic polling** or **webhooks** (configured via the `/webhooks` subresource on each source).
 
 On change, sets the source's `/sync` subresource state to `NotSynced`.
 
@@ -225,7 +225,7 @@ convoy is implemented as a Kubernetes Aggregation API server. This gives full co
 
 All resources are backed by etcd via the generic registry, preserving standard watch/informer semantics for controllers.
 
-- `GitSource` — defines a Git repository source. Reusable across releases.
+- `GitRepository` — defines a Git repository source. Reusable across releases.
 - `HelmRegistry` — defines a Helm chart registry source. Reusable across releases.
 - `OCIRegistry` — defines an OCI registry source. Reusable across releases.
 - `HealthRule` — defines CEL-based health evaluation rules for a resource kind.
@@ -238,8 +238,8 @@ All resources are backed by etcd via the generic registry, preserving standard w
 
 | Resource | Subresource | Verbs | Purpose |
 |---|---|---|---|
-| `GitSource`, `HelmRegistry`, `OCIRegistry` | `/sync` | POST | Trigger source fetch + render |
-| `GitSource`, `HelmRegistry`, `OCIRegistry` | `/webhooks` | GET, PUT, PATCH, DELETE | Manage webhook registrations |
+| `GitRepository`, `HelmRegistry`, `OCIRegistry` | `/sync` | POST | Trigger source fetch + render |
+| `GitRepository`, `HelmRegistry`, `OCIRegistry` | `/webhooks` | GET, PUT, PATCH, DELETE | Manage webhook registrations |
 | `Release` | `/mutations` | GET, PUT, PATCH | Manage the ordered mutation pipeline |
 | `Release` | `/sync` | POST | Trigger drift correction |
 | `Release` | `/preview` | GET, POST | Return rendered manifest set (what would deploy) |

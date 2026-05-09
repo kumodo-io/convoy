@@ -7,7 +7,7 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 ### In Scope
 
 **Controllers**
-- [ ] Source Controller — Git polling, sets `GitSource /sync` state to `NotSynced` on change
+- [ ] Source Controller — Git polling, sets `GitRepository /sync` state to `NotSynced` on change
 - [ ] Render Controller — Helm rendering + mutation pipeline (helmValues, goTemplate, jsonPatch, strategicMergePatch), S3 artifact storage
 - [ ] Executor — SSA-based apply, S3 state storage, local FS cache, health assessment
 - [ ] Sync Controller — periodic drift detection, sets `Release /sync` state to `NotSynced` on drift, `ignoreFields` support
@@ -42,7 +42,7 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 
 **API**
 - [ ] Aggregation API server setup (auth delegation, APIService registration, generic registry)
-- [ ] User-facing resources: `GitSource`, `HelmRegistry`, `OCIRegistry`, `HealthRule`, `Release`, `Cluster`
+- [ ] User-facing resources: `GitRepository`, `HelmRegistry`, `OCIRegistry`, `HealthRule`, `Release`, `Cluster`
 - [ ] `Release` subresources: `/mutations`, `/sync`, `/preview`, `/diff`, `/pin`, `/history`, `/lifecycle`
 - [ ] Source subresources: `/sync`, `/webhooks`
 - [ ] Internal resources: `SourceSyncRequest`, `ReleaseSyncRequest`

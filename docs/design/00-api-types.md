@@ -34,7 +34,7 @@ Table of content:
       * [What's Not Covered](#whats-not-covered)
       * [Comparison with Other Tools](#comparison-with-other-tools)
   * [Sources](#sources)
-    * [GitSource](#gitsource)
+    * [GitRepository](#gitrepository)
       * [Purpose](#purpose-1)
       * [Example](#example)
       * [Field Reference](#field-reference-1)
@@ -70,11 +70,11 @@ Table of content:
       * [Triage flow](#triage-flow)
       * [Aggregation](#aggregation)
     * [Examples](#examples)
-      * [GitSource — successful SSH key auth](#gitsource--successful-ssh-key-auth)
+      * [GitRepository — successful SSH key auth](#gitrepository--successful-ssh-key-auth)
       * [HelmRegistry — OIDC client credentials failure](#helmregistry--oidc-client-credentials-failure)
       * [OCIRegistry — public registry, no auth](#ociregistry--public-registry-no-auth)
       * [Cluster — workload identity success](#cluster--workload-identity-success)
-      * [GitSource — secret missing](#gitsource--secret-missing)
+      * [GitRepository — secret missing](#gitrepository--secret-missing)
     * [Implementation Notes](#implementation-notes)
       * [Controller code](#controller-code)
       * [Token caching](#token-caching)
@@ -85,7 +85,7 @@ Table of content:
     * [Verbs](#verbs)
     * [Common Fields](#common-fields)
     * [Per-Kind Variations](#per-kind-variations)
-      * [`GitSource` webhooks](#gitsource-webhooks)
+      * [`GitRepository` webhooks](#gitrepository-webhooks)
       * [`HelmRegistry` webhooks](#helmregistry-webhooks)
       * [`OCIRegistry` webhooks](#ociregistry-webhooks)
     * [Status Reflection](#status-reflection)
@@ -360,11 +360,11 @@ metadata:
     convoy.kumodo.io/owner: payments-team@example.com
 
 spec:
-  # Reference to a Source object. Polymorphic — kind can be GitSource,
+  # Reference to a Source object. Polymorphic — kind can be GitRepository,
   # HelmRegistry, or OCIRegistry.
   # IMMUTABLE after creation. To re-target, create a new Release.
   source:
-    kind: GitSource
+    kind: GitRepository
     name: payments-charts-repo
     # namespace defaults to Release's namespace if omitted; cross-namespace requires explicit ref.
   
@@ -376,7 +376,7 @@ spec:
     
     # type: helm — for Helm charts (in Git, OCI, or HelmRegistry sources).
     helm:
-      # Path within the source. For GitSource, the chart directory.
+      # Path within the source. For GitRepository, the chart directory.
       # Ignored for HelmRegistry (registry implies path).
       path: charts/payments-api
       
@@ -454,7 +454,7 @@ mutations:
   - type: helmValues
     from:
       sourceRef:
-        kind: GitSource
+        kind: GitRepository
         name: payments-config-repo
         path: env/prod/values.yaml
   
@@ -462,7 +462,7 @@ mutations:
   - type: helmValues
     from:
       sourceRef:
-        kind: GitSource
+        kind: GitRepository
         name: payments-config-repo
         path: clusters/prod-eu/values.yaml
   
@@ -492,7 +492,7 @@ mutations:
   - type: strategicMergePatch
     from:
       sourceRef:
-        kind: GitSource
+        kind: GitRepository
         name: payments-experiments-repo
         path: features/new-tracing/patch.yaml
 
@@ -505,7 +505,7 @@ pin:
 
   # Snapshot of what produced the pinned render — useful for diff against current spec/mutations.
   renderInputs:
-    sourceKind: GitSource
+    sourceKind: GitRepository
     sourceName: payments-charts-repo
     sourceRevision: 7788990011223344556677aabbccddeeff001122
     contentType: helm
@@ -581,7 +581,7 @@ status:
     # Snapshot of resolved Source spec (not just a reference).
     # Captures URL, ref, etc. as they were at render time, even if Source object changes later.
     resolvedSource:
-      kind: GitSource
+      kind: GitRepository
       name: payments-charts-repo
       observedSourceGeneration: 7    # Source.metadata.generation at render time
       url: https://github.com/example/payments-charts
@@ -605,12 +605,12 @@ status:
     resolvedMutations:
       - index: 0
         type: helmValues
-        sourceRef: { kind: GitSource, name: payments-config-repo, path: env/prod/values.yaml }
+        sourceRef: { kind: GitRepository, name: payments-config-repo, path: env/prod/values.yaml }
         sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12
         contentHash: sha256:7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e
       - index: 1
         type: helmValues
-        sourceRef: { kind: GitSource, name: payments-config-repo, path: clusters/prod-eu/values.yaml }
+        sourceRef: { kind: GitRepository, name: payments-config-repo, path: clusters/prod-eu/values.yaml }
         sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12
         contentHash: sha256:9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a
       - index: 2
@@ -621,7 +621,7 @@ status:
         contentHash: sha256:1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c
       - index: 4
         type: strategicMergePatch
-        sourceRef: { kind: GitSource, name: payments-experiments-repo, path: features/new-tracing/patch.yaml }
+        sourceRef: { kind: GitRepository, name: payments-experiments-repo, path: features/new-tracing/patch.yaml }
         sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d
         contentHash: sha256:2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d
     
@@ -636,7 +636,7 @@ status:
   # When divergent, status describes what's being attempted and any failure.
   lastAttempted:
     resolvedSource:
-      kind: GitSource
+      kind: GitRepository
       name: payments-charts-repo
       observedSourceGeneration: 7
       url: https://github.com/example/payments-charts
@@ -1098,19 +1098,19 @@ Health assessment is passive observation of resource state, not active testing.
 
 ## Sources
 
-### GitSource
+### GitRepository
 
 #### Purpose
 
-`GitSource` represents a Git repository as a content source for the continuous delivery pipeline. It tracks a specified ref (branch, tag, commit, or semver constraint) at a configurable interval, fetching content for use by `Release` objects (as the source of charts, manifests, kustomizations, etc.) or as mutation content (values files, patches).
+`GitRepository` represents a Git repository as a content source for the continuous delivery pipeline. It tracks a specified ref (branch, tag, commit, or semver constraint) at a configurable interval, fetching content for use by `Release` objects (as the source of charts, manifests, kustomizations, etc.) or as mutation content (values files, patches).
 
-`GitSource` is the most common source kind. Authentication supports a wide range of methods including SSH keys, HTTP basic auth, tokens, GitHub App installation, and cloud workload identity.
+`GitRepository` is the most common source kind. Authentication supports a wide range of methods including SSH keys, HTTP basic auth, tokens, GitHub App installation, and cloud workload identity.
 
 #### Example
 
 ```yaml
 apiVersion: source.convoy.kumodo.io/v1alpha1
-kind: GitSource
+kind: GitRepository
 metadata:
   name: payments-charts-repo
   namespace: payments-team
@@ -1659,9 +1659,9 @@ See reference at [Webhooks](#webhooks)
 
 ## Cross-references at a glance
 
-- `Release.spec.source` → references one of `GitSource`, `HelmRegistry`, `OCIRegistry`
+- `Release.spec.source` → references one of `GitRepository`, `HelmRegistry`, `OCIRegistry`
 - `Release.spec.cluster` → references a `Cluster`
-- `Release.mutations[].from.sourceRef` → typically references a `GitSource` for content (values files, patches)
+- `Release.mutations[].from.sourceRef` → typically references a `GitRepository` for content (values files, patches)
 - `Release.status.resolvedSource` → snapshot derived from the referenced Source's spec at render time
 - `Release.status.resolvedCluster` → snapshot derived from the referenced `Cluster`'s spec at render time
 - `Release.status.resolvedDeletionPolicy` → snapshot of `Cluster.spec.deletionPolicy` at render time with overrides from `Release.spec.deletionPolicyOverrides`
@@ -1674,7 +1674,7 @@ A standardized condition reflecting authentication state, present on all resourc
 
 `AuthValid` appears on:
 
-- `GitSource`
+- `GitRepository`
 - `HelmRegistry`
 - `OCIRegistry`
 - `Cluster`
@@ -1745,7 +1745,7 @@ All resources use the same vocabulary for the `reason` field. Resource-specific 
 
 ### Examples
 
-#### GitSource — successful SSH key auth
+#### GitRepository — successful SSH key auth
 
 ```yaml
 status:
@@ -1809,7 +1809,7 @@ status:
       message: "EKS GetToken succeeded via IRSA role arn:aws:iam::123456789012:role/cd-eks-deployer"
 ```
 
-#### GitSource — secret missing
+#### GitRepository — secret missing
 
 ```yaml
 status:
@@ -1866,7 +1866,7 @@ A common mistake is reporting any failure as `AuthValid: False`. Be precise:
 
 The `/webhooks` subresource manages webhook configurations for a Source, enabling push-based notifications from upstream systems (Git providers, registries) that trigger source refreshes. Multiple webhooks can be configured per Source, supporting scenarios like multi-mirror Git setups, provider migrations, and chained CI/CD pipelines.
 
-The subresource is available on all Source kinds: `GitSource`, `HelmRegistry`, and `OCIRegistry`. Schema and behavior are identical across kinds; only the `provider` enum and applicable filter fields differ.
+The subresource is available on all Source kinds: `GitRepository`, `HelmRegistry`, and `OCIRegistry`. Schema and behavior are identical across kinds; only the `provider` enum and applicable filter fields differ.
 
 Webhook configuration lives behind a subresource (rather than inline in `spec`) for several reasons:
 - Different RBAC than the rest of the Source (platform team manages source definitions; app teams configure their webhook integrations)
@@ -1879,7 +1879,7 @@ Webhook configuration lives behind a subresource (rather than inline in `spec`) 
 The subresource holds a list of named webhook entries under `items`.
 
 ```yaml
-# GET /apis/convoy.kumodo.io/sources/v1alpha1/namespaces/payments-team/gitsources/payments-charts-repo/webhooks
+# GET /apis/convoy.kumodo.io/sources/v1alpha1/namespaces/payments-team/gitrepositories/payments-charts-repo/webhooks
 items:
   - name: github-primary
     provider: github
@@ -1937,7 +1937,7 @@ These fields apply to webhook entries on all Source kinds.
 
 ### Per-Kind Variations
 
-#### `GitSource` webhooks
+#### `GitRepository` webhooks
 
 **Provider enum values:**
 
@@ -2062,18 +2062,18 @@ The `WebhookConfigured` condition is `True` if at least one webhook is configure
 
 ### RBAC
 
-Standard Kubernetes RBAC operates at the subresource level — `gitsources/webhooks`, `helmregistries/webhooks`, `ociregistries/webhooks` — not at individual entry granularity. Granting webhook-edit permissions on a Source allows managing all webhook entries on that Source.
+Standard Kubernetes RBAC operates at the subresource level — `gitrepositories/webhooks`, `helmregistries/webhooks`, `ociregistries/webhooks` — not at individual entry granularity. Granting webhook-edit permissions on a Source allows managing all webhook entries on that Source.
 
 ```yaml
 # Platform team — manages source definitions but not webhook config
 - apiGroups: ["source.convoy.kumodo.io"]
-  resources: ["gitsources", "helmregistries", "ociregistries"]
+  resources: ["gitrepositories", "helmregistries", "ociregistries"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
 # App team — manages webhook integrations only
 - apiGroups: ["source.convoy.kumodo.io"]
   resources:
-    - "gitsources/webhooks"
+    - "gitrepositories/webhooks"
     - "helmregistries/webhooks"
     - "ociregistries/webhooks"
   verbs: ["get", "create", "update", "delete"]

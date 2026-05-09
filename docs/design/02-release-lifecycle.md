@@ -528,7 +528,7 @@ Direct projection of the Source object referenced by `Release.spec.source`. Avai
 
 | Path                | Backing                     | Notes                                             |
 |---------------------|-----------------------------|---------------------------------------------------|
-| `.Source.kind`      | source kind                 | One of `GitSource`, `HelmRegistry`, `OCIRegistry` |
+| `.Source.kind`      | source kind                 | One of `GitRepository`, `HelmRegistry`, `OCIRegistry` |
 | `.Source.name`      | source `metadata.name`      |                                                   |
 | `.Source.namespace` | source `metadata.namespace` |                                                   |
 | `.Source.spec.*`    | source `spec.*`             | Full source spec                                  |
