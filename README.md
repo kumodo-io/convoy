@@ -1,4 +1,4 @@
-# kumo-cd
+# convoy
 
 A Kubernetes-native Continuous Delivery system built around a composable rendering pipeline, Server-Side Apply, and external state storage.
 

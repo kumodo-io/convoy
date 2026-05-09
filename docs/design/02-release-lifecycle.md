@@ -277,20 +277,20 @@ Every hook resource created by the controller carries:
 ```yaml
 metadata:
   labels:
-    cd.kumodo.io/release-name: payments-api-prod-eu
-    cd.kumodo.io/release-namespace: payments-team
-    cd.kumodo.io/release-uid: 8f3a2b1c-...
-    cd.kumodo.io/hook-phase: PreSync
-    cd.kumodo.io/hook-name: db-migration
-    cd.kumodo.io/managed-by: kumo-cd
+    convoy.kumodo.io/release-name: payments-api-prod-eu
+    convoy.kumodo.io/release-namespace: payments-team
+    convoy.kumodo.io/release-uid: 8f3a2b1c-...
+    convoy.kumodo.io/hook-phase: PreSync
+    convoy.kumodo.io/hook-name: db-migration
+    convoy.kumodo.io/managed-by: convoy
   annotations:
-    cd.kumodo.io/created-at: "2026-04-29T09:59:30Z"
-    cd.kumodo.io/sync-id: <sync-uuid>
+    convoy.kumodo.io/created-at: "2026-04-29T09:59:30Z"
+    convoy.kumodo.io/sync-id: <sync-uuid>
 ```
 
 The controller queries by label selector to discover owned resources. All cleanup is controller-driven (sync-time and periodic GC sweep).
 
-If the controller is permanently lost or disconnected, hook resources in target clusters become orphaned. Operators discover this via target-cluster inspection (`kubectl get jobs -l cd.kumodo.io/managed-by=kumo-cd`) and clean up manually. This is a property of any cross-cluster managed system; the cure is operational practice (monitoring controller health), not a technical mechanism.
+If the controller is permanently lost or disconnected, hook resources in target clusters become orphaned. Operators discover this via target-cluster inspection (`kubectl get jobs -l convoy.kumodo.io/managed-by=convoy`) and clean up manually. This is a property of any cross-cluster managed system; the cure is operational practice (monitoring controller health), not a technical mechanism.
 
 ## Lifecycle Retention Policy
 

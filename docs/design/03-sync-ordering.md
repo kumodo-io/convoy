@@ -46,7 +46,7 @@ kind: CustomResourceDefinition
 metadata:
   name: certificates.cert-manager.io
   annotations:
-    cd.kumodo.io/sync-wave: "-10"     # apply early
+    convoy.kumodo.io/sync-wave: "-10"     # apply early
 spec: ...
 ```
 
@@ -56,7 +56,7 @@ kind: Certificate
 metadata:
   name: payments-tls
   annotations:
-    cd.kumodo.io/sync-wave: "10"      # apply late
+    convoy.kumodo.io/sync-wave: "10"      # apply late
 spec: ...
 ```
 
@@ -73,11 +73,11 @@ spec: ...
 
 | Annotation                     | Purpose                                                                                                                                                                      |
 |--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `cd.kumodo.io/sync-wave`       | Native annotation. Always preferred when set.                                                                                                                                |
+| `convoy.kumodo.io/sync-wave`       | Native annotation. Always preferred when set.                                                                                                                                |
 | `argocd.argoproj.io/sync-wave` | Recognized for ecosystem compatibility. Used when the native annotation is absent. Allows Helm charts and bundles already annotated for ArgoCD to work without modification. |
 | `helm.sh/hook-weight`          | Recognized **only** for resources also marked with `helm.sh/hook` (see Helm Hook Compatibility below). Maps Helm's hook ordering into the wave system.                       |
 
-When multiple annotations are present, precedence is: `cd.kumodo.io/sync-wave` > `argocd.argoproj.io/sync-wave`. Helm hook annotations apply only to Helm-marked hook resources and don't conflict with the wave annotations on regular resources.
+When multiple annotations are present, precedence is: `convoy.kumodo.io/sync-wave` > `argocd.argoproj.io/sync-wave`. Helm hook annotations apply only to Helm-marked hook resources and don't conflict with the wave annotations on regular resources.
 
 ### Helm Hook Compatibility
 
@@ -206,7 +206,7 @@ Three related concepts are deliberately out of scope for sync waves and will be 
 |-----------------------|---------------------------------------------------------------------------------------|
 | Ordering scope        | Within a single Release (resource-level)                                              |
 | Specification         | Annotation on individual manifests                                                    |
-| Native annotation     | `cd.kumodo.io/sync-wave`                                                              |
+| Native annotation     | `convoy.kumodo.io/sync-wave`                                                              |
 | Recognized aliases    | `argocd.argoproj.io/sync-wave` (compatibility)                                        |
 | Helm compatibility    | `helm.sh/hook` annotations recognized; `helm.sh/hook-weight` orders within hook phase |
 | Default wave          | `0`                                                                                   |

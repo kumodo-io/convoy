@@ -107,7 +107,7 @@ Represents a target Kubernetes cluster: connection info, authentication, free-fo
 - `/sync` — POST to force re-run health/discovery probe
 
 ```yaml
-apiVersion: cd.yourproject.io/v1alpha1
+apiVersion: core.convoy.kumodo.io/v1alpha1
 kind: Cluster
 metadata:
   name: prod-eu
@@ -121,7 +121,7 @@ metadata:
     cloud: aws
   
   annotations:
-    cd.yourproject.io/owner: platform-team@example.com
+    convoy.kumodo.io/owner: platform-team@example.com
 
 spec:
   # Discriminated connection mode.
@@ -344,7 +344,7 @@ The deployment unit. Binds one `Source` + one `Cluster` + a content interpretati
 - `/history` — GET paginated list of past (inputs → output) records, S3-backed
 
 ```yaml
-apiVersion: cd.yourproject.io/v1alpha1
+apiVersion: core.convoy.kumodo.io/v1alpha1
 kind: Release
 metadata:
   name: payments-api-prod-eu
@@ -357,7 +357,7 @@ metadata:
     env: prod
     region: eu-west-1
   annotations:
-    cd.yourproject.io/owner: payments-team@example.com
+    convoy.kumodo.io/owner: payments-team@example.com
 
 spec:
   # Reference to a Source object. Polymorphic — kind can be GitSource,
@@ -942,7 +942,7 @@ For CRDs with non-standard status (or to override built-in behavior), users defi
 **Expression language:** CEL, with bindings for the live resource (`object`) and current time (`now`). Returns one of `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Unknown`.
 
 ```yaml
-apiVersion: cd.kumodo.io/v1alpha1
+apiVersion: core.convoy.kumodo.io/v1alpha1
 kind: HealthRule
 metadata:
   name: certificate-health
@@ -1109,7 +1109,7 @@ Health assessment is passive observation of resource state, not active testing.
 #### Example
 
 ```yaml
-apiVersion: cd.yourproject.io/v1alpha1
+apiVersion: source.convoy.kumodo.io/v1alpha1
 kind: GitSource
 metadata:
   name: payments-charts-repo
@@ -1219,7 +1219,7 @@ status:
   # Webhook status
   webhooks:
     - name: github-primary
-      url: https://kumo-cd.example.com/webhooks/8f3a2b1c...
+      url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c...
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
@@ -1231,7 +1231,7 @@ status:
         reason: SignatureMismatch
         message: "HMAC signature did not match expected value"
     - name: gitea-mirror
-      url: https://kumo-cd.example.com/webhooks/2a4b6c8d...
+      url: https://convoy.svc.cluster.local/webhooks/2a4b6c8d...
       lastReceived: 2026-04-29T09:50:00Z
       lastTriggered: 2026-04-29T09:50:00Z
       receivedCount: 18
@@ -1315,7 +1315,7 @@ See reference at [Webhooks](#webhooks)
 #### Example
 
 ```yaml
-apiVersion: cd.yourproject.io/v1alpha1
+apiVersion: source.convoy.kumodo.io/v1alpha1
 kind: HelmRegistry
 metadata:
   name: bitnami
@@ -1401,7 +1401,7 @@ status:
   # Webhook status
   webhooks:
     - name: harbor
-      url: https://kumo-cd.example.com/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+      url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
@@ -1482,7 +1482,7 @@ OCI registries are increasingly common for chart distribution (Harbor, ghcr.io, 
 #### Example
 
 ```yaml
-apiVersion: cd.yourproject.io/v1alpha1
+apiVersion: source.convoy.kumodo.io/v1alpha1
 kind: OCIRegistry
 metadata:
   name: ghcr-payments
@@ -1586,7 +1586,7 @@ status:
   # Webhook status
   webhooks:
     - name: harbor
-      url: https://kumo-cd.example.com/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+      url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
@@ -1879,7 +1879,7 @@ Webhook configuration lives behind a subresource (rather than inline in `spec`) 
 The subresource holds a list of named webhook entries under `items`.
 
 ```yaml
-# GET /apis/cd.kumodo.io/v1alpha1/namespaces/payments-team/gitsources/payments-charts-repo/webhooks
+# GET /apis/convoy.kumodo.io/sources/v1alpha1/namespaces/payments-team/gitsources/payments-charts-repo/webhooks
 items:
   - name: github-primary
     provider: github
@@ -1895,7 +1895,7 @@ items:
         - releases/*
       paths:
         - charts/payments/**
-    url: https://kumo-cd.example.com/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
   
   - name: gitea-mirror
     provider: gitea
@@ -1904,7 +1904,7 @@ items:
       key: secret
     events:
       - push
-    url: https://kumo-cd.example.com/webhooks/2a4b6c8d-1e3f-5a7b-9c0d-2e4f6a8b0c1d
+    url: https://convoy.svc.cluster.local/webhooks/2a4b6c8d-1e3f-5a7b-9c0d-2e4f6a8b0c1d
 ```
 
 Each entry's `url` is server-generated and returned by GET/POST; it is not accepted as input. Users copy the URL into the upstream provider's webhook configuration.
@@ -2012,7 +2012,7 @@ Each Source's `status.webhooks` mirrors operational state per webhook entry. Sen
 status:
   webhooks:
     - name: github-primary
-      url: https://kumo-cd.example.com/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+      url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
@@ -2025,7 +2025,7 @@ status:
         message: "HMAC signature did not match expected value"
     
     - name: gitea-mirror
-      url: https://kumo-cd.example.com/webhooks/2a4b6c8d-1e3f-5a7b-9c0d-2e4f6a8b0c1d
+      url: https://convoy.svc.cluster.local/webhooks/2a4b6c8d-1e3f-5a7b-9c0d-2e4f6a8b0c1d
       lastReceived: 2026-04-29T09:50:00Z
       lastTriggered: 2026-04-29T09:50:00Z
       receivedCount: 18
@@ -2066,12 +2066,12 @@ Standard Kubernetes RBAC operates at the subresource level — `gitsources/webho
 
 ```yaml
 # Platform team — manages source definitions but not webhook config
-- apiGroups: ["cd.kumodo.io"]
+- apiGroups: ["source.convoy.kumodo.io"]
   resources: ["gitsources", "helmregistries", "ociregistries"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
 # App team — manages webhook integrations only
-- apiGroups: ["cd.kumodo.io"]
+- apiGroups: ["source.convoy.kumodo.io"]
   resources:
     - "gitsources/webhooks"
     - "helmregistries/webhooks"

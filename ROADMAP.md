@@ -1,4 +1,4 @@
-# kumo-cd Roadmap
+# convoy Roadmap
 
 ## PoC Scope
 
@@ -20,7 +20,7 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 **Deployment**
 - [ ] Server-Side Apply with field manager
 - [ ] `ignoreFields` mechanism
-- [ ] Sync waves (`cd.kumodo.io/sync-wave` annotation, `waitForApplied` strategy)
+- [ ] Sync waves (`convoy.kumodo.io/sync-wave` annotation, `waitForApplied` strategy)
 
 **Health Checking**
 - [ ] Built-in CEL rules for standard resources (Deployment, StatefulSet, DaemonSet, Pod, PVC, Job)

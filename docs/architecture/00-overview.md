@@ -1,4 +1,4 @@
-# kumo-cd Architecture
+# convoy Architecture
 
 ## Motivation
 
@@ -9,7 +9,7 @@ Existing CD solutions (Flux, ArgoCD) share fundamental limitations:
 - **Inflexible rendering pipeline** — sources, renderers, and mutation mechanisms are tightly coupled.
 - **Lifecycle hooks are chart-bound** — hooks (migrations, smoke tests, alerts) live inside charts as annotations. Deploying teams cannot add hooks to vendored charts without forking them.
 
-kumo-cd addresses these by decoupling rendering, mutation, deployment, and drift detection into independent controllers, storing state externally (S3), deploying via Server-Side Apply, and exposing operations as first-class API subresources.
+convoy addresses these by decoupling rendering, mutation, deployment, and drift detection into independent controllers, storing state externally (S3), deploying via Server-Side Apply, and exposing operations as first-class API subresources.
 
 ---
 
@@ -32,7 +32,7 @@ Mutation types: `helmValues`, `goTemplate`, `jsonPatch`, `strategicMergePatch`, 
 All resources are applied via Kubernetes Server-Side Apply (SSA). This means:
 
 - No Helm release Secrets — no object size limit.
-- Field ownership is tracked by the API server — only managed fields are owned by kumo-cd.
+- Field ownership is tracked by the API server — only managed fields are owned by convoy.
 - `ignoreFields` maps directly to SSA field manager semantics.
 
 ### External State Storage
@@ -100,7 +100,7 @@ Runs lifecycle hooks at defined phases around the sync pipeline. See [Lifecycle 
 
 Periodically polls the target cluster for managed resources. Compares live cluster state against local FS cache (falling back to S3 if cache is cold).
 
-Diff is computed only over **managed fields** — fields not owned by kumo-cd and fields listed in `ignoreFields` are excluded. Live cluster noise (`resourceVersion`, `uid`, `managedFields`, etc.) is stripped before diffing.
+Diff is computed only over **managed fields** — fields not owned by convoy and fields listed in `ignoreFields` are excluded. Live cluster noise (`resourceVersion`, `uid`, `managedFields`, etc.) is stripped before diffing.
 
 On drift detection, sets the `Release /sync` subresource state to `NotSynced`. The Executor reacts and re-applies the stored rendered artifact without re-rendering.
 
@@ -167,8 +167,8 @@ Resources within a Release can be ordered using wave annotations:
 ```yaml
 metadata:
   annotations:
-    cd.kumodo.io/sync-wave: "-10"   # apply early (e.g., CRDs)
-    cd.kumodo.io/sync-wave: "10"    # apply late (e.g., CRs of the above CRD)
+    convoy.kumodo.io/sync-wave: "-10"   # apply early (e.g., CRDs)
+    convoy.kumodo.io/sync-wave: "10"    # apply late (e.g., CRs of the above CRD)
 ```
 
 Resources within the same wave apply in parallel. Between waves, the Executor waits based on the configured transition strategy in `Release.spec.syncPolicy.waveStrategy`:
@@ -219,7 +219,7 @@ S3 state is namespaced per cluster, enabling a single control plane to manage ma
 
 ## API Design
 
-kumo-cd is implemented as a Kubernetes Aggregation API server. This gives full control over the API surface, enables subresources as first-class operations, and avoids the semantic mismatch of using CRs for imperative actions.
+convoy is implemented as a Kubernetes Aggregation API server. This gives full control over the API surface, enables subresources as first-class operations, and avoids the semantic mismatch of using CRs for imperative actions.
 
 ### User-Facing Resources
 
@@ -287,12 +287,12 @@ While pinned, spec and mutation changes are accepted but not applied. A `SpecDri
 
 ## RBAC
 
-Access control is delegated to native Kubernetes RBAC. Users define `Role`/`ClusterRole` bindings on kumo-cd resources as they would for any other Kubernetes resource. The `/mutations` subresource is separately addressable, enabling teams to grant mutation-edit rights without full Release edit rights. No custom RBAC layer is introduced.
+Access control is delegated to native Kubernetes RBAC. Users define `Role`/`ClusterRole` bindings on convoy resources as they would for any other Kubernetes resource. The `/mutations` subresource is separately addressable, enabling teams to grant mutation-edit rights without full Release edit rights. No custom RBAC layer is introduced.
 
 ---
 
 ## Non-Goals
 
 - **Secret management** — sensitive values should come from a secrets manager (External Secrets Operator, Vault, etc.), not stored in Git or S3 unencrypted.
-- **Progressive delivery** — canary/blue-green rollouts are out of scope. kumo-cd handles deployment; progressive delivery strategies are delegated to external tooling.
-- **Non-Kubernetes workloads** — kumo-cd targets Kubernetes exclusively.
+- **Progressive delivery** — canary/blue-green rollouts are out of scope. convoy handles deployment; progressive delivery strategies are delegated to external tooling.
+- **Non-Kubernetes workloads** — convoy targets Kubernetes exclusively.
