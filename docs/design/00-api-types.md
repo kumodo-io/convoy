@@ -24,8 +24,9 @@ Table of content:
       * [How Health Is Determined](#how-health-is-determined)
         * [Built-in Rules](#built-in-rules)
         * [kstatus Fallback](#kstatus-fallback)
-        * [Custom Rules via `HealthRule`](#custom-rules-via-healthrule)
-      * [`HealthRule` Resource](#healthrule-resource)
+        * [Custom Rules via `KindHealthRule` and `ResourceHealthRule`](#custom-rules-via-kindhealthrule-and-resourcehealthrule)
+      * [`KindHealthRule` Resource](#kindhealthrule-resource)
+      * [`ResourceHealthRule` Resource](#resourcehealthrule-resource)
       * [Aggregation: Per-Resource → Release-Level `Healthy`](#aggregation-per-resource--release-level-healthy)
       * [Status Shape](#status-shape)
         * [`health.summary`](#healthsummary)
@@ -890,10 +891,11 @@ Each managed resource is evaluated to one of five states:
 
 For each managed resource, the controller resolves a health rule in this order:
 
-1. **User-defined `HealthRule`** matching the resource's `(apiGroup, kind, version)` — highest priority
-2. **Built-in rule** for standard kinds — used when no user rule applies
-3. **kstatus fallback** for resources following Kubernetes API conventions
-4. **`Unknown`** — when none of the above can determine state
+1. **`ResourceHealthRule`** matching `(apiGroup, kind, namespace, name)` — highest priority; for cluster-scoped resources, `namespace` is empty
+2. **`KindHealthRule`** matching `(apiGroup, kind)` — applies to all resources of a kind
+3. **Built-in rule** for standard kinds — used when no user rule applies
+4. **kstatus fallback** for resources following Kubernetes API conventions
+5. **`Unknown`** — when none of the above can determine state
 
 The first matching layer is used; lower layers are consulted only when higher ones don't apply.
 
@@ -927,23 +929,23 @@ For resources not covered by a built-in rule, the controller uses Google's `ksta
 
 This handles convention-following CRDs automatically with zero per-CRD configuration. Resources that don't follow conventions fall through to `Unknown`.
 
-##### Custom Rules via `HealthRule`
+##### Custom Rules via `KindHealthRule` and `ResourceHealthRule`
 
-For CRDs with non-standard status (or to override built-in behavior), users define `HealthRule` resources. See the `HealthRule` resource summary for full schema.
+For CRDs with non-standard status (or to override built-in behavior), users define `KindHealthRule` or `ResourceHealthRule` resources. See the resource summaries below for full schema.
 
-#### `HealthRule` Resource
+#### `KindHealthRule` Resource
 
-`HealthRule` is **cluster-scoped**. Health rules describe properties of resource kinds, which are inherently cluster-scoped concepts. This is the only cluster-scoped resource in the API; all others remain namespaced.
+`KindHealthRule` is **cluster-scoped**. It defines a health rule that applies to all resources of a given kind across the entire cluster, regardless of which Release manages them.
 
-**Targeting:** Each `HealthRule` targets exactly one `(apiGroup, kind, version)`. Validating admission rejects creation of a second `HealthRule` with the same target. To change behavior, edit the existing rule.
+**Targeting:** Each `KindHealthRule` targets exactly one `(apiGroup, kind)`. Validating admission rejects creation of a second `KindHealthRule` with the same target. To change behavior, edit the existing rule.
 
-**Relationship to Release:** None. Releases do not reference `HealthRule` resources. The controller looks up the applicable rule by the resource's kind, regardless of which Release manages it. This ensures consistent health verdicts across the system.
+**Relationship to Release:** None. The controller indexes `ResourceHealthRule` by `(apiGroup, kind, version)` and looks up the applicable rule by the resource's kind, regardless of which Release manages it. This ensures consistent health verdicts across the system.
 
 **Expression language:** CEL, with bindings for the live resource (`object`) and current time (`now`). Returns one of `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Unknown`.
 
 ```yaml
-apiVersion: core.convoy.kumodo.io/v1alpha1
-kind: HealthRule
+apiVersion: extensions.convoy.kumodo.io/v1alpha1
+kind: KindHealthRule
 metadata:
   name: certificate-health
 spec:
@@ -967,6 +969,61 @@ spec:
     has(object.status.conditions) && object.status.conditions.exists(c, c.type == "Ready") 
       ? object.status.conditions.filter(c, c.type == "Ready")[0].message
       : "Waiting for Certificate to become ready"
+```
+
+#### `ResourceHealthRule` Resource
+
+`ResourceHealthRule` is **namespaced**. It defines a health rule for a specific resource instance, identified by `(apiGroup, kind, namespace, name)`. Takes precedence over `KindHealthRule` when both match. For cluster-scoped target resources, `namespace` is empty.
+
+**Relationship to Release:** None. The controller indexes `ResourceHealthRule` by `(apiGroup, kind, version, namespace, name)` and looks up the rule at evaluation time, independently of which Release manages the resource.
+
+**Expression language:** Same CEL bindings as `KindHealthRule`.
+
+```yaml
+apiVersion: extensions.convoy.kumodo.io/v1alpha1
+kind: ResourceHealthRule
+metadata:
+  name: payments-db-health
+  namespace: payments-team
+spec:
+  target:
+    apiGroup: apps
+    kind: StatefulSet
+    version: v1
+    name: payments-db
+    namespace: payments-team
+  
+  expression: |
+    object.status.readyReplicas == object.status.replicas &&
+    object.status.replicas >= 3
+      ? "Healthy"
+      : object.status.readyReplicas > 0
+        ? "Progressing"
+        : "Degraded"
+  
+  progressDeadline: 15m
+  
+  messageExpression: |
+    string(object.status.readyReplicas) + "/" + string(object.status.replicas) + " replicas ready"
+```
+
+Cluster-scoped target example (namespace is empty in the target):
+
+```yaml
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: ResourceHealthRule
+metadata:
+  name: some-ns-health
+  namespace: platform-team
+spec:
+  target:
+    apiGroup: ""
+    kind: Namespace
+    name: some-ns
+    namespace: ""
+  
+  expression: |
+    object.status.phase == "Active" ? "Healthy" : "Degraded"
 ```
 
 #### Aggregation: Per-Resource → Release-Level `Healthy`
@@ -1070,8 +1127,8 @@ This bounds status size and makes the per-resource view directly actionable. A R
 | `health`                      | One of `Degraded`, `Suspended`, `Unknown`                    |
 | `since`                       | When this state was first observed (transitions reset this)  |
 | `message`                     | Human-readable detail from the health rule                   |
-| `ruleUsed.type`               | One of `customRule`, `builtin`, `kstatus`, `fallbackUnknown` |
-| `ruleUsed.ref`                | Reference to the `HealthRule` (only when `type: customRule`) |
+| `ruleUsed.type`               | One of `resourceHealthRule`, `kindHealthRule`, `builtin`, `kstatus`, `fallbackUnknown` |
+| `ruleUsed.ref`                | Reference to the `KindHealthRule` or `ResourceHealthRule` (only when `type: resourceHealthRule` or `type: kindHealthRule`) |
 
 The `ruleUsed` field makes assessment auditable. Users debugging unexpected health verdicts can immediately see which rule produced them.
 
@@ -1091,7 +1148,7 @@ Health assessment is passive observation of resource state, not active testing.
 | Concept                    | This tool                                        | ArgoCD                       | Flux                            |
 |----------------------------|--------------------------------------------------|------------------------------|---------------------------------|
 | Per-resource health        | Yes, in status (degraded/suspended/unknown only) | Yes, full list               | Limited                         |
-| Custom health rules        | CEL via cluster-scoped `HealthRule`              | Lua via ConfigMap            | None native                     |
+| Custom health rules        | CEL via `KindHealthRule` (cluster-scoped) or `ResourceHealthRule` (namespaced) | Lua via ConfigMap | None native          |
 | Five health states         | Yes                                              | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
 | `Unknown` as honest signal | Yes                                              | Sometimes (for unknown CRDs) | Often defaults optimistic       |
 | Bounded status size        | Yes (excludes healthy/progressing)               | No (full list)               | Compact (less detail)           |

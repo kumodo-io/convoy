@@ -24,7 +24,8 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 
 **Health Checking**
 - [ ] Built-in CEL rules for standard resources (Deployment, StatefulSet, DaemonSet, Pod, PVC, Job)
-- [ ] `HealthRule` resource for user-defined CEL rules
+- [ ] `KindHealthRule` resource — cluster-scoped CEL rules per kind
+- [ ] `ResourceHealthRule` resource — namespaced CEL rules per specific resource instance
 
 **Multi-Cluster**
 - [ ] `Cluster` resource with pluggable auth interface
@@ -42,7 +43,7 @@ The goal of the PoC is to validate the core rendering and deployment pipeline en
 
 **API**
 - [ ] Aggregation API server setup (auth delegation, APIService registration, generic registry)
-- [ ] User-facing resources: `GitRepository`, `HelmRegistry`, `OCIRegistry`, `HealthRule`, `Release`, `Cluster`
+- [ ] User-facing resources: `GitRepository`, `HelmRegistry`, `OCIRegistry`, `KindHealthRule`, `ResourceHealthRule`, `Release`, `Cluster`
 - [ ] `Release` subresources: `/mutations`, `/sync`, `/preview`, `/diff`, `/pin`, `/history`, `/lifecycle`
 - [ ] Source subresources: `/sync`, `/webhooks`
 - [ ] Internal resources: `SourceSyncRequest`, `ReleaseSyncRequest`

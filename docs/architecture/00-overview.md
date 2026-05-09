@@ -90,7 +90,7 @@ Applies the rendered artifact to the target cluster via SSA. After successful ap
 - Stores deployed state (resource metadata + managed spec) to S3.
 - Updates local FS cache.
 - Emits events for health checking and notifications.
-- Evaluates resource health using built-in rules and `HealthRule` resources.
+- Evaluates resource health using built-in rules, `KindHealthRule`, and `ResourceHealthRule` resources.
 
 Applies resources in sync wave order when wave annotations are present. See [Sync Waves](#sync-waves).
 
@@ -152,11 +152,14 @@ See [`docs/design/api-types.md`](docs/design/api-types.md) for the full state mo
 Health assessment runs inside the executor alongside the deploy loop. Two layers, unified under CEL evaluation:
 
 1. **Built-in rules** — predefined CEL expressions for standard Kubernetes resources (Deployment, StatefulSet, DaemonSet, Pod, PVC, Job, etc.). Applied automatically, no configuration required.
-2. **`HealthRule` resources** — user-defined CEL expressions for non-standard or custom resources. Defined as standalone `HealthRule` objects referenced from a `Release` or applied cluster-wide.
+2. **`KindHealthRule`** — cluster-scoped, user-defined CEL rules for all resources of a given kind. Overrides built-in rules.
+3. **`ResourceHealthRule`** — namespaced, user-defined CEL rules for a specific resource instance identified by `(apiGroup, kind, namespace, name)`. Overrides `KindHealthRule`. For cluster-scoped target resources, `namespace` is empty.
 
-Users can override built-in rules per resource kind. Health states per resource: `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Unknown`. Release-level health aggregates per-resource states into `Release.status.health`.
+Precedence: `ResourceHealthRule` → `KindHealthRule` → built-in rules → kstatus fallback → `Unknown`.
 
-See [`docs/design/api-types.md`](docs/design/api-types.md) for the full health assessment design including `HealthRule` schema and aggregation rules.
+Health states per resource: `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Unknown`. Release-level health aggregates per-resource states into `Release.status.health`.
+
+See [`docs/design/00-api-types.md`](docs/design/00-api-types.md) for the full health assessment design.
 
 ---
 
@@ -228,7 +231,8 @@ All resources are backed by etcd via the generic registry, preserving standard w
 - `GitRepository` — defines a Git repository source. Reusable across releases.
 - `HelmRegistry` — defines a Helm chart registry source. Reusable across releases.
 - `OCIRegistry` — defines an OCI registry source. Reusable across releases.
-- `HealthRule` — defines CEL-based health evaluation rules for a resource kind.
+- `KindHealthRule` — cluster-scoped, defines CEL-based health evaluation rules for all resources of a given kind.
+- `ResourceHealthRule` — namespaced, defines CEL-based health evaluation rules for a specific resource instance identified by `(apiGroup, kind, namespace, name)`.
 - `Release` — the deployment unit. Binds one source + one `Cluster` + a content interpretation (`helm`, `kustomize`, `manifests`, `jsonnet`, `cue`) with an ordered mutation pipeline. The `mutations` field is a top-level field on `Release` (not in `spec`), separately addressable via the `/mutations` subresource for field-level RBAC and audit.
 - `Cluster` — registers a target cluster with connection info, auth, and free-form metadata.
 - `NotificationConfig` *(future)* — defines notification destinations and event filters.
