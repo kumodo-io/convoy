@@ -6,6 +6,11 @@ type OCIRegistrySpec struct{}
 
 type OCIRegistryStatus struct{}
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:prerelease-lifecycle-gen:introduced=1.0
+// +kubebuilder:object:root=true
+
 type OCIRegistry struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -13,6 +18,8 @@ type OCIRegistry struct {
 	Spec   OCIRegistrySpec   `json:"spec,omitempty"`
 	Status OCIRegistryStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type OCIRegistryList struct {
 	metav1.TypeMeta `json:",inline"`

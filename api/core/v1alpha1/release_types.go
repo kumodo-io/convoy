@@ -10,6 +10,11 @@ type ReleaseMutations struct{}
 
 type ReleasePin struct{}
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:prerelease-lifecycle-gen:introduced=1.0
+// +kubebuilder:object:root=true
+
 type Release struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -20,6 +25,8 @@ type Release struct {
 	Mutations ReleaseMutations `json:"mutations,omitempty"`
 	Pin       ReleasePin       `json:"pin,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type ReleaseList struct {
 	metav1.TypeMeta `json:",inline"`
