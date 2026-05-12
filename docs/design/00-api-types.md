@@ -182,8 +182,8 @@ spec:
       # --------------------------------
       # type: clientCert — mTLS auth for clusters using cert-based auth.
       # clientCert:
-      #   certRef: { secretRef: { name: prod-eu-client-cert, key: tls.crt } }
-      #   keyRef:  { secretRef: { name: prod-eu-client-cert, key: tls.key } }
+      #   certRef: { name: prod-eu-client-cert, key: tls.crt }
+      #   keyRef:  { name: prod-eu-client-cert, key: tls.key }
 
       # --------------------------------
       # type: workloadIdentity — controller pod has cloud-native identity
@@ -211,29 +211,26 @@ spec:
       #     key: client-secret
       #   Alternative methods:
       #   privateKeyJWT:
-      #     privateKeyRef: { secretRef: { name: oidc-client-key, key: key.pem } }
+      #     privateKeyRef: { name: oidc-client-key, key: key.pem }
       #   tlsClientAuth:
-      #     certRef: { secretRef: { name: oidc-mtls, key: tls.crt } }
-      #     keyRef:  { secretRef: { name: oidc-mtls, key: tls.key } }
-
-    # Optional scopes requested in the token. Whether these are honored depends on IdP config.
-    scopes:
-      - openid
-      - read:charts
-
-    # Optional audience claim. Many IdPs require this to scope tokens to specific resources.
-    audience: helm-registry
-
-    # Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
-    tls:
-      caBundleRef:
-        configMapRef: { name: corporate-ca, key: ca.crt }
-      insecureSkipVerify: false
+      #     certRef: { name: oidc-mtls, key: tls.crt }
+      #     keyRef:  { name: oidc-mtls, key: tls.key }
+      # Optional scopes requested in the token. Whether these are honored depends on IdP config.
+      # scopes:
+      #   - openid
+      #   - read:charts
+      # Optional audience claim. Many IdPs require this to scope tokens to specific resources.
+      # audience: helm-registry
+      # Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
+      # tls:
+      #   caBundleRef: { name: corporate-ca, key: ca.crt }
+      #   insecureSkipVerify: false
     
     # Connection tuning (sane defaults; override for high-volume or rate-limited clusters).
-    qps: 50
-    burst: 100
-    timeout: 30s
+    connectionParameters:
+      qps: 50
+      burst: 100
+      timeout: 30s
   
   # connectionMode: agent
   # Configuration for agent-based pull mode.
@@ -284,9 +281,9 @@ spec:
     workloads: prune
     
     # Behavior when the target cluster is unreachable during deletion.
-    # - abort:                   block deletion until reachability restored or policy changed
-    # - proceedWithoutPruning:   skip prune, just clean up Release objects (cluster is gone)
-    onUnreachable: abort
+    # - block:                   block deletion until reachability restored or policy changed
+    # - releasesOnly:            skip prune, just clean up Release objects (cluster is gone)
+    onUnreachable: block
 
 status:
   # Observed reality from the controller.
