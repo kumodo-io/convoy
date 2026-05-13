@@ -7,6 +7,7 @@ import (
 
 // ClusterConnectionMode defines the connection mode between the control plane
 // and the target cluster.
+// +enum
 type ClusterConnectionMode string
 
 const (
@@ -23,6 +24,7 @@ const (
 
 // ClusterAuthType defines the authentication mode used to connect to the
 // target cluster in the agentless connection mode.
+// +enum
 type ClusterAuthType string
 
 const (
@@ -47,6 +49,7 @@ const (
 
 // ReleasesDeletionPolicy defines the deletion policy for the releases
 // in case of the cluster deletion.
+// +enum
 type ReleasesDeletionPolicy string
 
 const (
@@ -64,6 +67,7 @@ const (
 
 // WorkloadsDeletionPolicy defines the deletion policy for the workloads
 // in case of the cluster deletion.
+// +enum
 type WorkloadsDeletionPolicy string
 
 const (
@@ -76,6 +80,7 @@ const (
 
 // OnUnreachableDeletionPolicy defines the deletion policy for the cluster
 // in case the cluster is unreachable.
+// +enum
 type OnUnreachableDeletionPolicy string
 
 const (
@@ -88,6 +93,7 @@ const (
 )
 
 // OIDCClientAuthType defines the authentication method used by the OIDC client.
+// +enum
 type OIDCClientAuthType string
 
 const (
@@ -234,6 +240,10 @@ type AuthModeOIDCClientCredentialsSpec struct {
 // OIDCClientAuthSpec defines the OIDC client authentication method and configuration.
 type OIDCClientAuthSpec struct {
 	// Type is the OIDC client authentication method.
+	// Possible values are:
+	// - clientSecret
+	// - tlsClientAuth
+	// - privateKeyJWT
 	Type OIDCClientAuthType `json:"type"`
 
 	// ClientSecret is the reference to the Secret and the key of the

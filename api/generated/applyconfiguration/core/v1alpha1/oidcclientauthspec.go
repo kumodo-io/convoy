@@ -28,6 +28,10 @@ import (
 // OIDCClientAuthSpec defines the OIDC client authentication method and configuration.
 type OIDCClientAuthSpecApplyConfiguration struct {
 	// Type is the OIDC client authentication method.
+	// Possible values are:
+	// - clientSecret
+	// - tlsClientAuth
+	// - privateKeyJWT
 	Type *corev1alpha1.OIDCClientAuthType `json:"type,omitempty"`
 	// ClientSecret is the reference to the Secret and the key of the
 	// Secret containing the OIDC client secret.

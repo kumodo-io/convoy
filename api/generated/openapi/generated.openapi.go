@@ -394,10 +394,11 @@ func schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication mode used to connect to the target cluster. Possible values are: - kubeconfig - token - clientCert - execPlugin - workloadIdentity - oidcClientCredentials The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.",
+							Description: "Type is the authentication mode used to connect to the target cluster. Possible values are: - kubeconfig - token - clientCert - execPlugin - workloadIdentity - oidcClientCredentials The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.\n\nPossible enum values:\n - `\"clientCert\"` defines the authentication mode using a client certificate.\n - `\"execPlugin\"` defines the authentication mode using an exec plugin.\n - `\"kubeconfig\"` defines the authentication mode using a kubeconfig file.\n - `\"oidcClientCredentails\"` defines the authentication mode using OIDC client credentials.\n - `\"token\"` defines the authentication mode using a token.\n - `\"workloadIdentity\"` defines the authentication mode using a workload identity.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+							Enum:        []interface{}{"clientCert", "execPlugin", "kubeconfig", "oidcClientCredentails", "token", "workloadIdentity"},
 						},
 					},
 					"kubeconfig": {
@@ -527,26 +528,29 @@ func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref common.Refere
 				Properties: map[string]spec.Schema{
 					"releasesDeletionPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReleasesDeletionPolicy is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan",
+							Description: "ReleasesDeletionPolicy is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+							Enum:        []interface{}{"block", "delete", "orphan"},
 						},
 					},
 					"workloadsDeletionPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "WorkloadsDeletionPolicy is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave",
+							Description: "WorkloadsDeletionPolicy is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+							Enum:        []interface{}{"leave", "prune"},
 						},
 					},
 					"onUnreachableDeletionPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OnUnreachableDeletionPolicy is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly",
+							Description: "OnUnreachableDeletionPolicy is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+							Enum:        []interface{}{"block", "releasesOnly"},
 						},
 					},
 				},
@@ -613,10 +617,11 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"connectionMode": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ConnectionMode is the connection mode between the control plane and the target cluster. Possible values are: - agentless - agent",
+							Description: "ConnectionMode is the connection mode between the control plane and the target cluster. Possible values are: - agentless - agent\n\nPossible enum values:\n - `\"agent\"` defines the connection mode when the agent is running on the target cluster, pulls the workload manifests and applies them locally.\n - `\"agentless\"` defines the connection mode when the control plane pushes the workload manifests to the cluster connecting to the target cluster's API server.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+							Enum:        []interface{}{"agent", "agentless"},
 						},
 					},
 					"agentless": {
@@ -729,10 +734,11 @@ func schema_convoy_api_core_v1alpha1_OIDCClientAuthSpec(ref common.ReferenceCall
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the OIDC client authentication method.",
+							Description: "Type is the OIDC client authentication method. Possible values are: - clientSecret - tlsClientAuth - privateKeyJWT\n\nPossible enum values:\n - `\"clientSecret\"` is the authentication method using a client secret.\n - `\"privateKeyJWT\"` is the authentication method using a private key JWT.\n - `\"tlsClientAuth\"` is the authentication method using TLS client authentication.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+							Enum:        []interface{}{"clientSecret", "privateKeyJWT", "tlsClientAuth"},
 						},
 					},
 					"clientSecret": {
