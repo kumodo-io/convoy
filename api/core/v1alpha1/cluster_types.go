@@ -196,9 +196,12 @@ type AuthModeExecPluginSpec struct {
 	Command string `json:"command"`
 
 	// Args are the arguments to pass to the command.
+	// +listType=atomic
 	Args []string `json:"args,omitempty"`
 
 	// Env are the environment variables to pass to the command.
+	// +listType=map
+	// +listMapKey=name
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
 	// CredentialsRef is the optional reference to credentials the plugin needs (e.g., AWS IAM role).
@@ -218,6 +221,7 @@ type AuthModeOIDCClientCredentialsSpec struct {
 	ClientAuth OIDCClientAuthSpec `json:"clientAuth"`
 
 	// Scopes are the OIDC scopes.
+	// +listType=atomic
 	Scopes []string `json:"scopes,omitempty"`
 
 	// Audience is the OIDC audience.
@@ -268,9 +272,13 @@ type OIDCClientAuthPrivateKeyJWTSpec struct {
 	PrivateKeyRef corev1.SecretKeySelector `json:"privateKeyRef"`
 }
 
+// ClusterCapabilitiesSpec defines the capabilities the cluster supports — informational,
+// used by the renderer. If omitted, controller discovers these on first successful connection.
 type ClusterCapabilitiesSpec struct {
 	ServerSideApply bool `json:"serverSideApply"`
 
+	// APIVersions is the list of specific API versions the renderer can rely on.
+	// +listType=atomic
 	APIVersions []string `json:"apiVersions,omitempty"`
 }
 

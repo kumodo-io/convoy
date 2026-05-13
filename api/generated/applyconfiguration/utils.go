@@ -36,8 +36,40 @@ import (
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
 	// Group=core.convoy.kumodo.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeClientCertSpec"):
+		return &corev1alpha1.AuthModeClientCertSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeExecPluginSpec"):
+		return &corev1alpha1.AuthModeExecPluginSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeKubeconfigSpec"):
+		return &corev1alpha1.AuthModeKubeconfigSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeOIDCClientCredentialsSpec"):
+		return &corev1alpha1.AuthModeOIDCClientCredentialsSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeTokenSpec"):
+		return &corev1alpha1.AuthModeTokenSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Cluster"):
 		return &corev1alpha1.ClusterApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAgentlessModeSpec"):
+		return &corev1alpha1.ClusterAgentlessModeSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAuthSpec"):
+		return &corev1alpha1.ClusterAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterCapabilitiesSpec"):
+		return &corev1alpha1.ClusterCapabilitiesSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterConnectionParametersSpec"):
+		return &corev1alpha1.ClusterConnectionParametersSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterDeletionPolicySpec"):
+		return &corev1alpha1.ClusterDeletionPolicySpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterSpec"):
+		return &corev1alpha1.ClusterSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthClientSecretSpec"):
+		return &corev1alpha1.OIDCClientAuthClientSecretSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthPrivateKeyJWTSpec"):
+		return &corev1alpha1.OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthSpec"):
+		return &corev1alpha1.OIDCClientAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthTLSClientAuthSpec"):
+		return &corev1alpha1.OIDCClientAuthTLSClientAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCTLSSpec"):
+		return &corev1alpha1.OIDCTLSSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Release"):
 		return &corev1alpha1.ReleaseApplyConfiguration{}
 

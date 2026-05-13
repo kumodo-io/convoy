@@ -28,34 +28,270 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                      schema_convoy_api_core_v1alpha1_Cluster(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                  schema_convoy_api_core_v1alpha1_ClusterList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                  schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                      schema_convoy_api_core_v1alpha1_Release(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                  schema_convoy_api_core_v1alpha1_ReleaseList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations":             schema_convoy_api_core_v1alpha1_ReleaseMutations(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin":                   schema_convoy_api_core_v1alpha1_ReleasePin(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec":                  schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus":                schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":         schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":     schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":     schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":     schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList": schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec": schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":              schema_convoy_api_source_v1alpha1_GitRepository(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":          schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec":          schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus":        schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":               schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":           schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":           schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":         schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry":                schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryList":            schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec":            schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus":          schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec":            schema_convoy_api_core_v1alpha1_AuthModeClientCertSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec":            schema_convoy_api_core_v1alpha1_AuthModeExecPluginSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec":            schema_convoy_api_core_v1alpha1_AuthModeKubeconfigSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec": schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec":                 schema_convoy_api_core_v1alpha1_AuthModeTokenSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                           schema_convoy_api_core_v1alpha1_Cluster(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":          schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec":                   schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec":           schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec":   schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec":         schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                       schema_convoy_api_core_v1alpha1_ClusterList(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                       schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                     schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec":    schema_convoy_api_core_v1alpha1_OIDCClientAuthClientSecretSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec":   schema_convoy_api_core_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec":                schema_convoy_api_core_v1alpha1_OIDCClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec":   schema_convoy_api_core_v1alpha1_OIDCClientAuthTLSClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec":                       schema_convoy_api_core_v1alpha1_OIDCTLSSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                           schema_convoy_api_core_v1alpha1_Release(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                       schema_convoy_api_core_v1alpha1_ReleaseList(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations":                  schema_convoy_api_core_v1alpha1_ReleaseMutations(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin":                        schema_convoy_api_core_v1alpha1_ReleasePin(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec":                       schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus":                     schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":              schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":          schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":          schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":          schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":      schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":      schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                   schema_convoy_api_source_v1alpha1_GitRepository(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":               schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec":               schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus":             schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":                    schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":                schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":                schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":              schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry":                     schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryList":                 schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec":                 schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus":               schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_AuthModeClientCertSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AuthModeClientCertSpec defines the authentication mode using a client certificate.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"certRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CertRef is the name and the key of the Secret containing the client certificate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"keyRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeyRef is the name and the key of the Secret containing the client certificate key.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"certRef", "keyRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_AuthModeExecPluginSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AuthModeExecPluginSpec defines the authentication mode using an exec plugin.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"command": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Command is the command to execute.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"args": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Args are the arguments to pass to the command.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Env are the environment variables to pass to the command.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"credentialsRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CredentialsRef is the optional reference to credentials the plugin needs (e.g., AWS IAM role). Defined by the reference to the Secret and the key of the Secret containing the credentials.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretReference"),
+						},
+					},
+				},
+				Required: []string{"command"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.SecretReference"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_AuthModeKubeconfigSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AuthModeKubeconfigSpec defines the authentication mode using a kubeconfig file.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"secretRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecretRef is the name and the key of the Secret containing the kubeconfig file.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"secretRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AuthModeOIDCClientCredentialsSpec defines the authentication mode using OIDC client credentials.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"issuerURL": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IssuerURL is the OIDC issuer URL.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"clientID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClientID is the OIDC client ID.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"clientAuth": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClientAuth is the OIDC client authentication method and configuration.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec"),
+						},
+					},
+					"scopes": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Scopes are the OIDC scopes.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"audience": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Audience is the OIDC audience.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tls": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLS is the IdP TLS configuration.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec"),
+						},
+					},
+				},
+				Required: []string{"issuerURL", "clientID", "clientAuth"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_AuthModeTokenSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AuthModeTokenSpec defines the authentication mode using a token.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"secretRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecretRef is the name and the key of the Secret containing the token.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"secretRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
 	}
 }
 
@@ -102,6 +338,221 @@ func schema_convoy_api_core_v1alpha1_Cluster(ref common.ReferenceCallback) commo
 		},
 		Dependencies: []string{
 			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterAgentlessModeSpec defines the configuration of the agentless connection mode.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"server": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Server is the address of the Kubernetes API server.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"caPublicCertRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CAPublicCertRef is the name and the key of the ConfigMap containing the CA public certificate. The CA certificate is used to verify the Kubernetes API server's certificate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
+						},
+					},
+					"auth": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Auth is the authentication configuration for the agentless connection mode.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec"),
+						},
+					},
+					"connectionParameters": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec"),
+						},
+					},
+				},
+				Required: []string{"server", "caPublicCertRef", "auth", "connectionParameters"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec", "k8s.io/api/core/v1.ConfigMapKeySelector"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterAuthSpec defines the authentication mode used to connect to the target cluster in the agentless connection mode.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the authentication mode used to connect to the target cluster. Possible values are: - kubeconfig - token - clientCert - execPlugin - workloadIdentity - oidcClientCredentials The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kubeconfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kubeconfig is the authentication mode using a kubeconfig file.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec"),
+						},
+					},
+					"token": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Token is the authentication mode using a token.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec"),
+						},
+					},
+					"clientCert": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClientCert is the authentication mode using a client certificate.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec"),
+						},
+					},
+					"execPlugin": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExecPlugin is the authentication mode using an exec plugin.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec"),
+						},
+					},
+					"oidcClientCredentials": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OIDCClientCredentials is the authentication mode using OIDC client credentials.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec"),
+						},
+					},
+				},
+				Required: []string{"type"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterCapabilitiesSpec defines the capabilities the cluster supports — informational, used by the renderer. If omitted, controller discovers these on first successful connection.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"serverSideApply": {
+						SchemaProps: spec.SchemaProps{
+							Default: false,
+							Type:    []string{"boolean"},
+							Format:  "",
+						},
+					},
+					"apiVersions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersions is the list of specific API versions the renderer can rely on.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"serverSideApply"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterConnectionParametersSpec defines the connection parameters of the cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"qps": {
+						SchemaProps: spec.SchemaProps{
+							Description: "QPS is the maximum number of queries per second (QPS) to the Kubernetes API server.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"burst": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Burst is the maximum number of burst queries per second (QPS) to the Kubernetes API server.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timeout is the timeout for the Kubernetes API server connection.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+				Required: []string{"qps", "burst", "timeout"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterDeletionPolicySpec defines the deletion policy of the cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"releasesDeletionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReleasesDeletionPolicy is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"workloadsDeletionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WorkloadsDeletionPolicy is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"onUnreachableDeletionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OnUnreachableDeletionPolicy is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"releasesDeletionPolicy", "workloadsDeletionPolicy", "onUnreachableDeletionPolicy"},
+			},
+		},
 	}
 }
 
@@ -157,9 +608,59 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "ClusterSpec defines the desired state of the Cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"connectionMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConnectionMode is the connection mode between the control plane and the target cluster. Possible values are: - agentless - agent",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"agentless": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Agentless is the configuration of the agentless connection mode.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec"),
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Metadata is the metadata of the cluster that is used for the templating of the workload manifests defined in the corresponding Release objects.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"capabilities": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Capabilities is the capabilities of the cluster.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec"),
+						},
+					},
+					"deletionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DeletionPolicy is the deletion policy of the cluster.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec"),
+						},
+					},
+				},
+				Required: []string{"connectionMode"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec"},
 	}
 }
 
@@ -170,6 +671,154 @@ func schema_convoy_api_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback)
 				Type: []string{"object"},
 			},
 		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_OIDCClientAuthClientSecretSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OIDCClientAuthClientSecretSpec defines the reference to the Secret and the key of the Secret containing the OIDC client secret.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"clientSecretRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClientSecretRef is the name and the key of the Secret containing the OIDC client secret.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"clientSecretRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OIDCClientAuthPrivateKeyJWTSpec defines the reference to the Secret and the key of the Secret containing the OIDC private key JWT.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"privateKeyRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrivateKeyRef is the name and the key of the Secret containing the OIDC private key JWT.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"privateKeyRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_OIDCClientAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OIDCClientAuthSpec defines the OIDC client authentication method and configuration.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the OIDC client authentication method.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"clientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClientSecret is the reference to the Secret and the key of the Secret containing the OIDC client secret.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec"),
+						},
+					},
+					"tlsClientAuth": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLSClientAuth is the reference to the Secrets and the keys of the Secret(s) containing the OIDC client certificate and key.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec"),
+						},
+					},
+					"privateKeyJWT": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrivateKeyJWT is the reference to the Secret and the key of the Secret containing the OIDC private key JWT.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec"),
+						},
+					},
+				},
+				Required: []string{"type"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_OIDCClientAuthTLSClientAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OIDCClientAuthTLSClientAuthSpec defines the reference to the Secrets and the keys of the Secret(s) containing the OIDC client certificate and key.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"certRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CertRef is the name and the key of the Secret containing the OIDC client certificate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"keyRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeyRef is the name and the key of the Secret containing the OIDC client certificate key.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"certRef", "keyRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_OIDCTLSSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"caPublicCertRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CAPublicCertRef is the name and the key of the ConfigMap containing the CA public certificate. The CA certificate is used to verify the IdP server's certificate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
+						},
+					},
+					"insecureSkipVerify": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InsecureSkipVerify is a flag to skip the certificate verification.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"caPublicCertRef", "insecureSkipVerify"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ConfigMapKeySelector"},
 	}
 }
 
