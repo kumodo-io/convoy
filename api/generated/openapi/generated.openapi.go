@@ -34,6 +34,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec": schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec":                 schema_convoy_api_core_v1alpha1_AuthModeTokenSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                           schema_convoy_api_core_v1alpha1_Cluster(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus":                schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":          schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec":                   schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec":           schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
@@ -338,6 +339,42 @@ func schema_convoy_api_core_v1alpha1_Cluster(ref common.ReferenceCallback) commo
 		},
 		Dependencies: []string{
 			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterAgentStatus reflects the observed state of the agent running on the cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"agentVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AgentVersion is the version of the agent running on the cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"registeredAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RegisteredAt is the time when the agent was registered with the cluster.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"lastHeartbeat": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastHeartbeat is the time when the agent last sent a heartbeat.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+				},
+				Required: []string{"agentVersion", "registeredAt"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -673,9 +710,98 @@ func schema_convoy_api_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "ClusterStatus reflects the observed state of the Cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the last generation that was observed by the controller.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"reachable": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reachable is a flag indicating whether the cluster is reachable.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"lastSeen": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastSeen is the last time the cluster was seen by the controller.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"discoveredVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DiscoveredVersion is the discovered Kubernetes version of the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"discoveredAPIVersions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "DiscoveredAPIVersions is the list of discovered API versions of the cluster.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"releaseCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReleaseCount is the number of Release objects in the cluster.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"agentStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AgentStatus is the status of the agent running on the cluster. Applicable only if the cluster connection mode is agent.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus"),
+						},
+					},
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"type",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is the list of conditions related to the cluster.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Condition"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"reachable"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 

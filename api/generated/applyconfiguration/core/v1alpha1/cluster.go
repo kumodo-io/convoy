@@ -19,7 +19,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -30,8 +29,8 @@ import (
 type ClusterApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *ClusterSpecApplyConfiguration `json:"spec,omitempty"`
-	Status                           *corev1alpha1.ClusterStatus    `json:"status,omitempty"`
+	Spec                             *ClusterSpecApplyConfiguration   `json:"spec,omitempty"`
+	Status                           *ClusterStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // Cluster constructs a declarative configuration of the Cluster type for use with
@@ -216,8 +215,8 @@ func (b *ClusterApplyConfiguration) WithSpec(value *ClusterSpecApplyConfiguratio
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *ClusterApplyConfiguration) WithStatus(value corev1alpha1.ClusterStatus) *ClusterApplyConfiguration {
-	b.Status = &value
+func (b *ClusterApplyConfiguration) WithStatus(value *ClusterStatusApplyConfiguration) *ClusterApplyConfiguration {
+	b.Status = value
 	return b
 }
 

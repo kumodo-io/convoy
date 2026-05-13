@@ -50,6 +50,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &corev1alpha1.ClusterApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAgentlessModeSpec"):
 		return &corev1alpha1.ClusterAgentlessModeSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAgentStatus"):
+		return &corev1alpha1.ClusterAgentStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAuthSpec"):
 		return &corev1alpha1.ClusterAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterCapabilitiesSpec"):
@@ -60,6 +62,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &corev1alpha1.ClusterDeletionPolicySpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterSpec"):
 		return &corev1alpha1.ClusterSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterStatus"):
+		return &corev1alpha1.ClusterStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthClientSecretSpec"):
 		return &corev1alpha1.OIDCClientAuthClientSecretSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthPrivateKeyJWTSpec"):
