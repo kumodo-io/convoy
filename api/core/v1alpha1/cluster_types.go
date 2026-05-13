@@ -335,7 +335,48 @@ type ClusterConnectionParametersSpec struct {
 	Timeout metav1.Duration `json:"timeout"`
 }
 
-type ClusterStatus struct{}
+// ClusterStatus reflects the observed state of the Cluster.
+type ClusterStatus struct {
+	// ObservedGeneration is the last generation that was observed by the controller.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Reachable is a flag indicating whether the cluster is reachable.
+	Reachable bool `json:"reachable"`
+
+	// LastSeen is the last time the cluster was seen by the controller.
+	LastSeen metav1.Time `json:"lastSeen,omitempty"`
+
+	// DiscoveredVersion is the discovered Kubernetes version of the cluster.
+	DiscoveredVersion string `json:"discoveredVersion,omitempty"`
+
+	// DiscoveredAPIVersions is the list of discovered API versions of the cluster.
+	// +listType=atomic
+	DiscoveredAPIVersions []string `json:"discoveredAPIVersions,omitempty"`
+
+	// ReleaseCount is the number of Release objects in the cluster.
+	ReleaseCount int64 `json:"releaseCount,omitempty"`
+
+	// AgentStatus is the status of the agent running on the cluster.
+	// Applicable only if the cluster connection mode is agent.
+	AgentStatus *ClusterAgentStatus `json:"agentStatus,omitempty"`
+
+	// Conditions is the list of conditions related to the cluster.
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+// ClusterAgentStatus reflects the observed state of the agent running on the cluster.
+type ClusterAgentStatus struct {
+	// AgentVersion is the version of the agent running on the cluster.
+	AgentVersion string `json:"agentVersion"`
+
+	// RegisteredAt is the time when the agent was registered with the cluster.
+	RegisteredAt metav1.Time `json:"registeredAt"`
+
+	// LastHeartbeat is the time when the agent last sent a heartbeat.
+	LastHeartbeat metav1.Time `json:"lastHeartbeat,omitempty"`
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

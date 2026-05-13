@@ -148,7 +148,22 @@ type ClusterConnectionParametersSpec struct {
 	Timeout metav1.Duration
 }
 
-type ClusterStatus struct{}
+type ClusterStatus struct {
+	ObservedGeneration    int64
+	Reachable             bool
+	LastSeen              metav1.Time
+	DiscoveredVersion     string
+	DiscoveredAPIVersions []string
+	ReleaseCount          int64
+	AgentStatus           *ClusterAgentStatus
+	Conditions            []metav1.Condition
+}
+
+type ClusterAgentStatus struct {
+	AgentVersion  string
+	RegisteredAt  metav1.Time
+	LastHeartbeat metav1.Time
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
