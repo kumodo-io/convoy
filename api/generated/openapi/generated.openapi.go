@@ -28,50 +28,61 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec":            schema_convoy_api_core_v1alpha1_AuthModeClientCertSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec":            schema_convoy_api_core_v1alpha1_AuthModeExecPluginSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec":            schema_convoy_api_core_v1alpha1_AuthModeKubeconfigSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec": schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec":                 schema_convoy_api_core_v1alpha1_AuthModeTokenSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                           schema_convoy_api_core_v1alpha1_Cluster(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus":                schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":          schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec":                   schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec":           schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec":   schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec":         schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                       schema_convoy_api_core_v1alpha1_ClusterList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                       schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                     schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec":    schema_convoy_api_core_v1alpha1_OIDCClientAuthClientSecretSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec":   schema_convoy_api_core_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec":                schema_convoy_api_core_v1alpha1_OIDCClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec":   schema_convoy_api_core_v1alpha1_OIDCClientAuthTLSClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec":                       schema_convoy_api_core_v1alpha1_OIDCTLSSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                           schema_convoy_api_core_v1alpha1_Release(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                       schema_convoy_api_core_v1alpha1_ReleaseList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations":                  schema_convoy_api_core_v1alpha1_ReleaseMutations(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin":                        schema_convoy_api_core_v1alpha1_ReleasePin(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec":                       schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus":                     schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":              schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":          schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":          schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":          schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":      schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":      schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                   schema_convoy_api_source_v1alpha1_GitRepository(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":               schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec":               schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus":             schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":                    schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":                schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":                schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":              schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry":                     schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryList":                 schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec":                 schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus":               schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec":                schema_convoy_api_core_v1alpha1_AuthModeClientCertSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec":                schema_convoy_api_core_v1alpha1_AuthModeExecPluginSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec":                schema_convoy_api_core_v1alpha1_AuthModeKubeconfigSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec":     schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec":                     schema_convoy_api_core_v1alpha1_AuthModeTokenSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                               schema_convoy_api_core_v1alpha1_Cluster(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus":                    schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":              schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec":                       schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec":               schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec":       schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec":             schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                           schema_convoy_api_core_v1alpha1_ClusterList(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                           schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                         schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec":        schema_convoy_api_core_v1alpha1_OIDCClientAuthClientSecretSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec":       schema_convoy_api_core_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec":                    schema_convoy_api_core_v1alpha1_OIDCClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec":       schema_convoy_api_core_v1alpha1_OIDCClientAuthTLSClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec":                           schema_convoy_api_core_v1alpha1_OIDCTLSSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                               schema_convoy_api_core_v1alpha1_Release(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                           schema_convoy_api_core_v1alpha1_ReleaseList(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations":                      schema_convoy_api_core_v1alpha1_ReleaseMutations(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin":                            schema_convoy_api_core_v1alpha1_ReleasePin(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec":                           schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus":                         schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":                  schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":              schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":              schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":              schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":          schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":          schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                       schema_convoy_api_source_v1alpha1_GitRepository(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthBasicSpec":          schema_convoy_api_source_v1alpha1_GitRepositoryAuthBasicSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthGithubAppSpec":      schema_convoy_api_source_v1alpha1_GitRepositoryAuthGithubAppSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSSHKeySpec":         schema_convoy_api_source_v1alpha1_GitRepositoryAuthSSHKeySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec":               schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthTokenSpec":          schema_convoy_api_source_v1alpha1_GitRepositoryAuthTokenSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus":      schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":                   schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec":                schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec":                   schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus":                 schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec":      schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookRejectionStatus": schema_convoy_api_source_v1alpha1_GitRepositoryWebhookRejectionStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec":            schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookStatus":          schema_convoy_api_source_v1alpha1_GitRepositoryWebhookStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":                        schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":                    schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":                    schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":                  schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry":                         schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryList":                     schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec":                     schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus":                   schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
 	}
 }
 
@@ -1328,6 +1339,27 @@ func schema_convoy_api_source_v1alpha1_GitRepository(ref common.ReferenceCallbac
 							Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec"),
 						},
 					},
+					"webhook": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec"),
+									},
+								},
+							},
+						},
+					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
@@ -1338,7 +1370,221 @@ func schema_convoy_api_source_v1alpha1_GitRepository(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryAuthBasicSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryAuthBasicSpec defines the basic authentication used to access the Git repository.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"username": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Username is the username used to access the Git repository.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"passwordRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PasswordRef is the name and the key of the Secret containing the password.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"username", "passwordRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryAuthGithubAppSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryAuthGithubAppSpec defines the GitHub App configuration used to access the Git repository.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"appID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AppID is the ID of the GitHub App.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"installationID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InstallationID is the ID of the GitHub App installation.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"privateKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrivateKeyRef is the name and the key of the Secret containing the private key.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"appID", "installationID", "privateKey"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSSHKeySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryAuthSSHKeySpec defines the SSH key used to access the Git repository.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"sshKeyRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SSHKeyRef is the name and the key of the Secret containing the SSH key.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"knownHostsRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KnownHostsRef is the name and the key of the ConfigMap containing the known hosts.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
+						},
+					},
+				},
+				Required: []string{"sshKeyRef", "knownHostsRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ConfigMapKeySelector", "k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryAuthSpec defines the authentication method used to access the Git repository.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the authentication method used to access the Git repository.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"none\"` is the authentication method using no authentication.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"basic", "githubApp", "none", "sshKey", "token"},
+						},
+					},
+					"sshKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SSHKey is the SSH key used to access the Git repository.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSSHKeySpec"),
+						},
+					},
+					"basic": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Basic is the basic authentication used to access the Git repository.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthBasicSpec"),
+						},
+					},
+					"token": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Token is the token used to access the Git repository.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthTokenSpec"),
+						},
+					},
+					"githubApp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GithubApp is the GitHub App configuration used to access the Git repository.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthGithubAppSpec"),
+						},
+					},
+				},
+				Required: []string{"type"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthBasicSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthGithubAppSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSSHKeySpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthTokenSpec"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryAuthTokenSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryAuthTokenSpec defines the token used to access the Git repository.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"tokenRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TokenRef is the name and the key of the Secret containing the token.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"tokenRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryLastFetchedStatus reflects the last time the Git repository was fetched.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"revision": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Revision is the revision of the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"treeHash": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TreeHash is the tree hash of the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"fetchedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FetchedAt is the time the Git repository was fetched.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"resolvedRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedRef is the resolved reference of the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -1390,13 +1636,128 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryList(ref common.ReferenceCal
 	}
 }
 
+func schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryRefSpec defines the desired state of the GitRepositoryRef.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"branch": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Branch is the branch to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tag": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tag is the tag to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"commit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Commit is the commit to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"semver": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Semver is the tag-based semantic version expression to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "GitRepositorySpec defines the desired state of the GitRepository.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"url": {
+						SchemaProps: spec.SchemaProps{
+							Description: "URL is the URL of the Git repository.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ref is what to track in the Git repository.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec"),
+						},
+					},
+					"auth": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Auth is the authentication method used to access the Git repository.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec"),
+						},
+					},
+					"interval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Interval is the poll interval for ref resolution and content fetching.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"includePaths": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "IncludePaths is a list of paths to include in the Git repository.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"ignorePaths": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "IgnorePaths is a list of paths to ignore in the Git repository.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"url", "ref", "auth", "interval"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -1404,9 +1765,311 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "GitRepositoryStatus reflects the observed state of the GitRepository.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the last generation that was observed by the controller.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"lastFetched": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastFetched is the last time the Git repository was fetched.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus"),
+						},
+					},
+					"releaseCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReleaseCount is the number of Release referencing the GitRepository.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"webhooks": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Webhooks is the list of statuses of webhooks that are configured for the GitRepository.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookStatus"),
+									},
+								},
+							},
+						},
+					},
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"type",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is the list of conditions related to the GitRepository.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Condition"),
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryWebhookFilterSpec defines the list of paths and branches that trigger the webhook.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"refs": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Refs is the list of branches that trigger the webhook.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"paths": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Paths is the list of paths that trigger the webhook.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"refs", "paths"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryWebhookRejectionStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryWebhookRejectionStatus reflects the last time the webhook was rejected.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"rejectedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RejectedAt is the time the webhook was rejected.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is the reason the webhook was rejected.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is the message of the webhook rejection.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryWebhookSpec defines the desired state of the GitRepositoryWebhook.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the webhook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"provider": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provider is the name of the webhook provider.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"secretRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecretRef is the name and the key of the Secret containing the webhook secret.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"events": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Events is the list of events that trigger the webhook.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"filters": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Filters is the list of paths and branches that trigger the webhook.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec"),
+						},
+					},
+				},
+				Required: []string{"name", "provider", "secretRef", "events"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec", "k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_source_v1alpha1_GitRepositoryWebhookStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GitRepositoryWebhookStatus reflects the status of a webhook.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the webhook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"url": {
+						SchemaProps: spec.SchemaProps{
+							Description: "URL is the URL of the webhook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastReceived": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastReceived is the last time the webhook was received.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"lastTriggered": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastTriggered is the last time the webhook was triggered.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"receivedCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReceivedCount is the number of times the webhook was received.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"triggersCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TriggersCount is the number of times the webhook was triggered.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"rejectedCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RejectedCount is the number of times the webhook was rejected.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"filteredCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FilteredCount is the number of times the webhook was filtered.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"lastRejection": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastRejection is the last time the webhook was rejected.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookRejectionStatus"),
+						},
+					},
+				},
+				Required: []string{"name", "url"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookRejectionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 

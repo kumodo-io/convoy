@@ -86,6 +86,32 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		// Group=source.convoy.kumodo.io, Version=v1alpha1
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepository"):
 		return &applyconfigurationsourcev1alpha1.GitRepositoryApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthBasicSpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthBasicSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthGithubAppSpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthGithubAppSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthSpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthSSHKeySpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthSSHKeySpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthTokenSpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthTokenSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryLastFetchedStatus"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryLastFetchedStatusApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryRefSpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryRefSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositorySpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositorySpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryStatus"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryStatusApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookFilterSpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookFilterSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookRejectionStatus"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookRejectionStatusApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookSpec"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookStatus"):
+		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistry"):
 		return &applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistry"):

@@ -1,10 +1,109 @@
 package source
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
-type GitRepositorySpec struct{}
+type GitRepositoryAuthType string
 
-type GitRepositoryStatus struct{}
+const (
+	GitRepositoryAuthTypeNone      GitRepositoryAuthType = "none"
+	GitRepositoryAuthTypeSSHKey    GitRepositoryAuthType = "sshKey"
+	GitRepositoryAuthTypeBasic     GitRepositoryAuthType = "basic"
+	GitRepositoryAuthTypeToken     GitRepositoryAuthType = "token"
+	GitRepositoryAithTypeGithubApp GitRepositoryAuthType = "githubApp"
+)
+
+type GitRepositorySpec struct {
+	URL          string
+	Ref          GitRepositoryRefSpec
+	Auth         GitRepositoryAuthSpec
+	Interval     metav1.Duration
+	IncludePaths []string
+	IgnorePaths  []string
+}
+
+type GitRepositoryRefSpec struct {
+	Branch *string
+	Tag    *string
+	Commit *string
+	Semver *string
+}
+
+type GitRepositoryAuthSpec struct {
+	Type      GitRepositoryAuthType
+	SSHKey    *GitRepositoryAuthSSHKeySpec
+	Basic     *GitRepositoryAuthBasicSpec
+	Token     *GitRepositoryAuthTokenSpec
+	GithubApp *GitRepositoryAuthGithubAppSpec
+}
+
+type GitRepositoryAuthSSHKeySpec struct {
+	SSHKeyRef     corev1.SecretKeySelector
+	KnownHostsRef corev1.ConfigMapKeySelector
+}
+
+type GitRepositoryAuthBasicSpec struct {
+	Username    string
+	PasswordRef corev1.SecretKeySelector
+}
+
+type GitRepositoryAuthTokenSpec struct {
+	TokenRef corev1.SecretKeySelector
+}
+
+type GitRepositoryAuthGithubAppSpec struct {
+	AppID          int64
+	InstallationID int64
+	PrivateKeyRef  corev1.SecretKeySelector
+}
+
+type GitRepositoryWebhookSpec struct {
+	Name      string
+	Provider  string
+	SecretRef corev1.SecretKeySelector
+	Events    []string
+	Filters   *GitRepositoryWebhookFilterSpec
+}
+
+type GitRepositoryWebhookFilterSpec struct {
+	Refs  []string
+	Paths []string
+}
+
+type GitRepositoryStatus struct {
+	ObservedGeneration int64
+	LastFetched        GitRepositoryLastFetchedStatus
+	ReleaseCount       int64
+	Webhooks           []GitRepositoryWebhookStatus
+	Conditions         []metav1.Condition
+}
+
+type GitRepositoryLastFetchedStatus struct {
+	Revision    string
+	TreeHash    string
+	FetchedAt   metav1.Time
+	ResolvedRef string
+}
+
+type GitRepositoryWebhookStatus struct {
+	Name          string
+	URL           string
+	LastReceived  *metav1.Time
+	LastTriggered *metav1.Time
+	ReceivedCount int64
+	TriggersCount int64
+	RejectedCount int64
+	FilteredCount int64
+	LastRejection *GitRepositoryWebhookRejectionStatus
+}
+
+type GitRepositoryWebhookRejectionStatus struct {
+	RejectedAt *metav1.Time
+	Reason     string
+	Message    string
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -13,8 +112,9 @@ type GitRepository struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	Spec   GitRepositorySpec
-	Status GitRepositoryStatus
+	Spec    GitRepositorySpec
+	Webhook []GitRepositoryWebhookSpec
+	Status  GitRepositoryStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

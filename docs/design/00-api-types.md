@@ -1117,14 +1117,14 @@ This bounds status size and makes the per-resource view directly actionable. A R
 
 ###### Per-resource fields
 
-| Field                         | Description                                                  |
-|-------------------------------|--------------------------------------------------------------|
-| `kind`, `apiGroup`, `version` | Resource kind identification                                 |
-| `name`, `namespace`           | Resource identity                                            |
-| `health`                      | One of `Degraded`, `Suspended`, `Unknown`                    |
-| `since`                       | When this state was first observed (transitions reset this)  |
-| `message`                     | Human-readable detail from the health rule                   |
-| `ruleUsed.type`               | One of `resourceHealthRule`, `kindHealthRule`, `builtin`, `kstatus`, `fallbackUnknown` |
+| Field                         | Description                                                                                                                |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `kind`, `apiGroup`, `version` | Resource kind identification                                                                                               |
+| `name`, `namespace`           | Resource identity                                                                                                          |
+| `health`                      | One of `Degraded`, `Suspended`, `Unknown`                                                                                  |
+| `since`                       | When this state was first observed (transitions reset this)                                                                |
+| `message`                     | Human-readable detail from the health rule                                                                                 |
+| `ruleUsed.type`               | One of `resourceHealthRule`, `kindHealthRule`, `builtin`, `kstatus`, `fallbackUnknown`                                     |
 | `ruleUsed.ref`                | Reference to the `KindHealthRule` or `ResourceHealthRule` (only when `type: resourceHealthRule` or `type: kindHealthRule`) |
 
 The `ruleUsed` field makes assessment auditable. Users debugging unexpected health verdicts can immediately see which rule produced them.
@@ -1142,13 +1142,13 @@ Health assessment is passive observation of resource state, not active testing.
 
 #### Comparison with Other Tools
 
-| Concept                    | This tool                                        | ArgoCD                       | Flux                            |
-|----------------------------|--------------------------------------------------|------------------------------|---------------------------------|
-| Per-resource health        | Yes, in status (degraded/suspended/unknown only) | Yes, full list               | Limited                         |
-| Custom health rules        | CEL via `KindHealthRule` (cluster-scoped) or `ResourceHealthRule` (namespaced) | Lua via ConfigMap | None native          |
-| Five health states         | Yes                                              | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
-| `Unknown` as honest signal | Yes                                              | Sometimes (for unknown CRDs) | Often defaults optimistic       |
-| Bounded status size        | Yes (excludes healthy/progressing)               | No (full list)               | Compact (less detail)           |
+| Concept                    | This tool                                                                      | ArgoCD                       | Flux                            |
+|----------------------------|--------------------------------------------------------------------------------|------------------------------|---------------------------------|
+| Per-resource health        | Yes, in status (degraded/suspended/unknown only)                               | Yes, full list               | Limited                         |
+| Custom health rules        | CEL via `KindHealthRule` (cluster-scoped) or `ResourceHealthRule` (namespaced) | Lua via ConfigMap            | None native                     |
+| Five health states         | Yes                                                                            | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
+| `Unknown` as honest signal | Yes                                                                            | Sometimes (for unknown CRDs) | Often defaults optimistic       |
+| Bounded status size        | Yes (excludes healthy/progressing)                                             | No (full list)               | Compact (less detail)           |
 
 ## Sources
 

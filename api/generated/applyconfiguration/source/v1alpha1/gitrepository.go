@@ -19,7 +19,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -30,8 +29,9 @@ import (
 type GitRepositoryApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *sourcev1alpha1.GitRepositorySpec   `json:"spec,omitempty"`
-	Status                           *sourcev1alpha1.GitRepositoryStatus `json:"status,omitempty"`
+	Spec                             *GitRepositorySpecApplyConfiguration         `json:"spec,omitempty"`
+	Webhook                          []GitRepositoryWebhookSpecApplyConfiguration `json:"webhook,omitempty"`
+	Status                           *GitRepositoryStatusApplyConfiguration       `json:"status,omitempty"`
 }
 
 // GitRepository constructs a declarative configuration of the GitRepository type for use with
@@ -208,16 +208,29 @@ func (b *GitRepositoryApplyConfiguration) ensureObjectMetaApplyConfigurationExis
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *GitRepositoryApplyConfiguration) WithSpec(value sourcev1alpha1.GitRepositorySpec) *GitRepositoryApplyConfiguration {
-	b.Spec = &value
+func (b *GitRepositoryApplyConfiguration) WithSpec(value *GitRepositorySpecApplyConfiguration) *GitRepositoryApplyConfiguration {
+	b.Spec = value
+	return b
+}
+
+// WithWebhook adds the given value to the Webhook field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Webhook field.
+func (b *GitRepositoryApplyConfiguration) WithWebhook(values ...*GitRepositoryWebhookSpecApplyConfiguration) *GitRepositoryApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithWebhook")
+		}
+		b.Webhook = append(b.Webhook, *values[i])
+	}
 	return b
 }
 
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *GitRepositoryApplyConfiguration) WithStatus(value sourcev1alpha1.GitRepositoryStatus) *GitRepositoryApplyConfiguration {
-	b.Status = &value
+func (b *GitRepositoryApplyConfiguration) WithStatus(value *GitRepositoryStatusApplyConfiguration) *GitRepositoryApplyConfiguration {
+	b.Status = value
 	return b
 }
 
