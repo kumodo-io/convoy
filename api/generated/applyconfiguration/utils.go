@@ -108,20 +108,28 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationsourcev1alpha1.GitRepositoryStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookFilterSpec"):
 		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookFilterSpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookRejectionStatus"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookRejectionStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookSpec"):
 		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookSpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryWebhookStatus"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistry"):
 		return &applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryAuthSpec"):
 		return &applyconfigurationsourcev1alpha1.HelmRegistryAuthSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryLastFetchedStatus"):
+		return &applyconfigurationsourcev1alpha1.HelmRegistryLastFetchedStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistrySpec"):
 		return &applyconfigurationsourcev1alpha1.HelmRegistrySpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryStatus"):
+		return &applyconfigurationsourcev1alpha1.HelmRegistryStatusApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryWebhookFilterSpec"):
+		return &applyconfigurationsourcev1alpha1.HelmRegistryWebhookFilterSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryWebhookSpec"):
+		return &applyconfigurationsourcev1alpha1.HelmRegistryWebhookSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("LastRejectionStatus"):
+		return &applyconfigurationsourcev1alpha1.LastRejectionStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistry"):
 		return &applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("WebhookStatus"):
+		return &applyconfigurationsourcev1alpha1.WebhookStatusApplyConfiguration{}
 
 	}
 	return nil

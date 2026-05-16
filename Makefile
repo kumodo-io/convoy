@@ -4,7 +4,7 @@ BOILERPLATE := hack/boilerplate.go.txt
 
 # External apply configurations: appended to the built-in defaults (meta/v1).
 # applyconfiguration-gen errors silently on referenced external types it doesn't know about.
-EXTERNAL_APPLYCONFIGS := k8s.io/apimachinery/pkg/apis/meta/v1.Duration:k8s.io/client-go/applyconfigurations/meta/v1,k8s.io/api/core/v1.ConfigMapKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.EnvVar:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretReference:k8s.io/client-go/applyconfigurations/core/v1
+EXTERNAL_APPLYCONFIGS := k8s.io/api/core/v1.ConfigMapKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.EnvVar:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretReference:k8s.io/client-go/applyconfigurations/core/v1
 
 CODE_GEN_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/code-generator 2>/dev/null)
 KUBE_OPENAPI_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/kube-openapi 2>/dev/null)

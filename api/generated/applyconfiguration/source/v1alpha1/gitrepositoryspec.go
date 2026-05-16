@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GitRepositorySpecApplyConfiguration represents a declarative configuration of the GitRepositorySpec type for use
@@ -34,7 +34,7 @@ type GitRepositorySpecApplyConfiguration struct {
 	// Auth is the authentication method used to access the Git repository.
 	Auth *GitRepositoryAuthSpecApplyConfiguration `json:"auth,omitempty"`
 	// Interval is the poll interval for ref resolution and content fetching.
-	Interval *v1.DurationApplyConfiguration `json:"interval,omitempty"`
+	Interval *v1.Duration `json:"interval,omitempty"`
 	// IncludePaths is a list of paths to include in the Git repository.
 	IncludePaths []string `json:"includePaths,omitempty"`
 	// IgnorePaths is a list of paths to ignore in the Git repository.
@@ -74,8 +74,8 @@ func (b *GitRepositorySpecApplyConfiguration) WithAuth(value *GitRepositoryAuthS
 // WithInterval sets the Interval field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Interval field is set to the value of the last call.
-func (b *GitRepositorySpecApplyConfiguration) WithInterval(value *v1.DurationApplyConfiguration) *GitRepositorySpecApplyConfiguration {
-	b.Interval = value
+func (b *GitRepositorySpecApplyConfiguration) WithInterval(value v1.Duration) *GitRepositorySpecApplyConfiguration {
+	b.Interval = &value
 	return b
 }
 

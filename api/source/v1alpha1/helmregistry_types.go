@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
@@ -33,8 +34,61 @@ type HelmRegistryAuthSpec struct {
 	OIDC *authv1.OIDAuthSpec `json:"oidc,omitempty"`
 }
 
+// HelmRegistryWebhookSpec defines the desired state of HelmRegistryWebhook.
+type HelmRegistryWebhookSpec struct {
+	// Name is the name of the webhook.
+	Name string `json:"name"`
+
+	// Provider is the name of the webhook provider.
+	Provider string `json:"provider"`
+
+	// SecretRef is the name and the key of the Secret containing the webhook secret.
+	SecretRef corev1.SecretKeySelector `json:"secretRef"`
+
+	// Events is the list of events that trigger the webhook.
+	// +listType=atomic
+	Events []string `json:"events"`
+
+	// Filters is the list of charts that trigger the webhook.
+	Filters *HelmRegistryWebhookFilterSpec `json:"filters,omitempty"`
+}
+
+// HelmRegistryWebhookFilterSpec defines the list of charts that trigger the webhook.
+type HelmRegistryWebhookFilterSpec struct {
+	// Charts is the list of charts that trigger the webhook.
+	// +listType=atomic
+	Charts []string `json:"charts"`
+}
+
 // HelmRegistryStatus reflects the observed state of HelmRegistry
-type HelmRegistryStatus struct{}
+type HelmRegistryStatus struct {
+	// ObservedGeneration is the last generation that was observed by the controller.
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// LastFetched is the last time the Helm registry was fetched.
+	LastFetched HelmRegistryLastFetchedStatus `json:"lastFetched,omitempty"`
+
+	// ReleaseCount is the number of Release referencing the HelmRegistry.
+	ReleaseCount int64 `json:"releaseCount,omitempty"`
+
+	// Webhooks is the list of statuses of webhooks that are configured for the HelmRegistry.
+	// +listType=map
+	// +listMapKey=name
+	Webhooks []WebhookStatus `json:"webhooks,omitempty"`
+
+	// Conditions is the list of conditions related to the HelmRegistry.
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+type HelmRegistryLastFetchedStatus struct {
+	// FetchedAt is the time the Helm registry was fetched.
+	FetchedAt metav1.Time `json:"fetchedAt,omitempty"`
+
+	// ChartCount is the number of charts in the Helm registry.
+	ChartCount int64 `json:"chartCount,omitempty"`
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -45,8 +99,11 @@ type HelmRegistry struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HelmRegistrySpec   `json:"spec,omitempty"`
-	Status HelmRegistryStatus `json:"status,omitempty"`
+	Spec HelmRegistrySpec `json:"spec,omitempty"`
+	// +listType=map
+	// +listMapKey=name
+	Webhook []HelmRegistryWebhookSpec `json:"webhook,omitempty"`
+	Status  HelmRegistryStatus        `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -1,9 +1,10 @@
 package core
 
 import (
-	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
 type ClusterConnectionMode string

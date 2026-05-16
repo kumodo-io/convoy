@@ -1,9 +1,10 @@
 package v1alpha1
 
 import (
-	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
 // GitRepositorySpec defines the desired state of the GitRepository.
@@ -109,7 +110,7 @@ type GitRepositoryStatus struct {
 	// Webhooks is the list of statuses of webhooks that are configured for the GitRepository.
 	// +listType=map
 	// +listMapKey=name
-	Webhooks []GitRepositoryWebhookStatus `json:"webhooks,omitempty"`
+	Webhooks []WebhookStatus `json:"webhooks,omitempty"`
 
 	// Conditions is the list of conditions related to the GitRepository.
 	// +listType=map
@@ -130,48 +131,6 @@ type GitRepositoryLastFetchedStatus struct {
 
 	// ResolvedRef is the resolved reference of the Git repository.
 	ResolvedRef string `json:"resolvedRef,omitempty"`
-}
-
-// GitRepositoryWebhookStatus reflects the status of a webhook.
-type GitRepositoryWebhookStatus struct {
-	// Name is the name of the webhook.
-	Name string `json:"name"`
-
-	// URL is the URL of the webhook.
-	URL string `json:"url"`
-
-	// LastReceived is the last time the webhook was received.
-	LastReceived *metav1.Time `json:"lastReceived,omitempty"`
-
-	// LastTriggered is the last time the webhook was triggered.
-	LastTriggered *metav1.Time `json:"lastTriggered,omitempty"`
-
-	// ReceivedCount is the number of times the webhook was received.
-	ReceivedCount int64 `json:"receivedCount,omitempty"`
-
-	// TriggersCount is the number of times the webhook was triggered.
-	TriggersCount int64 `json:"triggersCount,omitempty"`
-
-	// RejectedCount is the number of times the webhook was rejected.
-	RejectedCount int64 `json:"rejectedCount,omitempty"`
-
-	// FilteredCount is the number of times the webhook was filtered.
-	FilteredCount int64 `json:"filteredCount,omitempty"`
-
-	// LastRejection is the last time the webhook was rejected.
-	LastRejection *GitRepositoryWebhookRejectionStatus `json:"lastRejection,omitempty"`
-}
-
-// GitRepositoryWebhookRejectionStatus reflects the last time the webhook was rejected.
-type GitRepositoryWebhookRejectionStatus struct {
-	// RejectedAt is the time the webhook was rejected.
-	RejectedAt *metav1.Time `json:"rejectedAt,omitempty"`
-
-	// Reason is the reason the webhook was rejected.
-	Reason string `json:"reason,omitempty"`
-
-	// Message is the message of the webhook rejection.
-	Message string `json:"message,omitempty"`
 }
 
 // +genclient

@@ -34,7 +34,7 @@ type GitRepositoryStatusApplyConfiguration struct {
 	// ReleaseCount is the number of Release referencing the GitRepository.
 	ReleaseCount *int64 `json:"releaseCount,omitempty"`
 	// Webhooks is the list of statuses of webhooks that are configured for the GitRepository.
-	Webhooks []GitRepositoryWebhookStatusApplyConfiguration `json:"webhooks,omitempty"`
+	Webhooks []WebhookStatusApplyConfiguration `json:"webhooks,omitempty"`
 	// Conditions is the list of conditions related to the GitRepository.
 	Conditions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
@@ -72,7 +72,7 @@ func (b *GitRepositoryStatusApplyConfiguration) WithReleaseCount(value int64) *G
 // WithWebhooks adds the given value to the Webhooks field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Webhooks field.
-func (b *GitRepositoryStatusApplyConfiguration) WithWebhooks(values ...*GitRepositoryWebhookStatusApplyConfiguration) *GitRepositoryStatusApplyConfiguration {
+func (b *GitRepositoryStatusApplyConfiguration) WithWebhooks(values ...*WebhookStatusApplyConfiguration) *GitRepositoryStatusApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithWebhooks")

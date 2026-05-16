@@ -118,16 +118,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*GitRepositoryWebhookRejectionStatus)(nil), (*source.GitRepositoryWebhookRejectionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_GitRepositoryWebhookRejectionStatus_To_source_GitRepositoryWebhookRejectionStatus(a.(*GitRepositoryWebhookRejectionStatus), b.(*source.GitRepositoryWebhookRejectionStatus), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryWebhookRejectionStatus)(nil), (*GitRepositoryWebhookRejectionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_source_GitRepositoryWebhookRejectionStatus_To_v1alpha1_GitRepositoryWebhookRejectionStatus(a.(*source.GitRepositoryWebhookRejectionStatus), b.(*GitRepositoryWebhookRejectionStatus), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*GitRepositoryWebhookSpec)(nil), (*source.GitRepositoryWebhookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_GitRepositoryWebhookSpec_To_source_GitRepositoryWebhookSpec(a.(*GitRepositoryWebhookSpec), b.(*source.GitRepositoryWebhookSpec), scope)
 	}); err != nil {
@@ -135,16 +125,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryWebhookSpec)(nil), (*GitRepositoryWebhookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_source_GitRepositoryWebhookSpec_To_v1alpha1_GitRepositoryWebhookSpec(a.(*source.GitRepositoryWebhookSpec), b.(*GitRepositoryWebhookSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*GitRepositoryWebhookStatus)(nil), (*source.GitRepositoryWebhookStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_GitRepositoryWebhookStatus_To_source_GitRepositoryWebhookStatus(a.(*GitRepositoryWebhookStatus), b.(*source.GitRepositoryWebhookStatus), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryWebhookStatus)(nil), (*GitRepositoryWebhookStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_source_GitRepositoryWebhookStatus_To_v1alpha1_GitRepositoryWebhookStatus(a.(*source.GitRepositoryWebhookStatus), b.(*GitRepositoryWebhookStatus), scope)
 	}); err != nil {
 		return err
 	}
@@ -165,6 +145,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*source.HelmRegistryAuthSpec)(nil), (*HelmRegistryAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(a.(*source.HelmRegistryAuthSpec), b.(*HelmRegistryAuthSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*HelmRegistryLastFetchedStatus)(nil), (*source.HelmRegistryLastFetchedStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_HelmRegistryLastFetchedStatus_To_source_HelmRegistryLastFetchedStatus(a.(*HelmRegistryLastFetchedStatus), b.(*source.HelmRegistryLastFetchedStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.HelmRegistryLastFetchedStatus)(nil), (*HelmRegistryLastFetchedStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_HelmRegistryLastFetchedStatus_To_v1alpha1_HelmRegistryLastFetchedStatus(a.(*source.HelmRegistryLastFetchedStatus), b.(*HelmRegistryLastFetchedStatus), scope)
 	}); err != nil {
 		return err
 	}
@@ -195,6 +185,36 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*source.HelmRegistryStatus)(nil), (*HelmRegistryStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus(a.(*source.HelmRegistryStatus), b.(*HelmRegistryStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*HelmRegistryWebhookFilterSpec)(nil), (*source.HelmRegistryWebhookFilterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_HelmRegistryWebhookFilterSpec_To_source_HelmRegistryWebhookFilterSpec(a.(*HelmRegistryWebhookFilterSpec), b.(*source.HelmRegistryWebhookFilterSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.HelmRegistryWebhookFilterSpec)(nil), (*HelmRegistryWebhookFilterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_HelmRegistryWebhookFilterSpec_To_v1alpha1_HelmRegistryWebhookFilterSpec(a.(*source.HelmRegistryWebhookFilterSpec), b.(*HelmRegistryWebhookFilterSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*HelmRegistryWebhookSpec)(nil), (*source.HelmRegistryWebhookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_HelmRegistryWebhookSpec_To_source_HelmRegistryWebhookSpec(a.(*HelmRegistryWebhookSpec), b.(*source.HelmRegistryWebhookSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.HelmRegistryWebhookSpec)(nil), (*HelmRegistryWebhookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_HelmRegistryWebhookSpec_To_v1alpha1_HelmRegistryWebhookSpec(a.(*source.HelmRegistryWebhookSpec), b.(*HelmRegistryWebhookSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*LastRejectionStatus)(nil), (*source.LastRejectionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_LastRejectionStatus_To_source_LastRejectionStatus(a.(*LastRejectionStatus), b.(*source.LastRejectionStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.LastRejectionStatus)(nil), (*LastRejectionStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_LastRejectionStatus_To_v1alpha1_LastRejectionStatus(a.(*source.LastRejectionStatus), b.(*LastRejectionStatus), scope)
 	}); err != nil {
 		return err
 	}
@@ -235,6 +255,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*source.OCIRegistryStatus)(nil), (*OCIRegistryStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(a.(*source.OCIRegistryStatus), b.(*OCIRegistryStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*WebhookStatus)(nil), (*source.WebhookStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_WebhookStatus_To_source_WebhookStatus(a.(*WebhookStatus), b.(*source.WebhookStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.WebhookStatus)(nil), (*WebhookStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_WebhookStatus_To_v1alpha1_WebhookStatus(a.(*source.WebhookStatus), b.(*WebhookStatus), scope)
 	}); err != nil {
 		return err
 	}
@@ -423,7 +453,7 @@ func autoConvert_v1alpha1_GitRepositoryStatus_To_source_GitRepositoryStatus(in *
 		return err
 	}
 	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]source.GitRepositoryWebhookStatus)(unsafe.Pointer(&in.Webhooks))
+	out.Webhooks = *(*[]source.WebhookStatus)(unsafe.Pointer(&in.Webhooks))
 	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
@@ -439,7 +469,7 @@ func autoConvert_source_GitRepositoryStatus_To_v1alpha1_GitRepositoryStatus(in *
 		return err
 	}
 	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]GitRepositoryWebhookStatus)(unsafe.Pointer(&in.Webhooks))
+	out.Webhooks = *(*[]WebhookStatus)(unsafe.Pointer(&in.Webhooks))
 	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
@@ -471,30 +501,6 @@ func Convert_source_GitRepositoryWebhookFilterSpec_To_v1alpha1_GitRepositoryWebh
 	return autoConvert_source_GitRepositoryWebhookFilterSpec_To_v1alpha1_GitRepositoryWebhookFilterSpec(in, out, s)
 }
 
-func autoConvert_v1alpha1_GitRepositoryWebhookRejectionStatus_To_source_GitRepositoryWebhookRejectionStatus(in *GitRepositoryWebhookRejectionStatus, out *source.GitRepositoryWebhookRejectionStatus, s conversion.Scope) error {
-	out.RejectedAt = (*v1.Time)(unsafe.Pointer(in.RejectedAt))
-	out.Reason = in.Reason
-	out.Message = in.Message
-	return nil
-}
-
-// Convert_v1alpha1_GitRepositoryWebhookRejectionStatus_To_source_GitRepositoryWebhookRejectionStatus is an autogenerated conversion function.
-func Convert_v1alpha1_GitRepositoryWebhookRejectionStatus_To_source_GitRepositoryWebhookRejectionStatus(in *GitRepositoryWebhookRejectionStatus, out *source.GitRepositoryWebhookRejectionStatus, s conversion.Scope) error {
-	return autoConvert_v1alpha1_GitRepositoryWebhookRejectionStatus_To_source_GitRepositoryWebhookRejectionStatus(in, out, s)
-}
-
-func autoConvert_source_GitRepositoryWebhookRejectionStatus_To_v1alpha1_GitRepositoryWebhookRejectionStatus(in *source.GitRepositoryWebhookRejectionStatus, out *GitRepositoryWebhookRejectionStatus, s conversion.Scope) error {
-	out.RejectedAt = (*v1.Time)(unsafe.Pointer(in.RejectedAt))
-	out.Reason = in.Reason
-	out.Message = in.Message
-	return nil
-}
-
-// Convert_source_GitRepositoryWebhookRejectionStatus_To_v1alpha1_GitRepositoryWebhookRejectionStatus is an autogenerated conversion function.
-func Convert_source_GitRepositoryWebhookRejectionStatus_To_v1alpha1_GitRepositoryWebhookRejectionStatus(in *source.GitRepositoryWebhookRejectionStatus, out *GitRepositoryWebhookRejectionStatus, s conversion.Scope) error {
-	return autoConvert_source_GitRepositoryWebhookRejectionStatus_To_v1alpha1_GitRepositoryWebhookRejectionStatus(in, out, s)
-}
-
 func autoConvert_v1alpha1_GitRepositoryWebhookSpec_To_source_GitRepositoryWebhookSpec(in *GitRepositoryWebhookSpec, out *source.GitRepositoryWebhookSpec, s conversion.Scope) error {
 	out.Name = in.Name
 	out.Provider = in.Provider
@@ -523,47 +529,12 @@ func Convert_source_GitRepositoryWebhookSpec_To_v1alpha1_GitRepositoryWebhookSpe
 	return autoConvert_source_GitRepositoryWebhookSpec_To_v1alpha1_GitRepositoryWebhookSpec(in, out, s)
 }
 
-func autoConvert_v1alpha1_GitRepositoryWebhookStatus_To_source_GitRepositoryWebhookStatus(in *GitRepositoryWebhookStatus, out *source.GitRepositoryWebhookStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.URL = in.URL
-	out.LastReceived = (*v1.Time)(unsafe.Pointer(in.LastReceived))
-	out.LastTriggered = (*v1.Time)(unsafe.Pointer(in.LastTriggered))
-	out.ReceivedCount = in.ReceivedCount
-	out.TriggersCount = in.TriggersCount
-	out.RejectedCount = in.RejectedCount
-	out.FilteredCount = in.FilteredCount
-	out.LastRejection = (*source.GitRepositoryWebhookRejectionStatus)(unsafe.Pointer(in.LastRejection))
-	return nil
-}
-
-// Convert_v1alpha1_GitRepositoryWebhookStatus_To_source_GitRepositoryWebhookStatus is an autogenerated conversion function.
-func Convert_v1alpha1_GitRepositoryWebhookStatus_To_source_GitRepositoryWebhookStatus(in *GitRepositoryWebhookStatus, out *source.GitRepositoryWebhookStatus, s conversion.Scope) error {
-	return autoConvert_v1alpha1_GitRepositoryWebhookStatus_To_source_GitRepositoryWebhookStatus(in, out, s)
-}
-
-func autoConvert_source_GitRepositoryWebhookStatus_To_v1alpha1_GitRepositoryWebhookStatus(in *source.GitRepositoryWebhookStatus, out *GitRepositoryWebhookStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.URL = in.URL
-	out.LastReceived = (*v1.Time)(unsafe.Pointer(in.LastReceived))
-	out.LastTriggered = (*v1.Time)(unsafe.Pointer(in.LastTriggered))
-	out.ReceivedCount = in.ReceivedCount
-	out.TriggersCount = in.TriggersCount
-	out.RejectedCount = in.RejectedCount
-	out.FilteredCount = in.FilteredCount
-	out.LastRejection = (*GitRepositoryWebhookRejectionStatus)(unsafe.Pointer(in.LastRejection))
-	return nil
-}
-
-// Convert_source_GitRepositoryWebhookStatus_To_v1alpha1_GitRepositoryWebhookStatus is an autogenerated conversion function.
-func Convert_source_GitRepositoryWebhookStatus_To_v1alpha1_GitRepositoryWebhookStatus(in *source.GitRepositoryWebhookStatus, out *GitRepositoryWebhookStatus, s conversion.Scope) error {
-	return autoConvert_source_GitRepositoryWebhookStatus_To_v1alpha1_GitRepositoryWebhookStatus(in, out, s)
-}
-
 func autoConvert_v1alpha1_HelmRegistry_To_source_HelmRegistry(in *HelmRegistry, out *source.HelmRegistry, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	if err := Convert_v1alpha1_HelmRegistrySpec_To_source_HelmRegistrySpec(&in.Spec, &out.Spec, s); err != nil {
 		return err
 	}
+	out.Webhook = *(*[]source.HelmRegistryWebhookSpec)(unsafe.Pointer(&in.Webhook))
 	if err := Convert_v1alpha1_HelmRegistryStatus_To_source_HelmRegistryStatus(&in.Status, &out.Status, s); err != nil {
 		return err
 	}
@@ -580,6 +551,7 @@ func autoConvert_source_HelmRegistry_To_v1alpha1_HelmRegistry(in *source.HelmReg
 	if err := Convert_source_HelmRegistrySpec_To_v1alpha1_HelmRegistrySpec(&in.Spec, &out.Spec, s); err != nil {
 		return err
 	}
+	out.Webhook = *(*[]HelmRegistryWebhookSpec)(unsafe.Pointer(&in.Webhook))
 	if err := Convert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus(&in.Status, &out.Status, s); err != nil {
 		return err
 	}
@@ -615,6 +587,28 @@ func autoConvert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in
 // Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec is an autogenerated conversion function.
 func Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in *source.HelmRegistryAuthSpec, out *HelmRegistryAuthSpec, s conversion.Scope) error {
 	return autoConvert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_HelmRegistryLastFetchedStatus_To_source_HelmRegistryLastFetchedStatus(in *HelmRegistryLastFetchedStatus, out *source.HelmRegistryLastFetchedStatus, s conversion.Scope) error {
+	out.FetchedAt = in.FetchedAt
+	out.ChartCount = in.ChartCount
+	return nil
+}
+
+// Convert_v1alpha1_HelmRegistryLastFetchedStatus_To_source_HelmRegistryLastFetchedStatus is an autogenerated conversion function.
+func Convert_v1alpha1_HelmRegistryLastFetchedStatus_To_source_HelmRegistryLastFetchedStatus(in *HelmRegistryLastFetchedStatus, out *source.HelmRegistryLastFetchedStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_HelmRegistryLastFetchedStatus_To_source_HelmRegistryLastFetchedStatus(in, out, s)
+}
+
+func autoConvert_source_HelmRegistryLastFetchedStatus_To_v1alpha1_HelmRegistryLastFetchedStatus(in *source.HelmRegistryLastFetchedStatus, out *HelmRegistryLastFetchedStatus, s conversion.Scope) error {
+	out.FetchedAt = in.FetchedAt
+	out.ChartCount = in.ChartCount
+	return nil
+}
+
+// Convert_source_HelmRegistryLastFetchedStatus_To_v1alpha1_HelmRegistryLastFetchedStatus is an autogenerated conversion function.
+func Convert_source_HelmRegistryLastFetchedStatus_To_v1alpha1_HelmRegistryLastFetchedStatus(in *source.HelmRegistryLastFetchedStatus, out *HelmRegistryLastFetchedStatus, s conversion.Scope) error {
+	return autoConvert_source_HelmRegistryLastFetchedStatus_To_v1alpha1_HelmRegistryLastFetchedStatus(in, out, s)
 }
 
 func autoConvert_v1alpha1_HelmRegistryList_To_source_HelmRegistryList(in *HelmRegistryList, out *source.HelmRegistryList, s conversion.Scope) error {
@@ -668,6 +662,13 @@ func Convert_source_HelmRegistrySpec_To_v1alpha1_HelmRegistrySpec(in *source.Hel
 }
 
 func autoConvert_v1alpha1_HelmRegistryStatus_To_source_HelmRegistryStatus(in *HelmRegistryStatus, out *source.HelmRegistryStatus, s conversion.Scope) error {
+	out.ObservedGeneration = in.ObservedGeneration
+	if err := Convert_v1alpha1_HelmRegistryLastFetchedStatus_To_source_HelmRegistryLastFetchedStatus(&in.LastFetched, &out.LastFetched, s); err != nil {
+		return err
+	}
+	out.ReleaseCount = in.ReleaseCount
+	out.Webhooks = *(*[]source.WebhookStatus)(unsafe.Pointer(&in.Webhooks))
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
 
@@ -677,12 +678,91 @@ func Convert_v1alpha1_HelmRegistryStatus_To_source_HelmRegistryStatus(in *HelmRe
 }
 
 func autoConvert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus(in *source.HelmRegistryStatus, out *HelmRegistryStatus, s conversion.Scope) error {
+	out.ObservedGeneration = in.ObservedGeneration
+	if err := Convert_source_HelmRegistryLastFetchedStatus_To_v1alpha1_HelmRegistryLastFetchedStatus(&in.LastFetched, &out.LastFetched, s); err != nil {
+		return err
+	}
+	out.ReleaseCount = in.ReleaseCount
+	out.Webhooks = *(*[]WebhookStatus)(unsafe.Pointer(&in.Webhooks))
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
 
 // Convert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus is an autogenerated conversion function.
 func Convert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus(in *source.HelmRegistryStatus, out *HelmRegistryStatus, s conversion.Scope) error {
 	return autoConvert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_HelmRegistryWebhookFilterSpec_To_source_HelmRegistryWebhookFilterSpec(in *HelmRegistryWebhookFilterSpec, out *source.HelmRegistryWebhookFilterSpec, s conversion.Scope) error {
+	out.Charts = *(*[]string)(unsafe.Pointer(&in.Charts))
+	return nil
+}
+
+// Convert_v1alpha1_HelmRegistryWebhookFilterSpec_To_source_HelmRegistryWebhookFilterSpec is an autogenerated conversion function.
+func Convert_v1alpha1_HelmRegistryWebhookFilterSpec_To_source_HelmRegistryWebhookFilterSpec(in *HelmRegistryWebhookFilterSpec, out *source.HelmRegistryWebhookFilterSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_HelmRegistryWebhookFilterSpec_To_source_HelmRegistryWebhookFilterSpec(in, out, s)
+}
+
+func autoConvert_source_HelmRegistryWebhookFilterSpec_To_v1alpha1_HelmRegistryWebhookFilterSpec(in *source.HelmRegistryWebhookFilterSpec, out *HelmRegistryWebhookFilterSpec, s conversion.Scope) error {
+	out.Charts = *(*[]string)(unsafe.Pointer(&in.Charts))
+	return nil
+}
+
+// Convert_source_HelmRegistryWebhookFilterSpec_To_v1alpha1_HelmRegistryWebhookFilterSpec is an autogenerated conversion function.
+func Convert_source_HelmRegistryWebhookFilterSpec_To_v1alpha1_HelmRegistryWebhookFilterSpec(in *source.HelmRegistryWebhookFilterSpec, out *HelmRegistryWebhookFilterSpec, s conversion.Scope) error {
+	return autoConvert_source_HelmRegistryWebhookFilterSpec_To_v1alpha1_HelmRegistryWebhookFilterSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_HelmRegistryWebhookSpec_To_source_HelmRegistryWebhookSpec(in *HelmRegistryWebhookSpec, out *source.HelmRegistryWebhookSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Provider = in.Provider
+	out.SecretRef = in.SecretRef
+	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
+	out.Filters = (*source.HelmRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	return nil
+}
+
+// Convert_v1alpha1_HelmRegistryWebhookSpec_To_source_HelmRegistryWebhookSpec is an autogenerated conversion function.
+func Convert_v1alpha1_HelmRegistryWebhookSpec_To_source_HelmRegistryWebhookSpec(in *HelmRegistryWebhookSpec, out *source.HelmRegistryWebhookSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_HelmRegistryWebhookSpec_To_source_HelmRegistryWebhookSpec(in, out, s)
+}
+
+func autoConvert_source_HelmRegistryWebhookSpec_To_v1alpha1_HelmRegistryWebhookSpec(in *source.HelmRegistryWebhookSpec, out *HelmRegistryWebhookSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Provider = in.Provider
+	out.SecretRef = in.SecretRef
+	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
+	out.Filters = (*HelmRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	return nil
+}
+
+// Convert_source_HelmRegistryWebhookSpec_To_v1alpha1_HelmRegistryWebhookSpec is an autogenerated conversion function.
+func Convert_source_HelmRegistryWebhookSpec_To_v1alpha1_HelmRegistryWebhookSpec(in *source.HelmRegistryWebhookSpec, out *HelmRegistryWebhookSpec, s conversion.Scope) error {
+	return autoConvert_source_HelmRegistryWebhookSpec_To_v1alpha1_HelmRegistryWebhookSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_LastRejectionStatus_To_source_LastRejectionStatus(in *LastRejectionStatus, out *source.LastRejectionStatus, s conversion.Scope) error {
+	out.RejectedAt = (*v1.Time)(unsafe.Pointer(in.RejectedAt))
+	out.Reason = in.Reason
+	out.Message = in.Message
+	return nil
+}
+
+// Convert_v1alpha1_LastRejectionStatus_To_source_LastRejectionStatus is an autogenerated conversion function.
+func Convert_v1alpha1_LastRejectionStatus_To_source_LastRejectionStatus(in *LastRejectionStatus, out *source.LastRejectionStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_LastRejectionStatus_To_source_LastRejectionStatus(in, out, s)
+}
+
+func autoConvert_source_LastRejectionStatus_To_v1alpha1_LastRejectionStatus(in *source.LastRejectionStatus, out *LastRejectionStatus, s conversion.Scope) error {
+	out.RejectedAt = (*v1.Time)(unsafe.Pointer(in.RejectedAt))
+	out.Reason = in.Reason
+	out.Message = in.Message
+	return nil
+}
+
+// Convert_source_LastRejectionStatus_To_v1alpha1_LastRejectionStatus is an autogenerated conversion function.
+func Convert_source_LastRejectionStatus_To_v1alpha1_LastRejectionStatus(in *source.LastRejectionStatus, out *LastRejectionStatus, s conversion.Scope) error {
+	return autoConvert_source_LastRejectionStatus_To_v1alpha1_LastRejectionStatus(in, out, s)
 }
 
 func autoConvert_v1alpha1_OCIRegistry_To_source_OCIRegistry(in *OCIRegistry, out *source.OCIRegistry, s conversion.Scope) error {
@@ -773,4 +853,40 @@ func autoConvert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in *sour
 // Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus is an autogenerated conversion function.
 func Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in *source.OCIRegistryStatus, out *OCIRegistryStatus, s conversion.Scope) error {
 	return autoConvert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_WebhookStatus_To_source_WebhookStatus(in *WebhookStatus, out *source.WebhookStatus, s conversion.Scope) error {
+	out.Name = in.Name
+	out.URL = in.URL
+	out.LastReceived = (*v1.Time)(unsafe.Pointer(in.LastReceived))
+	out.LastTriggered = (*v1.Time)(unsafe.Pointer(in.LastTriggered))
+	out.ReceivedCount = in.ReceivedCount
+	out.TriggersCount = in.TriggersCount
+	out.RejectedCount = in.RejectedCount
+	out.FilteredCount = in.FilteredCount
+	out.LastRejection = (*source.LastRejectionStatus)(unsafe.Pointer(in.LastRejection))
+	return nil
+}
+
+// Convert_v1alpha1_WebhookStatus_To_source_WebhookStatus is an autogenerated conversion function.
+func Convert_v1alpha1_WebhookStatus_To_source_WebhookStatus(in *WebhookStatus, out *source.WebhookStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_WebhookStatus_To_source_WebhookStatus(in, out, s)
+}
+
+func autoConvert_source_WebhookStatus_To_v1alpha1_WebhookStatus(in *source.WebhookStatus, out *WebhookStatus, s conversion.Scope) error {
+	out.Name = in.Name
+	out.URL = in.URL
+	out.LastReceived = (*v1.Time)(unsafe.Pointer(in.LastReceived))
+	out.LastTriggered = (*v1.Time)(unsafe.Pointer(in.LastTriggered))
+	out.ReceivedCount = in.ReceivedCount
+	out.TriggersCount = in.TriggersCount
+	out.RejectedCount = in.RejectedCount
+	out.FilteredCount = in.FilteredCount
+	out.LastRejection = (*LastRejectionStatus)(unsafe.Pointer(in.LastRejection))
+	return nil
+}
+
+// Convert_source_WebhookStatus_To_v1alpha1_WebhookStatus is an autogenerated conversion function.
+func Convert_source_WebhookStatus_To_v1alpha1_WebhookStatus(in *source.WebhookStatus, out *WebhookStatus, s conversion.Scope) error {
+	return autoConvert_source_WebhookStatus_To_v1alpha1_WebhookStatus(in, out, s)
 }

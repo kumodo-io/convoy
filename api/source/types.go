@@ -1,10 +1,31 @@
 package source
 
 import (
-	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
+
+// ---------- Common types ----------
+
+type WebhookStatus struct {
+	Name          string
+	URL           string
+	LastReceived  *metav1.Time
+	LastTriggered *metav1.Time
+	ReceivedCount int64
+	TriggersCount int64
+	RejectedCount int64
+	FilteredCount int64
+	LastRejection *LastRejectionStatus
+}
+
+type LastRejectionStatus struct {
+	RejectedAt *metav1.Time
+	Reason     string
+	Message    string
+}
 
 // ---------- GitRepository types ----------
 
@@ -50,7 +71,7 @@ type GitRepositoryStatus struct {
 	ObservedGeneration int64
 	LastFetched        GitRepositoryLastFetchedStatus
 	ReleaseCount       int64
-	Webhooks           []GitRepositoryWebhookStatus
+	Webhooks           []WebhookStatus
 	Conditions         []metav1.Condition
 }
 
@@ -59,24 +80,6 @@ type GitRepositoryLastFetchedStatus struct {
 	TreeHash    string
 	FetchedAt   metav1.Time
 	ResolvedRef string
-}
-
-type GitRepositoryWebhookStatus struct {
-	Name          string
-	URL           string
-	LastReceived  *metav1.Time
-	LastTriggered *metav1.Time
-	ReceivedCount int64
-	TriggersCount int64
-	RejectedCount int64
-	FilteredCount int64
-	LastRejection *GitRepositoryWebhookRejectionStatus
-}
-
-type GitRepositoryWebhookRejectionStatus struct {
-	RejectedAt *metav1.Time
-	Reason     string
-	Message    string
 }
 
 // +genclient
@@ -115,7 +118,30 @@ type HelmRegistryAuthSpec struct {
 	OIDC  *authv1.OIDAuthSpec
 }
 
-type HelmRegistryStatus struct{}
+type HelmRegistryWebhookSpec struct {
+	Name      string
+	Provider  string
+	SecretRef corev1.SecretKeySelector
+	Events    []string
+	Filters   *HelmRegistryWebhookFilterSpec
+}
+
+type HelmRegistryWebhookFilterSpec struct {
+	Charts []string
+}
+
+type HelmRegistryStatus struct {
+	ObservedGeneration int64
+	LastFetched        HelmRegistryLastFetchedStatus
+	ReleaseCount       int64
+	Webhooks           []WebhookStatus
+	Conditions         []metav1.Condition
+}
+
+type HelmRegistryLastFetchedStatus struct {
+	FetchedAt  metav1.Time
+	ChartCount int64
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -124,8 +150,9 @@ type HelmRegistry struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	Spec   HelmRegistrySpec
-	Status HelmRegistryStatus
+	Spec    HelmRegistrySpec
+	Webhook []HelmRegistryWebhookSpec
+	Status  HelmRegistryStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

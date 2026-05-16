@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ClusterConnectionParametersSpecApplyConfiguration represents a declarative configuration of the ClusterConnectionParametersSpec type for use
@@ -32,7 +32,7 @@ type ClusterConnectionParametersSpecApplyConfiguration struct {
 	// Burst is the maximum number of burst queries per second (QPS) to the Kubernetes API server.
 	Burst *int `json:"burst,omitempty"`
 	// Timeout is the timeout for the Kubernetes API server connection.
-	Timeout *v1.DurationApplyConfiguration `json:"timeout,omitempty"`
+	Timeout *v1.Duration `json:"timeout,omitempty"`
 }
 
 // ClusterConnectionParametersSpecApplyConfiguration constructs a declarative configuration of the ClusterConnectionParametersSpec type for use with
@@ -60,7 +60,7 @@ func (b *ClusterConnectionParametersSpecApplyConfiguration) WithBurst(value int)
 // WithTimeout sets the Timeout field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Timeout field is set to the value of the last call.
-func (b *ClusterConnectionParametersSpecApplyConfiguration) WithTimeout(value *v1.DurationApplyConfiguration) *ClusterConnectionParametersSpecApplyConfiguration {
-	b.Timeout = value
+func (b *ClusterConnectionParametersSpecApplyConfiguration) WithTimeout(value v1.Duration) *ClusterConnectionParametersSpecApplyConfiguration {
+	b.Timeout = &value
 	return b
 }

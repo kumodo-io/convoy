@@ -4,6 +4,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
 const (
@@ -20,7 +22,7 @@ var (
 )
 
 func init() {
-	localSchemeBuilder.Register(addKnownTypes)
+	localSchemeBuilder.Register(addKnownTypes, authv1.AddToScheme)
 }
 
 func addKnownTypes(scheme *runtime.Scheme) error {
