@@ -24,9 +24,9 @@ package v1alpha1
 import (
 	unsafe "unsafe"
 
+	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	core "github.com/kumodo-io/convoy/api/core"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -38,56 +38,6 @@ func init() {
 // RegisterConversions adds conversion functions to the given scheme.
 // Public to allow building arbitrary schemes.
 func RegisterConversions(s *runtime.Scheme) error {
-	if err := s.AddGeneratedConversionFunc((*AuthModeClientCertSpec)(nil), (*core.AuthModeClientCertSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_AuthModeClientCertSpec_To_core_AuthModeClientCertSpec(a.(*AuthModeClientCertSpec), b.(*core.AuthModeClientCertSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.AuthModeClientCertSpec)(nil), (*AuthModeClientCertSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_AuthModeClientCertSpec_To_v1alpha1_AuthModeClientCertSpec(a.(*core.AuthModeClientCertSpec), b.(*AuthModeClientCertSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*AuthModeExecPluginSpec)(nil), (*core.AuthModeExecPluginSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_AuthModeExecPluginSpec_To_core_AuthModeExecPluginSpec(a.(*AuthModeExecPluginSpec), b.(*core.AuthModeExecPluginSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.AuthModeExecPluginSpec)(nil), (*AuthModeExecPluginSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_AuthModeExecPluginSpec_To_v1alpha1_AuthModeExecPluginSpec(a.(*core.AuthModeExecPluginSpec), b.(*AuthModeExecPluginSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*AuthModeKubeconfigSpec)(nil), (*core.AuthModeKubeconfigSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_AuthModeKubeconfigSpec_To_core_AuthModeKubeconfigSpec(a.(*AuthModeKubeconfigSpec), b.(*core.AuthModeKubeconfigSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.AuthModeKubeconfigSpec)(nil), (*AuthModeKubeconfigSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_AuthModeKubeconfigSpec_To_v1alpha1_AuthModeKubeconfigSpec(a.(*core.AuthModeKubeconfigSpec), b.(*AuthModeKubeconfigSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*AuthModeOIDCClientCredentialsSpec)(nil), (*core.AuthModeOIDCClientCredentialsSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_AuthModeOIDCClientCredentialsSpec_To_core_AuthModeOIDCClientCredentialsSpec(a.(*AuthModeOIDCClientCredentialsSpec), b.(*core.AuthModeOIDCClientCredentialsSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.AuthModeOIDCClientCredentialsSpec)(nil), (*AuthModeOIDCClientCredentialsSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_AuthModeOIDCClientCredentialsSpec_To_v1alpha1_AuthModeOIDCClientCredentialsSpec(a.(*core.AuthModeOIDCClientCredentialsSpec), b.(*AuthModeOIDCClientCredentialsSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*AuthModeTokenSpec)(nil), (*core.AuthModeTokenSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_AuthModeTokenSpec_To_core_AuthModeTokenSpec(a.(*AuthModeTokenSpec), b.(*core.AuthModeTokenSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.AuthModeTokenSpec)(nil), (*AuthModeTokenSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_AuthModeTokenSpec_To_v1alpha1_AuthModeTokenSpec(a.(*core.AuthModeTokenSpec), b.(*AuthModeTokenSpec), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*Cluster)(nil), (*core.Cluster)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_Cluster_To_core_Cluster(a.(*Cluster), b.(*core.Cluster), scope)
 	}); err != nil {
@@ -188,56 +138,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*OIDCClientAuthClientSecretSpec)(nil), (*core.OIDCClientAuthClientSecretSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_OIDCClientAuthClientSecretSpec_To_core_OIDCClientAuthClientSecretSpec(a.(*OIDCClientAuthClientSecretSpec), b.(*core.OIDCClientAuthClientSecretSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.OIDCClientAuthClientSecretSpec)(nil), (*OIDCClientAuthClientSecretSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_OIDCClientAuthClientSecretSpec_To_v1alpha1_OIDCClientAuthClientSecretSpec(a.(*core.OIDCClientAuthClientSecretSpec), b.(*OIDCClientAuthClientSecretSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*OIDCClientAuthPrivateKeyJWTSpec)(nil), (*core.OIDCClientAuthPrivateKeyJWTSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec_To_core_OIDCClientAuthPrivateKeyJWTSpec(a.(*OIDCClientAuthPrivateKeyJWTSpec), b.(*core.OIDCClientAuthPrivateKeyJWTSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.OIDCClientAuthPrivateKeyJWTSpec)(nil), (*OIDCClientAuthPrivateKeyJWTSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_OIDCClientAuthPrivateKeyJWTSpec_To_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(a.(*core.OIDCClientAuthPrivateKeyJWTSpec), b.(*OIDCClientAuthPrivateKeyJWTSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*OIDCClientAuthSpec)(nil), (*core.OIDCClientAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_OIDCClientAuthSpec_To_core_OIDCClientAuthSpec(a.(*OIDCClientAuthSpec), b.(*core.OIDCClientAuthSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.OIDCClientAuthSpec)(nil), (*OIDCClientAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(a.(*core.OIDCClientAuthSpec), b.(*OIDCClientAuthSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*OIDCClientAuthTLSClientAuthSpec)(nil), (*core.OIDCClientAuthTLSClientAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_OIDCClientAuthTLSClientAuthSpec_To_core_OIDCClientAuthTLSClientAuthSpec(a.(*OIDCClientAuthTLSClientAuthSpec), b.(*core.OIDCClientAuthTLSClientAuthSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.OIDCClientAuthTLSClientAuthSpec)(nil), (*OIDCClientAuthTLSClientAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_OIDCClientAuthTLSClientAuthSpec_To_v1alpha1_OIDCClientAuthTLSClientAuthSpec(a.(*core.OIDCClientAuthTLSClientAuthSpec), b.(*OIDCClientAuthTLSClientAuthSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*OIDCTLSSpec)(nil), (*core.OIDCTLSSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_OIDCTLSSpec_To_core_OIDCTLSSpec(a.(*OIDCTLSSpec), b.(*core.OIDCTLSSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.OIDCTLSSpec)(nil), (*OIDCTLSSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_OIDCTLSSpec_To_v1alpha1_OIDCTLSSpec(a.(*core.OIDCTLSSpec), b.(*OIDCTLSSpec), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*Release)(nil), (*core.Release)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_Release_To_core_Release(a.(*Release), b.(*core.Release), scope)
 	}); err != nil {
@@ -299,128 +199,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 		return err
 	}
 	return nil
-}
-
-func autoConvert_v1alpha1_AuthModeClientCertSpec_To_core_AuthModeClientCertSpec(in *AuthModeClientCertSpec, out *core.AuthModeClientCertSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
-	return nil
-}
-
-// Convert_v1alpha1_AuthModeClientCertSpec_To_core_AuthModeClientCertSpec is an autogenerated conversion function.
-func Convert_v1alpha1_AuthModeClientCertSpec_To_core_AuthModeClientCertSpec(in *AuthModeClientCertSpec, out *core.AuthModeClientCertSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_AuthModeClientCertSpec_To_core_AuthModeClientCertSpec(in, out, s)
-}
-
-func autoConvert_core_AuthModeClientCertSpec_To_v1alpha1_AuthModeClientCertSpec(in *core.AuthModeClientCertSpec, out *AuthModeClientCertSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
-	return nil
-}
-
-// Convert_core_AuthModeClientCertSpec_To_v1alpha1_AuthModeClientCertSpec is an autogenerated conversion function.
-func Convert_core_AuthModeClientCertSpec_To_v1alpha1_AuthModeClientCertSpec(in *core.AuthModeClientCertSpec, out *AuthModeClientCertSpec, s conversion.Scope) error {
-	return autoConvert_core_AuthModeClientCertSpec_To_v1alpha1_AuthModeClientCertSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_AuthModeExecPluginSpec_To_core_AuthModeExecPluginSpec(in *AuthModeExecPluginSpec, out *core.AuthModeExecPluginSpec, s conversion.Scope) error {
-	out.Command = in.Command
-	out.Args = *(*[]string)(unsafe.Pointer(&in.Args))
-	out.Env = *(*[]v1.EnvVar)(unsafe.Pointer(&in.Env))
-	out.CredentialsRef = in.CredentialsRef
-	return nil
-}
-
-// Convert_v1alpha1_AuthModeExecPluginSpec_To_core_AuthModeExecPluginSpec is an autogenerated conversion function.
-func Convert_v1alpha1_AuthModeExecPluginSpec_To_core_AuthModeExecPluginSpec(in *AuthModeExecPluginSpec, out *core.AuthModeExecPluginSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_AuthModeExecPluginSpec_To_core_AuthModeExecPluginSpec(in, out, s)
-}
-
-func autoConvert_core_AuthModeExecPluginSpec_To_v1alpha1_AuthModeExecPluginSpec(in *core.AuthModeExecPluginSpec, out *AuthModeExecPluginSpec, s conversion.Scope) error {
-	out.Command = in.Command
-	out.Args = *(*[]string)(unsafe.Pointer(&in.Args))
-	out.Env = *(*[]v1.EnvVar)(unsafe.Pointer(&in.Env))
-	out.CredentialsRef = in.CredentialsRef
-	return nil
-}
-
-// Convert_core_AuthModeExecPluginSpec_To_v1alpha1_AuthModeExecPluginSpec is an autogenerated conversion function.
-func Convert_core_AuthModeExecPluginSpec_To_v1alpha1_AuthModeExecPluginSpec(in *core.AuthModeExecPluginSpec, out *AuthModeExecPluginSpec, s conversion.Scope) error {
-	return autoConvert_core_AuthModeExecPluginSpec_To_v1alpha1_AuthModeExecPluginSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_AuthModeKubeconfigSpec_To_core_AuthModeKubeconfigSpec(in *AuthModeKubeconfigSpec, out *core.AuthModeKubeconfigSpec, s conversion.Scope) error {
-	out.SecretRef = in.SecretRef
-	return nil
-}
-
-// Convert_v1alpha1_AuthModeKubeconfigSpec_To_core_AuthModeKubeconfigSpec is an autogenerated conversion function.
-func Convert_v1alpha1_AuthModeKubeconfigSpec_To_core_AuthModeKubeconfigSpec(in *AuthModeKubeconfigSpec, out *core.AuthModeKubeconfigSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_AuthModeKubeconfigSpec_To_core_AuthModeKubeconfigSpec(in, out, s)
-}
-
-func autoConvert_core_AuthModeKubeconfigSpec_To_v1alpha1_AuthModeKubeconfigSpec(in *core.AuthModeKubeconfigSpec, out *AuthModeKubeconfigSpec, s conversion.Scope) error {
-	out.SecretRef = in.SecretRef
-	return nil
-}
-
-// Convert_core_AuthModeKubeconfigSpec_To_v1alpha1_AuthModeKubeconfigSpec is an autogenerated conversion function.
-func Convert_core_AuthModeKubeconfigSpec_To_v1alpha1_AuthModeKubeconfigSpec(in *core.AuthModeKubeconfigSpec, out *AuthModeKubeconfigSpec, s conversion.Scope) error {
-	return autoConvert_core_AuthModeKubeconfigSpec_To_v1alpha1_AuthModeKubeconfigSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_AuthModeOIDCClientCredentialsSpec_To_core_AuthModeOIDCClientCredentialsSpec(in *AuthModeOIDCClientCredentialsSpec, out *core.AuthModeOIDCClientCredentialsSpec, s conversion.Scope) error {
-	out.IssuerURL = in.IssuerURL
-	out.ClientID = in.ClientID
-	if err := Convert_v1alpha1_OIDCClientAuthSpec_To_core_OIDCClientAuthSpec(&in.ClientAuth, &out.ClientAuth, s); err != nil {
-		return err
-	}
-	out.Scopes = *(*[]string)(unsafe.Pointer(&in.Scopes))
-	out.Audience = in.Audience
-	out.TLS = (*core.OIDCTLSSpec)(unsafe.Pointer(in.TLS))
-	return nil
-}
-
-// Convert_v1alpha1_AuthModeOIDCClientCredentialsSpec_To_core_AuthModeOIDCClientCredentialsSpec is an autogenerated conversion function.
-func Convert_v1alpha1_AuthModeOIDCClientCredentialsSpec_To_core_AuthModeOIDCClientCredentialsSpec(in *AuthModeOIDCClientCredentialsSpec, out *core.AuthModeOIDCClientCredentialsSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_AuthModeOIDCClientCredentialsSpec_To_core_AuthModeOIDCClientCredentialsSpec(in, out, s)
-}
-
-func autoConvert_core_AuthModeOIDCClientCredentialsSpec_To_v1alpha1_AuthModeOIDCClientCredentialsSpec(in *core.AuthModeOIDCClientCredentialsSpec, out *AuthModeOIDCClientCredentialsSpec, s conversion.Scope) error {
-	out.IssuerURL = in.IssuerURL
-	out.ClientID = in.ClientID
-	if err := Convert_core_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(&in.ClientAuth, &out.ClientAuth, s); err != nil {
-		return err
-	}
-	out.Scopes = *(*[]string)(unsafe.Pointer(&in.Scopes))
-	out.Audience = in.Audience
-	out.TLS = (*OIDCTLSSpec)(unsafe.Pointer(in.TLS))
-	return nil
-}
-
-// Convert_core_AuthModeOIDCClientCredentialsSpec_To_v1alpha1_AuthModeOIDCClientCredentialsSpec is an autogenerated conversion function.
-func Convert_core_AuthModeOIDCClientCredentialsSpec_To_v1alpha1_AuthModeOIDCClientCredentialsSpec(in *core.AuthModeOIDCClientCredentialsSpec, out *AuthModeOIDCClientCredentialsSpec, s conversion.Scope) error {
-	return autoConvert_core_AuthModeOIDCClientCredentialsSpec_To_v1alpha1_AuthModeOIDCClientCredentialsSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_AuthModeTokenSpec_To_core_AuthModeTokenSpec(in *AuthModeTokenSpec, out *core.AuthModeTokenSpec, s conversion.Scope) error {
-	out.SecretRef = in.SecretRef
-	return nil
-}
-
-// Convert_v1alpha1_AuthModeTokenSpec_To_core_AuthModeTokenSpec is an autogenerated conversion function.
-func Convert_v1alpha1_AuthModeTokenSpec_To_core_AuthModeTokenSpec(in *AuthModeTokenSpec, out *core.AuthModeTokenSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_AuthModeTokenSpec_To_core_AuthModeTokenSpec(in, out, s)
-}
-
-func autoConvert_core_AuthModeTokenSpec_To_v1alpha1_AuthModeTokenSpec(in *core.AuthModeTokenSpec, out *AuthModeTokenSpec, s conversion.Scope) error {
-	out.SecretRef = in.SecretRef
-	return nil
-}
-
-// Convert_core_AuthModeTokenSpec_To_v1alpha1_AuthModeTokenSpec is an autogenerated conversion function.
-func Convert_core_AuthModeTokenSpec_To_v1alpha1_AuthModeTokenSpec(in *core.AuthModeTokenSpec, out *AuthModeTokenSpec, s conversion.Scope) error {
-	return autoConvert_core_AuthModeTokenSpec_To_v1alpha1_AuthModeTokenSpec(in, out, s)
 }
 
 func autoConvert_v1alpha1_Cluster_To_core_Cluster(in *Cluster, out *core.Cluster, s conversion.Scope) error {
@@ -514,12 +292,12 @@ func Convert_core_ClusterAgentlessModeSpec_To_v1alpha1_ClusterAgentlessModeSpec(
 }
 
 func autoConvert_v1alpha1_ClusterAuthSpec_To_core_ClusterAuthSpec(in *ClusterAuthSpec, out *core.ClusterAuthSpec, s conversion.Scope) error {
-	out.Type = core.ClusterAuthType(in.Type)
-	out.Kubeconfig = (*core.AuthModeKubeconfigSpec)(unsafe.Pointer(in.Kubeconfig))
-	out.Token = (*core.AuthModeTokenSpec)(unsafe.Pointer(in.Token))
-	out.ClientCert = (*core.AuthModeClientCertSpec)(unsafe.Pointer(in.ClientCert))
-	out.ExecPlugin = (*core.AuthModeExecPluginSpec)(unsafe.Pointer(in.ExecPlugin))
-	out.OIDCClientCredentials = (*core.AuthModeOIDCClientCredentialsSpec)(unsafe.Pointer(in.OIDCClientCredentials))
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Kubeconfig = (*authv1alpha1.KubeconfigAuthSpec)(unsafe.Pointer(in.Kubeconfig))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.ClientCert = (*authv1alpha1.ClientCertAuthSpec)(unsafe.Pointer(in.ClientCert))
+	out.ExecPlugin = (*authv1alpha1.ExecPluginAuthSpec)(unsafe.Pointer(in.ExecPlugin))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
 	return nil
 }
 
@@ -529,12 +307,12 @@ func Convert_v1alpha1_ClusterAuthSpec_To_core_ClusterAuthSpec(in *ClusterAuthSpe
 }
 
 func autoConvert_core_ClusterAuthSpec_To_v1alpha1_ClusterAuthSpec(in *core.ClusterAuthSpec, out *ClusterAuthSpec, s conversion.Scope) error {
-	out.Type = ClusterAuthType(in.Type)
-	out.Kubeconfig = (*AuthModeKubeconfigSpec)(unsafe.Pointer(in.Kubeconfig))
-	out.Token = (*AuthModeTokenSpec)(unsafe.Pointer(in.Token))
-	out.ClientCert = (*AuthModeClientCertSpec)(unsafe.Pointer(in.ClientCert))
-	out.ExecPlugin = (*AuthModeExecPluginSpec)(unsafe.Pointer(in.ExecPlugin))
-	out.OIDCClientCredentials = (*AuthModeOIDCClientCredentialsSpec)(unsafe.Pointer(in.OIDCClientCredentials))
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Kubeconfig = (*authv1alpha1.KubeconfigAuthSpec)(unsafe.Pointer(in.Kubeconfig))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.ClientCert = (*authv1alpha1.ClientCertAuthSpec)(unsafe.Pointer(in.ClientCert))
+	out.ExecPlugin = (*authv1alpha1.ExecPluginAuthSpec)(unsafe.Pointer(in.ExecPlugin))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
 	return nil
 }
 
@@ -679,7 +457,7 @@ func autoConvert_v1alpha1_ClusterStatus_To_core_ClusterStatus(in *ClusterStatus,
 	out.DiscoveredAPIVersions = *(*[]string)(unsafe.Pointer(&in.DiscoveredAPIVersions))
 	out.ReleaseCount = in.ReleaseCount
 	out.AgentStatus = (*core.ClusterAgentStatus)(unsafe.Pointer(in.AgentStatus))
-	out.Conditions = *(*[]metav1.Condition)(unsafe.Pointer(&in.Conditions))
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
 
@@ -696,123 +474,13 @@ func autoConvert_core_ClusterStatus_To_v1alpha1_ClusterStatus(in *core.ClusterSt
 	out.DiscoveredAPIVersions = *(*[]string)(unsafe.Pointer(&in.DiscoveredAPIVersions))
 	out.ReleaseCount = in.ReleaseCount
 	out.AgentStatus = (*ClusterAgentStatus)(unsafe.Pointer(in.AgentStatus))
-	out.Conditions = *(*[]metav1.Condition)(unsafe.Pointer(&in.Conditions))
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
 
 // Convert_core_ClusterStatus_To_v1alpha1_ClusterStatus is an autogenerated conversion function.
 func Convert_core_ClusterStatus_To_v1alpha1_ClusterStatus(in *core.ClusterStatus, out *ClusterStatus, s conversion.Scope) error {
 	return autoConvert_core_ClusterStatus_To_v1alpha1_ClusterStatus(in, out, s)
-}
-
-func autoConvert_v1alpha1_OIDCClientAuthClientSecretSpec_To_core_OIDCClientAuthClientSecretSpec(in *OIDCClientAuthClientSecretSpec, out *core.OIDCClientAuthClientSecretSpec, s conversion.Scope) error {
-	out.ClientSecretRef = in.ClientSecretRef
-	return nil
-}
-
-// Convert_v1alpha1_OIDCClientAuthClientSecretSpec_To_core_OIDCClientAuthClientSecretSpec is an autogenerated conversion function.
-func Convert_v1alpha1_OIDCClientAuthClientSecretSpec_To_core_OIDCClientAuthClientSecretSpec(in *OIDCClientAuthClientSecretSpec, out *core.OIDCClientAuthClientSecretSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_OIDCClientAuthClientSecretSpec_To_core_OIDCClientAuthClientSecretSpec(in, out, s)
-}
-
-func autoConvert_core_OIDCClientAuthClientSecretSpec_To_v1alpha1_OIDCClientAuthClientSecretSpec(in *core.OIDCClientAuthClientSecretSpec, out *OIDCClientAuthClientSecretSpec, s conversion.Scope) error {
-	out.ClientSecretRef = in.ClientSecretRef
-	return nil
-}
-
-// Convert_core_OIDCClientAuthClientSecretSpec_To_v1alpha1_OIDCClientAuthClientSecretSpec is an autogenerated conversion function.
-func Convert_core_OIDCClientAuthClientSecretSpec_To_v1alpha1_OIDCClientAuthClientSecretSpec(in *core.OIDCClientAuthClientSecretSpec, out *OIDCClientAuthClientSecretSpec, s conversion.Scope) error {
-	return autoConvert_core_OIDCClientAuthClientSecretSpec_To_v1alpha1_OIDCClientAuthClientSecretSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec_To_core_OIDCClientAuthPrivateKeyJWTSpec(in *OIDCClientAuthPrivateKeyJWTSpec, out *core.OIDCClientAuthPrivateKeyJWTSpec, s conversion.Scope) error {
-	out.PrivateKeyRef = in.PrivateKeyRef
-	return nil
-}
-
-// Convert_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec_To_core_OIDCClientAuthPrivateKeyJWTSpec is an autogenerated conversion function.
-func Convert_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec_To_core_OIDCClientAuthPrivateKeyJWTSpec(in *OIDCClientAuthPrivateKeyJWTSpec, out *core.OIDCClientAuthPrivateKeyJWTSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec_To_core_OIDCClientAuthPrivateKeyJWTSpec(in, out, s)
-}
-
-func autoConvert_core_OIDCClientAuthPrivateKeyJWTSpec_To_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(in *core.OIDCClientAuthPrivateKeyJWTSpec, out *OIDCClientAuthPrivateKeyJWTSpec, s conversion.Scope) error {
-	out.PrivateKeyRef = in.PrivateKeyRef
-	return nil
-}
-
-// Convert_core_OIDCClientAuthPrivateKeyJWTSpec_To_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec is an autogenerated conversion function.
-func Convert_core_OIDCClientAuthPrivateKeyJWTSpec_To_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(in *core.OIDCClientAuthPrivateKeyJWTSpec, out *OIDCClientAuthPrivateKeyJWTSpec, s conversion.Scope) error {
-	return autoConvert_core_OIDCClientAuthPrivateKeyJWTSpec_To_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_OIDCClientAuthSpec_To_core_OIDCClientAuthSpec(in *OIDCClientAuthSpec, out *core.OIDCClientAuthSpec, s conversion.Scope) error {
-	out.Type = core.OIDCClientAuthType(in.Type)
-	out.ClientSecret = (*core.OIDCClientAuthClientSecretSpec)(unsafe.Pointer(in.ClientSecret))
-	out.TLSClientAuth = (*core.OIDCClientAuthTLSClientAuthSpec)(unsafe.Pointer(in.TLSClientAuth))
-	out.PrivateKeyJWT = (*core.OIDCClientAuthPrivateKeyJWTSpec)(unsafe.Pointer(in.PrivateKeyJWT))
-	return nil
-}
-
-// Convert_v1alpha1_OIDCClientAuthSpec_To_core_OIDCClientAuthSpec is an autogenerated conversion function.
-func Convert_v1alpha1_OIDCClientAuthSpec_To_core_OIDCClientAuthSpec(in *OIDCClientAuthSpec, out *core.OIDCClientAuthSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_OIDCClientAuthSpec_To_core_OIDCClientAuthSpec(in, out, s)
-}
-
-func autoConvert_core_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(in *core.OIDCClientAuthSpec, out *OIDCClientAuthSpec, s conversion.Scope) error {
-	out.Type = OIDCClientAuthType(in.Type)
-	out.ClientSecret = (*OIDCClientAuthClientSecretSpec)(unsafe.Pointer(in.ClientSecret))
-	out.TLSClientAuth = (*OIDCClientAuthTLSClientAuthSpec)(unsafe.Pointer(in.TLSClientAuth))
-	out.PrivateKeyJWT = (*OIDCClientAuthPrivateKeyJWTSpec)(unsafe.Pointer(in.PrivateKeyJWT))
-	return nil
-}
-
-// Convert_core_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec is an autogenerated conversion function.
-func Convert_core_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(in *core.OIDCClientAuthSpec, out *OIDCClientAuthSpec, s conversion.Scope) error {
-	return autoConvert_core_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_OIDCClientAuthTLSClientAuthSpec_To_core_OIDCClientAuthTLSClientAuthSpec(in *OIDCClientAuthTLSClientAuthSpec, out *core.OIDCClientAuthTLSClientAuthSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
-	return nil
-}
-
-// Convert_v1alpha1_OIDCClientAuthTLSClientAuthSpec_To_core_OIDCClientAuthTLSClientAuthSpec is an autogenerated conversion function.
-func Convert_v1alpha1_OIDCClientAuthTLSClientAuthSpec_To_core_OIDCClientAuthTLSClientAuthSpec(in *OIDCClientAuthTLSClientAuthSpec, out *core.OIDCClientAuthTLSClientAuthSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_OIDCClientAuthTLSClientAuthSpec_To_core_OIDCClientAuthTLSClientAuthSpec(in, out, s)
-}
-
-func autoConvert_core_OIDCClientAuthTLSClientAuthSpec_To_v1alpha1_OIDCClientAuthTLSClientAuthSpec(in *core.OIDCClientAuthTLSClientAuthSpec, out *OIDCClientAuthTLSClientAuthSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
-	return nil
-}
-
-// Convert_core_OIDCClientAuthTLSClientAuthSpec_To_v1alpha1_OIDCClientAuthTLSClientAuthSpec is an autogenerated conversion function.
-func Convert_core_OIDCClientAuthTLSClientAuthSpec_To_v1alpha1_OIDCClientAuthTLSClientAuthSpec(in *core.OIDCClientAuthTLSClientAuthSpec, out *OIDCClientAuthTLSClientAuthSpec, s conversion.Scope) error {
-	return autoConvert_core_OIDCClientAuthTLSClientAuthSpec_To_v1alpha1_OIDCClientAuthTLSClientAuthSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_OIDCTLSSpec_To_core_OIDCTLSSpec(in *OIDCTLSSpec, out *core.OIDCTLSSpec, s conversion.Scope) error {
-	out.CAPublicCertRef = in.CAPublicCertRef
-	out.InsecureSkipVerify = in.InsecureSkipVerify
-	return nil
-}
-
-// Convert_v1alpha1_OIDCTLSSpec_To_core_OIDCTLSSpec is an autogenerated conversion function.
-func Convert_v1alpha1_OIDCTLSSpec_To_core_OIDCTLSSpec(in *OIDCTLSSpec, out *core.OIDCTLSSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_OIDCTLSSpec_To_core_OIDCTLSSpec(in, out, s)
-}
-
-func autoConvert_core_OIDCTLSSpec_To_v1alpha1_OIDCTLSSpec(in *core.OIDCTLSSpec, out *OIDCTLSSpec, s conversion.Scope) error {
-	out.CAPublicCertRef = in.CAPublicCertRef
-	out.InsecureSkipVerify = in.InsecureSkipVerify
-	return nil
-}
-
-// Convert_core_OIDCTLSSpec_To_v1alpha1_OIDCTLSSpec is an autogenerated conversion function.
-func Convert_core_OIDCTLSSpec_To_v1alpha1_OIDCTLSSpec(in *core.OIDCTLSSpec, out *OIDCTLSSpec, s conversion.Scope) error {
-	return autoConvert_core_OIDCTLSSpec_To_v1alpha1_OIDCTLSSpec(in, out, s)
 }
 
 func autoConvert_v1alpha1_Release_To_core_Release(in *Release, out *core.Release, s conversion.Scope) error {

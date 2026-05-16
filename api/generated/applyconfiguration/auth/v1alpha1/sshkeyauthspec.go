@@ -22,27 +22,27 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// GitRepositoryAuthSSHKeySpecApplyConfiguration represents a declarative configuration of the GitRepositoryAuthSSHKeySpec type for use
+// SSHKeyAuthSpecApplyConfiguration represents a declarative configuration of the SSHKeyAuthSpec type for use
 // with apply.
 //
-// GitRepositoryAuthSSHKeySpec defines the SSH key used to access the Git repository.
-type GitRepositoryAuthSSHKeySpecApplyConfiguration struct {
+// SSHKeyAuthSpec defines the SSH key used for authentication.
+type SSHKeyAuthSpecApplyConfiguration struct {
 	// SSHKeyRef is the name and the key of the Secret containing the SSH key.
 	SSHKeyRef *v1.SecretKeySelectorApplyConfiguration `json:"sshKeyRef,omitempty"`
 	// KnownHostsRef is the name and the key of the ConfigMap containing the known hosts.
 	KnownHostsRef *v1.ConfigMapKeySelectorApplyConfiguration `json:"knownHostsRef,omitempty"`
 }
 
-// GitRepositoryAuthSSHKeySpecApplyConfiguration constructs a declarative configuration of the GitRepositoryAuthSSHKeySpec type for use with
+// SSHKeyAuthSpecApplyConfiguration constructs a declarative configuration of the SSHKeyAuthSpec type for use with
 // apply.
-func GitRepositoryAuthSSHKeySpec() *GitRepositoryAuthSSHKeySpecApplyConfiguration {
-	return &GitRepositoryAuthSSHKeySpecApplyConfiguration{}
+func SSHKeyAuthSpec() *SSHKeyAuthSpecApplyConfiguration {
+	return &SSHKeyAuthSpecApplyConfiguration{}
 }
 
 // WithSSHKeyRef sets the SSHKeyRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SSHKeyRef field is set to the value of the last call.
-func (b *GitRepositoryAuthSSHKeySpecApplyConfiguration) WithSSHKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *GitRepositoryAuthSSHKeySpecApplyConfiguration {
+func (b *SSHKeyAuthSpecApplyConfiguration) WithSSHKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *SSHKeyAuthSpecApplyConfiguration {
 	b.SSHKeyRef = value
 	return b
 }
@@ -50,7 +50,7 @@ func (b *GitRepositoryAuthSSHKeySpecApplyConfiguration) WithSSHKeyRef(value *v1.
 // WithKnownHostsRef sets the KnownHostsRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the KnownHostsRef field is set to the value of the last call.
-func (b *GitRepositoryAuthSSHKeySpecApplyConfiguration) WithKnownHostsRef(value *v1.ConfigMapKeySelectorApplyConfiguration) *GitRepositoryAuthSSHKeySpecApplyConfiguration {
+func (b *SSHKeyAuthSpecApplyConfiguration) WithKnownHostsRef(value *v1.ConfigMapKeySelectorApplyConfiguration) *SSHKeyAuthSpecApplyConfiguration {
 	b.KnownHostsRef = value
 	return b
 }

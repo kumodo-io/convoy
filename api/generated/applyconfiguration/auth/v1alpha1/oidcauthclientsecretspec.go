@@ -22,26 +22,26 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// OIDCClientAuthClientSecretSpecApplyConfiguration represents a declarative configuration of the OIDCClientAuthClientSecretSpec type for use
+// OIDCAuthClientSecretSpecApplyConfiguration represents a declarative configuration of the OIDCAuthClientSecretSpec type for use
 // with apply.
 //
-// OIDCClientAuthClientSecretSpec defines the reference to the Secret
+// OIDCAuthClientSecretSpec defines the reference to the Secret
 // and the key of the Secret containing the OIDC client secret.
-type OIDCClientAuthClientSecretSpecApplyConfiguration struct {
+type OIDCAuthClientSecretSpecApplyConfiguration struct {
 	// ClientSecretRef is the name and the key of the Secret containing the OIDC client secret.
 	ClientSecretRef *v1.SecretKeySelectorApplyConfiguration `json:"clientSecretRef,omitempty"`
 }
 
-// OIDCClientAuthClientSecretSpecApplyConfiguration constructs a declarative configuration of the OIDCClientAuthClientSecretSpec type for use with
+// OIDCAuthClientSecretSpecApplyConfiguration constructs a declarative configuration of the OIDCAuthClientSecretSpec type for use with
 // apply.
-func OIDCClientAuthClientSecretSpec() *OIDCClientAuthClientSecretSpecApplyConfiguration {
-	return &OIDCClientAuthClientSecretSpecApplyConfiguration{}
+func OIDCAuthClientSecretSpec() *OIDCAuthClientSecretSpecApplyConfiguration {
+	return &OIDCAuthClientSecretSpecApplyConfiguration{}
 }
 
 // WithClientSecretRef sets the ClientSecretRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ClientSecretRef field is set to the value of the last call.
-func (b *OIDCClientAuthClientSecretSpecApplyConfiguration) WithClientSecretRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCClientAuthClientSecretSpecApplyConfiguration {
+func (b *OIDCAuthClientSecretSpecApplyConfiguration) WithClientSecretRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCAuthClientSecretSpecApplyConfiguration {
 	b.ClientSecretRef = value
 	return b
 }

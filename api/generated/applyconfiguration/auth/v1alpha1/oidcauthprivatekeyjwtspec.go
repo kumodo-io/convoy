@@ -22,26 +22,26 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration represents a declarative configuration of the OIDCClientAuthPrivateKeyJWTSpec type for use
+// OIDCAuthPrivateKeyJWTSpecApplyConfiguration represents a declarative configuration of the OIDCAuthPrivateKeyJWTSpec type for use
 // with apply.
 //
-// OIDCClientAuthPrivateKeyJWTSpec defines the reference to the Secret
+// OIDCAuthPrivateKeyJWTSpec defines the reference to the Secret
 // and the key of the Secret containing the OIDC private key JWT.
-type OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration struct {
+type OIDCAuthPrivateKeyJWTSpecApplyConfiguration struct {
 	// PrivateKeyRef is the name and the key of the Secret containing the OIDC private key JWT.
 	PrivateKeyRef *v1.SecretKeySelectorApplyConfiguration `json:"privateKeyRef,omitempty"`
 }
 
-// OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration constructs a declarative configuration of the OIDCClientAuthPrivateKeyJWTSpec type for use with
+// OIDCAuthPrivateKeyJWTSpecApplyConfiguration constructs a declarative configuration of the OIDCAuthPrivateKeyJWTSpec type for use with
 // apply.
-func OIDCClientAuthPrivateKeyJWTSpec() *OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration {
-	return &OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration{}
+func OIDCAuthPrivateKeyJWTSpec() *OIDCAuthPrivateKeyJWTSpecApplyConfiguration {
+	return &OIDCAuthPrivateKeyJWTSpecApplyConfiguration{}
 }
 
 // WithPrivateKeyRef sets the PrivateKeyRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PrivateKeyRef field is set to the value of the last call.
-func (b *OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration) WithPrivateKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration {
+func (b *OIDCAuthPrivateKeyJWTSpecApplyConfiguration) WithPrivateKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCAuthPrivateKeyJWTSpecApplyConfiguration {
 	b.PrivateKeyRef = value
 	return b
 }

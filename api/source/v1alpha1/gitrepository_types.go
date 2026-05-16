@@ -1,29 +1,9 @@
 package v1alpha1
 
 import (
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-// GitRepositoryAuthType defines the authentication method used to access the Git repository.
-// +enum
-type GitRepositoryAuthType string
-
-const (
-	// GitRepositoryAuthTypeNone is the authentication method using no authentication.
-	GitRepositoryAuthTypeNone GitRepositoryAuthType = "none"
-
-	// GitRepositoryAuthTypeSSHKey is the authentication method using SSH key authentication.
-	GitRepositoryAuthTypeSSHKey GitRepositoryAuthType = "sshKey"
-
-	// GitRepositoryAuthTypeBasic is the authentication method using basic authentication.
-	GitRepositoryAuthTypeBasic GitRepositoryAuthType = "basic"
-
-	// GitRepositoryAuthTypeToken is the authentication method using a token.
-	GitRepositoryAuthTypeToken GitRepositoryAuthType = "token"
-
-	// GitRepositoryAithTypeGithubApp is the authentication method using a GitHub App.
-	GitRepositoryAithTypeGithubApp GitRepositoryAuthType = "githubApp"
 )
 
 // GitRepositorySpec defines the desired state of the GitRepository.
@@ -67,55 +47,22 @@ type GitRepositoryRefSpec struct {
 // GitRepositoryAuthSpec defines the authentication method used to access the Git repository.
 type GitRepositoryAuthSpec struct {
 	// Type is the authentication method used to access the Git repository.
-	Type GitRepositoryAuthType `json:"type"`
+	Type authv1.AuthType `json:"type"`
 
 	// SSHKey is the SSH key used to access the Git repository.
-	SSHKey *GitRepositoryAuthSSHKeySpec `json:"sshKey,omitempty"`
+	SSHKey *authv1.SSHKeyAuthSpec `json:"sshKey,omitempty"`
 
 	// Basic is the basic authentication used to access the Git repository.
-	Basic *GitRepositoryAuthBasicSpec `json:"basic,omitempty"`
+	Basic *authv1.BasicAuthSpec `json:"basic,omitempty"`
 
 	// Token is the token used to access the Git repository.
-	Token *GitRepositoryAuthTokenSpec `json:"token,omitempty"`
+	Token *authv1.TokenAuthSpec `json:"token,omitempty"`
 
 	// GithubApp is the GitHub App configuration used to access the Git repository.
-	GithubApp *GitRepositoryAuthGithubAppSpec `json:"githubApp,omitempty"`
-}
+	GithubApp *authv1.GithubAppAuthSpec `json:"githubApp,omitempty"`
 
-// GitRepositoryAuthSSHKeySpec defines the SSH key used to access the Git repository.
-type GitRepositoryAuthSSHKeySpec struct {
-	// SSHKeyRef is the name and the key of the Secret containing the SSH key.
-	SSHKeyRef corev1.SecretKeySelector `json:"sshKeyRef"`
-
-	// KnownHostsRef is the name and the key of the ConfigMap containing the known hosts.
-	KnownHostsRef corev1.ConfigMapKeySelector `json:"knownHostsRef"`
-}
-
-// GitRepositoryAuthBasicSpec defines the basic authentication used to access the Git repository.
-type GitRepositoryAuthBasicSpec struct {
-	// Username is the username used to access the Git repository.
-	Username string `json:"username"`
-
-	// PasswordRef is the name and the key of the Secret containing the password.
-	PasswordRef corev1.SecretKeySelector `json:"passwordRef"`
-}
-
-// GitRepositoryAuthTokenSpec defines the token used to access the Git repository.
-type GitRepositoryAuthTokenSpec struct {
-	// TokenRef is the name and the key of the Secret containing the token.
-	TokenRef corev1.SecretKeySelector `json:"tokenRef"`
-}
-
-// GitRepositoryAuthGithubAppSpec defines the GitHub App configuration used to access the Git repository.
-type GitRepositoryAuthGithubAppSpec struct {
-	// AppID is the ID of the GitHub App.
-	AppID int64 `json:"appID"`
-
-	// InstallationID is the ID of the GitHub App installation.
-	InstallationID int64 `json:"installationID"`
-
-	// PrivateKeyRef is the name and the key of the Secret containing the private key.
-	PrivateKeyRef corev1.SecretKeySelector `json:"privateKey"`
+	// OIDC is the OIDC configuration used to access the Git repository.
+	OIDC *authv1.OIDAuthSpec `json:"oidc,omitempty"`
 }
 
 // GitRepositoryWebhookSpec defines the desired state of the GitRepositoryWebhook.

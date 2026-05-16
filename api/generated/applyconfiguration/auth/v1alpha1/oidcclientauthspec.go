@@ -19,28 +19,22 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
 // OIDCClientAuthSpecApplyConfiguration represents a declarative configuration of the OIDCClientAuthSpec type for use
 // with apply.
 //
-// OIDCClientAuthSpec defines the OIDC client authentication method and configuration.
+// OIDCClientAuthSpec defines the OIDC authentication method configuration used for authentication.
 type OIDCClientAuthSpecApplyConfiguration struct {
-	// Type is the OIDC client authentication method.
-	// Possible values are:
-	// - clientSecret
-	// - tlsClientAuth
-	// - privateKeyJWT
-	Type *corev1alpha1.OIDCClientAuthType `json:"type,omitempty"`
-	// ClientSecret is the reference to the Secret and the key of the
-	// Secret containing the OIDC client secret.
-	ClientSecret *OIDCClientAuthClientSecretSpecApplyConfiguration `json:"clientSecret,omitempty"`
-	// TLSClientAuth is the reference to the Secrets and the keys of the Secret(s) containing the
-	// OIDC client certificate and key.
-	TLSClientAuth *OIDCClientAuthTLSClientAuthSpecApplyConfiguration `json:"tlsClientAuth,omitempty"`
+	// Type is the OIDC authentication method type used for authentication.
+	Type *authv1alpha1.OIDCAuthType `json:"type,omitempty"`
+	// ClientSecret is the reference to the Secret and the key of the Secret containing the OIDC client secret.
+	ClientSecret *OIDCAuthClientSecretSpecApplyConfiguration `json:"clientSecret,omitempty"`
+	// TLSClientAuth is the reference to the Secrets and the keys of the Secret(s) containing the OIDC client certificate and key.
+	TLSClientAuth *OIDCAuthTLSClientAuthSpecApplyConfiguration `json:"tlsClientAuth,omitempty"`
 	// PrivateKeyJWT is the reference to the Secret and the key of the Secret containing the OIDC private key JWT.
-	PrivateKeyJWT *OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration `json:"privateKeyJWT,omitempty"`
+	PrivateKeyJWT *OIDCAuthPrivateKeyJWTSpecApplyConfiguration `json:"privateKeyJWT,omitempty"`
 }
 
 // OIDCClientAuthSpecApplyConfiguration constructs a declarative configuration of the OIDCClientAuthSpec type for use with
@@ -52,7 +46,7 @@ func OIDCClientAuthSpec() *OIDCClientAuthSpecApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *OIDCClientAuthSpecApplyConfiguration) WithType(value corev1alpha1.OIDCClientAuthType) *OIDCClientAuthSpecApplyConfiguration {
+func (b *OIDCClientAuthSpecApplyConfiguration) WithType(value authv1alpha1.OIDCAuthType) *OIDCClientAuthSpecApplyConfiguration {
 	b.Type = &value
 	return b
 }
@@ -60,7 +54,7 @@ func (b *OIDCClientAuthSpecApplyConfiguration) WithType(value corev1alpha1.OIDCC
 // WithClientSecret sets the ClientSecret field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ClientSecret field is set to the value of the last call.
-func (b *OIDCClientAuthSpecApplyConfiguration) WithClientSecret(value *OIDCClientAuthClientSecretSpecApplyConfiguration) *OIDCClientAuthSpecApplyConfiguration {
+func (b *OIDCClientAuthSpecApplyConfiguration) WithClientSecret(value *OIDCAuthClientSecretSpecApplyConfiguration) *OIDCClientAuthSpecApplyConfiguration {
 	b.ClientSecret = value
 	return b
 }
@@ -68,7 +62,7 @@ func (b *OIDCClientAuthSpecApplyConfiguration) WithClientSecret(value *OIDCClien
 // WithTLSClientAuth sets the TLSClientAuth field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TLSClientAuth field is set to the value of the last call.
-func (b *OIDCClientAuthSpecApplyConfiguration) WithTLSClientAuth(value *OIDCClientAuthTLSClientAuthSpecApplyConfiguration) *OIDCClientAuthSpecApplyConfiguration {
+func (b *OIDCClientAuthSpecApplyConfiguration) WithTLSClientAuth(value *OIDCAuthTLSClientAuthSpecApplyConfiguration) *OIDCClientAuthSpecApplyConfiguration {
 	b.TLSClientAuth = value
 	return b
 }
@@ -76,7 +70,7 @@ func (b *OIDCClientAuthSpecApplyConfiguration) WithTLSClientAuth(value *OIDCClie
 // WithPrivateKeyJWT sets the PrivateKeyJWT field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PrivateKeyJWT field is set to the value of the last call.
-func (b *OIDCClientAuthSpecApplyConfiguration) WithPrivateKeyJWT(value *OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration) *OIDCClientAuthSpecApplyConfiguration {
+func (b *OIDCClientAuthSpecApplyConfiguration) WithPrivateKeyJWT(value *OIDCAuthPrivateKeyJWTSpecApplyConfiguration) *OIDCClientAuthSpecApplyConfiguration {
 	b.PrivateKeyJWT = value
 	return b
 }

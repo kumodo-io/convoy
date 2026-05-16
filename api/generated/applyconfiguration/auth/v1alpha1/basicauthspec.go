@@ -22,27 +22,27 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// GitRepositoryAuthBasicSpecApplyConfiguration represents a declarative configuration of the GitRepositoryAuthBasicSpec type for use
+// BasicAuthSpecApplyConfiguration represents a declarative configuration of the BasicAuthSpec type for use
 // with apply.
 //
-// GitRepositoryAuthBasicSpec defines the basic authentication used to access the Git repository.
-type GitRepositoryAuthBasicSpecApplyConfiguration struct {
-	// Username is the username used to access the Git repository.
+// BasicAuthSpec defines the basic authentication.
+type BasicAuthSpecApplyConfiguration struct {
+	// Username is the username used for authentication.
 	Username *string `json:"username,omitempty"`
 	// PasswordRef is the name and the key of the Secret containing the password.
 	PasswordRef *v1.SecretKeySelectorApplyConfiguration `json:"passwordRef,omitempty"`
 }
 
-// GitRepositoryAuthBasicSpecApplyConfiguration constructs a declarative configuration of the GitRepositoryAuthBasicSpec type for use with
+// BasicAuthSpecApplyConfiguration constructs a declarative configuration of the BasicAuthSpec type for use with
 // apply.
-func GitRepositoryAuthBasicSpec() *GitRepositoryAuthBasicSpecApplyConfiguration {
-	return &GitRepositoryAuthBasicSpecApplyConfiguration{}
+func BasicAuthSpec() *BasicAuthSpecApplyConfiguration {
+	return &BasicAuthSpecApplyConfiguration{}
 }
 
 // WithUsername sets the Username field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Username field is set to the value of the last call.
-func (b *GitRepositoryAuthBasicSpecApplyConfiguration) WithUsername(value string) *GitRepositoryAuthBasicSpecApplyConfiguration {
+func (b *BasicAuthSpecApplyConfiguration) WithUsername(value string) *BasicAuthSpecApplyConfiguration {
 	b.Username = &value
 	return b
 }
@@ -50,7 +50,7 @@ func (b *GitRepositoryAuthBasicSpecApplyConfiguration) WithUsername(value string
 // WithPasswordRef sets the PasswordRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PasswordRef field is set to the value of the last call.
-func (b *GitRepositoryAuthBasicSpecApplyConfiguration) WithPasswordRef(value *v1.SecretKeySelectorApplyConfiguration) *GitRepositoryAuthBasicSpecApplyConfiguration {
+func (b *BasicAuthSpecApplyConfiguration) WithPasswordRef(value *v1.SecretKeySelectorApplyConfiguration) *BasicAuthSpecApplyConfiguration {
 	b.PasswordRef = value
 	return b
 }

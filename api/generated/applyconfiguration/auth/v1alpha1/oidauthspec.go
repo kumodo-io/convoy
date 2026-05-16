@@ -18,35 +18,35 @@ limitations under the License.
 
 package v1alpha1
 
-// AuthModeOIDCClientCredentialsSpecApplyConfiguration represents a declarative configuration of the AuthModeOIDCClientCredentialsSpec type for use
+// OIDAuthSpecApplyConfiguration represents a declarative configuration of the OIDAuthSpec type for use
 // with apply.
 //
-// AuthModeOIDCClientCredentialsSpec defines the authentication mode using OIDC client credentials.
-type AuthModeOIDCClientCredentialsSpecApplyConfiguration struct {
-	// IssuerURL is the OIDC issuer URL.
+// OIDAuthSpec defines the OIDC configuration used for authentication.
+type OIDAuthSpecApplyConfiguration struct {
+	// IssuerURL is the URL of the OIDC issuer.
 	IssuerURL *string `json:"issuerURL,omitempty"`
 	// ClientID is the OIDC client ID.
 	ClientID *string `json:"clientID,omitempty"`
-	// ClientAuth is the OIDC client authentication method and configuration.
+	// ClientAuth is the OIDC authentication method used for authentication.
 	ClientAuth *OIDCClientAuthSpecApplyConfiguration `json:"clientAuth,omitempty"`
 	// Scopes are the OIDC scopes.
 	Scopes []string `json:"scopes,omitempty"`
 	// Audience is the OIDC audience.
 	Audience *string `json:"audience,omitempty"`
-	// TLS is the IdP TLS configuration.
+	// TLS is the issuer TLS configuration.
 	TLS *OIDCTLSSpecApplyConfiguration `json:"tls,omitempty"`
 }
 
-// AuthModeOIDCClientCredentialsSpecApplyConfiguration constructs a declarative configuration of the AuthModeOIDCClientCredentialsSpec type for use with
+// OIDAuthSpecApplyConfiguration constructs a declarative configuration of the OIDAuthSpec type for use with
 // apply.
-func AuthModeOIDCClientCredentialsSpec() *AuthModeOIDCClientCredentialsSpecApplyConfiguration {
-	return &AuthModeOIDCClientCredentialsSpecApplyConfiguration{}
+func OIDAuthSpec() *OIDAuthSpecApplyConfiguration {
+	return &OIDAuthSpecApplyConfiguration{}
 }
 
 // WithIssuerURL sets the IssuerURL field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the IssuerURL field is set to the value of the last call.
-func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithIssuerURL(value string) *AuthModeOIDCClientCredentialsSpecApplyConfiguration {
+func (b *OIDAuthSpecApplyConfiguration) WithIssuerURL(value string) *OIDAuthSpecApplyConfiguration {
 	b.IssuerURL = &value
 	return b
 }
@@ -54,7 +54,7 @@ func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithIssuerURL(valu
 // WithClientID sets the ClientID field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ClientID field is set to the value of the last call.
-func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithClientID(value string) *AuthModeOIDCClientCredentialsSpecApplyConfiguration {
+func (b *OIDAuthSpecApplyConfiguration) WithClientID(value string) *OIDAuthSpecApplyConfiguration {
 	b.ClientID = &value
 	return b
 }
@@ -62,7 +62,7 @@ func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithClientID(value
 // WithClientAuth sets the ClientAuth field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ClientAuth field is set to the value of the last call.
-func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithClientAuth(value *OIDCClientAuthSpecApplyConfiguration) *AuthModeOIDCClientCredentialsSpecApplyConfiguration {
+func (b *OIDAuthSpecApplyConfiguration) WithClientAuth(value *OIDCClientAuthSpecApplyConfiguration) *OIDAuthSpecApplyConfiguration {
 	b.ClientAuth = value
 	return b
 }
@@ -70,7 +70,7 @@ func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithClientAuth(val
 // WithScopes adds the given value to the Scopes field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Scopes field.
-func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithScopes(values ...string) *AuthModeOIDCClientCredentialsSpecApplyConfiguration {
+func (b *OIDAuthSpecApplyConfiguration) WithScopes(values ...string) *OIDAuthSpecApplyConfiguration {
 	for i := range values {
 		b.Scopes = append(b.Scopes, values[i])
 	}
@@ -80,7 +80,7 @@ func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithScopes(values 
 // WithAudience sets the Audience field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Audience field is set to the value of the last call.
-func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithAudience(value string) *AuthModeOIDCClientCredentialsSpecApplyConfiguration {
+func (b *OIDAuthSpecApplyConfiguration) WithAudience(value string) *OIDAuthSpecApplyConfiguration {
 	b.Audience = &value
 	return b
 }
@@ -88,7 +88,7 @@ func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithAudience(value
 // WithTLS sets the TLS field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TLS field is set to the value of the last call.
-func (b *AuthModeOIDCClientCredentialsSpecApplyConfiguration) WithTLS(value *OIDCTLSSpecApplyConfiguration) *AuthModeOIDCClientCredentialsSpecApplyConfiguration {
+func (b *OIDAuthSpecApplyConfiguration) WithTLS(value *OIDCTLSSpecApplyConfiguration) *OIDAuthSpecApplyConfiguration {
 	b.TLS = value
 	return b
 }

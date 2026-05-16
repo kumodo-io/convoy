@@ -1,6 +1,7 @@
 package core
 
 import (
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -10,17 +11,6 @@ type ClusterConnectionMode string
 const (
 	ClusterConnectionModeAgentless ClusterConnectionMode = "agentless"
 	ClusterConnectionModeAgent     ClusterConnectionMode = "agent"
-)
-
-type ClusterAuthType string
-
-const (
-	ClusterAuthModeKubeconfig            ClusterAuthType = "kubeconfig"
-	ClusterAuthModeToken                 ClusterAuthType = "token"
-	ClusterAuthModeClientCert            ClusterAuthType = "clientCert"
-	ClusterAuthModeExecPlugin            ClusterAuthType = "execPlugin"
-	ClusterAuthModeWorkloadIdentity      ClusterAuthType = "workloadIdentity"
-	ClusterAuthModeOIDCClientCredentials ClusterAuthType = "oidcClientCredentails"
 )
 
 type ReleasesDeletionPolicy string
@@ -45,14 +35,6 @@ const (
 	OnUnreachableDeletionPolicyReleasesOnly OnUnreachableDeletionPolicy = "releasesOnly"
 )
 
-type OIDCClientAuthType string
-
-const (
-	OIDCClientAuthTypeClientSecret  OIDCClientAuthType = "clientSecret"
-	OIDCClientAuthTypeTLSClientAuth OIDCClientAuthType = "tlsClientAuth"
-	OIDCClientAuthTypePrivateKeyJWT OIDCClientAuthType = "privateKeyJWT"
-)
-
 type ClusterSpec struct {
 	ConnectionMode ClusterConnectionMode
 	Agentless      *ClusterAgentlessModeSpec
@@ -69,71 +51,17 @@ type ClusterAgentlessModeSpec struct {
 }
 
 type ClusterAuthSpec struct {
-	Type                  ClusterAuthType
-	Kubeconfig            *AuthModeKubeconfigSpec
-	Token                 *AuthModeTokenSpec
-	ClientCert            *AuthModeClientCertSpec
-	ExecPlugin            *AuthModeExecPluginSpec
-	OIDCClientCredentials *AuthModeOIDCClientCredentialsSpec
-}
-
-type AuthModeKubeconfigSpec struct {
-	SecretRef corev1.SecretKeySelector
-}
-
-type AuthModeTokenSpec struct {
-	SecretRef corev1.SecretKeySelector
-}
-
-type AuthModeClientCertSpec struct {
-	CertRef corev1.SecretKeySelector
-	KeyRef  corev1.SecretKeySelector
-}
-
-type AuthModeExecPluginSpec struct {
-	Command        string
-	Args           []string
-	Env            []corev1.EnvVar
-	CredentialsRef corev1.SecretReference
-}
-
-type AuthModeOIDCClientCredentialsSpec struct {
-	IssuerURL  string
-	ClientID   string
-	ClientAuth OIDCClientAuthSpec
-	Scopes     []string
-	Audience   string
-	TLS        *OIDCTLSSpec
-}
-
-type OIDCClientAuthSpec struct {
-	Type          OIDCClientAuthType
-	ClientSecret  *OIDCClientAuthClientSecretSpec
-	TLSClientAuth *OIDCClientAuthTLSClientAuthSpec
-	PrivateKeyJWT *OIDCClientAuthPrivateKeyJWTSpec
-}
-
-type OIDCClientAuthClientSecretSpec struct {
-	ClientSecretRef corev1.SecretKeySelector
-}
-
-type OIDCClientAuthTLSClientAuthSpec struct {
-	CertRef corev1.SecretKeySelector
-	KeyRef  corev1.SecretKeySelector
-}
-
-type OIDCClientAuthPrivateKeyJWTSpec struct {
-	PrivateKeyRef corev1.SecretKeySelector
+	Type       authv1.AuthType
+	Kubeconfig *authv1.KubeconfigAuthSpec
+	Token      *authv1.TokenAuthSpec
+	ClientCert *authv1.ClientCertAuthSpec
+	ExecPlugin *authv1.ExecPluginAuthSpec
+	OIDC       *authv1.OIDAuthSpec
 }
 
 type ClusterCapabilitiesSpec struct {
 	ServerSideApply bool
 	APIVersions     []string
-}
-
-type OIDCTLSSpec struct {
-	CAPublicCertRef    corev1.ConfigMapKeySelector
-	InsecureSkipVerify bool
 }
 
 type ClusterDeletionPolicySpec struct {

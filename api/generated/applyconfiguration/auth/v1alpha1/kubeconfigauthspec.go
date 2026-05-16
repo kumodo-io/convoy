@@ -22,25 +22,25 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// AuthModeKubeconfigSpecApplyConfiguration represents a declarative configuration of the AuthModeKubeconfigSpec type for use
+// KubeconfigAuthSpecApplyConfiguration represents a declarative configuration of the KubeconfigAuthSpec type for use
 // with apply.
 //
-// AuthModeKubeconfigSpec defines the authentication mode using a kubeconfig file.
-type AuthModeKubeconfigSpecApplyConfiguration struct {
+// KubeconfigAuthSpec defines the authentication mode using a kubeconfig file.
+type KubeconfigAuthSpecApplyConfiguration struct {
 	// SecretRef is the name and the key of the Secret containing the kubeconfig file.
 	SecretRef *v1.SecretKeySelectorApplyConfiguration `json:"secretRef,omitempty"`
 }
 
-// AuthModeKubeconfigSpecApplyConfiguration constructs a declarative configuration of the AuthModeKubeconfigSpec type for use with
+// KubeconfigAuthSpecApplyConfiguration constructs a declarative configuration of the KubeconfigAuthSpec type for use with
 // apply.
-func AuthModeKubeconfigSpec() *AuthModeKubeconfigSpecApplyConfiguration {
-	return &AuthModeKubeconfigSpecApplyConfiguration{}
+func KubeconfigAuthSpec() *KubeconfigAuthSpecApplyConfiguration {
+	return &KubeconfigAuthSpecApplyConfiguration{}
 }
 
 // WithSecretRef sets the SecretRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SecretRef field is set to the value of the last call.
-func (b *AuthModeKubeconfigSpecApplyConfiguration) WithSecretRef(value *v1.SecretKeySelectorApplyConfiguration) *AuthModeKubeconfigSpecApplyConfiguration {
+func (b *KubeconfigAuthSpecApplyConfiguration) WithSecretRef(value *v1.SecretKeySelectorApplyConfiguration) *KubeconfigAuthSpecApplyConfiguration {
 	b.SecretRef = value
 	return b
 }

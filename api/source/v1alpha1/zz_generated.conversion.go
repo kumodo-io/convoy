@@ -24,6 +24,7 @@ package v1alpha1
 import (
 	unsafe "unsafe"
 
+	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	source "github.com/kumodo-io/convoy/api/source"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
@@ -47,36 +48,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*GitRepositoryAuthBasicSpec)(nil), (*source.GitRepositoryAuthBasicSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_GitRepositoryAuthBasicSpec_To_source_GitRepositoryAuthBasicSpec(a.(*GitRepositoryAuthBasicSpec), b.(*source.GitRepositoryAuthBasicSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryAuthBasicSpec)(nil), (*GitRepositoryAuthBasicSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_source_GitRepositoryAuthBasicSpec_To_v1alpha1_GitRepositoryAuthBasicSpec(a.(*source.GitRepositoryAuthBasicSpec), b.(*GitRepositoryAuthBasicSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*GitRepositoryAuthGithubAppSpec)(nil), (*source.GitRepositoryAuthGithubAppSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_GitRepositoryAuthGithubAppSpec_To_source_GitRepositoryAuthGithubAppSpec(a.(*GitRepositoryAuthGithubAppSpec), b.(*source.GitRepositoryAuthGithubAppSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryAuthGithubAppSpec)(nil), (*GitRepositoryAuthGithubAppSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_source_GitRepositoryAuthGithubAppSpec_To_v1alpha1_GitRepositoryAuthGithubAppSpec(a.(*source.GitRepositoryAuthGithubAppSpec), b.(*GitRepositoryAuthGithubAppSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*GitRepositoryAuthSSHKeySpec)(nil), (*source.GitRepositoryAuthSSHKeySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_GitRepositoryAuthSSHKeySpec_To_source_GitRepositoryAuthSSHKeySpec(a.(*GitRepositoryAuthSSHKeySpec), b.(*source.GitRepositoryAuthSSHKeySpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryAuthSSHKeySpec)(nil), (*GitRepositoryAuthSSHKeySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_source_GitRepositoryAuthSSHKeySpec_To_v1alpha1_GitRepositoryAuthSSHKeySpec(a.(*source.GitRepositoryAuthSSHKeySpec), b.(*GitRepositoryAuthSSHKeySpec), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*GitRepositoryAuthSpec)(nil), (*source.GitRepositoryAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(a.(*GitRepositoryAuthSpec), b.(*source.GitRepositoryAuthSpec), scope)
 	}); err != nil {
@@ -84,16 +55,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryAuthSpec)(nil), (*GitRepositoryAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec(a.(*source.GitRepositoryAuthSpec), b.(*GitRepositoryAuthSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*GitRepositoryAuthTokenSpec)(nil), (*source.GitRepositoryAuthTokenSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_GitRepositoryAuthTokenSpec_To_source_GitRepositoryAuthTokenSpec(a.(*GitRepositoryAuthTokenSpec), b.(*source.GitRepositoryAuthTokenSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*source.GitRepositoryAuthTokenSpec)(nil), (*GitRepositoryAuthTokenSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_source_GitRepositoryAuthTokenSpec_To_v1alpha1_GitRepositoryAuthTokenSpec(a.(*source.GitRepositoryAuthTokenSpec), b.(*GitRepositoryAuthTokenSpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -194,6 +155,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*source.HelmRegistry)(nil), (*HelmRegistry)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_source_HelmRegistry_To_v1alpha1_HelmRegistry(a.(*source.HelmRegistry), b.(*HelmRegistry), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*HelmRegistryAuthSpec)(nil), (*source.HelmRegistryAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(a.(*HelmRegistryAuthSpec), b.(*source.HelmRegistryAuthSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.HelmRegistryAuthSpec)(nil), (*HelmRegistryAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(a.(*source.HelmRegistryAuthSpec), b.(*HelmRegistryAuthSpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -304,80 +275,13 @@ func Convert_source_GitRepository_To_v1alpha1_GitRepository(in *source.GitReposi
 	return autoConvert_source_GitRepository_To_v1alpha1_GitRepository(in, out, s)
 }
 
-func autoConvert_v1alpha1_GitRepositoryAuthBasicSpec_To_source_GitRepositoryAuthBasicSpec(in *GitRepositoryAuthBasicSpec, out *source.GitRepositoryAuthBasicSpec, s conversion.Scope) error {
-	out.Username = in.Username
-	out.PasswordRef = in.PasswordRef
-	return nil
-}
-
-// Convert_v1alpha1_GitRepositoryAuthBasicSpec_To_source_GitRepositoryAuthBasicSpec is an autogenerated conversion function.
-func Convert_v1alpha1_GitRepositoryAuthBasicSpec_To_source_GitRepositoryAuthBasicSpec(in *GitRepositoryAuthBasicSpec, out *source.GitRepositoryAuthBasicSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_GitRepositoryAuthBasicSpec_To_source_GitRepositoryAuthBasicSpec(in, out, s)
-}
-
-func autoConvert_source_GitRepositoryAuthBasicSpec_To_v1alpha1_GitRepositoryAuthBasicSpec(in *source.GitRepositoryAuthBasicSpec, out *GitRepositoryAuthBasicSpec, s conversion.Scope) error {
-	out.Username = in.Username
-	out.PasswordRef = in.PasswordRef
-	return nil
-}
-
-// Convert_source_GitRepositoryAuthBasicSpec_To_v1alpha1_GitRepositoryAuthBasicSpec is an autogenerated conversion function.
-func Convert_source_GitRepositoryAuthBasicSpec_To_v1alpha1_GitRepositoryAuthBasicSpec(in *source.GitRepositoryAuthBasicSpec, out *GitRepositoryAuthBasicSpec, s conversion.Scope) error {
-	return autoConvert_source_GitRepositoryAuthBasicSpec_To_v1alpha1_GitRepositoryAuthBasicSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_GitRepositoryAuthGithubAppSpec_To_source_GitRepositoryAuthGithubAppSpec(in *GitRepositoryAuthGithubAppSpec, out *source.GitRepositoryAuthGithubAppSpec, s conversion.Scope) error {
-	out.AppID = in.AppID
-	out.InstallationID = in.InstallationID
-	out.PrivateKeyRef = in.PrivateKeyRef
-	return nil
-}
-
-// Convert_v1alpha1_GitRepositoryAuthGithubAppSpec_To_source_GitRepositoryAuthGithubAppSpec is an autogenerated conversion function.
-func Convert_v1alpha1_GitRepositoryAuthGithubAppSpec_To_source_GitRepositoryAuthGithubAppSpec(in *GitRepositoryAuthGithubAppSpec, out *source.GitRepositoryAuthGithubAppSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_GitRepositoryAuthGithubAppSpec_To_source_GitRepositoryAuthGithubAppSpec(in, out, s)
-}
-
-func autoConvert_source_GitRepositoryAuthGithubAppSpec_To_v1alpha1_GitRepositoryAuthGithubAppSpec(in *source.GitRepositoryAuthGithubAppSpec, out *GitRepositoryAuthGithubAppSpec, s conversion.Scope) error {
-	out.AppID = in.AppID
-	out.InstallationID = in.InstallationID
-	out.PrivateKeyRef = in.PrivateKeyRef
-	return nil
-}
-
-// Convert_source_GitRepositoryAuthGithubAppSpec_To_v1alpha1_GitRepositoryAuthGithubAppSpec is an autogenerated conversion function.
-func Convert_source_GitRepositoryAuthGithubAppSpec_To_v1alpha1_GitRepositoryAuthGithubAppSpec(in *source.GitRepositoryAuthGithubAppSpec, out *GitRepositoryAuthGithubAppSpec, s conversion.Scope) error {
-	return autoConvert_source_GitRepositoryAuthGithubAppSpec_To_v1alpha1_GitRepositoryAuthGithubAppSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_GitRepositoryAuthSSHKeySpec_To_source_GitRepositoryAuthSSHKeySpec(in *GitRepositoryAuthSSHKeySpec, out *source.GitRepositoryAuthSSHKeySpec, s conversion.Scope) error {
-	out.SSHKeyRef = in.SSHKeyRef
-	out.KnownHostsRef = in.KnownHostsRef
-	return nil
-}
-
-// Convert_v1alpha1_GitRepositoryAuthSSHKeySpec_To_source_GitRepositoryAuthSSHKeySpec is an autogenerated conversion function.
-func Convert_v1alpha1_GitRepositoryAuthSSHKeySpec_To_source_GitRepositoryAuthSSHKeySpec(in *GitRepositoryAuthSSHKeySpec, out *source.GitRepositoryAuthSSHKeySpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_GitRepositoryAuthSSHKeySpec_To_source_GitRepositoryAuthSSHKeySpec(in, out, s)
-}
-
-func autoConvert_source_GitRepositoryAuthSSHKeySpec_To_v1alpha1_GitRepositoryAuthSSHKeySpec(in *source.GitRepositoryAuthSSHKeySpec, out *GitRepositoryAuthSSHKeySpec, s conversion.Scope) error {
-	out.SSHKeyRef = in.SSHKeyRef
-	out.KnownHostsRef = in.KnownHostsRef
-	return nil
-}
-
-// Convert_source_GitRepositoryAuthSSHKeySpec_To_v1alpha1_GitRepositoryAuthSSHKeySpec is an autogenerated conversion function.
-func Convert_source_GitRepositoryAuthSSHKeySpec_To_v1alpha1_GitRepositoryAuthSSHKeySpec(in *source.GitRepositoryAuthSSHKeySpec, out *GitRepositoryAuthSSHKeySpec, s conversion.Scope) error {
-	return autoConvert_source_GitRepositoryAuthSSHKeySpec_To_v1alpha1_GitRepositoryAuthSSHKeySpec(in, out, s)
-}
-
 func autoConvert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(in *GitRepositoryAuthSpec, out *source.GitRepositoryAuthSpec, s conversion.Scope) error {
-	out.Type = source.GitRepositoryAuthType(in.Type)
-	out.SSHKey = (*source.GitRepositoryAuthSSHKeySpec)(unsafe.Pointer(in.SSHKey))
-	out.Basic = (*source.GitRepositoryAuthBasicSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*source.GitRepositoryAuthTokenSpec)(unsafe.Pointer(in.Token))
-	out.GithubApp = (*source.GitRepositoryAuthGithubAppSpec)(unsafe.Pointer(in.GithubApp))
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.SSHKey = (*authv1alpha1.SSHKeyAuthSpec)(unsafe.Pointer(in.SSHKey))
+	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.GithubApp = (*authv1alpha1.GithubAppAuthSpec)(unsafe.Pointer(in.GithubApp))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
 	return nil
 }
 
@@ -387,37 +291,18 @@ func Convert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(in *
 }
 
 func autoConvert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec(in *source.GitRepositoryAuthSpec, out *GitRepositoryAuthSpec, s conversion.Scope) error {
-	out.Type = GitRepositoryAuthType(in.Type)
-	out.SSHKey = (*GitRepositoryAuthSSHKeySpec)(unsafe.Pointer(in.SSHKey))
-	out.Basic = (*GitRepositoryAuthBasicSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*GitRepositoryAuthTokenSpec)(unsafe.Pointer(in.Token))
-	out.GithubApp = (*GitRepositoryAuthGithubAppSpec)(unsafe.Pointer(in.GithubApp))
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.SSHKey = (*authv1alpha1.SSHKeyAuthSpec)(unsafe.Pointer(in.SSHKey))
+	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.GithubApp = (*authv1alpha1.GithubAppAuthSpec)(unsafe.Pointer(in.GithubApp))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
 	return nil
 }
 
 // Convert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec is an autogenerated conversion function.
 func Convert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec(in *source.GitRepositoryAuthSpec, out *GitRepositoryAuthSpec, s conversion.Scope) error {
 	return autoConvert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_GitRepositoryAuthTokenSpec_To_source_GitRepositoryAuthTokenSpec(in *GitRepositoryAuthTokenSpec, out *source.GitRepositoryAuthTokenSpec, s conversion.Scope) error {
-	out.TokenRef = in.TokenRef
-	return nil
-}
-
-// Convert_v1alpha1_GitRepositoryAuthTokenSpec_To_source_GitRepositoryAuthTokenSpec is an autogenerated conversion function.
-func Convert_v1alpha1_GitRepositoryAuthTokenSpec_To_source_GitRepositoryAuthTokenSpec(in *GitRepositoryAuthTokenSpec, out *source.GitRepositoryAuthTokenSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_GitRepositoryAuthTokenSpec_To_source_GitRepositoryAuthTokenSpec(in, out, s)
-}
-
-func autoConvert_source_GitRepositoryAuthTokenSpec_To_v1alpha1_GitRepositoryAuthTokenSpec(in *source.GitRepositoryAuthTokenSpec, out *GitRepositoryAuthTokenSpec, s conversion.Scope) error {
-	out.TokenRef = in.TokenRef
-	return nil
-}
-
-// Convert_source_GitRepositoryAuthTokenSpec_To_v1alpha1_GitRepositoryAuthTokenSpec is an autogenerated conversion function.
-func Convert_source_GitRepositoryAuthTokenSpec_To_v1alpha1_GitRepositoryAuthTokenSpec(in *source.GitRepositoryAuthTokenSpec, out *GitRepositoryAuthTokenSpec, s conversion.Scope) error {
-	return autoConvert_source_GitRepositoryAuthTokenSpec_To_v1alpha1_GitRepositoryAuthTokenSpec(in, out, s)
 }
 
 func autoConvert_v1alpha1_GitRepositoryLastFetchedStatus_To_source_GitRepositoryLastFetchedStatus(in *GitRepositoryLastFetchedStatus, out *source.GitRepositoryLastFetchedStatus, s conversion.Scope) error {
@@ -706,6 +591,32 @@ func Convert_source_HelmRegistry_To_v1alpha1_HelmRegistry(in *source.HelmRegistr
 	return autoConvert_source_HelmRegistry_To_v1alpha1_HelmRegistry(in, out, s)
 }
 
+func autoConvert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(in *HelmRegistryAuthSpec, out *source.HelmRegistryAuthSpec, s conversion.Scope) error {
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	return nil
+}
+
+// Convert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec is an autogenerated conversion function.
+func Convert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(in *HelmRegistryAuthSpec, out *source.HelmRegistryAuthSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(in, out, s)
+}
+
+func autoConvert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in *source.HelmRegistryAuthSpec, out *HelmRegistryAuthSpec, s conversion.Scope) error {
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	return nil
+}
+
+// Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec is an autogenerated conversion function.
+func Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in *source.HelmRegistryAuthSpec, out *HelmRegistryAuthSpec, s conversion.Scope) error {
+	return autoConvert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in, out, s)
+}
+
 func autoConvert_v1alpha1_HelmRegistryList_To_source_HelmRegistryList(in *HelmRegistryList, out *source.HelmRegistryList, s conversion.Scope) error {
 	out.ListMeta = in.ListMeta
 	out.Items = *(*[]source.HelmRegistry)(unsafe.Pointer(&in.Items))
@@ -729,6 +640,11 @@ func Convert_source_HelmRegistryList_To_v1alpha1_HelmRegistryList(in *source.Hel
 }
 
 func autoConvert_v1alpha1_HelmRegistrySpec_To_source_HelmRegistrySpec(in *HelmRegistrySpec, out *source.HelmRegistrySpec, s conversion.Scope) error {
+	out.URL = in.URL
+	if err := Convert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
+		return err
+	}
+	out.Interval = in.Interval
 	return nil
 }
 
@@ -738,6 +654,11 @@ func Convert_v1alpha1_HelmRegistrySpec_To_source_HelmRegistrySpec(in *HelmRegist
 }
 
 func autoConvert_source_HelmRegistrySpec_To_v1alpha1_HelmRegistrySpec(in *source.HelmRegistrySpec, out *HelmRegistrySpec, s conversion.Scope) error {
+	out.URL = in.URL
+	if err := Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
+		return err
+	}
+	out.Interval = in.Interval
 	return nil
 }
 

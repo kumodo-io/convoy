@@ -47,7 +47,8 @@ generate: tools
 		--output-pkg $(MODULE)/api/generated/applyconfiguration \
 		$(MODULE)/api/core/v1alpha1 \
 		$(MODULE)/api/source/v1alpha1 \
-		$(MODULE)/api/extensions/v1alpha1
+		$(MODULE)/api/extensions/v1alpha1 \
+		$(MODULE)/api/auth/v1alpha1
 
 	$(TOOLS_BIN)/client-gen \
 		--go-header-file $(BOILERPLATE) \

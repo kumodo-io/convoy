@@ -28,11 +28,19 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec":                schema_convoy_api_core_v1alpha1_AuthModeClientCertSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec":                schema_convoy_api_core_v1alpha1_AuthModeExecPluginSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec":                schema_convoy_api_core_v1alpha1_AuthModeKubeconfigSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec":     schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec":                     schema_convoy_api_core_v1alpha1_AuthModeTokenSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":                         schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":                    schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":                    schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":                     schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec":                    schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec":                           schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec":              schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec":             schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec":             schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec":                    schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCTLSSpec":                           schema_convoy_api_auth_v1alpha1_OIDCTLSSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec":                        schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":                         schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                               schema_convoy_api_core_v1alpha1_Cluster(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus":                    schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":              schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
@@ -43,11 +51,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                           schema_convoy_api_core_v1alpha1_ClusterList(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                           schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                         schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec":        schema_convoy_api_core_v1alpha1_OIDCClientAuthClientSecretSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec":       schema_convoy_api_core_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec":                    schema_convoy_api_core_v1alpha1_OIDCClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec":       schema_convoy_api_core_v1alpha1_OIDCClientAuthTLSClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec":                           schema_convoy_api_core_v1alpha1_OIDCTLSSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                               schema_convoy_api_core_v1alpha1_Release(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                           schema_convoy_api_core_v1alpha1_ReleaseList(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations":                      schema_convoy_api_core_v1alpha1_ReleaseMutations(ref),
@@ -61,11 +64,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":          schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":          schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                       schema_convoy_api_source_v1alpha1_GitRepository(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthBasicSpec":          schema_convoy_api_source_v1alpha1_GitRepositoryAuthBasicSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthGithubAppSpec":      schema_convoy_api_source_v1alpha1_GitRepositoryAuthGithubAppSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSSHKeySpec":         schema_convoy_api_source_v1alpha1_GitRepositoryAuthSSHKeySpec(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec":               schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthTokenSpec":          schema_convoy_api_source_v1alpha1_GitRepositoryAuthTokenSpec(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus":      schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":                   schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec":                schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref),
@@ -76,6 +75,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec":            schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookStatus":          schema_convoy_api_source_v1alpha1_GitRepositoryWebhookStatus(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":                        schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec":                schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":                    schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":                    schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":                  schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
@@ -86,11 +86,42 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_AuthModeClientCertSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "AuthModeClientCertSpec defines the authentication mode using a client certificate.",
+				Description: "BasicAuthSpec defines the basic authentication.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"username": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Username is the username used for authentication.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"passwordRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PasswordRef is the name and the key of the Secret containing the password.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"username", "passwordRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClientCertAuthSpec defines the authentication mode using a client certificate.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"certRef": {
@@ -116,11 +147,11 @@ func schema_convoy_api_core_v1alpha1_AuthModeClientCertSpec(ref common.Reference
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_AuthModeExecPluginSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "AuthModeExecPluginSpec defines the authentication mode using an exec plugin.",
+				Description: "ExecPluginAuthSpec defines the authentication mode using an exec plugin.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"command": {
@@ -189,11 +220,50 @@ func schema_convoy_api_core_v1alpha1_AuthModeExecPluginSpec(ref common.Reference
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_AuthModeKubeconfigSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "AuthModeKubeconfigSpec defines the authentication mode using a kubeconfig file.",
+				Description: "GithubAppAuthSpec defines the GitHub App configuration used for authentication.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"appID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AppID is the ID of the GitHub App.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"installationID": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InstallationID is the ID of the GitHub App installation.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"privateKey": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrivateKeyRef is the name and the key of the Secret containing the private key.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"appID", "installationID", "privateKey"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KubeconfigAuthSpec defines the authentication mode using a kubeconfig file.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"secretRef": {
@@ -212,16 +282,16 @@ func schema_convoy_api_core_v1alpha1_AuthModeKubeconfigSpec(ref common.Reference
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "AuthModeOIDCClientCredentialsSpec defines the authentication mode using OIDC client credentials.",
+				Description: "OIDAuthSpec defines the OIDC configuration used for authentication.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"issuerURL": {
 						SchemaProps: spec.SchemaProps{
-							Description: "IssuerURL is the OIDC issuer URL.",
+							Description: "IssuerURL is the URL of the OIDC issuer.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -237,9 +307,9 @@ func schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref commo
 					},
 					"clientAuth": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ClientAuth is the OIDC client authentication method and configuration.",
+							Description: "ClientAuth is the OIDC authentication method used for authentication.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec"),
 						},
 					},
 					"scopes": {
@@ -271,8 +341,8 @@ func schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref commo
 					},
 					"tls": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TLS is the IdP TLS configuration.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec"),
+							Description: "TLS is the issuer TLS configuration.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCTLSSpec"),
 						},
 					},
 				},
@@ -280,26 +350,205 @@ func schema_convoy_api_core_v1alpha1_AuthModeOIDCClientCredentialsSpec(ref commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCTLSSpec"},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCTLSSpec"},
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_AuthModeTokenSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "AuthModeTokenSpec defines the authentication mode using a token.",
+				Description: "OIDCAuthClientSecretSpec defines the reference to the Secret and the key of the Secret containing the OIDC client secret.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"secretRef": {
+					"clientSecretRef": {
 						SchemaProps: spec.SchemaProps{
-							Description: "SecretRef is the name and the key of the Secret containing the token.",
+							Description: "ClientSecretRef is the name and the key of the Secret containing the OIDC client secret.",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
 						},
 					},
 				},
-				Required: []string{"secretRef"},
+				Required: []string{"clientSecretRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OIDCAuthPrivateKeyJWTSpec defines the reference to the Secret and the key of the Secret containing the OIDC private key JWT.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"privateKeyRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrivateKeyRef is the name and the key of the Secret containing the OIDC private key JWT.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"privateKeyRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OIDCAuthTLSClientAuthSpec defines the reference to the Secrets and the keys of the Secret(s) containing the OIDC client certificate and key.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"certRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CertRef is the name and the key of the Secret containing the OIDC client certificate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"keyRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeyRef is the name and the key of the Secret containing the OIDC client certificate key.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"certRef", "keyRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OIDCClientAuthSpec defines the OIDC authentication method configuration used for authentication.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the OIDC authentication method type used for authentication.\n\nPossible enum values:\n - `\"clientSecret\"` is the OIDC authentication method using a client secret.\n - `\"privateKeyJWT\"` is the OIDC authentication method using a private key JWT.\n - `\"tlsClientAuth\"` is the OIDC authentication method using TLS client authentication.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"clientSecret", "privateKeyJWT", "tlsClientAuth"},
+						},
+					},
+					"clientSecret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClientSecret is the reference to the Secret and the key of the Secret containing the OIDC client secret.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec"),
+						},
+					},
+					"tlsClientAuth": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TLSClientAuth is the reference to the Secrets and the keys of the Secret(s) containing the OIDC client certificate and key.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec"),
+						},
+					},
+					"privateKeyJWT": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrivateKeyJWT is the reference to the Secret and the key of the Secret containing the OIDC private key JWT.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec"),
+						},
+					},
+				},
+				Required: []string{"type"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_OIDCTLSSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"caPublicCertRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CAPublicCertRef is the name and the key of the ConfigMap containing the CA public certificate. The CA certificate is used to verify the IdP server's certificate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
+						},
+					},
+					"insecureSkipVerify": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InsecureSkipVerify is a flag to skip the certificate verification.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"caPublicCertRef", "insecureSkipVerify"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ConfigMapKeySelector"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "SSHKeyAuthSpec defines the SSH key used for authentication.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"sshKeyRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SSHKeyRef is the name and the key of the Secret containing the SSH key.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+					"knownHostsRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KnownHostsRef is the name and the key of the ConfigMap containing the known hosts.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
+						},
+					},
+				},
+				Required: []string{"sshKeyRef", "knownHostsRef"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ConfigMapKeySelector", "k8s.io/api/core/v1.SecretKeySelector"},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TokenAuthSpec defines the token used for authentication.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"tokenRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TokenRef is the name and the key of the Secret containing the token.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
+						},
+					},
+				},
+				Required: []string{"tokenRef"},
 			},
 		},
 		Dependencies: []string{
@@ -442,41 +691,41 @@ func schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication mode used to connect to the target cluster. Possible values are: - kubeconfig - token - clientCert - execPlugin - workloadIdentity - oidcClientCredentials The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.\n\nPossible enum values:\n - `\"clientCert\"` defines the authentication mode using a client certificate.\n - `\"execPlugin\"` defines the authentication mode using an exec plugin.\n - `\"kubeconfig\"` defines the authentication mode using a kubeconfig file.\n - `\"oidcClientCredentails\"` defines the authentication mode using OIDC client credentials.\n - `\"token\"` defines the authentication mode using a token.\n - `\"workloadIdentity\"` defines the authentication mode using a workload identity.",
+							Description: "Type is the authentication mode used to connect to the target cluster. The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"clientCert", "execPlugin", "kubeconfig", "oidcClientCredentails", "token", "workloadIdentity"},
+							Enum:        []interface{}{"basic", "clientCert", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
 						},
 					},
 					"kubeconfig": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Kubeconfig is the authentication mode using a kubeconfig file.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec"),
 						},
 					},
 					"token": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Token is the authentication mode using a token.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"),
 						},
 					},
 					"clientCert": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClientCert is the authentication mode using a client certificate.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec"),
 						},
 					},
 					"execPlugin": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ExecPlugin is the authentication mode using an exec plugin.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec"),
 						},
 					},
-					"oidcClientCredentials": {
+					"oidc": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OIDCClientCredentials is the authentication mode using OIDC client credentials.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec"),
+							Description: "OIDC is the authentication mode using OIDC client credentials.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec"),
 						},
 					},
 				},
@@ -484,7 +733,7 @@ func schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeClientCertSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeExecPluginSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeKubeconfigSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeOIDCClientCredentialsSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.AuthModeTokenSpec"},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
 	}
 }
 
@@ -813,155 +1062,6 @@ func schema_convoy_api_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback)
 		},
 		Dependencies: []string{
 			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
-	}
-}
-
-func schema_convoy_api_core_v1alpha1_OIDCClientAuthClientSecretSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "OIDCClientAuthClientSecretSpec defines the reference to the Secret and the key of the Secret containing the OIDC client secret.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"clientSecretRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ClientSecretRef is the name and the key of the Secret containing the OIDC client secret.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-				},
-				Required: []string{"clientSecretRef"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
-func schema_convoy_api_core_v1alpha1_OIDCClientAuthPrivateKeyJWTSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "OIDCClientAuthPrivateKeyJWTSpec defines the reference to the Secret and the key of the Secret containing the OIDC private key JWT.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"privateKeyRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PrivateKeyRef is the name and the key of the Secret containing the OIDC private key JWT.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-				},
-				Required: []string{"privateKeyRef"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
-func schema_convoy_api_core_v1alpha1_OIDCClientAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "OIDCClientAuthSpec defines the OIDC client authentication method and configuration.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Type is the OIDC client authentication method. Possible values are: - clientSecret - tlsClientAuth - privateKeyJWT\n\nPossible enum values:\n - `\"clientSecret\"` is the authentication method using a client secret.\n - `\"privateKeyJWT\"` is the authentication method using a private key JWT.\n - `\"tlsClientAuth\"` is the authentication method using TLS client authentication.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-							Enum:        []interface{}{"clientSecret", "privateKeyJWT", "tlsClientAuth"},
-						},
-					},
-					"clientSecret": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ClientSecret is the reference to the Secret and the key of the Secret containing the OIDC client secret.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec"),
-						},
-					},
-					"tlsClientAuth": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TLSClientAuth is the reference to the Secrets and the keys of the Secret(s) containing the OIDC client certificate and key.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec"),
-						},
-					},
-					"privateKeyJWT": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PrivateKeyJWT is the reference to the Secret and the key of the Secret containing the OIDC private key JWT.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec"),
-						},
-					},
-				},
-				Required: []string{"type"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthClientSecretSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthPrivateKeyJWTSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.OIDCClientAuthTLSClientAuthSpec"},
-	}
-}
-
-func schema_convoy_api_core_v1alpha1_OIDCClientAuthTLSClientAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "OIDCClientAuthTLSClientAuthSpec defines the reference to the Secrets and the keys of the Secret(s) containing the OIDC client certificate and key.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"certRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CertRef is the name and the key of the Secret containing the OIDC client certificate.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-					"keyRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "KeyRef is the name and the key of the Secret containing the OIDC client certificate key.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-				},
-				Required: []string{"certRef", "keyRef"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
-func schema_convoy_api_core_v1alpha1_OIDCTLSSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"caPublicCertRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CAPublicCertRef is the name and the key of the ConfigMap containing the CA public certificate. The CA certificate is used to verify the IdP server's certificate.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
-						},
-					},
-					"insecureSkipVerify": {
-						SchemaProps: spec.SchemaProps{
-							Description: "InsecureSkipVerify is a flag to skip the certificate verification.",
-							Default:     false,
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"caPublicCertRef", "insecureSkipVerify"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.ConfigMapKeySelector"},
 	}
 }
 
@@ -1374,106 +1474,6 @@ func schema_convoy_api_source_v1alpha1_GitRepository(ref common.ReferenceCallbac
 	}
 }
 
-func schema_convoy_api_source_v1alpha1_GitRepositoryAuthBasicSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GitRepositoryAuthBasicSpec defines the basic authentication used to access the Git repository.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"username": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Username is the username used to access the Git repository.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"passwordRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PasswordRef is the name and the key of the Secret containing the password.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-				},
-				Required: []string{"username", "passwordRef"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
-func schema_convoy_api_source_v1alpha1_GitRepositoryAuthGithubAppSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GitRepositoryAuthGithubAppSpec defines the GitHub App configuration used to access the Git repository.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"appID": {
-						SchemaProps: spec.SchemaProps{
-							Description: "AppID is the ID of the GitHub App.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"installationID": {
-						SchemaProps: spec.SchemaProps{
-							Description: "InstallationID is the ID of the GitHub App installation.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-					"privateKey": {
-						SchemaProps: spec.SchemaProps{
-							Description: "PrivateKeyRef is the name and the key of the Secret containing the private key.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-				},
-				Required: []string{"appID", "installationID", "privateKey"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
-func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSSHKeySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GitRepositoryAuthSSHKeySpec defines the SSH key used to access the Git repository.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"sshKeyRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "SSHKeyRef is the name and the key of the Secret containing the SSH key.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-					"knownHostsRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "KnownHostsRef is the name and the key of the ConfigMap containing the known hosts.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.ConfigMapKeySelector"),
-						},
-					},
-				},
-				Required: []string{"sshKeyRef", "knownHostsRef"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.ConfigMapKeySelector", "k8s.io/api/core/v1.SecretKeySelector"},
-	}
-}
-
 func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1483,35 +1483,41 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref common.Referenc
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication method used to access the Git repository.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"none\"` is the authentication method using no authentication.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.",
+							Description: "Type is the authentication method used to access the Git repository.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"basic", "githubApp", "none", "sshKey", "token"},
+							Enum:        []interface{}{"basic", "clientCert", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
 						},
 					},
 					"sshKey": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SSHKey is the SSH key used to access the Git repository.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSSHKeySpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec"),
 						},
 					},
 					"basic": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Basic is the basic authentication used to access the Git repository.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthBasicSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec"),
 						},
 					},
 					"token": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Token is the token used to access the Git repository.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthTokenSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"),
 						},
 					},
 					"githubApp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "GithubApp is the GitHub App configuration used to access the Git repository.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthGithubAppSpec"),
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec"),
+						},
+					},
+					"oidc": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OIDC is the OIDC configuration used to access the Git repository.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec"),
 						},
 					},
 				},
@@ -1519,30 +1525,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref common.Referenc
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthBasicSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthGithubAppSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSSHKeySpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthTokenSpec"},
-	}
-}
-
-func schema_convoy_api_source_v1alpha1_GitRepositoryAuthTokenSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GitRepositoryAuthTokenSpec defines the token used to access the Git repository.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"tokenRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TokenRef is the name and the key of the Secret containing the token.",
-							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/api/core/v1.SecretKeySelector"),
-						},
-					},
-				},
-				Required: []string{"tokenRef"},
-			},
-		},
-		Dependencies: []string{
-			"k8s.io/api/core/v1.SecretKeySelector"},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
 	}
 }
 
@@ -2119,6 +2102,49 @@ func schema_convoy_api_source_v1alpha1_HelmRegistry(ref common.ReferenceCallback
 	}
 }
 
+func schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "HelmRegistryAuthSpec defines the authentication method used to access the Helm registry.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the authentication method used to access the Helm registry.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"basic", "clientCert", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
+						},
+					},
+					"basic": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Basic is the basic authentication used to access the Helm registry.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec"),
+						},
+					},
+					"token": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Token is the token used to access the Helm registry.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"),
+						},
+					},
+					"oidc": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OIDC is the OIDC configuration used to access the Helm registry.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec"),
+						},
+					},
+				},
+				Required: []string{"type"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
+	}
+}
+
 func schema_convoy_api_source_v1alpha1_HelmRegistryList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2171,9 +2197,36 @@ func schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref common.ReferenceCall
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "HelmRegistrySpec defines the desired state of HelmRegistry",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"url": {
+						SchemaProps: spec.SchemaProps{
+							Description: "URL is the URL of the Helm registry.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"auth": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Auth is the authentication method used to access the Helm registry.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec"),
+						},
+					},
+					"interval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Interval is the poll interval for ref resolution and content fetching.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+				Required: []string{"url", "auth", "interval"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -2181,7 +2234,8 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "HelmRegistryStatus reflects the observed state of HelmRegistry",
+				Type:        []string{"object"},
 			},
 		},
 	}

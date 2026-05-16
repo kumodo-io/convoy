@@ -22,27 +22,27 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// AuthModeClientCertSpecApplyConfiguration represents a declarative configuration of the AuthModeClientCertSpec type for use
+// ClientCertAuthSpecApplyConfiguration represents a declarative configuration of the ClientCertAuthSpec type for use
 // with apply.
 //
-// AuthModeClientCertSpec defines the authentication mode using a client certificate.
-type AuthModeClientCertSpecApplyConfiguration struct {
+// ClientCertAuthSpec defines the authentication mode using a client certificate.
+type ClientCertAuthSpecApplyConfiguration struct {
 	// CertRef is the name and the key of the Secret containing the client certificate.
 	CertRef *v1.SecretKeySelectorApplyConfiguration `json:"certRef,omitempty"`
 	// KeyRef is the name and the key of the Secret containing the client certificate key.
 	KeyRef *v1.SecretKeySelectorApplyConfiguration `json:"keyRef,omitempty"`
 }
 
-// AuthModeClientCertSpecApplyConfiguration constructs a declarative configuration of the AuthModeClientCertSpec type for use with
+// ClientCertAuthSpecApplyConfiguration constructs a declarative configuration of the ClientCertAuthSpec type for use with
 // apply.
-func AuthModeClientCertSpec() *AuthModeClientCertSpecApplyConfiguration {
-	return &AuthModeClientCertSpecApplyConfiguration{}
+func ClientCertAuthSpec() *ClientCertAuthSpecApplyConfiguration {
+	return &ClientCertAuthSpecApplyConfiguration{}
 }
 
 // WithCertRef sets the CertRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CertRef field is set to the value of the last call.
-func (b *AuthModeClientCertSpecApplyConfiguration) WithCertRef(value *v1.SecretKeySelectorApplyConfiguration) *AuthModeClientCertSpecApplyConfiguration {
+func (b *ClientCertAuthSpecApplyConfiguration) WithCertRef(value *v1.SecretKeySelectorApplyConfiguration) *ClientCertAuthSpecApplyConfiguration {
 	b.CertRef = value
 	return b
 }
@@ -50,7 +50,7 @@ func (b *AuthModeClientCertSpecApplyConfiguration) WithCertRef(value *v1.SecretK
 // WithKeyRef sets the KeyRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the KeyRef field is set to the value of the last call.
-func (b *AuthModeClientCertSpecApplyConfiguration) WithKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *AuthModeClientCertSpecApplyConfiguration {
+func (b *ClientCertAuthSpecApplyConfiguration) WithKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *ClientCertAuthSpecApplyConfiguration {
 	b.KeyRef = value
 	return b
 }

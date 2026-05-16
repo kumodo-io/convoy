@@ -22,25 +22,25 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// GitRepositoryAuthTokenSpecApplyConfiguration represents a declarative configuration of the GitRepositoryAuthTokenSpec type for use
+// TokenAuthSpecApplyConfiguration represents a declarative configuration of the TokenAuthSpec type for use
 // with apply.
 //
-// GitRepositoryAuthTokenSpec defines the token used to access the Git repository.
-type GitRepositoryAuthTokenSpecApplyConfiguration struct {
+// TokenAuthSpec defines the token used for authentication.
+type TokenAuthSpecApplyConfiguration struct {
 	// TokenRef is the name and the key of the Secret containing the token.
 	TokenRef *v1.SecretKeySelectorApplyConfiguration `json:"tokenRef,omitempty"`
 }
 
-// GitRepositoryAuthTokenSpecApplyConfiguration constructs a declarative configuration of the GitRepositoryAuthTokenSpec type for use with
+// TokenAuthSpecApplyConfiguration constructs a declarative configuration of the TokenAuthSpec type for use with
 // apply.
-func GitRepositoryAuthTokenSpec() *GitRepositoryAuthTokenSpecApplyConfiguration {
-	return &GitRepositoryAuthTokenSpecApplyConfiguration{}
+func TokenAuthSpec() *TokenAuthSpecApplyConfiguration {
+	return &TokenAuthSpecApplyConfiguration{}
 }
 
 // WithTokenRef sets the TokenRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TokenRef field is set to the value of the last call.
-func (b *GitRepositoryAuthTokenSpecApplyConfiguration) WithTokenRef(value *v1.SecretKeySelectorApplyConfiguration) *GitRepositoryAuthTokenSpecApplyConfiguration {
+func (b *TokenAuthSpecApplyConfiguration) WithTokenRef(value *v1.SecretKeySelectorApplyConfiguration) *TokenAuthSpecApplyConfiguration {
 	b.TokenRef = value
 	return b
 }

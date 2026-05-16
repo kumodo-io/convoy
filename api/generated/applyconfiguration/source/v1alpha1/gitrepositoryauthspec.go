@@ -19,7 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
+	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
+	applyconfigurationauthv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
 )
 
 // GitRepositoryAuthSpecApplyConfiguration represents a declarative configuration of the GitRepositoryAuthSpec type for use
@@ -28,15 +29,17 @@ import (
 // GitRepositoryAuthSpec defines the authentication method used to access the Git repository.
 type GitRepositoryAuthSpecApplyConfiguration struct {
 	// Type is the authentication method used to access the Git repository.
-	Type *sourcev1alpha1.GitRepositoryAuthType `json:"type,omitempty"`
+	Type *authv1alpha1.AuthType `json:"type,omitempty"`
 	// SSHKey is the SSH key used to access the Git repository.
-	SSHKey *GitRepositoryAuthSSHKeySpecApplyConfiguration `json:"sshKey,omitempty"`
+	SSHKey *applyconfigurationauthv1alpha1.SSHKeyAuthSpecApplyConfiguration `json:"sshKey,omitempty"`
 	// Basic is the basic authentication used to access the Git repository.
-	Basic *GitRepositoryAuthBasicSpecApplyConfiguration `json:"basic,omitempty"`
+	Basic *applyconfigurationauthv1alpha1.BasicAuthSpecApplyConfiguration `json:"basic,omitempty"`
 	// Token is the token used to access the Git repository.
-	Token *GitRepositoryAuthTokenSpecApplyConfiguration `json:"token,omitempty"`
+	Token *applyconfigurationauthv1alpha1.TokenAuthSpecApplyConfiguration `json:"token,omitempty"`
 	// GithubApp is the GitHub App configuration used to access the Git repository.
-	GithubApp *GitRepositoryAuthGithubAppSpecApplyConfiguration `json:"githubApp,omitempty"`
+	GithubApp *applyconfigurationauthv1alpha1.GithubAppAuthSpecApplyConfiguration `json:"githubApp,omitempty"`
+	// OIDC is the OIDC configuration used to access the Git repository.
+	OIDC *applyconfigurationauthv1alpha1.OIDAuthSpecApplyConfiguration `json:"oidc,omitempty"`
 }
 
 // GitRepositoryAuthSpecApplyConfiguration constructs a declarative configuration of the GitRepositoryAuthSpec type for use with
@@ -48,7 +51,7 @@ func GitRepositoryAuthSpec() *GitRepositoryAuthSpecApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *GitRepositoryAuthSpecApplyConfiguration) WithType(value sourcev1alpha1.GitRepositoryAuthType) *GitRepositoryAuthSpecApplyConfiguration {
+func (b *GitRepositoryAuthSpecApplyConfiguration) WithType(value authv1alpha1.AuthType) *GitRepositoryAuthSpecApplyConfiguration {
 	b.Type = &value
 	return b
 }
@@ -56,7 +59,7 @@ func (b *GitRepositoryAuthSpecApplyConfiguration) WithType(value sourcev1alpha1.
 // WithSSHKey sets the SSHKey field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SSHKey field is set to the value of the last call.
-func (b *GitRepositoryAuthSpecApplyConfiguration) WithSSHKey(value *GitRepositoryAuthSSHKeySpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
+func (b *GitRepositoryAuthSpecApplyConfiguration) WithSSHKey(value *applyconfigurationauthv1alpha1.SSHKeyAuthSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
 	b.SSHKey = value
 	return b
 }
@@ -64,7 +67,7 @@ func (b *GitRepositoryAuthSpecApplyConfiguration) WithSSHKey(value *GitRepositor
 // WithBasic sets the Basic field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Basic field is set to the value of the last call.
-func (b *GitRepositoryAuthSpecApplyConfiguration) WithBasic(value *GitRepositoryAuthBasicSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
+func (b *GitRepositoryAuthSpecApplyConfiguration) WithBasic(value *applyconfigurationauthv1alpha1.BasicAuthSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
 	b.Basic = value
 	return b
 }
@@ -72,7 +75,7 @@ func (b *GitRepositoryAuthSpecApplyConfiguration) WithBasic(value *GitRepository
 // WithToken sets the Token field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Token field is set to the value of the last call.
-func (b *GitRepositoryAuthSpecApplyConfiguration) WithToken(value *GitRepositoryAuthTokenSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
+func (b *GitRepositoryAuthSpecApplyConfiguration) WithToken(value *applyconfigurationauthv1alpha1.TokenAuthSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
 	b.Token = value
 	return b
 }
@@ -80,7 +83,15 @@ func (b *GitRepositoryAuthSpecApplyConfiguration) WithToken(value *GitRepository
 // WithGithubApp sets the GithubApp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the GithubApp field is set to the value of the last call.
-func (b *GitRepositoryAuthSpecApplyConfiguration) WithGithubApp(value *GitRepositoryAuthGithubAppSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
+func (b *GitRepositoryAuthSpecApplyConfiguration) WithGithubApp(value *applyconfigurationauthv1alpha1.GithubAppAuthSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
 	b.GithubApp = value
+	return b
+}
+
+// WithOIDC sets the OIDC field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the OIDC field is set to the value of the last call.
+func (b *GitRepositoryAuthSpecApplyConfiguration) WithOIDC(value *applyconfigurationauthv1alpha1.OIDAuthSpecApplyConfiguration) *GitRepositoryAuthSpecApplyConfiguration {
+	b.OIDC = value
 	return b
 }

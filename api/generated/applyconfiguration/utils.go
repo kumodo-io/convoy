@@ -19,9 +19,11 @@ limitations under the License.
 package applyconfiguration
 
 import (
-	v1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	v1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
-	corev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
+	authv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
+	applyconfigurationcorev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
 	applyconfigurationextensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/extensions/v1alpha1"
 	internal "github.com/kumodo-io/convoy/api/generated/applyconfiguration/internal"
 	applyconfigurationsourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/source/v1alpha1"
@@ -35,47 +37,55 @@ import (
 // apply configuration type exists for the given GroupVersionKind.
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
-	// Group=core.convoy.kumodo.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeClientCertSpec"):
-		return &corev1alpha1.AuthModeClientCertSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeExecPluginSpec"):
-		return &corev1alpha1.AuthModeExecPluginSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeKubeconfigSpec"):
-		return &corev1alpha1.AuthModeKubeconfigSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeOIDCClientCredentialsSpec"):
-		return &corev1alpha1.AuthModeOIDCClientCredentialsSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("AuthModeTokenSpec"):
-		return &corev1alpha1.AuthModeTokenSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("Cluster"):
-		return &corev1alpha1.ClusterApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAgentlessModeSpec"):
-		return &corev1alpha1.ClusterAgentlessModeSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAgentStatus"):
-		return &corev1alpha1.ClusterAgentStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterAuthSpec"):
-		return &corev1alpha1.ClusterAuthSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterCapabilitiesSpec"):
-		return &corev1alpha1.ClusterCapabilitiesSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterConnectionParametersSpec"):
-		return &corev1alpha1.ClusterConnectionParametersSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterDeletionPolicySpec"):
-		return &corev1alpha1.ClusterDeletionPolicySpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterSpec"):
-		return &corev1alpha1.ClusterSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ClusterStatus"):
-		return &corev1alpha1.ClusterStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthClientSecretSpec"):
-		return &corev1alpha1.OIDCClientAuthClientSecretSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthPrivateKeyJWTSpec"):
-		return &corev1alpha1.OIDCClientAuthPrivateKeyJWTSpecApplyConfiguration{}
+	// Group=auth, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithKind("BasicAuthSpec"):
+		return &authv1alpha1.BasicAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClientCertAuthSpec"):
+		return &authv1alpha1.ClientCertAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ExecPluginAuthSpec"):
+		return &authv1alpha1.ExecPluginAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("GithubAppAuthSpec"):
+		return &authv1alpha1.GithubAppAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("KubeconfigAuthSpec"):
+		return &authv1alpha1.KubeconfigAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDAuthSpec"):
+		return &authv1alpha1.OIDAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCAuthClientSecretSpec"):
+		return &authv1alpha1.OIDCAuthClientSecretSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCAuthPrivateKeyJWTSpec"):
+		return &authv1alpha1.OIDCAuthPrivateKeyJWTSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("OIDCAuthTLSClientAuthSpec"):
+		return &authv1alpha1.OIDCAuthTLSClientAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthSpec"):
-		return &corev1alpha1.OIDCClientAuthSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthTLSClientAuthSpec"):
-		return &corev1alpha1.OIDCClientAuthTLSClientAuthSpecApplyConfiguration{}
+		return &authv1alpha1.OIDCClientAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("OIDCTLSSpec"):
-		return &corev1alpha1.OIDCTLSSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("Release"):
-		return &corev1alpha1.ReleaseApplyConfiguration{}
+		return &authv1alpha1.OIDCTLSSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("SSHKeyAuthSpec"):
+		return &authv1alpha1.SSHKeyAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TokenAuthSpec"):
+		return &authv1alpha1.TokenAuthSpecApplyConfiguration{}
+
+		// Group=core.convoy.kumodo.io, Version=v1alpha1
+	case corev1alpha1.SchemeGroupVersion.WithKind("Cluster"):
+		return &applyconfigurationcorev1alpha1.ClusterApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterAgentlessModeSpec"):
+		return &applyconfigurationcorev1alpha1.ClusterAgentlessModeSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterAgentStatus"):
+		return &applyconfigurationcorev1alpha1.ClusterAgentStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterAuthSpec"):
+		return &applyconfigurationcorev1alpha1.ClusterAuthSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterCapabilitiesSpec"):
+		return &applyconfigurationcorev1alpha1.ClusterCapabilitiesSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterConnectionParametersSpec"):
+		return &applyconfigurationcorev1alpha1.ClusterConnectionParametersSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterDeletionPolicySpec"):
+		return &applyconfigurationcorev1alpha1.ClusterDeletionPolicySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterSpec"):
+		return &applyconfigurationcorev1alpha1.ClusterSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterStatus"):
+		return &applyconfigurationcorev1alpha1.ClusterStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("Release"):
+		return &applyconfigurationcorev1alpha1.ReleaseApplyConfiguration{}
 
 		// Group=extensions.convoy.kumodo.io, Version=v1alpha1
 	case extensionsv1alpha1.SchemeGroupVersion.WithKind("KindHealthRule"):
@@ -86,16 +96,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		// Group=source.convoy.kumodo.io, Version=v1alpha1
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepository"):
 		return &applyconfigurationsourcev1alpha1.GitRepositoryApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthBasicSpec"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthBasicSpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthGithubAppSpec"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthGithubAppSpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthSpec"):
 		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthSpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthSSHKeySpec"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthSSHKeySpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthTokenSpec"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthTokenSpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryLastFetchedStatus"):
 		return &applyconfigurationsourcev1alpha1.GitRepositoryLastFetchedStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryRefSpec"):
@@ -114,6 +116,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationsourcev1alpha1.GitRepositoryWebhookStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistry"):
 		return &applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryAuthSpec"):
+		return &applyconfigurationsourcev1alpha1.HelmRegistryAuthSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistrySpec"):
+		return &applyconfigurationsourcev1alpha1.HelmRegistrySpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistry"):
 		return &applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration{}
 

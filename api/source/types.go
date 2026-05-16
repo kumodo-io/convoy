@@ -1,19 +1,12 @@
 package source
 
 import (
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type GitRepositoryAuthType string
-
-const (
-	GitRepositoryAuthTypeNone      GitRepositoryAuthType = "none"
-	GitRepositoryAuthTypeSSHKey    GitRepositoryAuthType = "sshKey"
-	GitRepositoryAuthTypeBasic     GitRepositoryAuthType = "basic"
-	GitRepositoryAuthTypeToken     GitRepositoryAuthType = "token"
-	GitRepositoryAithTypeGithubApp GitRepositoryAuthType = "githubApp"
-)
+// ---------- GitRepository types ----------
 
 type GitRepositorySpec struct {
 	URL          string
@@ -32,31 +25,12 @@ type GitRepositoryRefSpec struct {
 }
 
 type GitRepositoryAuthSpec struct {
-	Type      GitRepositoryAuthType
-	SSHKey    *GitRepositoryAuthSSHKeySpec
-	Basic     *GitRepositoryAuthBasicSpec
-	Token     *GitRepositoryAuthTokenSpec
-	GithubApp *GitRepositoryAuthGithubAppSpec
-}
-
-type GitRepositoryAuthSSHKeySpec struct {
-	SSHKeyRef     corev1.SecretKeySelector
-	KnownHostsRef corev1.ConfigMapKeySelector
-}
-
-type GitRepositoryAuthBasicSpec struct {
-	Username    string
-	PasswordRef corev1.SecretKeySelector
-}
-
-type GitRepositoryAuthTokenSpec struct {
-	TokenRef corev1.SecretKeySelector
-}
-
-type GitRepositoryAuthGithubAppSpec struct {
-	AppID          int64
-	InstallationID int64
-	PrivateKeyRef  corev1.SecretKeySelector
+	Type      authv1.AuthType
+	SSHKey    *authv1.SSHKeyAuthSpec
+	Basic     *authv1.BasicAuthSpec
+	Token     *authv1.TokenAuthSpec
+	GithubApp *authv1.GithubAppAuthSpec
+	OIDC      *authv1.OIDAuthSpec
 }
 
 type GitRepositoryWebhookSpec struct {
@@ -126,7 +100,20 @@ type GitRepositoryList struct {
 	Items []GitRepository
 }
 
-type HelmRegistrySpec struct{}
+// ---------- HelmRegistry types ----------
+
+type HelmRegistrySpec struct {
+	URL      string
+	Auth     HelmRegistryAuthSpec
+	Interval metav1.Duration
+}
+
+type HelmRegistryAuthSpec struct {
+	Type  authv1.AuthType
+	Basic *authv1.BasicAuthSpec
+	Token *authv1.TokenAuthSpec
+	OIDC  *authv1.OIDAuthSpec
+}
 
 type HelmRegistryStatus struct{}
 

@@ -22,28 +22,28 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// OIDCClientAuthTLSClientAuthSpecApplyConfiguration represents a declarative configuration of the OIDCClientAuthTLSClientAuthSpec type for use
+// OIDCAuthTLSClientAuthSpecApplyConfiguration represents a declarative configuration of the OIDCAuthTLSClientAuthSpec type for use
 // with apply.
 //
-// OIDCClientAuthTLSClientAuthSpec defines the reference to the Secrets
+// OIDCAuthTLSClientAuthSpec defines the reference to the Secrets
 // and the keys of the Secret(s) containing the OIDC client certificate and key.
-type OIDCClientAuthTLSClientAuthSpecApplyConfiguration struct {
+type OIDCAuthTLSClientAuthSpecApplyConfiguration struct {
 	// CertRef is the name and the key of the Secret containing the OIDC client certificate.
 	CertRef *v1.SecretKeySelectorApplyConfiguration `json:"certRef,omitempty"`
 	// KeyRef is the name and the key of the Secret containing the OIDC client certificate key.
 	KeyRef *v1.SecretKeySelectorApplyConfiguration `json:"keyRef,omitempty"`
 }
 
-// OIDCClientAuthTLSClientAuthSpecApplyConfiguration constructs a declarative configuration of the OIDCClientAuthTLSClientAuthSpec type for use with
+// OIDCAuthTLSClientAuthSpecApplyConfiguration constructs a declarative configuration of the OIDCAuthTLSClientAuthSpec type for use with
 // apply.
-func OIDCClientAuthTLSClientAuthSpec() *OIDCClientAuthTLSClientAuthSpecApplyConfiguration {
-	return &OIDCClientAuthTLSClientAuthSpecApplyConfiguration{}
+func OIDCAuthTLSClientAuthSpec() *OIDCAuthTLSClientAuthSpecApplyConfiguration {
+	return &OIDCAuthTLSClientAuthSpecApplyConfiguration{}
 }
 
 // WithCertRef sets the CertRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CertRef field is set to the value of the last call.
-func (b *OIDCClientAuthTLSClientAuthSpecApplyConfiguration) WithCertRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCClientAuthTLSClientAuthSpecApplyConfiguration {
+func (b *OIDCAuthTLSClientAuthSpecApplyConfiguration) WithCertRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCAuthTLSClientAuthSpecApplyConfiguration {
 	b.CertRef = value
 	return b
 }
@@ -51,7 +51,7 @@ func (b *OIDCClientAuthTLSClientAuthSpecApplyConfiguration) WithCertRef(value *v
 // WithKeyRef sets the KeyRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the KeyRef field is set to the value of the last call.
-func (b *OIDCClientAuthTLSClientAuthSpecApplyConfiguration) WithKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCClientAuthTLSClientAuthSpecApplyConfiguration {
+func (b *OIDCAuthTLSClientAuthSpecApplyConfiguration) WithKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *OIDCAuthTLSClientAuthSpecApplyConfiguration {
 	b.KeyRef = value
 	return b
 }

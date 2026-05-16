@@ -22,11 +22,11 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// GitRepositoryAuthGithubAppSpecApplyConfiguration represents a declarative configuration of the GitRepositoryAuthGithubAppSpec type for use
+// GithubAppAuthSpecApplyConfiguration represents a declarative configuration of the GithubAppAuthSpec type for use
 // with apply.
 //
-// GitRepositoryAuthGithubAppSpec defines the GitHub App configuration used to access the Git repository.
-type GitRepositoryAuthGithubAppSpecApplyConfiguration struct {
+// GithubAppAuthSpec defines the GitHub App configuration used for authentication.
+type GithubAppAuthSpecApplyConfiguration struct {
 	// AppID is the ID of the GitHub App.
 	AppID *int64 `json:"appID,omitempty"`
 	// InstallationID is the ID of the GitHub App installation.
@@ -35,16 +35,16 @@ type GitRepositoryAuthGithubAppSpecApplyConfiguration struct {
 	PrivateKeyRef *v1.SecretKeySelectorApplyConfiguration `json:"privateKey,omitempty"`
 }
 
-// GitRepositoryAuthGithubAppSpecApplyConfiguration constructs a declarative configuration of the GitRepositoryAuthGithubAppSpec type for use with
+// GithubAppAuthSpecApplyConfiguration constructs a declarative configuration of the GithubAppAuthSpec type for use with
 // apply.
-func GitRepositoryAuthGithubAppSpec() *GitRepositoryAuthGithubAppSpecApplyConfiguration {
-	return &GitRepositoryAuthGithubAppSpecApplyConfiguration{}
+func GithubAppAuthSpec() *GithubAppAuthSpecApplyConfiguration {
+	return &GithubAppAuthSpecApplyConfiguration{}
 }
 
 // WithAppID sets the AppID field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the AppID field is set to the value of the last call.
-func (b *GitRepositoryAuthGithubAppSpecApplyConfiguration) WithAppID(value int64) *GitRepositoryAuthGithubAppSpecApplyConfiguration {
+func (b *GithubAppAuthSpecApplyConfiguration) WithAppID(value int64) *GithubAppAuthSpecApplyConfiguration {
 	b.AppID = &value
 	return b
 }
@@ -52,7 +52,7 @@ func (b *GitRepositoryAuthGithubAppSpecApplyConfiguration) WithAppID(value int64
 // WithInstallationID sets the InstallationID field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the InstallationID field is set to the value of the last call.
-func (b *GitRepositoryAuthGithubAppSpecApplyConfiguration) WithInstallationID(value int64) *GitRepositoryAuthGithubAppSpecApplyConfiguration {
+func (b *GithubAppAuthSpecApplyConfiguration) WithInstallationID(value int64) *GithubAppAuthSpecApplyConfiguration {
 	b.InstallationID = &value
 	return b
 }
@@ -60,7 +60,7 @@ func (b *GitRepositoryAuthGithubAppSpecApplyConfiguration) WithInstallationID(va
 // WithPrivateKeyRef sets the PrivateKeyRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PrivateKeyRef field is set to the value of the last call.
-func (b *GitRepositoryAuthGithubAppSpecApplyConfiguration) WithPrivateKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *GitRepositoryAuthGithubAppSpecApplyConfiguration {
+func (b *GithubAppAuthSpecApplyConfiguration) WithPrivateKeyRef(value *v1.SecretKeySelectorApplyConfiguration) *GithubAppAuthSpecApplyConfiguration {
 	b.PrivateKeyRef = value
 	return b
 }

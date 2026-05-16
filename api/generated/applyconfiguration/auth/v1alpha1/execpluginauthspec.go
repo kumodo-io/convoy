@@ -22,11 +22,11 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/core/v1"
 )
 
-// AuthModeExecPluginSpecApplyConfiguration represents a declarative configuration of the AuthModeExecPluginSpec type for use
+// ExecPluginAuthSpecApplyConfiguration represents a declarative configuration of the ExecPluginAuthSpec type for use
 // with apply.
 //
-// AuthModeExecPluginSpec defines the authentication mode using an exec plugin.
-type AuthModeExecPluginSpecApplyConfiguration struct {
+// ExecPluginAuthSpec defines the authentication mode using an exec plugin.
+type ExecPluginAuthSpecApplyConfiguration struct {
 	// Command is the command to execute.
 	Command *string `json:"command,omitempty"`
 	// Args are the arguments to pass to the command.
@@ -38,16 +38,16 @@ type AuthModeExecPluginSpecApplyConfiguration struct {
 	CredentialsRef *v1.SecretReferenceApplyConfiguration `json:"credentialsRef,omitempty"`
 }
 
-// AuthModeExecPluginSpecApplyConfiguration constructs a declarative configuration of the AuthModeExecPluginSpec type for use with
+// ExecPluginAuthSpecApplyConfiguration constructs a declarative configuration of the ExecPluginAuthSpec type for use with
 // apply.
-func AuthModeExecPluginSpec() *AuthModeExecPluginSpecApplyConfiguration {
-	return &AuthModeExecPluginSpecApplyConfiguration{}
+func ExecPluginAuthSpec() *ExecPluginAuthSpecApplyConfiguration {
+	return &ExecPluginAuthSpecApplyConfiguration{}
 }
 
 // WithCommand sets the Command field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Command field is set to the value of the last call.
-func (b *AuthModeExecPluginSpecApplyConfiguration) WithCommand(value string) *AuthModeExecPluginSpecApplyConfiguration {
+func (b *ExecPluginAuthSpecApplyConfiguration) WithCommand(value string) *ExecPluginAuthSpecApplyConfiguration {
 	b.Command = &value
 	return b
 }
@@ -55,7 +55,7 @@ func (b *AuthModeExecPluginSpecApplyConfiguration) WithCommand(value string) *Au
 // WithArgs adds the given value to the Args field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Args field.
-func (b *AuthModeExecPluginSpecApplyConfiguration) WithArgs(values ...string) *AuthModeExecPluginSpecApplyConfiguration {
+func (b *ExecPluginAuthSpecApplyConfiguration) WithArgs(values ...string) *ExecPluginAuthSpecApplyConfiguration {
 	for i := range values {
 		b.Args = append(b.Args, values[i])
 	}
@@ -65,7 +65,7 @@ func (b *AuthModeExecPluginSpecApplyConfiguration) WithArgs(values ...string) *A
 // WithEnv adds the given value to the Env field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Env field.
-func (b *AuthModeExecPluginSpecApplyConfiguration) WithEnv(values ...*v1.EnvVarApplyConfiguration) *AuthModeExecPluginSpecApplyConfiguration {
+func (b *ExecPluginAuthSpecApplyConfiguration) WithEnv(values ...*v1.EnvVarApplyConfiguration) *ExecPluginAuthSpecApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithEnv")
@@ -78,7 +78,7 @@ func (b *AuthModeExecPluginSpecApplyConfiguration) WithEnv(values ...*v1.EnvVarA
 // WithCredentialsRef sets the CredentialsRef field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CredentialsRef field is set to the value of the last call.
-func (b *AuthModeExecPluginSpecApplyConfiguration) WithCredentialsRef(value *v1.SecretReferenceApplyConfiguration) *AuthModeExecPluginSpecApplyConfiguration {
+func (b *ExecPluginAuthSpecApplyConfiguration) WithCredentialsRef(value *v1.SecretReferenceApplyConfiguration) *ExecPluginAuthSpecApplyConfiguration {
 	b.CredentialsRef = value
 	return b
 }

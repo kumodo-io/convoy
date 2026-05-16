@@ -30,8 +30,8 @@ import (
 type HelmRegistryApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *sourcev1alpha1.HelmRegistrySpec   `json:"spec,omitempty"`
-	Status                           *sourcev1alpha1.HelmRegistryStatus `json:"status,omitempty"`
+	Spec                             *HelmRegistrySpecApplyConfiguration `json:"spec,omitempty"`
+	Status                           *sourcev1alpha1.HelmRegistryStatus  `json:"status,omitempty"`
 }
 
 // HelmRegistry constructs a declarative configuration of the HelmRegistry type for use with
@@ -208,8 +208,8 @@ func (b *HelmRegistryApplyConfiguration) ensureObjectMetaApplyConfigurationExist
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *HelmRegistryApplyConfiguration) WithSpec(value sourcev1alpha1.HelmRegistrySpec) *HelmRegistryApplyConfiguration {
-	b.Spec = &value
+func (b *HelmRegistryApplyConfiguration) WithSpec(value *HelmRegistrySpecApplyConfiguration) *HelmRegistryApplyConfiguration {
+	b.Spec = value
 	return b
 }
 
