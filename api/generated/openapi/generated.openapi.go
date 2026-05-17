@@ -28,69 +28,94 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":                    schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":               schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec":             schema_convoy_api_auth_v1alpha1_DockerConfigAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":               schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":                schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec":               schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec":                      schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec":         schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec":        schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec":        schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec":               schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec":                   schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec":                          schema_convoy_api_auth_v1alpha1_TLSSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":                    schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                          schema_convoy_api_core_v1alpha1_Cluster(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus":               schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":         schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec":                  schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec":          schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec":  schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec":        schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                      schema_convoy_api_core_v1alpha1_ClusterList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                      schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                    schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                          schema_convoy_api_core_v1alpha1_Release(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                      schema_convoy_api_core_v1alpha1_ReleaseList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations":                 schema_convoy_api_core_v1alpha1_ReleaseMutations(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin":                       schema_convoy_api_core_v1alpha1_ReleasePin(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec":                      schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus":                    schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":             schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":         schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":         schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":         schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":     schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":     schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                  schema_convoy_api_source_v1alpha1_GitRepository(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec":          schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus": schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":              schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec":           schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec":              schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus":            schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec": schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec":       schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":                   schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec":           schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryLastFetchedStatus":  schema_convoy_api_source_v1alpha1_HelmRegistryLastFetchedStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":               schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":               schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":             schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookFilterSpec":  schema_convoy_api_source_v1alpha1_HelmRegistryWebhookFilterSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookSpec":        schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.LastRejectionStatus":            schema_convoy_api_source_v1alpha1_LastRejectionStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry":                    schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryAuthSpec":            schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryLastCheckedStatus":   schema_convoy_api_source_v1alpha1_OCIRegistryLastCheckedStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryList":                schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec":                schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus":              schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookFilterSpec":   schema_convoy_api_source_v1alpha1_OCIRegistryWebhookFilterSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookSpec":         schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus":                  schema_convoy_api_source_v1alpha1_WebhookStatus(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":                       schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":                  schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec":                schema_convoy_api_auth_v1alpha1_DockerConfigAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":                  schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":                   schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec":                  schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec":                         schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec":            schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec":           schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec":           schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec":                  schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec":                      schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec":                             schema_convoy_api_auth_v1alpha1_TLSSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":                       schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                             schema_convoy_api_core_v1alpha1_Cluster(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus":                  schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":            schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec":                     schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec":             schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec":     schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec":           schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                         schema_convoy_api_core_v1alpha1_ClusterList(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                         schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                       schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                             schema_convoy_api_core_v1alpha1_Release(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderFailureStatus": schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus":        schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseClusterRefSpec":               schema_convoy_api_core_v1alpha1_ReleaseClusterRefSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentHelmSpec":              schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentJsonnetSpec":           schema_convoy_api_core_v1alpha1_ReleaseContentJsonnetSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentKustomizeSpec":         schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec":         schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec":                  schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec":   schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                         schema_convoy_api_core_v1alpha1_ReleaseList(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation":                     schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec":             schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationPatchSpec":            schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin":                          schema_convoy_api_core_v1alpha1_ReleasePin(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinRenderInputsStatus":        schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus":                    schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetentionPolicySpec":          schema_convoy_api_core_v1alpha1_ReleaseRetentionPolicySpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetryBackoffSpec":             schema_convoy_api_core_v1alpha1_ReleaseRetryBackoffSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSourceSpec":                   schema_convoy_api_core_v1alpha1_ReleaseSourceSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec":                         schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus":                       schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSyncPolicySpec":               schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseWaveStrategySpec":             schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedCluster":                     schema_convoy_api_core_v1alpha1_ResolvedCluster(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus":        schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedMutation":                    schema_convoy_api_core_v1alpha1_ResolvedMutation(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus":       schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedSource":                      schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus":                  schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResultingDeletionPolicy":             schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":                schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":            schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":            schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":            schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":        schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":        schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                     schema_convoy_api_source_v1alpha1_GitRepository(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec":             schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus":    schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":                 schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec":              schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec":                 schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus":               schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec":    schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec":          schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":                      schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec":              schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryLastFetchedStatus":     schema_convoy_api_source_v1alpha1_HelmRegistryLastFetchedStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":                  schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":                  schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":                schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookFilterSpec":     schema_convoy_api_source_v1alpha1_HelmRegistryWebhookFilterSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookSpec":           schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.LastRejectionStatus":               schema_convoy_api_source_v1alpha1_LastRejectionStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry":                       schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryAuthSpec":               schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryLastCheckedStatus":      schema_convoy_api_source_v1alpha1_OCIRegistryLastCheckedStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryList":                   schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec":                   schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus":                 schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookFilterSpec":      schema_convoy_api_source_v1alpha1_OCIRegistryWebhookFilterSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookSpec":            schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref),
+		"github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus":                     schema_convoy_api_source_v1alpha1_WebhookStatus(ref),
 	}
 }
 
@@ -273,7 +298,7 @@ func schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref common.ReferenceCallb
 							Format:      "int64",
 						},
 					},
-					"privateKey": {
+					"privateKeyRef": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PrivateKeyRef is the name and the key of the Secret containing the private key.",
 							Default:     map[string]interface{}{},
@@ -281,7 +306,7 @@ func schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"appID", "installationID", "privateKey"},
+				Required: []string{"appID", "installationID", "privateKeyRef"},
 			},
 		},
 		Dependencies: []string{
@@ -1135,9 +1160,21 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 						},
 					},
 					"mutations": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations"),
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation"),
+									},
+								},
+							},
 						},
 					},
 					"pin": {
@@ -1150,7 +1187,382 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutations", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseAttemptedRenderFailureStatus reflects the failure status of a Release render attempt.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"stage": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Stage is the stage of the failure.\n\nPossible enum values:\n - `\"ClusterResolution\"` is the stage of a release render attempt that is resolving the cluster.\n - `\"MutationResolution\"` is the stage of a release render attempt that is resolving the mutations.\n - `\"Rendering\"` is the stage of a release render attempt that is rendering.\n - `\"SourceResolution\"` is the stage of a release render attempt that is resolving the source.\n - `\"Syncing\"` is the stage of a release render attempt that is syncing.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"ClusterResolution", "MutationResolution", "Rendering", "SourceResolution", "Syncing"},
+						},
+					},
+					"mutationIndex": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MutationIndex is the index of the mutation that failed.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is the failure message.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"stage", "message"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseAttemptedRenderStatus reflects the status of a release render attempt.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"resolvedSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedSource is the resolved source of the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedSource"),
+						},
+					},
+					"resolvedCluster": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedCluster is the resolved cluster of the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedCluster"),
+						},
+					},
+					"resolvedMutations": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedMutations is the resolved mutations of the release.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedMutation"),
+									},
+								},
+							},
+						},
+					},
+					"renderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderRef is the reference to the rendered state.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"attemptedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AttemptedAt is the time when the Release sync was attempted.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase is the phase of the release render attempt.\n\nPossible enum values:\n - `\"Failed\"` is the phase of a release render attempt that failed.\n - `\"Rendering\"` is the phase of a release render attempt that is rendering.\n - `\"Succeeded\"` is the phase of a release render attempt that succeeded.\n - `\"Syncing\"` is the phase of a release render attempt that is syncing.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Failed", "Rendering", "Succeeded", "Syncing"},
+						},
+					},
+					"syncedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SyncedAt is the time when the Release was synced.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"syncedResources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SyncedResources is the number of resources synced.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"failure": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Failure is the failure status of the release render attempt.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderFailureStatus"),
+						},
+					},
+				},
+				Required: []string{"resolvedSource", "resolvedCluster", "resolvedMutations", "renderRef"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderFailureStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedCluster", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedMutation", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedSource", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseClusterRefSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseClusterRefSpec defines the desired state of the ReleaseClusterRef.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseContentHelmSpec defines the Helm chart content of the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path to the Helm chart within the source. Ignored if the source is a Helm registry.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"chart": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Chart is the name of the Helm chart. Ignored if the source is a Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the version of the Helm chart.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"dependencyMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DependencyMode is the dependency mode for the Helm chart.\n\nPossible enum values:\n - `\"resolve\"` is the dependency mode used to resolve dependencies at render time.\n - `\"vendored\"` is the dependency mode used for vendored dependencies.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"resolve", "vendored"},
+						},
+					},
+				},
+				Required: []string{"dependencyMode"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseContentJsonnetSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseContentJsonnetSpec defines the jsonnet content of the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path to the jsonnet file within the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tla": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "TLA is the list of top-level arguments to pass to the jsonnet file.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"path"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.EnvVar"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseContentKustomizeSpec defines the kustomize content of the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path to the kustomize bundle within the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"path"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseContentManifestsSpec defines the manifests content of the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"paths": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Paths is the list of paths to the manifests within the source.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"paths"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseContentSpec defines the content of the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the type of the content. Immutable after creation.\n\nPossible enum values:\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"helm", "jsonnet", "kustomize", "manifests"},
+						},
+					},
+					"helm": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Helm is the Helm chart content of the release.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentHelmSpec"),
+						},
+					},
+					"manifests": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Manifests is the manifests content of the release.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec"),
+						},
+					},
+					"kustomize": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kustomize is the kustomize content of the release.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentKustomizeSpec"),
+						},
+					},
+					"jsonnet": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Jsonnet is the jsonnet content of the release.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentJsonnetSpec"),
+						},
+					},
+				},
+				Required: []string{"type"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentHelmSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentJsonnetSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentKustomizeSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseDeletionPolicyOverrideSpec is used to override the deletion policy of the cluster Release is bound to.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"workloads": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Workloads is the deletion policy for workloads.\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"leave", "prune"},
+						},
+					},
+				},
+				Required: []string{"workloads"},
+			},
+		},
 	}
 }
 
@@ -1202,13 +1614,164 @@ func schema_convoy_api_core_v1alpha1_ReleaseList(ref common.ReferenceCallback) c
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_ReleaseMutations(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "ReleaseMutation defines the desired state of the ReleaseMutation.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
+						},
+					},
+					"inline": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Inline is the inline mutation.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"from": {
+						SchemaProps: spec.SchemaProps{
+							Description: "From is the source of the mutation.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec"),
+						},
+					},
+					"patches": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Patches is the list of JSON patches to apply to the release.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationPatchSpec"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"type"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationPatchSpec"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseMutationFromSpec defines the source of the mutation.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is the kind of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path to the mutation within the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"kind", "name", "path"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseMutationPatchSpec defines the JSON patch to apply to the release within the mutation.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"op": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Op is the JSON patch operation.\n\nPossible enum values:\n - `\"add\"` is the add JSON patch operation.\n - `\"copy\"` is the copy JSON patch operation.\n - `\"move\"` is the move JSON patch operation.\n - `\"remove\"` is the remove JSON patch operation.\n - `\"replace\"` is the replace JSON patch operation.\n - `\"test\"` is the test JSON patch operation.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"add", "copy", "move", "remove", "replace", "test"},
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path to the field within the release to patch.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"from": {
+						SchemaProps: spec.SchemaProps{
+							Description: "From is the path to the field within the release to copy or move from. Applicable only for move and copy operations.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Value is the value to patch.",
+							Ref:         ref("k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.JSON"),
+						},
+					},
+				},
+				Required: []string{"op", "path"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1.JSON"},
 	}
 }
 
@@ -1216,7 +1779,234 @@ func schema_convoy_api_core_v1alpha1_ReleasePin(ref common.ReferenceCallback) co
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "ReleasePin defines the desired state of the ReleasePin.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"renderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderRef is the reference to the rendered state that is pinned.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pinnedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PinnedAt is the time when the release was pinned.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"pinnedBy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PinnedBy is the name of the user that pinned the release.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is the reason for pinning the release.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"renderRef", "pinnedAt"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleasePinRenderInputsStatus reflects the observed state of the release pin.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"sourceKind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SourceKind is the kind of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sourceName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SourceName is the name of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sourceNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SourceNamespace is the namespace of the source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"sourceRevision": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SourceRevision is the revision of the source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"contentType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ContentType is the type of the content.\n\nPossible enum values:\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"helm", "jsonnet", "kustomize", "manifests"},
+						},
+					},
+					"contentPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ContentPath is the path to the content within the source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"mutationsHash": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MutationsHash is the hash of the mutations applied to the content.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"sourceKind", "sourceName", "contentType"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleasePinStatus reflects the observed state of the ReleasePin.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"intent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Intent is the intention of pinning the release. Derives from the Release.Spec.Pin.RenderRef: if the renderRef matches the latest Release state, then the intent is \"freeze\". Otherwise, it's \"rollback\".\n\nPossible enum values:\n - `\"freeze\"` is the intention of freezing the release.\n - `\"rollback\"` is the intention of rolling back the release.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"freeze", "rollback"},
+						},
+					},
+					"renderInputs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderInputs is the inputs used to render the release.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinRenderInputsStatus"),
+						},
+					},
+				},
+				Required: []string{"intent"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinRenderInputsStatus"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseRetentionPolicySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseRetentionPolicySpec defines the desired state of the release retention policy.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"keepHistory": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeepHistory defines how many historical (rendered, applied) records to retain in S3. Drives /history pagination depth and rollback range.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"keepHistory"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseRetryBackoffSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseRetryBackoffSpec defines the desired state of the backoff policy for retrying failed syncs.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"initial": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Initial is the initial backoff duration.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"max": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Max is the maximum backoff duration.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"factor": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Factor is the backoff factor.",
+							Default:     0,
+							Type:        []string{"number"},
+							Format:      "double",
+						},
+					},
+				},
+				Required: []string{"initial", "max", "factor"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseSourceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseSourceSpec defines the source for the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is the kind of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"kind", "name"},
 			},
 		},
 	}
@@ -1226,9 +2016,56 @@ func schema_convoy_api_core_v1alpha1_ReleaseSpec(ref common.ReferenceCallback) c
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "ReleaseSpec defines the desired state of the Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"source": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Source is the content source of the release. Immutable after creation. To re-target, create a new Release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSourceSpec"),
+						},
+					},
+					"content": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Content is the content of the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec"),
+						},
+					},
+					"clusterRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ClusterRef is the reference to the cluster where the release will be deployed. Immutable after creation.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseClusterRefSpec"),
+						},
+					},
+					"syncPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SyncPolicy is the sync policy for the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSyncPolicySpec"),
+						},
+					},
+					"retentionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RetentionPolicy is the retention policy for the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetentionPolicySpec"),
+						},
+					},
+					"deletionPolicyOverride": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DeletionPolicyOverride is the override for the deletion policy of the cluster Release is bound to.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec"),
+						},
+					},
+				},
+				Required: []string{"source", "content", "clusterRef", "syncPolicy", "retentionPolicy"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseClusterRefSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetentionPolicySpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSourceSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSyncPolicySpec"},
 	}
 }
 
@@ -1236,7 +2073,577 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "ReleaseStatus reflects the observed state of the Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the last generation that was observed by the controller.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"type",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is the list of conditions related to the release.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Condition"),
+									},
+								},
+							},
+						},
+					},
+					"pin": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pin is the status of the release pin.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus"),
+						},
+					},
+					"resolvedDeletionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedDeletionPolicy is the resolved deletion policy of the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus"),
+						},
+					},
+					"resolvedRetentionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResolvedRetentionPolicy is the resolved retention policy of the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus"),
+						},
+					},
+					"lastSuccessful": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastSuccessful is the last successful sync attempt.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus"),
+						},
+					},
+					"lastAttempted": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastAttempted is the last attempted sync attempt.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus"),
+						},
+					},
+					"waves": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Waves reflects the order in which resources were applied and their health status. Each wave entry represents a group of resources applied together, with a state indicating whether they have been fully applied and healthy, are in progress, or have failed.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus"),
+									},
+								},
+							},
+						},
+					},
+					"reconciledAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReconciledAt is the time when the release was reconciled.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"historyTruncated": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HistoryTruncated is true if the release history is truncated.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"historyTruncated"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseSyncPolicySpec defines the desired state of the ReleaseSyncPolicy.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"automatic": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Automatic defines whether the release should be automatically synced. Manual syncing requires the POST /sync to trigger the sync.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"pruneOrphaned": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PruneOrphaned defines whether to prune resources that are no longer referenced by the release. This may happen in case the content configuration changes. If set to false, state of such resources will be left untouched and won't be tracked by the controller.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"interval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Interval is the poll interval for drift detection.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"retryBackoff": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RetryBackoff defines the backoff policy for retrying failed syncs.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetryBackoffSpec"),
+						},
+					},
+					"waveStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WaveStrategy defines the wave strategy.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseWaveStrategySpec"),
+						},
+					},
+				},
+				Required: []string{"automatic", "pruneOrphaned", "interval", "retryBackoff", "waveStrategy"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetryBackoffSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseWaveStrategySpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseWaveStrategySpec defines the desired state of the wave strategy.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"strategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Strategy is the wave strategy.\n\nPossible enum values:\n - `\"waitForApplied\"` is the wave strategy that waits for all resources to be applied.\n - `\"waitForHealthy\"` is the wave strategy that waits for all resources to be healthy.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"waitForApplied", "waitForHealthy"},
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timeout is the timeout for the wave strategy. If not set, controller will wait indefinitely.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+				},
+				Required: []string{"strategy"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ResolvedCluster(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolvedCluster reflects the resolved cluster of the Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the cluster.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is the UID of the cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the observed generation of the cluster.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"server": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Server is the server URL of the cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadataSnapshot": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MetadataSnapshot is the snapshot of the cluster metadata.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"name", "uid", "observedGeneration", "server"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolvedDeletionPolicyStatus reflects the resolved deletion policy of the Release considering the deletion policy overrides.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"workloadsPolicySource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WorkloadsPolicySource is the source of the deletion policy for workloads.\n\nPossible enum values:\n - `\"cluster\"` is used when the workloads deletion policy is defined in the Cluster.\n - `\"release\"` is used when the workloads deletion policy is defined in the Release.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"cluster", "release"},
+						},
+					},
+					"policy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Policy is the resolved deletion policy.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResultingDeletionPolicy"),
+						},
+					},
+					"sourceClusterGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SourceClusterGeneration is the generation of the source cluster.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+				},
+				Required: []string{"workloadsPolicySource", "policy"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ResultingDeletionPolicy"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ResolvedMutation(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolvedMutation reflects the resolved mutation of the Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"index": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Index is the index of the mutation.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
+						},
+					},
+					"sourceRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SourceRef is the source reference of the mutation.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec"),
+						},
+					},
+					"sourceRevision": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SourceRevision is the source revision of the mutation.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"contentHash": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ContentHash is the content hash of the mutation.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"index", "type", "sourceRef", "sourceRevision", "contentHash"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolvedRetentionPolicyStatus reflects the resulting retention policy.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"keepHistory": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeepHistory is the resulting retention policy for the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"historyCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HistoryCount is the observed history count.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"keepHistory", "historyCount"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ResolvedSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolvedSource reflects the resolved source of the Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is the kind of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID is the UID of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"observedGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ObservedGeneration is the observed generation of the source.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"url": {
+						SchemaProps: spec.SchemaProps{
+							Description: "URL is the URL of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"revision": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Revision is the revision of the source.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"contentType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ContentType is the type of the content.\n\nPossible enum values:\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"helm", "jsonnet", "kustomize", "manifests"},
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path to the content within the source.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"kind", "name", "uid", "observedGeneration", "url", "revision", "contentType"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResourceWaveStatus reflects the status of a wave of resources.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"number": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Number is the resources wave weight.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resources is the number of resources in the wave.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Description: "State is the state of the wave.\n\nPossible enum values:\n - `\"Completed\"` is the state of a resource wave that has been completed.\n - `\"Failed\"` is the state of a resource wave that has failed.\n - `\"InProgress\"` is the state of a resource wave that is in progress.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Completed", "Failed", "InProgress"},
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartedAt is the time when the wave started.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"completedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompletedAt is the time when the wave completed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"failedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailedAt is the time when the wave failed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is the failure message.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"number", "resources", "state"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResultingDeletionPolicy reflects the resolved deletion policy of the Release considering the deletion policy overrides.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"workloads": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Workloads is the resolved deletion policy for workloads.\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"leave", "prune"},
+						},
+					},
+					"releases": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Releases is the resolved deletion policy for releases.\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"block", "delete", "orphan"},
+						},
+					},
+					"onUnreachable": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OnUnreachable is the resolved deletion policy for unreachable clusters.\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"block", "releasesOnly"},
+						},
+					},
+				},
+				Required: []string{"workloads", "releases", "onUnreachable"},
 			},
 		},
 	}

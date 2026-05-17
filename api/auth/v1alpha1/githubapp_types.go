@@ -13,5 +13,5 @@ type GithubAppAuthSpec struct {
 	InstallationID int64 `json:"installationID"`
 
 	// PrivateKeyRef is the name and the key of the Secret containing the private key.
-	PrivateKeyRef corev1.SecretKeySelector `json:"privateKey"`
+	PrivateKeyRef corev1.SecretKeySelector `json:"privateKeyRef"`
 }

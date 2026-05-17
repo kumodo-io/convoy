@@ -26,6 +26,8 @@ import (
 
 	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	core "github.com/kumodo-io/convoy/api/core"
+	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -148,6 +150,96 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseAttemptedRenderFailureStatus)(nil), (*core.ReleaseAttemptedRenderFailureStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAttemptedRenderFailureStatus(a.(*ReleaseAttemptedRenderFailureStatus), b.(*core.ReleaseAttemptedRenderFailureStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseAttemptedRenderFailureStatus)(nil), (*ReleaseAttemptedRenderFailureStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAttemptedRenderFailureStatus(a.(*core.ReleaseAttemptedRenderFailureStatus), b.(*ReleaseAttemptedRenderFailureStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseAttemptedRenderStatus)(nil), (*core.ReleaseAttemptedRenderStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseAttemptedRenderStatus_To_core_ReleaseAttemptedRenderStatus(a.(*ReleaseAttemptedRenderStatus), b.(*core.ReleaseAttemptedRenderStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseAttemptedRenderStatus)(nil), (*ReleaseAttemptedRenderStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseAttemptedRenderStatus_To_v1alpha1_ReleaseAttemptedRenderStatus(a.(*core.ReleaseAttemptedRenderStatus), b.(*ReleaseAttemptedRenderStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseClusterRefSpec)(nil), (*core.ReleaseClusterRefSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(a.(*ReleaseClusterRefSpec), b.(*core.ReleaseClusterRefSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseClusterRefSpec)(nil), (*ReleaseClusterRefSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(a.(*core.ReleaseClusterRefSpec), b.(*ReleaseClusterRefSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseContentHelmSpec)(nil), (*core.ReleaseContentHelmSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(a.(*ReleaseContentHelmSpec), b.(*core.ReleaseContentHelmSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseContentHelmSpec)(nil), (*ReleaseContentHelmSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(a.(*core.ReleaseContentHelmSpec), b.(*ReleaseContentHelmSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseContentJsonnetSpec)(nil), (*core.ReleaseContentJsonnetSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpec(a.(*ReleaseContentJsonnetSpec), b.(*core.ReleaseContentJsonnetSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseContentJsonnetSpec)(nil), (*ReleaseContentJsonnetSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpec(a.(*core.ReleaseContentJsonnetSpec), b.(*ReleaseContentJsonnetSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseContentKustomizeSpec)(nil), (*core.ReleaseContentKustomizeSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomizeSpec(a.(*ReleaseContentKustomizeSpec), b.(*core.ReleaseContentKustomizeSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseContentKustomizeSpec)(nil), (*ReleaseContentKustomizeSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomizeSpec(a.(*core.ReleaseContentKustomizeSpec), b.(*ReleaseContentKustomizeSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseContentManifestsSpec)(nil), (*core.ReleaseContentManifestsSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifestsSpec(a.(*ReleaseContentManifestsSpec), b.(*core.ReleaseContentManifestsSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseContentManifestsSpec)(nil), (*ReleaseContentManifestsSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifestsSpec(a.(*core.ReleaseContentManifestsSpec), b.(*ReleaseContentManifestsSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseContentSpec)(nil), (*core.ReleaseContentSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(a.(*ReleaseContentSpec), b.(*core.ReleaseContentSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseContentSpec)(nil), (*ReleaseContentSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(a.(*core.ReleaseContentSpec), b.(*ReleaseContentSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseDeletionPolicyOverrideSpec)(nil), (*core.ReleaseDeletionPolicyOverrideSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(a.(*ReleaseDeletionPolicyOverrideSpec), b.(*core.ReleaseDeletionPolicyOverrideSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseDeletionPolicyOverrideSpec)(nil), (*ReleaseDeletionPolicyOverrideSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(a.(*core.ReleaseDeletionPolicyOverrideSpec), b.(*ReleaseDeletionPolicyOverrideSpec), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*ReleaseList)(nil), (*core.ReleaseList)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_ReleaseList_To_core_ReleaseList(a.(*ReleaseList), b.(*core.ReleaseList), scope)
 	}); err != nil {
@@ -158,13 +250,33 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*ReleaseMutations)(nil), (*core.ReleaseMutations)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ReleaseMutations_To_core_ReleaseMutations(a.(*ReleaseMutations), b.(*core.ReleaseMutations), scope)
+	if err := s.AddGeneratedConversionFunc((*ReleaseMutation)(nil), (*core.ReleaseMutation)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation(a.(*ReleaseMutation), b.(*core.ReleaseMutation), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*core.ReleaseMutations)(nil), (*ReleaseMutations)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_ReleaseMutations_To_v1alpha1_ReleaseMutations(a.(*core.ReleaseMutations), b.(*ReleaseMutations), scope)
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseMutation)(nil), (*ReleaseMutation)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation(a.(*core.ReleaseMutation), b.(*ReleaseMutation), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseMutationFromSpec)(nil), (*core.ReleaseMutationFromSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(a.(*ReleaseMutationFromSpec), b.(*core.ReleaseMutationFromSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseMutationFromSpec)(nil), (*ReleaseMutationFromSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(a.(*core.ReleaseMutationFromSpec), b.(*ReleaseMutationFromSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseMutationPatchSpec)(nil), (*core.ReleaseMutationPatchSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseMutationPatchSpec_To_core_ReleaseMutationPatchSpec(a.(*ReleaseMutationPatchSpec), b.(*core.ReleaseMutationPatchSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseMutationPatchSpec)(nil), (*ReleaseMutationPatchSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(a.(*core.ReleaseMutationPatchSpec), b.(*ReleaseMutationPatchSpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -175,6 +287,56 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ReleasePin)(nil), (*ReleasePin)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ReleasePin_To_v1alpha1_ReleasePin(a.(*core.ReleasePin), b.(*ReleasePin), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleasePinRenderInputsStatus)(nil), (*core.ReleasePinRenderInputsStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleasePinRenderInputsStatus_To_core_ReleasePinRenderInputsStatus(a.(*ReleasePinRenderInputsStatus), b.(*core.ReleasePinRenderInputsStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleasePinRenderInputsStatus)(nil), (*ReleasePinRenderInputsStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleasePinRenderInputsStatus_To_v1alpha1_ReleasePinRenderInputsStatus(a.(*core.ReleasePinRenderInputsStatus), b.(*ReleasePinRenderInputsStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleasePinStatus)(nil), (*core.ReleasePinStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(a.(*ReleasePinStatus), b.(*core.ReleasePinStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleasePinStatus)(nil), (*ReleasePinStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(a.(*core.ReleasePinStatus), b.(*ReleasePinStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseRetentionPolicySpec)(nil), (*core.ReleaseRetentionPolicySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(a.(*ReleaseRetentionPolicySpec), b.(*core.ReleaseRetentionPolicySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseRetentionPolicySpec)(nil), (*ReleaseRetentionPolicySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(a.(*core.ReleaseRetentionPolicySpec), b.(*ReleaseRetentionPolicySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseRetryBackoffSpec)(nil), (*core.ReleaseRetryBackoffSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(a.(*ReleaseRetryBackoffSpec), b.(*core.ReleaseRetryBackoffSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseRetryBackoffSpec)(nil), (*ReleaseRetryBackoffSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(a.(*core.ReleaseRetryBackoffSpec), b.(*ReleaseRetryBackoffSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseSourceSpec)(nil), (*core.ReleaseSourceSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(a.(*ReleaseSourceSpec), b.(*core.ReleaseSourceSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseSourceSpec)(nil), (*ReleaseSourceSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(a.(*core.ReleaseSourceSpec), b.(*ReleaseSourceSpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -195,6 +357,96 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ReleaseStatus)(nil), (*ReleaseStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(a.(*core.ReleaseStatus), b.(*ReleaseStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseSyncPolicySpec)(nil), (*core.ReleaseSyncPolicySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(a.(*ReleaseSyncPolicySpec), b.(*core.ReleaseSyncPolicySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseSyncPolicySpec)(nil), (*ReleaseSyncPolicySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(a.(*core.ReleaseSyncPolicySpec), b.(*ReleaseSyncPolicySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseWaveStrategySpec)(nil), (*core.ReleaseWaveStrategySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(a.(*ReleaseWaveStrategySpec), b.(*core.ReleaseWaveStrategySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseWaveStrategySpec)(nil), (*ReleaseWaveStrategySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(a.(*core.ReleaseWaveStrategySpec), b.(*ReleaseWaveStrategySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ResolvedCluster)(nil), (*core.ResolvedCluster)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(a.(*ResolvedCluster), b.(*core.ResolvedCluster), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResolvedCluster)(nil), (*ResolvedCluster)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(a.(*core.ResolvedCluster), b.(*ResolvedCluster), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ResolvedDeletionPolicyStatus)(nil), (*core.ResolvedDeletionPolicyStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(a.(*ResolvedDeletionPolicyStatus), b.(*core.ResolvedDeletionPolicyStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResolvedDeletionPolicyStatus)(nil), (*ResolvedDeletionPolicyStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(a.(*core.ResolvedDeletionPolicyStatus), b.(*ResolvedDeletionPolicyStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ResolvedMutation)(nil), (*core.ResolvedMutation)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(a.(*ResolvedMutation), b.(*core.ResolvedMutation), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResolvedMutation)(nil), (*ResolvedMutation)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResolvedMutation_To_v1alpha1_ResolvedMutation(a.(*core.ResolvedMutation), b.(*ResolvedMutation), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ResolvedRetentionPolicyStatus)(nil), (*core.ResolvedRetentionPolicyStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(a.(*ResolvedRetentionPolicyStatus), b.(*core.ResolvedRetentionPolicyStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResolvedRetentionPolicyStatus)(nil), (*ResolvedRetentionPolicyStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(a.(*core.ResolvedRetentionPolicyStatus), b.(*ResolvedRetentionPolicyStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ResolvedSource)(nil), (*core.ResolvedSource)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ResolvedSource_To_core_ResolvedSource(a.(*ResolvedSource), b.(*core.ResolvedSource), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResolvedSource)(nil), (*ResolvedSource)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResolvedSource_To_v1alpha1_ResolvedSource(a.(*core.ResolvedSource), b.(*ResolvedSource), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ResourceWaveStatus)(nil), (*core.ResourceWaveStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(a.(*ResourceWaveStatus), b.(*core.ResourceWaveStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceWaveStatus)(nil), (*ResourceWaveStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(a.(*core.ResourceWaveStatus), b.(*ResourceWaveStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ResultingDeletionPolicy)(nil), (*core.ResultingDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(a.(*ResultingDeletionPolicy), b.(*core.ResultingDeletionPolicy), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResultingDeletionPolicy)(nil), (*ResultingDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(a.(*core.ResultingDeletionPolicy), b.(*ResultingDeletionPolicy), scope)
 	}); err != nil {
 		return err
 	}
@@ -491,9 +743,7 @@ func autoConvert_v1alpha1_Release_To_core_Release(in *Release, out *core.Release
 	if err := Convert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(&in.Status, &out.Status, s); err != nil {
 		return err
 	}
-	if err := Convert_v1alpha1_ReleaseMutations_To_core_ReleaseMutations(&in.Mutations, &out.Mutations, s); err != nil {
-		return err
-	}
+	out.Mutations = *(*[]core.ReleaseMutation)(unsafe.Pointer(&in.Mutations))
 	if err := Convert_v1alpha1_ReleasePin_To_core_ReleasePin(&in.Pin, &out.Pin, s); err != nil {
 		return err
 	}
@@ -513,9 +763,7 @@ func autoConvert_core_Release_To_v1alpha1_Release(in *core.Release, out *Release
 	if err := Convert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(&in.Status, &out.Status, s); err != nil {
 		return err
 	}
-	if err := Convert_core_ReleaseMutations_To_v1alpha1_ReleaseMutations(&in.Mutations, &out.Mutations, s); err != nil {
-		return err
-	}
+	out.Mutations = *(*[]ReleaseMutation)(unsafe.Pointer(&in.Mutations))
 	if err := Convert_core_ReleasePin_To_v1alpha1_ReleasePin(&in.Pin, &out.Pin, s); err != nil {
 		return err
 	}
@@ -525,6 +773,232 @@ func autoConvert_core_Release_To_v1alpha1_Release(in *core.Release, out *Release
 // Convert_core_Release_To_v1alpha1_Release is an autogenerated conversion function.
 func Convert_core_Release_To_v1alpha1_Release(in *core.Release, out *Release, s conversion.Scope) error {
 	return autoConvert_core_Release_To_v1alpha1_Release(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAttemptedRenderFailureStatus(in *ReleaseAttemptedRenderFailureStatus, out *core.ReleaseAttemptedRenderFailureStatus, s conversion.Scope) error {
+	out.Stage = core.ReleaseRenderAttemptStage(in.Stage)
+	out.MutationIndex = in.MutationIndex
+	out.Message = in.Message
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAttemptedRenderFailureStatus is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAttemptedRenderFailureStatus(in *ReleaseAttemptedRenderFailureStatus, out *core.ReleaseAttemptedRenderFailureStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAttemptedRenderFailureStatus(in, out, s)
+}
+
+func autoConvert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAttemptedRenderFailureStatus(in *core.ReleaseAttemptedRenderFailureStatus, out *ReleaseAttemptedRenderFailureStatus, s conversion.Scope) error {
+	out.Stage = ReleaseRenderAttemptStage(in.Stage)
+	out.MutationIndex = in.MutationIndex
+	out.Message = in.Message
+	return nil
+}
+
+// Convert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAttemptedRenderFailureStatus is an autogenerated conversion function.
+func Convert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAttemptedRenderFailureStatus(in *core.ReleaseAttemptedRenderFailureStatus, out *ReleaseAttemptedRenderFailureStatus, s conversion.Scope) error {
+	return autoConvert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAttemptedRenderFailureStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseAttemptedRenderStatus_To_core_ReleaseAttemptedRenderStatus(in *ReleaseAttemptedRenderStatus, out *core.ReleaseAttemptedRenderStatus, s conversion.Scope) error {
+	if err := Convert_v1alpha1_ResolvedSource_To_core_ResolvedSource(&in.ResolvedSource, &out.ResolvedSource, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(&in.ResolvedCluster, &out.ResolvedCluster, s); err != nil {
+		return err
+	}
+	out.ResolvedMutations = *(*[]core.ResolvedMutation)(unsafe.Pointer(&in.ResolvedMutations))
+	out.RenderRef = in.RenderRef
+	out.AttemptedAt = (*v1.Time)(unsafe.Pointer(in.AttemptedAt))
+	out.Phase = core.ReleaseRenderAttemptPhase(in.Phase)
+	out.SyncedAt = (*v1.Time)(unsafe.Pointer(in.SyncedAt))
+	out.SyncedResources = in.SyncedResources
+	out.Failure = (*core.ReleaseAttemptedRenderFailureStatus)(unsafe.Pointer(in.Failure))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseAttemptedRenderStatus_To_core_ReleaseAttemptedRenderStatus is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseAttemptedRenderStatus_To_core_ReleaseAttemptedRenderStatus(in *ReleaseAttemptedRenderStatus, out *core.ReleaseAttemptedRenderStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseAttemptedRenderStatus_To_core_ReleaseAttemptedRenderStatus(in, out, s)
+}
+
+func autoConvert_core_ReleaseAttemptedRenderStatus_To_v1alpha1_ReleaseAttemptedRenderStatus(in *core.ReleaseAttemptedRenderStatus, out *ReleaseAttemptedRenderStatus, s conversion.Scope) error {
+	if err := Convert_core_ResolvedSource_To_v1alpha1_ResolvedSource(&in.ResolvedSource, &out.ResolvedSource, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(&in.ResolvedCluster, &out.ResolvedCluster, s); err != nil {
+		return err
+	}
+	out.ResolvedMutations = *(*[]ResolvedMutation)(unsafe.Pointer(&in.ResolvedMutations))
+	out.RenderRef = in.RenderRef
+	out.AttemptedAt = (*v1.Time)(unsafe.Pointer(in.AttemptedAt))
+	out.Phase = ReleaseRenderAttemptPhase(in.Phase)
+	out.SyncedAt = (*v1.Time)(unsafe.Pointer(in.SyncedAt))
+	out.SyncedResources = in.SyncedResources
+	out.Failure = (*ReleaseAttemptedRenderFailureStatus)(unsafe.Pointer(in.Failure))
+	return nil
+}
+
+// Convert_core_ReleaseAttemptedRenderStatus_To_v1alpha1_ReleaseAttemptedRenderStatus is an autogenerated conversion function.
+func Convert_core_ReleaseAttemptedRenderStatus_To_v1alpha1_ReleaseAttemptedRenderStatus(in *core.ReleaseAttemptedRenderStatus, out *ReleaseAttemptedRenderStatus, s conversion.Scope) error {
+	return autoConvert_core_ReleaseAttemptedRenderStatus_To_v1alpha1_ReleaseAttemptedRenderStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(in *ReleaseClusterRefSpec, out *core.ReleaseClusterRefSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(in *ReleaseClusterRefSpec, out *core.ReleaseClusterRefSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(in *core.ReleaseClusterRefSpec, out *ReleaseClusterRefSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	return nil
+}
+
+// Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec is an autogenerated conversion function.
+func Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(in *core.ReleaseClusterRefSpec, out *ReleaseClusterRefSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *ReleaseContentHelmSpec, out *core.ReleaseContentHelmSpec, s conversion.Scope) error {
+	out.Path = in.Path
+	out.Chart = in.Chart
+	out.Version = in.Version
+	out.DependencyMode = core.ReleaseHelmDependencyMode(in.DependencyMode)
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *ReleaseContentHelmSpec, out *core.ReleaseContentHelmSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in *core.ReleaseContentHelmSpec, out *ReleaseContentHelmSpec, s conversion.Scope) error {
+	out.Path = in.Path
+	out.Chart = in.Chart
+	out.Version = in.Version
+	out.DependencyMode = ReleaseHelmDependencyMode(in.DependencyMode)
+	return nil
+}
+
+// Convert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec is an autogenerated conversion function.
+func Convert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in *core.ReleaseContentHelmSpec, out *ReleaseContentHelmSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpec(in *ReleaseContentJsonnetSpec, out *core.ReleaseContentJsonnetSpec, s conversion.Scope) error {
+	out.Path = in.Path
+	out.TLA = *(*[]corev1.EnvVar)(unsafe.Pointer(&in.TLA))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpec(in *ReleaseContentJsonnetSpec, out *core.ReleaseContentJsonnetSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpec(in *core.ReleaseContentJsonnetSpec, out *ReleaseContentJsonnetSpec, s conversion.Scope) error {
+	out.Path = in.Path
+	out.TLA = *(*[]corev1.EnvVar)(unsafe.Pointer(&in.TLA))
+	return nil
+}
+
+// Convert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpec is an autogenerated conversion function.
+func Convert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpec(in *core.ReleaseContentJsonnetSpec, out *ReleaseContentJsonnetSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomizeSpec(in *ReleaseContentKustomizeSpec, out *core.ReleaseContentKustomizeSpec, s conversion.Scope) error {
+	out.Path = in.Path
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomizeSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomizeSpec(in *ReleaseContentKustomizeSpec, out *core.ReleaseContentKustomizeSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomizeSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomizeSpec(in *core.ReleaseContentKustomizeSpec, out *ReleaseContentKustomizeSpec, s conversion.Scope) error {
+	out.Path = in.Path
+	return nil
+}
+
+// Convert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomizeSpec is an autogenerated conversion function.
+func Convert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomizeSpec(in *core.ReleaseContentKustomizeSpec, out *ReleaseContentKustomizeSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomizeSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifestsSpec(in *ReleaseContentManifestsSpec, out *core.ReleaseContentManifestsSpec, s conversion.Scope) error {
+	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifestsSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifestsSpec(in *ReleaseContentManifestsSpec, out *core.ReleaseContentManifestsSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifestsSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifestsSpec(in *core.ReleaseContentManifestsSpec, out *ReleaseContentManifestsSpec, s conversion.Scope) error {
+	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	return nil
+}
+
+// Convert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifestsSpec is an autogenerated conversion function.
+func Convert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifestsSpec(in *core.ReleaseContentManifestsSpec, out *ReleaseContentManifestsSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifestsSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(in *ReleaseContentSpec, out *core.ReleaseContentSpec, s conversion.Scope) error {
+	out.Type = core.ReleaseContentType(in.Type)
+	out.Helm = (*core.ReleaseContentHelmSpec)(unsafe.Pointer(in.Helm))
+	out.Manifests = (*core.ReleaseContentManifestsSpec)(unsafe.Pointer(in.Manifests))
+	out.Kustomize = (*core.ReleaseContentKustomizeSpec)(unsafe.Pointer(in.Kustomize))
+	out.Jsonnet = (*core.ReleaseContentJsonnetSpec)(unsafe.Pointer(in.Jsonnet))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(in *ReleaseContentSpec, out *core.ReleaseContentSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(in *core.ReleaseContentSpec, out *ReleaseContentSpec, s conversion.Scope) error {
+	out.Type = ReleaseContentType(in.Type)
+	out.Helm = (*ReleaseContentHelmSpec)(unsafe.Pointer(in.Helm))
+	out.Manifests = (*ReleaseContentManifestsSpec)(unsafe.Pointer(in.Manifests))
+	out.Kustomize = (*ReleaseContentKustomizeSpec)(unsafe.Pointer(in.Kustomize))
+	out.Jsonnet = (*ReleaseContentJsonnetSpec)(unsafe.Pointer(in.Jsonnet))
+	return nil
+}
+
+// Convert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec is an autogenerated conversion function.
+func Convert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(in *core.ReleaseContentSpec, out *ReleaseContentSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(in *ReleaseDeletionPolicyOverrideSpec, out *core.ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
+	out.Workloads = core.WorkloadsDeletionPolicy(in.Workloads)
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(in *ReleaseDeletionPolicyOverrideSpec, out *core.ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in *core.ReleaseDeletionPolicyOverrideSpec, out *ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
+	out.Workloads = WorkloadsDeletionPolicy(in.Workloads)
+	return nil
+}
+
+// Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec is an autogenerated conversion function.
+func Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in *core.ReleaseDeletionPolicyOverrideSpec, out *ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in, out, s)
 }
 
 func autoConvert_v1alpha1_ReleaseList_To_core_ReleaseList(in *ReleaseList, out *core.ReleaseList, s conversion.Scope) error {
@@ -549,25 +1023,89 @@ func Convert_core_ReleaseList_To_v1alpha1_ReleaseList(in *core.ReleaseList, out 
 	return autoConvert_core_ReleaseList_To_v1alpha1_ReleaseList(in, out, s)
 }
 
-func autoConvert_v1alpha1_ReleaseMutations_To_core_ReleaseMutations(in *ReleaseMutations, out *core.ReleaseMutations, s conversion.Scope) error {
+func autoConvert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation(in *ReleaseMutation, out *core.ReleaseMutation, s conversion.Scope) error {
+	out.Type = core.ReleaseMutationType(in.Type)
+	out.Inline = *(*[]string)(unsafe.Pointer(&in.Inline))
+	out.From = (*core.ReleaseMutationFromSpec)(unsafe.Pointer(in.From))
+	out.Patches = *(*[]core.ReleaseMutationPatchSpec)(unsafe.Pointer(&in.Patches))
 	return nil
 }
 
-// Convert_v1alpha1_ReleaseMutations_To_core_ReleaseMutations is an autogenerated conversion function.
-func Convert_v1alpha1_ReleaseMutations_To_core_ReleaseMutations(in *ReleaseMutations, out *core.ReleaseMutations, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ReleaseMutations_To_core_ReleaseMutations(in, out, s)
+// Convert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation(in *ReleaseMutation, out *core.ReleaseMutation, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation(in, out, s)
 }
 
-func autoConvert_core_ReleaseMutations_To_v1alpha1_ReleaseMutations(in *core.ReleaseMutations, out *ReleaseMutations, s conversion.Scope) error {
+func autoConvert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation(in *core.ReleaseMutation, out *ReleaseMutation, s conversion.Scope) error {
+	out.Type = ReleaseMutationType(in.Type)
+	out.Inline = *(*[]string)(unsafe.Pointer(&in.Inline))
+	out.From = (*ReleaseMutationFromSpec)(unsafe.Pointer(in.From))
+	out.Patches = *(*[]ReleaseMutationPatchSpec)(unsafe.Pointer(&in.Patches))
 	return nil
 }
 
-// Convert_core_ReleaseMutations_To_v1alpha1_ReleaseMutations is an autogenerated conversion function.
-func Convert_core_ReleaseMutations_To_v1alpha1_ReleaseMutations(in *core.ReleaseMutations, out *ReleaseMutations, s conversion.Scope) error {
-	return autoConvert_core_ReleaseMutations_To_v1alpha1_ReleaseMutations(in, out, s)
+// Convert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation is an autogenerated conversion function.
+func Convert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation(in *core.ReleaseMutation, out *ReleaseMutation, s conversion.Scope) error {
+	return autoConvert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(in *ReleaseMutationFromSpec, out *core.ReleaseMutationFromSpec, s conversion.Scope) error {
+	out.Kind = in.Kind
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Path = in.Path
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(in *ReleaseMutationFromSpec, out *core.ReleaseMutationFromSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(in *core.ReleaseMutationFromSpec, out *ReleaseMutationFromSpec, s conversion.Scope) error {
+	out.Kind = in.Kind
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Path = in.Path
+	return nil
+}
+
+// Convert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec is an autogenerated conversion function.
+func Convert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(in *core.ReleaseMutationFromSpec, out *ReleaseMutationFromSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseMutationPatchSpec_To_core_ReleaseMutationPatchSpec(in *ReleaseMutationPatchSpec, out *core.ReleaseMutationPatchSpec, s conversion.Scope) error {
+	out.Op = core.JSONPatchOperation(in.Op)
+	out.Path = in.Path
+	out.From = in.From
+	out.Value = (*apiextensionsv1.JSON)(unsafe.Pointer(in.Value))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseMutationPatchSpec_To_core_ReleaseMutationPatchSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseMutationPatchSpec_To_core_ReleaseMutationPatchSpec(in *ReleaseMutationPatchSpec, out *core.ReleaseMutationPatchSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseMutationPatchSpec_To_core_ReleaseMutationPatchSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(in *core.ReleaseMutationPatchSpec, out *ReleaseMutationPatchSpec, s conversion.Scope) error {
+	out.Op = JSONPatchOperation(in.Op)
+	out.Path = in.Path
+	out.From = in.From
+	out.Value = (*apiextensionsv1.JSON)(unsafe.Pointer(in.Value))
+	return nil
+}
+
+// Convert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec is an autogenerated conversion function.
+func Convert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(in *core.ReleaseMutationPatchSpec, out *ReleaseMutationPatchSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(in, out, s)
 }
 
 func autoConvert_v1alpha1_ReleasePin_To_core_ReleasePin(in *ReleasePin, out *core.ReleasePin, s conversion.Scope) error {
+	out.RenderRef = in.RenderRef
+	out.PinnedAt = in.PinnedAt
+	out.PinnedBy = in.PinnedBy
+	out.Reason = in.Reason
 	return nil
 }
 
@@ -577,6 +1115,10 @@ func Convert_v1alpha1_ReleasePin_To_core_ReleasePin(in *ReleasePin, out *core.Re
 }
 
 func autoConvert_core_ReleasePin_To_v1alpha1_ReleasePin(in *core.ReleasePin, out *ReleasePin, s conversion.Scope) error {
+	out.RenderRef = in.RenderRef
+	out.PinnedAt = in.PinnedAt
+	out.PinnedBy = in.PinnedBy
+	out.Reason = in.Reason
 	return nil
 }
 
@@ -585,7 +1127,145 @@ func Convert_core_ReleasePin_To_v1alpha1_ReleasePin(in *core.ReleasePin, out *Re
 	return autoConvert_core_ReleasePin_To_v1alpha1_ReleasePin(in, out, s)
 }
 
+func autoConvert_v1alpha1_ReleasePinRenderInputsStatus_To_core_ReleasePinRenderInputsStatus(in *ReleasePinRenderInputsStatus, out *core.ReleasePinRenderInputsStatus, s conversion.Scope) error {
+	out.SourceKind = in.SourceKind
+	out.SourceName = in.SourceName
+	out.SourceNamespace = in.SourceNamespace
+	out.SourceRevision = in.SourceRevision
+	out.ContentType = core.ReleaseContentType(in.ContentType)
+	out.ContentPath = in.ContentPath
+	out.MutationsHash = in.MutationsHash
+	return nil
+}
+
+// Convert_v1alpha1_ReleasePinRenderInputsStatus_To_core_ReleasePinRenderInputsStatus is an autogenerated conversion function.
+func Convert_v1alpha1_ReleasePinRenderInputsStatus_To_core_ReleasePinRenderInputsStatus(in *ReleasePinRenderInputsStatus, out *core.ReleasePinRenderInputsStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleasePinRenderInputsStatus_To_core_ReleasePinRenderInputsStatus(in, out, s)
+}
+
+func autoConvert_core_ReleasePinRenderInputsStatus_To_v1alpha1_ReleasePinRenderInputsStatus(in *core.ReleasePinRenderInputsStatus, out *ReleasePinRenderInputsStatus, s conversion.Scope) error {
+	out.SourceKind = in.SourceKind
+	out.SourceName = in.SourceName
+	out.SourceNamespace = in.SourceNamespace
+	out.SourceRevision = in.SourceRevision
+	out.ContentType = ReleaseContentType(in.ContentType)
+	out.ContentPath = in.ContentPath
+	out.MutationsHash = in.MutationsHash
+	return nil
+}
+
+// Convert_core_ReleasePinRenderInputsStatus_To_v1alpha1_ReleasePinRenderInputsStatus is an autogenerated conversion function.
+func Convert_core_ReleasePinRenderInputsStatus_To_v1alpha1_ReleasePinRenderInputsStatus(in *core.ReleasePinRenderInputsStatus, out *ReleasePinRenderInputsStatus, s conversion.Scope) error {
+	return autoConvert_core_ReleasePinRenderInputsStatus_To_v1alpha1_ReleasePinRenderInputsStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(in *ReleasePinStatus, out *core.ReleasePinStatus, s conversion.Scope) error {
+	out.Intent = core.ReleasePinIntent(in.Intent)
+	out.RenderInputs = (*core.ReleasePinRenderInputsStatus)(unsafe.Pointer(in.RenderInputs))
+	return nil
+}
+
+// Convert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus is an autogenerated conversion function.
+func Convert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(in *ReleasePinStatus, out *core.ReleasePinStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(in, out, s)
+}
+
+func autoConvert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(in *core.ReleasePinStatus, out *ReleasePinStatus, s conversion.Scope) error {
+	out.Intent = ReleasePinIntent(in.Intent)
+	out.RenderInputs = (*ReleasePinRenderInputsStatus)(unsafe.Pointer(in.RenderInputs))
+	return nil
+}
+
+// Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus is an autogenerated conversion function.
+func Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(in *core.ReleasePinStatus, out *ReleasePinStatus, s conversion.Scope) error {
+	return autoConvert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(in *ReleaseRetentionPolicySpec, out *core.ReleaseRetentionPolicySpec, s conversion.Scope) error {
+	out.KeepHistory = in.KeepHistory
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(in *ReleaseRetentionPolicySpec, out *core.ReleaseRetentionPolicySpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(in *core.ReleaseRetentionPolicySpec, out *ReleaseRetentionPolicySpec, s conversion.Scope) error {
+	out.KeepHistory = in.KeepHistory
+	return nil
+}
+
+// Convert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec is an autogenerated conversion function.
+func Convert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(in *core.ReleaseRetentionPolicySpec, out *ReleaseRetentionPolicySpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(in *ReleaseRetryBackoffSpec, out *core.ReleaseRetryBackoffSpec, s conversion.Scope) error {
+	out.Initial = in.Initial
+	out.Max = in.Max
+	out.Factor = in.Factor
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(in *ReleaseRetryBackoffSpec, out *core.ReleaseRetryBackoffSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(in *core.ReleaseRetryBackoffSpec, out *ReleaseRetryBackoffSpec, s conversion.Scope) error {
+	out.Initial = in.Initial
+	out.Max = in.Max
+	out.Factor = in.Factor
+	return nil
+}
+
+// Convert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec is an autogenerated conversion function.
+func Convert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(in *core.ReleaseRetryBackoffSpec, out *ReleaseRetryBackoffSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(in *ReleaseSourceSpec, out *core.ReleaseSourceSpec, s conversion.Scope) error {
+	out.Kind = in.Kind
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(in *ReleaseSourceSpec, out *core.ReleaseSourceSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(in *core.ReleaseSourceSpec, out *ReleaseSourceSpec, s conversion.Scope) error {
+	out.Kind = in.Kind
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	return nil
+}
+
+// Convert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec is an autogenerated conversion function.
+func Convert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(in *core.ReleaseSourceSpec, out *ReleaseSourceSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(in, out, s)
+}
+
 func autoConvert_v1alpha1_ReleaseSpec_To_core_ReleaseSpec(in *ReleaseSpec, out *core.ReleaseSpec, s conversion.Scope) error {
+	if err := Convert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(&in.Source, &out.Source, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(&in.Content, &out.Content, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(&in.ClusterRef, &out.ClusterRef, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(&in.SyncPolicy, &out.SyncPolicy, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(&in.RetentionPolicy, &out.RetentionPolicy, s); err != nil {
+		return err
+	}
+	out.DeletionPolicyOverride = (*core.ReleaseDeletionPolicyOverrideSpec)(unsafe.Pointer(in.DeletionPolicyOverride))
 	return nil
 }
 
@@ -595,6 +1275,22 @@ func Convert_v1alpha1_ReleaseSpec_To_core_ReleaseSpec(in *ReleaseSpec, out *core
 }
 
 func autoConvert_core_ReleaseSpec_To_v1alpha1_ReleaseSpec(in *core.ReleaseSpec, out *ReleaseSpec, s conversion.Scope) error {
+	if err := Convert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(&in.Source, &out.Source, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(&in.Content, &out.Content, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(&in.ClusterRef, &out.ClusterRef, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(&in.SyncPolicy, &out.SyncPolicy, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(&in.RetentionPolicy, &out.RetentionPolicy, s); err != nil {
+		return err
+	}
+	out.DeletionPolicyOverride = (*ReleaseDeletionPolicyOverrideSpec)(unsafe.Pointer(in.DeletionPolicyOverride))
 	return nil
 }
 
@@ -604,6 +1300,22 @@ func Convert_core_ReleaseSpec_To_v1alpha1_ReleaseSpec(in *core.ReleaseSpec, out 
 }
 
 func autoConvert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus, out *core.ReleaseStatus, s conversion.Scope) error {
+	out.ObservedGeneration = in.ObservedGeneration
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	if err := Convert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(&in.Pin, &out.Pin, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(&in.ResolvedDeletionPolicy, &out.ResolvedDeletionPolicy, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
+		return err
+	}
+	out.LastSuccessful = (*core.ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastSuccessful))
+	out.LastAttempted = (*core.ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastAttempted))
+	out.Waves = *(*[]core.ResourceWaveStatus)(unsafe.Pointer(&in.Waves))
+	out.ReconciledAt = (*v1.Time)(unsafe.Pointer(in.ReconciledAt))
+	out.HistoryTruncated = in.HistoryTruncated
 	return nil
 }
 
@@ -613,10 +1325,288 @@ func Convert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus, out
 }
 
 func autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseStatus, out *ReleaseStatus, s conversion.Scope) error {
+	out.ObservedGeneration = in.ObservedGeneration
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	if err := Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(&in.Pin, &out.Pin, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(&in.ResolvedDeletionPolicy, &out.ResolvedDeletionPolicy, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
+		return err
+	}
+	out.LastSuccessful = (*ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastSuccessful))
+	out.LastAttempted = (*ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastAttempted))
+	out.Waves = *(*[]ResourceWaveStatus)(unsafe.Pointer(&in.Waves))
+	out.ReconciledAt = (*v1.Time)(unsafe.Pointer(in.ReconciledAt))
+	out.HistoryTruncated = in.HistoryTruncated
 	return nil
 }
 
 // Convert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus is an autogenerated conversion function.
 func Convert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseStatus, out *ReleaseStatus, s conversion.Scope) error {
 	return autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(in *ReleaseSyncPolicySpec, out *core.ReleaseSyncPolicySpec, s conversion.Scope) error {
+	out.Automatic = in.Automatic
+	out.PruneOrphaned = in.PruneOrphaned
+	out.Interval = in.Interval
+	if err := Convert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(&in.RetryBackoff, &out.RetryBackoff, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(&in.WaveStrategy, &out.WaveStrategy, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(in *ReleaseSyncPolicySpec, out *core.ReleaseSyncPolicySpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(in *core.ReleaseSyncPolicySpec, out *ReleaseSyncPolicySpec, s conversion.Scope) error {
+	out.Automatic = in.Automatic
+	out.PruneOrphaned = in.PruneOrphaned
+	out.Interval = in.Interval
+	if err := Convert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(&in.RetryBackoff, &out.RetryBackoff, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(&in.WaveStrategy, &out.WaveStrategy, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec is an autogenerated conversion function.
+func Convert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(in *core.ReleaseSyncPolicySpec, out *ReleaseSyncPolicySpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(in *ReleaseWaveStrategySpec, out *core.ReleaseWaveStrategySpec, s conversion.Scope) error {
+	out.Strategy = core.ReleaseWaveStrategy(in.Strategy)
+	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(in *ReleaseWaveStrategySpec, out *core.ReleaseWaveStrategySpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(in *core.ReleaseWaveStrategySpec, out *ReleaseWaveStrategySpec, s conversion.Scope) error {
+	out.Strategy = ReleaseWaveStrategy(in.Strategy)
+	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
+	return nil
+}
+
+// Convert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec is an autogenerated conversion function.
+func Convert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(in *core.ReleaseWaveStrategySpec, out *ReleaseWaveStrategySpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(in *ResolvedCluster, out *core.ResolvedCluster, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.UID = in.UID
+	out.ObservedGeneration = in.ObservedGeneration
+	out.Server = in.Server
+	out.MetadataSnapshot = *(*map[string]string)(unsafe.Pointer(&in.MetadataSnapshot))
+	return nil
+}
+
+// Convert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster is an autogenerated conversion function.
+func Convert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(in *ResolvedCluster, out *core.ResolvedCluster, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(in, out, s)
+}
+
+func autoConvert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in *core.ResolvedCluster, out *ResolvedCluster, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.UID = in.UID
+	out.ObservedGeneration = in.ObservedGeneration
+	out.Server = in.Server
+	out.MetadataSnapshot = *(*map[string]string)(unsafe.Pointer(&in.MetadataSnapshot))
+	return nil
+}
+
+// Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster is an autogenerated conversion function.
+func Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in *core.ResolvedCluster, out *ResolvedCluster, s conversion.Scope) error {
+	return autoConvert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in, out, s)
+}
+
+func autoConvert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(in *ResolvedDeletionPolicyStatus, out *core.ResolvedDeletionPolicyStatus, s conversion.Scope) error {
+	out.WorkloadsPolicySource = core.WorkloadsPolicySource(in.WorkloadsPolicySource)
+	if err := Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(&in.Policy, &out.Policy, s); err != nil {
+		return err
+	}
+	out.SourceClusterGeneration = in.SourceClusterGeneration
+	return nil
+}
+
+// Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus is an autogenerated conversion function.
+func Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(in *ResolvedDeletionPolicyStatus, out *core.ResolvedDeletionPolicyStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(in, out, s)
+}
+
+func autoConvert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(in *core.ResolvedDeletionPolicyStatus, out *ResolvedDeletionPolicyStatus, s conversion.Scope) error {
+	out.WorkloadsPolicySource = WorkloadsPolicySource(in.WorkloadsPolicySource)
+	if err := Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(&in.Policy, &out.Policy, s); err != nil {
+		return err
+	}
+	out.SourceClusterGeneration = in.SourceClusterGeneration
+	return nil
+}
+
+// Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus is an autogenerated conversion function.
+func Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(in *core.ResolvedDeletionPolicyStatus, out *ResolvedDeletionPolicyStatus, s conversion.Scope) error {
+	return autoConvert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(in *ResolvedMutation, out *core.ResolvedMutation, s conversion.Scope) error {
+	out.Index = in.Index
+	out.Type = core.ReleaseMutationType(in.Type)
+	if err := Convert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(&in.SourceRef, &out.SourceRef, s); err != nil {
+		return err
+	}
+	out.SourceRevision = in.SourceRevision
+	out.ContentHash = in.ContentHash
+	return nil
+}
+
+// Convert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation is an autogenerated conversion function.
+func Convert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(in *ResolvedMutation, out *core.ResolvedMutation, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(in, out, s)
+}
+
+func autoConvert_core_ResolvedMutation_To_v1alpha1_ResolvedMutation(in *core.ResolvedMutation, out *ResolvedMutation, s conversion.Scope) error {
+	out.Index = in.Index
+	out.Type = ReleaseMutationType(in.Type)
+	if err := Convert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(&in.SourceRef, &out.SourceRef, s); err != nil {
+		return err
+	}
+	out.SourceRevision = in.SourceRevision
+	out.ContentHash = in.ContentHash
+	return nil
+}
+
+// Convert_core_ResolvedMutation_To_v1alpha1_ResolvedMutation is an autogenerated conversion function.
+func Convert_core_ResolvedMutation_To_v1alpha1_ResolvedMutation(in *core.ResolvedMutation, out *ResolvedMutation, s conversion.Scope) error {
+	return autoConvert_core_ResolvedMutation_To_v1alpha1_ResolvedMutation(in, out, s)
+}
+
+func autoConvert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(in *ResolvedRetentionPolicyStatus, out *core.ResolvedRetentionPolicyStatus, s conversion.Scope) error {
+	out.KeepHistory = in.KeepHistory
+	out.HistoryCount = in.HistoryCount
+	return nil
+}
+
+// Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus is an autogenerated conversion function.
+func Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(in *ResolvedRetentionPolicyStatus, out *core.ResolvedRetentionPolicyStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(in, out, s)
+}
+
+func autoConvert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(in *core.ResolvedRetentionPolicyStatus, out *ResolvedRetentionPolicyStatus, s conversion.Scope) error {
+	out.KeepHistory = in.KeepHistory
+	out.HistoryCount = in.HistoryCount
+	return nil
+}
+
+// Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus is an autogenerated conversion function.
+func Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(in *core.ResolvedRetentionPolicyStatus, out *ResolvedRetentionPolicyStatus, s conversion.Scope) error {
+	return autoConvert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ResolvedSource_To_core_ResolvedSource(in *ResolvedSource, out *core.ResolvedSource, s conversion.Scope) error {
+	out.Kind = in.Kind
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.UID = in.UID
+	out.ObservedGeneration = in.ObservedGeneration
+	out.URL = in.URL
+	out.Revision = in.Revision
+	out.ContentType = core.ReleaseContentType(in.ContentType)
+	out.Path = in.Path
+	return nil
+}
+
+// Convert_v1alpha1_ResolvedSource_To_core_ResolvedSource is an autogenerated conversion function.
+func Convert_v1alpha1_ResolvedSource_To_core_ResolvedSource(in *ResolvedSource, out *core.ResolvedSource, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ResolvedSource_To_core_ResolvedSource(in, out, s)
+}
+
+func autoConvert_core_ResolvedSource_To_v1alpha1_ResolvedSource(in *core.ResolvedSource, out *ResolvedSource, s conversion.Scope) error {
+	out.Kind = in.Kind
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.UID = in.UID
+	out.ObservedGeneration = in.ObservedGeneration
+	out.URL = in.URL
+	out.Revision = in.Revision
+	out.ContentType = ReleaseContentType(in.ContentType)
+	out.Path = in.Path
+	return nil
+}
+
+// Convert_core_ResolvedSource_To_v1alpha1_ResolvedSource is an autogenerated conversion function.
+func Convert_core_ResolvedSource_To_v1alpha1_ResolvedSource(in *core.ResolvedSource, out *ResolvedSource, s conversion.Scope) error {
+	return autoConvert_core_ResolvedSource_To_v1alpha1_ResolvedSource(in, out, s)
+}
+
+func autoConvert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(in *ResourceWaveStatus, out *core.ResourceWaveStatus, s conversion.Scope) error {
+	out.Number = in.Number
+	out.Resources = in.Resources
+	out.State = core.ResourceWaveState(in.State)
+	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
+	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
+	out.FailedAt = (*v1.Time)(unsafe.Pointer(in.FailedAt))
+	out.Message = in.Message
+	return nil
+}
+
+// Convert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus is an autogenerated conversion function.
+func Convert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(in *ResourceWaveStatus, out *core.ResourceWaveStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(in, out, s)
+}
+
+func autoConvert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in *core.ResourceWaveStatus, out *ResourceWaveStatus, s conversion.Scope) error {
+	out.Number = in.Number
+	out.Resources = in.Resources
+	out.State = ResourceWaveState(in.State)
+	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
+	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
+	out.FailedAt = (*v1.Time)(unsafe.Pointer(in.FailedAt))
+	out.Message = in.Message
+	return nil
+}
+
+// Convert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus is an autogenerated conversion function.
+func Convert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in *core.ResourceWaveStatus, out *ResourceWaveStatus, s conversion.Scope) error {
+	return autoConvert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(in *ResultingDeletionPolicy, out *core.ResultingDeletionPolicy, s conversion.Scope) error {
+	out.Workloads = core.WorkloadsDeletionPolicy(in.Workloads)
+	out.Releases = core.ReleasesDeletionPolicy(in.Releases)
+	out.OnUnreachable = core.OnUnreachableDeletionPolicy(in.OnUnreachable)
+	return nil
+}
+
+// Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy is an autogenerated conversion function.
+func Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(in *ResultingDeletionPolicy, out *core.ResultingDeletionPolicy, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(in, out, s)
+}
+
+func autoConvert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(in *core.ResultingDeletionPolicy, out *ResultingDeletionPolicy, s conversion.Scope) error {
+	out.Workloads = WorkloadsDeletionPolicy(in.Workloads)
+	out.Releases = ReleasesDeletionPolicy(in.Releases)
+	out.OnUnreachable = OnUnreachableDeletionPolicy(in.OnUnreachable)
+	return nil
+}
+
+// Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy is an autogenerated conversion function.
+func Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(in *core.ResultingDeletionPolicy, out *ResultingDeletionPolicy, s conversion.Scope) error {
+	return autoConvert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(in, out, s)
 }

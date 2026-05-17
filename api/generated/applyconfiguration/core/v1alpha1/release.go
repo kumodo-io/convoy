@@ -19,7 +19,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -30,10 +29,10 @@ import (
 type ReleaseApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *corev1alpha1.ReleaseSpec      `json:"spec,omitempty"`
-	Status                           *corev1alpha1.ReleaseStatus    `json:"status,omitempty"`
-	Mutations                        *corev1alpha1.ReleaseMutations `json:"mutations,omitempty"`
-	Pin                              *corev1alpha1.ReleasePin       `json:"pin,omitempty"`
+	Spec                             *ReleaseSpecApplyConfiguration      `json:"spec,omitempty"`
+	Status                           *ReleaseStatusApplyConfiguration    `json:"status,omitempty"`
+	Mutations                        []ReleaseMutationApplyConfiguration `json:"mutations,omitempty"`
+	Pin                              *ReleasePinApplyConfiguration       `json:"pin,omitempty"`
 }
 
 // Release constructs a declarative configuration of the Release type for use with
@@ -210,32 +209,37 @@ func (b *ReleaseApplyConfiguration) ensureObjectMetaApplyConfigurationExists() {
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *ReleaseApplyConfiguration) WithSpec(value corev1alpha1.ReleaseSpec) *ReleaseApplyConfiguration {
-	b.Spec = &value
+func (b *ReleaseApplyConfiguration) WithSpec(value *ReleaseSpecApplyConfiguration) *ReleaseApplyConfiguration {
+	b.Spec = value
 	return b
 }
 
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *ReleaseApplyConfiguration) WithStatus(value corev1alpha1.ReleaseStatus) *ReleaseApplyConfiguration {
-	b.Status = &value
+func (b *ReleaseApplyConfiguration) WithStatus(value *ReleaseStatusApplyConfiguration) *ReleaseApplyConfiguration {
+	b.Status = value
 	return b
 }
 
-// WithMutations sets the Mutations field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Mutations field is set to the value of the last call.
-func (b *ReleaseApplyConfiguration) WithMutations(value corev1alpha1.ReleaseMutations) *ReleaseApplyConfiguration {
-	b.Mutations = &value
+// WithMutations adds the given value to the Mutations field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Mutations field.
+func (b *ReleaseApplyConfiguration) WithMutations(values ...*ReleaseMutationApplyConfiguration) *ReleaseApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithMutations")
+		}
+		b.Mutations = append(b.Mutations, *values[i])
+	}
 	return b
 }
 
 // WithPin sets the Pin field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Pin field is set to the value of the last call.
-func (b *ReleaseApplyConfiguration) WithPin(value corev1alpha1.ReleasePin) *ReleaseApplyConfiguration {
-	b.Pin = &value
+func (b *ReleaseApplyConfiguration) WithPin(value *ReleasePinApplyConfiguration) *ReleaseApplyConfiguration {
+	b.Pin = value
 	return b
 }
 

@@ -2,6 +2,7 @@ package core
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
@@ -114,13 +115,294 @@ type ClusterList struct {
 	Items []Cluster
 }
 
-type ReleaseSpec struct{}
+type ReleaseContentType string
 
-type ReleaseStatus struct{}
+const (
+	ReleaseContentTypeHelm      ReleaseContentType = "helm"
+	ReleaseContentTypeManifests ReleaseContentType = "manifests"
+	ReleaseContentTypeKustomize ReleaseContentType = "kustomize"
+	ReleaseContentTypeJsonnet   ReleaseContentType = "jsonnet"
+)
 
-type ReleaseMutations struct{}
+type ReleaseHelmDependencyMode string
 
-type ReleasePin struct{}
+const (
+	ReleaseHelmDependencyModeResolve  ReleaseHelmDependencyMode = "resolve"
+	ReleaseHelmDependencyModeVendored ReleaseHelmDependencyMode = "vendored"
+)
+
+type ReleaseWaveStrategy string
+
+const (
+	ReleaseWaveStrategyWaitForApplied ReleaseWaveStrategy = "waitForApplied"
+	ReleaseWaveStrategyWaitForHealthy ReleaseWaveStrategy = "waitForHealthy"
+)
+
+type ReleaseMutationType string
+
+const (
+	MutationTypeHelmValues          ReleaseMutationType = "helmValues"
+	MutationTypeGoTemplate          ReleaseMutationType = "goTemplate"
+	MutationTypeJsonPatch           ReleaseMutationType = "jsonPatch"
+	MutationTypeStrategicMergePatch ReleaseMutationType = "strategicMergePatch"
+)
+
+type JSONPatchOperation string
+
+const (
+	JSONPatchOperationAdd     JSONPatchOperation = "add"
+	JSONPatchOperationRemove  JSONPatchOperation = "remove"
+	JSONPatchOperationReplace JSONPatchOperation = "replace"
+	JSONPatchOperationMove    JSONPatchOperation = "move"
+	JSONPatchOperationCopy    JSONPatchOperation = "copy"
+	JSONPatchOperationTest    JSONPatchOperation = "test"
+)
+
+type ReleasePinIntent string
+
+const (
+	ReleasePinIntentFreeze   ReleasePinIntent = "freeze"
+	ReleasePinIntentRollback ReleasePinIntent = "rollback"
+)
+
+type WorkloadsPolicySource string
+
+const (
+	WorkloadsPolicySourceRelease WorkloadsPolicySource = "release"
+	WorkloadsPolicySourceCluster WorkloadsPolicySource = "cluster"
+)
+
+type ReleaseRenderAttemptPhase string
+
+const (
+	ReleaseRenderAttemptPhaseSyncing   ReleaseRenderAttemptPhase = "Syncing"
+	ReleaseRenderAttemptPhaseRendering ReleaseRenderAttemptPhase = "Rendering"
+	ReleaseRenderAttemptPhaseSucceeded ReleaseRenderAttemptPhase = "Succeeded"
+	ReleaseRenderAttemptPhaseFailed    ReleaseRenderAttemptPhase = "Failed"
+)
+
+type ReleaseRenderAttemptStage string
+
+const (
+	ReleaseRenderAttemptStageSyncing            ReleaseRenderAttemptStage = "Syncing"
+	ReleaseRenderAttemptStageRendering          ReleaseRenderAttemptStage = "Rendering"
+	ReleaseRenderAttemptStageSourceResolution   ReleaseRenderAttemptStage = "SourceResolution"
+	ReleaseRenderAttemptStageClusterResolution  ReleaseRenderAttemptStage = "ClusterResolution"
+	ReleaseRenderAttemptStageMutationResolution ReleaseRenderAttemptStage = "MutationResolution"
+)
+
+type ResourceWaveState string
+
+const (
+	ResourceWaveStateCompleted  ResourceWaveState = "Completed"
+	ResourceWaveStateInProgress ResourceWaveState = "InProgress"
+	ResourceWaveStateFailed     ResourceWaveState = "Failed"
+)
+
+type ReleaseSpec struct {
+	Source                 ReleaseSourceSpec
+	Content                ReleaseContentSpec
+	ClusterRef             ReleaseClusterRefSpec
+	SyncPolicy             ReleaseSyncPolicySpec
+	RetentionPolicy        ReleaseRetentionPolicySpec
+	DeletionPolicyOverride *ReleaseDeletionPolicyOverrideSpec
+}
+
+type ReleaseSourceSpec struct {
+	Kind      string
+	Name      string
+	Namespace string
+}
+
+type ReleaseContentSpec struct {
+	Type      ReleaseContentType
+	Helm      *ReleaseContentHelmSpec
+	Manifests *ReleaseContentManifestsSpec
+	Kustomize *ReleaseContentKustomizeSpec
+	Jsonnet   *ReleaseContentJsonnetSpec
+}
+
+type ReleaseContentHelmSpec struct {
+	Path           string
+	Chart          string
+	Version        string
+	DependencyMode ReleaseHelmDependencyMode
+}
+
+type ReleaseContentManifestsSpec struct {
+	Paths []string
+}
+
+type ReleaseContentKustomizeSpec struct {
+	Path string
+}
+
+type ReleaseContentJsonnetSpec struct {
+	Path string
+	TLA  []corev1.EnvVar
+}
+
+type ReleaseClusterRefSpec struct {
+	Name      string
+	Namespace string
+}
+
+type ReleaseSyncPolicySpec struct {
+	Automatic     bool
+	PruneOrphaned bool
+	Interval      metav1.Duration
+	RetryBackoff  ReleaseRetryBackoffSpec
+	WaveStrategy  ReleaseWaveStrategySpec
+}
+
+type ReleaseRetryBackoffSpec struct {
+	Initial metav1.Duration
+	Max     metav1.Duration
+	Factor  float64
+}
+
+type ReleaseWaveStrategySpec struct {
+	Strategy ReleaseWaveStrategy
+	Timeout  *metav1.Duration
+}
+
+type ReleaseRetentionPolicySpec struct {
+	KeepHistory int
+}
+
+type ReleaseDeletionPolicyOverrideSpec struct {
+	Workloads WorkloadsDeletionPolicy
+}
+
+type ReleaseMutation struct {
+	Type    ReleaseMutationType
+	Inline  []string
+	From    *ReleaseMutationFromSpec
+	Patches []ReleaseMutationPatchSpec
+}
+
+type ReleaseMutationFromSpec struct {
+	Kind      string
+	Name      string
+	Namespace string
+	Path      string
+}
+
+type ReleaseMutationPatchSpec struct {
+	Op    JSONPatchOperation
+	Path  string
+	From  string
+	Value *apiextensionsv1.JSON
+}
+
+type ReleasePin struct {
+	RenderRef string
+	PinnedAt  metav1.Time
+	PinnedBy  string
+	Reason    string
+}
+
+type ReleaseStatus struct {
+	ObservedGeneration      int64
+	Conditions              []metav1.Condition
+	Pin                     ReleasePinStatus
+	ResolvedDeletionPolicy  ResolvedDeletionPolicyStatus
+	ResolvedRetentionPolicy ResolvedRetentionPolicyStatus
+	LastSuccessful          *ReleaseAttemptedRenderStatus
+	LastAttempted           *ReleaseAttemptedRenderStatus
+	Waves                   []ResourceWaveStatus
+	ReconciledAt            *metav1.Time
+	HistoryTruncated        bool
+}
+
+type ReleasePinStatus struct {
+	Intent       ReleasePinIntent
+	RenderInputs *ReleasePinRenderInputsStatus
+}
+
+type ReleasePinRenderInputsStatus struct {
+	SourceKind      string
+	SourceName      string
+	SourceNamespace string
+	SourceRevision  string
+	ContentType     ReleaseContentType
+	ContentPath     string
+	MutationsHash   string
+}
+
+type ResolvedDeletionPolicyStatus struct {
+	WorkloadsPolicySource   WorkloadsPolicySource
+	Policy                  ResultingDeletionPolicy
+	SourceClusterGeneration int64
+}
+
+type ResultingDeletionPolicy struct {
+	Workloads     WorkloadsDeletionPolicy
+	Releases      ReleasesDeletionPolicy
+	OnUnreachable OnUnreachableDeletionPolicy
+}
+
+type ResolvedRetentionPolicyStatus struct {
+	KeepHistory  int
+	HistoryCount int
+}
+
+type ReleaseAttemptedRenderStatus struct {
+	ResolvedSource    ResolvedSource
+	ResolvedCluster   ResolvedCluster
+	ResolvedMutations []ResolvedMutation
+	RenderRef         string
+	AttemptedAt       *metav1.Time
+	Phase             ReleaseRenderAttemptPhase
+	SyncedAt          *metav1.Time
+	SyncedResources   int64
+	Failure           *ReleaseAttemptedRenderFailureStatus
+}
+
+type ResolvedSource struct {
+	Kind               string
+	Name               string
+	Namespace          string
+	UID                string
+	ObservedGeneration int64
+	URL                string
+	Revision           string
+	ContentType        ReleaseContentType
+	Path               string
+}
+
+type ResolvedCluster struct {
+	Name               string
+	Namespace          string
+	UID                string
+	ObservedGeneration int64
+	Server             string
+	MetadataSnapshot   map[string]string
+}
+
+type ResolvedMutation struct {
+	Index          int
+	Type           ReleaseMutationType
+	SourceRef      ReleaseMutationFromSpec
+	SourceRevision string
+	ContentHash    string
+}
+
+type ReleaseAttemptedRenderFailureStatus struct {
+	Stage         ReleaseRenderAttemptStage
+	MutationIndex int
+	Message       string
+}
+
+type ResourceWaveStatus struct {
+	Number      int64
+	Resources   int
+	State       ResourceWaveState
+	StartedAt   *metav1.Time
+	CompletedAt *metav1.Time
+	FailedAt    *metav1.Time
+	Message     string
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -132,7 +414,7 @@ type Release struct {
 	Spec   ReleaseSpec
 	Status ReleaseStatus
 
-	Mutations ReleaseMutations
+	Mutations []ReleaseMutation
 	Pin       ReleasePin
 }
 

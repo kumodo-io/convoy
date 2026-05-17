@@ -88,6 +88,64 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ClusterStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("Release"):
 		return &applyconfigurationcorev1alpha1.ReleaseApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseAttemptedRenderFailureStatus"):
+		return &applyconfigurationcorev1alpha1.ReleaseAttemptedRenderFailureStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseAttemptedRenderStatus"):
+		return &applyconfigurationcorev1alpha1.ReleaseAttemptedRenderStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseClusterRefSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseClusterRefSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseContentHelmSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseContentHelmSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseContentJsonnetSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseContentJsonnetSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseContentKustomizeSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseContentKustomizeSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseContentManifestsSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseContentManifestsSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseContentSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseContentSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseDeletionPolicyOverrideSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseDeletionPolicyOverrideSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutation"):
+		return &applyconfigurationcorev1alpha1.ReleaseMutationApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutationFromSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseMutationFromSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutationPatchSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseMutationPatchSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleasePin"):
+		return &applyconfigurationcorev1alpha1.ReleasePinApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleasePinRenderInputsStatus"):
+		return &applyconfigurationcorev1alpha1.ReleasePinRenderInputsStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleasePinStatus"):
+		return &applyconfigurationcorev1alpha1.ReleasePinStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseRetentionPolicySpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseRetentionPolicySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseRetryBackoffSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseRetryBackoffSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseSourceSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseSourceSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseStatus"):
+		return &applyconfigurationcorev1alpha1.ReleaseStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseSyncPolicySpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseSyncPolicySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseWaveStrategySpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseWaveStrategySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedCluster"):
+		return &applyconfigurationcorev1alpha1.ResolvedClusterApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedDeletionPolicyStatus"):
+		return &applyconfigurationcorev1alpha1.ResolvedDeletionPolicyStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedMutation"):
+		return &applyconfigurationcorev1alpha1.ResolvedMutationApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedRetentionPolicyStatus"):
+		return &applyconfigurationcorev1alpha1.ResolvedRetentionPolicyStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedSource"):
+		return &applyconfigurationcorev1alpha1.ResolvedSourceApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResourceWaveStatus"):
+		return &applyconfigurationcorev1alpha1.ResourceWaveStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResultingDeletionPolicy"):
+		return &applyconfigurationcorev1alpha1.ResultingDeletionPolicyApplyConfiguration{}
 
 		// Group=extensions.convoy.kumodo.io, Version=v1alpha1
 	case extensionsv1alpha1.SchemeGroupVersion.WithKind("KindHealthRule"):

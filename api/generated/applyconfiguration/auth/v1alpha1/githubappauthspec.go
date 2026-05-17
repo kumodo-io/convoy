@@ -32,7 +32,7 @@ type GithubAppAuthSpecApplyConfiguration struct {
 	// InstallationID is the ID of the GitHub App installation.
 	InstallationID *int64 `json:"installationID,omitempty"`
 	// PrivateKeyRef is the name and the key of the Secret containing the private key.
-	PrivateKeyRef *v1.SecretKeySelectorApplyConfiguration `json:"privateKey,omitempty"`
+	PrivateKeyRef *v1.SecretKeySelectorApplyConfiguration `json:"privateKeyRef,omitempty"`
 }
 
 // GithubAppAuthSpecApplyConfiguration constructs a declarative configuration of the GithubAppAuthSpec type for use with

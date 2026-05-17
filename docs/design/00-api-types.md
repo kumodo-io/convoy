@@ -427,10 +427,10 @@ spec:
 
     # Defines the order in which resources are applied and their health monitoring strategy.
     waveStrategy:
-      # strategy: waitForApplied | waitForHealthy | waitForHealthyWithTimeout
+      # strategy: waitForApplied | waitForHealthy
       strategy: waitForApplied
-      # used only with waitForHealthyWithTimeout
-      waveTimeout: 10m
+      # the timeout for the wave strategy. If not set, controller will wait indefinitely.
+      timeout: 10m
   
   # How many historical (rendered, applied) records to retain in S3.
   # Drives /history pagination depth and rollback range.
@@ -478,7 +478,7 @@ mutations:
   
   # 4. Small inline JSON patch — direct overrides without templating.
   - type: jsonPatch
-    inline:
+    patches:
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/memory
         value: 512Mi
@@ -495,20 +495,10 @@ mutations:
         path: features/new-tracing/patch.yaml
 
 pin:
-  intent: freeze | rollback
   renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
   pinnedAt: 2026-04-29T10:00:00Z
   pinnedBy: alice@example.com
   reason: "Production incident #4521 — payment failures after deploy"
-
-  # Snapshot of what produced the pinned render — useful for diff against current spec/mutations.
-  renderInputs:
-    sourceKind: GitRepository
-    sourceName: payments-charts-repo
-    sourceRevision: 7788990011223344556677aabbccddeeff001122
-    contentType: helm
-    contentPath: charts/payments-api
-    mutationsHash: sha256:5566778899aabbccddeeff00112233445566778899aabbccddeeff0011223344
         
 status:
   observedGeneration: 42
@@ -558,7 +548,20 @@ status:
       lastTransitionTime: 2026-04-29T11:30:00Z
       reason: SpecChangedWhilePinned
       message: "Spec/mutations have been edited since pin was set. Changes will apply on unpin."
-  
+
+  # Pin state mirror — the *fact* of being pinned, surfaced for general visibility.
+  # Full details (reason, who, etc.) live behind the /pin subresource for RBAC.
+  pin:
+    intent: freeze | rollback
+    # Snapshot of what produced the pinned render — useful for diff against current spec/mutations.
+    renderInputs:
+      sourceKind: GitRepository
+      sourceName: payments-charts-repo
+      sourceRevision: 7788990011223344556677aabbccddeeff001122
+      contentType: helm
+      contentPath: charts/payments-api
+      mutationsHash: sha256:5566778899aabbccddeeff00112233445566778899aabbccddeeff0011223344
+
   # Resolved deletion policy snapshot — combines Release.spec.deletionPolicy
   # and Cluster.spec.deletionPolicy. Top-level (current state, not per-render).
   resolvedDeletionPolicy:
@@ -668,13 +671,6 @@ status:
     #   stage: SourceResolution | MutationResolution | Rendering | Syncing
     #   mutationIndex: 1   # if failure during mutation pipeline
     #   message: "failed to fetch values file: 404 not found"
-
-  # Pin state mirror — the *fact* of being pinned, surfaced for general visibility.
-  # Full details (reason, who, etc.) live behind the /rollback subresource for RBAC.
-  pin:
-    intent: freeze | rollback
-    renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
-    pinnedAt: 2026-04-29T10:00:00Z
 
   # Waves reflects the order in which resources were applied and their health status.
   # Each wave entry represents a group of resources applied together, with a state indicating
