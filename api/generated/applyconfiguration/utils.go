@@ -42,6 +42,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &authv1alpha1.BasicAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClientCertAuthSpec"):
 		return &authv1alpha1.ClientCertAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DockerConfigAuthSpec"):
+		return &authv1alpha1.DockerConfigAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ExecPluginAuthSpec"):
 		return &authv1alpha1.ExecPluginAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GithubAppAuthSpec"):
@@ -58,10 +60,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &authv1alpha1.OIDCAuthTLSClientAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("OIDCClientAuthSpec"):
 		return &authv1alpha1.OIDCClientAuthSpecApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("OIDCTLSSpec"):
-		return &authv1alpha1.OIDCTLSSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("SSHKeyAuthSpec"):
 		return &authv1alpha1.SSHKeyAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TLSSpec"):
+		return &authv1alpha1.TLSSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("TokenAuthSpec"):
 		return &authv1alpha1.TokenAuthSpecApplyConfiguration{}
 
@@ -128,6 +130,18 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationsourcev1alpha1.LastRejectionStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistry"):
 		return &applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryAuthSpec"):
+		return &applyconfigurationsourcev1alpha1.OCIRegistryAuthSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryLastCheckedStatus"):
+		return &applyconfigurationsourcev1alpha1.OCIRegistryLastCheckedStatusApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistrySpec"):
+		return &applyconfigurationsourcev1alpha1.OCIRegistrySpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryStatus"):
+		return &applyconfigurationsourcev1alpha1.OCIRegistryStatusApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryWebhookFilterSpec"):
+		return &applyconfigurationsourcev1alpha1.OCIRegistryWebhookFilterSpecApplyConfiguration{}
+	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryWebhookSpec"):
+		return &applyconfigurationsourcev1alpha1.OCIRegistryWebhookSpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("WebhookStatus"):
 		return &applyconfigurationsourcev1alpha1.WebhookStatusApplyConfiguration{}
 

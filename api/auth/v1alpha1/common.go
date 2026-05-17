@@ -1,5 +1,9 @@
 package v1alpha1
 
+import (
+	corev1 "k8s.io/api/core/v1"
+)
+
 // AuthType defines the authentication method used to access the Helm registry.
 // +enum
 type AuthType string
@@ -34,19 +38,17 @@ const (
 
 	// AuthTypeWorkloadIdentity is the authentication method using a workload identity.
 	AuthTypeWorkloadIdentity AuthType = "workloadIdentity"
+
+	// AuthTypeDockerConfig is the authentication method using a docker config.
+	AuthTypeDockerConfig AuthType = "dockerConfig"
 )
 
-// OIDCAuthType defines the OIDC authentication method type.
-// +enum
-type OIDCAuthType string
+// TLSSpec defines the TLS configuration used to verify given endpoint.
+type TLSSpec struct {
+	// CAPublicCertRef is the name and the key of the ConfigMap containing the CA public certificate.
+	// The CA certificate is used to verify the IdP server's certificate.
+	CAPublicCertRef corev1.ConfigMapKeySelector `json:"caPublicCertRef"`
 
-const (
-	// OIDCAuthTypeClientSecret is the OIDC authentication method using a client secret.
-	OIDCAuthTypeClientSecret OIDCAuthType = "clientSecret"
-
-	// OIDCAuthTypePrivateKeyJWT is the OIDC authentication method using a private key JWT.
-	OIDCAuthTypePrivateKeyJWT OIDCAuthType = "privateKeyJWT"
-
-	// OIDCAuthTypeTLSClientAuth is the OIDC authentication method using TLS client authentication.
-	OIDCAuthTypeTLSClientAuth OIDCAuthType = "tlsClientAuth"
-)
+	// InsecureSkipVerify is a flag to skip the certificate verification.
+	InsecureSkipVerify bool `json:"insecureSkipVerify"`
+}

@@ -19,7 +19,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -30,8 +29,9 @@ import (
 type OCIRegistryApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *sourcev1alpha1.OCIRegistrySpec   `json:"spec,omitempty"`
-	Status                           *sourcev1alpha1.OCIRegistryStatus `json:"status,omitempty"`
+	Spec                             *OCIRegistrySpecApplyConfiguration         `json:"spec,omitempty"`
+	Webhook                          []OCIRegistryWebhookSpecApplyConfiguration `json:"webhook,omitempty"`
+	Status                           *OCIRegistryStatusApplyConfiguration       `json:"status,omitempty"`
 }
 
 // OCIRegistry constructs a declarative configuration of the OCIRegistry type for use with
@@ -208,16 +208,29 @@ func (b *OCIRegistryApplyConfiguration) ensureObjectMetaApplyConfigurationExists
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *OCIRegistryApplyConfiguration) WithSpec(value sourcev1alpha1.OCIRegistrySpec) *OCIRegistryApplyConfiguration {
-	b.Spec = &value
+func (b *OCIRegistryApplyConfiguration) WithSpec(value *OCIRegistrySpecApplyConfiguration) *OCIRegistryApplyConfiguration {
+	b.Spec = value
+	return b
+}
+
+// WithWebhook adds the given value to the Webhook field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Webhook field.
+func (b *OCIRegistryApplyConfiguration) WithWebhook(values ...*OCIRegistryWebhookSpecApplyConfiguration) *OCIRegistryApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithWebhook")
+		}
+		b.Webhook = append(b.Webhook, *values[i])
+	}
 	return b
 }
 
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *OCIRegistryApplyConfiguration) WithStatus(value sourcev1alpha1.OCIRegistryStatus) *OCIRegistryApplyConfiguration {
-	b.Status = &value
+func (b *OCIRegistryApplyConfiguration) WithStatus(value *OCIRegistryStatusApplyConfiguration) *OCIRegistryApplyConfiguration {
+	b.Status = value
 	return b
 }
 

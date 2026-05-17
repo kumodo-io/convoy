@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	authv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -33,6 +34,8 @@ type HelmRegistrySpecApplyConfiguration struct {
 	Auth *HelmRegistryAuthSpecApplyConfiguration `json:"auth,omitempty"`
 	// Interval is the poll interval for ref resolution and content fetching.
 	Interval *v1.Duration `json:"interval,omitempty"`
+	// TLS is the TLS configuration used to verify the Helm registry.
+	TLS *authv1alpha1.TLSSpecApplyConfiguration `json:"tls,omitempty"`
 }
 
 // HelmRegistrySpecApplyConfiguration constructs a declarative configuration of the HelmRegistrySpec type for use with
@@ -62,5 +65,13 @@ func (b *HelmRegistrySpecApplyConfiguration) WithAuth(value *HelmRegistryAuthSpe
 // If called multiple times, the Interval field is set to the value of the last call.
 func (b *HelmRegistrySpecApplyConfiguration) WithInterval(value v1.Duration) *HelmRegistrySpecApplyConfiguration {
 	b.Interval = &value
+	return b
+}
+
+// WithTLS sets the TLS field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TLS field is set to the value of the last call.
+func (b *HelmRegistrySpecApplyConfiguration) WithTLS(value *authv1alpha1.TLSSpecApplyConfiguration) *HelmRegistrySpecApplyConfiguration {
+	b.TLS = value
 	return b
 }

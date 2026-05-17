@@ -4,6 +4,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// OIDCAuthType defines the OIDC authentication method type.
+// +enum
+type OIDCAuthType string
+
+const (
+	// OIDCAuthTypeClientSecret is the OIDC authentication method using a client secret.
+	OIDCAuthTypeClientSecret OIDCAuthType = "clientSecret"
+
+	// OIDCAuthTypePrivateKeyJWT is the OIDC authentication method using a private key JWT.
+	OIDCAuthTypePrivateKeyJWT OIDCAuthType = "privateKeyJWT"
+
+	// OIDCAuthTypeTLSClientAuth is the OIDC authentication method using TLS client authentication.
+	OIDCAuthTypeTLSClientAuth OIDCAuthType = "tlsClientAuth"
+)
+
 // OIDAuthSpec defines the OIDC configuration used for authentication.
 type OIDAuthSpec struct {
 	// IssuerURL is the URL of the OIDC issuer.
@@ -23,7 +38,7 @@ type OIDAuthSpec struct {
 	Audience string `json:"audience,omitempty"`
 
 	// TLS is the issuer TLS configuration.
-	TLS *OIDCTLSSpec `json:"tls,omitempty"`
+	TLS *TLSSpec `json:"tls,omitempty"`
 }
 
 // OIDCClientAuthSpec defines the OIDC authentication method configuration used for authentication.
@@ -63,13 +78,4 @@ type OIDCAuthTLSClientAuthSpec struct {
 type OIDCAuthPrivateKeyJWTSpec struct {
 	// PrivateKeyRef is the name and the key of the Secret containing the OIDC private key JWT.
 	PrivateKeyRef corev1.SecretKeySelector `json:"privateKeyRef"`
-}
-
-type OIDCTLSSpec struct {
-	// CAPublicCertRef is the name and the key of the ConfigMap containing the CA public certificate.
-	// The CA certificate is used to verify the IdP server's certificate.
-	CAPublicCertRef corev1.ConfigMapKeySelector `json:"caPublicCertRef"`
-
-	// InsecureSkipVerify is a flag to skip the certificate verification.
-	InsecureSkipVerify bool `json:"insecureSkipVerify"`
 }

@@ -34,7 +34,7 @@ type OIDAuthSpecApplyConfiguration struct {
 	// Audience is the OIDC audience.
 	Audience *string `json:"audience,omitempty"`
 	// TLS is the issuer TLS configuration.
-	TLS *OIDCTLSSpecApplyConfiguration `json:"tls,omitempty"`
+	TLS *TLSSpecApplyConfiguration `json:"tls,omitempty"`
 }
 
 // OIDAuthSpecApplyConfiguration constructs a declarative configuration of the OIDAuthSpec type for use with
@@ -88,7 +88,7 @@ func (b *OIDAuthSpecApplyConfiguration) WithAudience(value string) *OIDAuthSpecA
 // WithTLS sets the TLS field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TLS field is set to the value of the last call.
-func (b *OIDAuthSpecApplyConfiguration) WithTLS(value *OIDCTLSSpecApplyConfiguration) *OIDAuthSpecApplyConfiguration {
+func (b *OIDAuthSpecApplyConfiguration) WithTLS(value *TLSSpecApplyConfiguration) *OIDAuthSpecApplyConfiguration {
 	b.TLS = value
 	return b
 }

@@ -4,6 +4,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// ---------- Common types ----------
+
 type AuthType string
 
 const (
@@ -18,6 +20,11 @@ const (
 	AuthTypeClientCert       AuthType = "clientCert"
 	AuthTypeWorkloadIdentity AuthType = "workloadIdentity"
 )
+
+type TLSSpec struct {
+	CAPublicCertRef    corev1.ConfigMapKeySelector
+	InsecureSkipVerify bool
+}
 
 // ---------- Basic types ----------
 
@@ -85,7 +92,7 @@ type OIDAuthSpec struct {
 	ClientAuth OIDCClientAuthSpec
 	Scopes     []string
 	Audience   string
-	TLS        *OIDCTLSSpec
+	TLS        *TLSSpec
 }
 
 type OIDCClientAuthSpec struct {

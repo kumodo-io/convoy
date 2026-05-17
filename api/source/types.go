@@ -36,6 +36,7 @@ type GitRepositorySpec struct {
 	Interval     metav1.Duration
 	IncludePaths []string
 	IgnorePaths  []string
+	TLS          *authv1.TLSSpec
 }
 
 type GitRepositoryRefSpec struct {
@@ -109,6 +110,7 @@ type HelmRegistrySpec struct {
 	URL      string
 	Auth     HelmRegistryAuthSpec
 	Interval metav1.Duration
+	TLS      *authv1.TLSSpec
 }
 
 type HelmRegistryAuthSpec struct {
@@ -164,9 +166,56 @@ type HelmRegistryList struct {
 	Items []HelmRegistry
 }
 
-type OCIRegistrySpec struct{}
+// ---------- OCIRegistry types ---------
 
-type OCIRegistryStatus struct{}
+type ContentType string
+
+const (
+	ContentTypeHelm      ContentType = "helm"
+	ContentTypeManifests ContentType = "manifests"
+	ContentTypeKustomize ContentType = "kustomize"
+)
+
+type OCIRegistrySpec struct {
+	URL                string
+	Auth               OCIRegistryAuthSpec
+	Interval           metav1.Duration
+	TLS                *authv1.TLSSpec
+	DefaultContentType ContentType
+}
+
+type OCIRegistryAuthSpec struct {
+	Type         authv1.AuthType
+	Basic        *authv1.BasicAuthSpec
+	Token        *authv1.TokenAuthSpec
+	DockerConfig *authv1.DockerConfigAuthSpec
+	OIDC         *authv1.OIDAuthSpec
+}
+
+type OCIRegistryWebhookSpec struct {
+	Name      string
+	Provider  string
+	SecretRef corev1.SecretKeySelector
+	Events    []string
+	Filters   *OCIRegistryWebhookFilterSpec
+}
+
+type OCIRegistryWebhookFilterSpec struct {
+	Repositories []string
+	Tags         []string
+}
+
+type OCIRegistryStatus struct {
+	ObservedGeneration int64
+	LastChecked        OCIRegistryLastCheckedStatus
+	ReleaseCount       int64
+	Webhooks           []WebhookStatus
+	Conditions         []metav1.Condition
+}
+
+type OCIRegistryLastCheckedStatus struct {
+	CheckedAt metav1.Time
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -175,8 +224,9 @@ type OCIRegistry struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	Spec   OCIRegistrySpec
-	Status OCIRegistryStatus
+	Spec    OCIRegistrySpec
+	Webhook []OCIRegistryWebhookSpec
+	Status  OCIRegistryStatus
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

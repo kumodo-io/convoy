@@ -228,6 +228,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*OCIRegistryAuthSpec)(nil), (*source.OCIRegistryAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(a.(*OCIRegistryAuthSpec), b.(*source.OCIRegistryAuthSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.OCIRegistryAuthSpec)(nil), (*OCIRegistryAuthSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(a.(*source.OCIRegistryAuthSpec), b.(*OCIRegistryAuthSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*OCIRegistryLastCheckedStatus)(nil), (*source.OCIRegistryLastCheckedStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_OCIRegistryLastCheckedStatus_To_source_OCIRegistryLastCheckedStatus(a.(*OCIRegistryLastCheckedStatus), b.(*source.OCIRegistryLastCheckedStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.OCIRegistryLastCheckedStatus)(nil), (*OCIRegistryLastCheckedStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_OCIRegistryLastCheckedStatus_To_v1alpha1_OCIRegistryLastCheckedStatus(a.(*source.OCIRegistryLastCheckedStatus), b.(*OCIRegistryLastCheckedStatus), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*OCIRegistryList)(nil), (*source.OCIRegistryList)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_OCIRegistryList_To_source_OCIRegistryList(a.(*OCIRegistryList), b.(*source.OCIRegistryList), scope)
 	}); err != nil {
@@ -255,6 +275,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*source.OCIRegistryStatus)(nil), (*OCIRegistryStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(a.(*source.OCIRegistryStatus), b.(*OCIRegistryStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*OCIRegistryWebhookFilterSpec)(nil), (*source.OCIRegistryWebhookFilterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_OCIRegistryWebhookFilterSpec_To_source_OCIRegistryWebhookFilterSpec(a.(*OCIRegistryWebhookFilterSpec), b.(*source.OCIRegistryWebhookFilterSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.OCIRegistryWebhookFilterSpec)(nil), (*OCIRegistryWebhookFilterSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_OCIRegistryWebhookFilterSpec_To_v1alpha1_OCIRegistryWebhookFilterSpec(a.(*source.OCIRegistryWebhookFilterSpec), b.(*OCIRegistryWebhookFilterSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*OCIRegistryWebhookSpec)(nil), (*source.OCIRegistryWebhookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_OCIRegistryWebhookSpec_To_source_OCIRegistryWebhookSpec(a.(*OCIRegistryWebhookSpec), b.(*source.OCIRegistryWebhookSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*source.OCIRegistryWebhookSpec)(nil), (*OCIRegistryWebhookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_source_OCIRegistryWebhookSpec_To_v1alpha1_OCIRegistryWebhookSpec(a.(*source.OCIRegistryWebhookSpec), b.(*OCIRegistryWebhookSpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -420,6 +460,7 @@ func autoConvert_v1alpha1_GitRepositorySpec_To_source_GitRepositorySpec(in *GitR
 	out.Interval = in.Interval
 	out.IncludePaths = *(*[]string)(unsafe.Pointer(&in.IncludePaths))
 	out.IgnorePaths = *(*[]string)(unsafe.Pointer(&in.IgnorePaths))
+	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	return nil
 }
 
@@ -439,6 +480,7 @@ func autoConvert_source_GitRepositorySpec_To_v1alpha1_GitRepositorySpec(in *sour
 	out.Interval = in.Interval
 	out.IncludePaths = *(*[]string)(unsafe.Pointer(&in.IncludePaths))
 	out.IgnorePaths = *(*[]string)(unsafe.Pointer(&in.IgnorePaths))
+	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	return nil
 }
 
@@ -639,6 +681,7 @@ func autoConvert_v1alpha1_HelmRegistrySpec_To_source_HelmRegistrySpec(in *HelmRe
 		return err
 	}
 	out.Interval = in.Interval
+	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	return nil
 }
 
@@ -653,6 +696,7 @@ func autoConvert_source_HelmRegistrySpec_To_v1alpha1_HelmRegistrySpec(in *source
 		return err
 	}
 	out.Interval = in.Interval
+	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	return nil
 }
 
@@ -770,6 +814,7 @@ func autoConvert_v1alpha1_OCIRegistry_To_source_OCIRegistry(in *OCIRegistry, out
 	if err := Convert_v1alpha1_OCIRegistrySpec_To_source_OCIRegistrySpec(&in.Spec, &out.Spec, s); err != nil {
 		return err
 	}
+	out.Webhook = *(*[]source.OCIRegistryWebhookSpec)(unsafe.Pointer(&in.Webhook))
 	if err := Convert_v1alpha1_OCIRegistryStatus_To_source_OCIRegistryStatus(&in.Status, &out.Status, s); err != nil {
 		return err
 	}
@@ -786,6 +831,7 @@ func autoConvert_source_OCIRegistry_To_v1alpha1_OCIRegistry(in *source.OCIRegist
 	if err := Convert_source_OCIRegistrySpec_To_v1alpha1_OCIRegistrySpec(&in.Spec, &out.Spec, s); err != nil {
 		return err
 	}
+	out.Webhook = *(*[]OCIRegistryWebhookSpec)(unsafe.Pointer(&in.Webhook))
 	if err := Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(&in.Status, &out.Status, s); err != nil {
 		return err
 	}
@@ -795,6 +841,54 @@ func autoConvert_source_OCIRegistry_To_v1alpha1_OCIRegistry(in *source.OCIRegist
 // Convert_source_OCIRegistry_To_v1alpha1_OCIRegistry is an autogenerated conversion function.
 func Convert_source_OCIRegistry_To_v1alpha1_OCIRegistry(in *source.OCIRegistry, out *OCIRegistry, s conversion.Scope) error {
 	return autoConvert_source_OCIRegistry_To_v1alpha1_OCIRegistry(in, out, s)
+}
+
+func autoConvert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(in *OCIRegistryAuthSpec, out *source.OCIRegistryAuthSpec, s conversion.Scope) error {
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.DockerConfig = (*authv1alpha1.DockerConfigAuthSpec)(unsafe.Pointer(in.DockerConfig))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	return nil
+}
+
+// Convert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec is an autogenerated conversion function.
+func Convert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(in *OCIRegistryAuthSpec, out *source.OCIRegistryAuthSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(in, out, s)
+}
+
+func autoConvert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(in *source.OCIRegistryAuthSpec, out *OCIRegistryAuthSpec, s conversion.Scope) error {
+	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
+	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
+	out.DockerConfig = (*authv1alpha1.DockerConfigAuthSpec)(unsafe.Pointer(in.DockerConfig))
+	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	return nil
+}
+
+// Convert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec is an autogenerated conversion function.
+func Convert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(in *source.OCIRegistryAuthSpec, out *OCIRegistryAuthSpec, s conversion.Scope) error {
+	return autoConvert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_OCIRegistryLastCheckedStatus_To_source_OCIRegistryLastCheckedStatus(in *OCIRegistryLastCheckedStatus, out *source.OCIRegistryLastCheckedStatus, s conversion.Scope) error {
+	out.CheckedAt = in.CheckedAt
+	return nil
+}
+
+// Convert_v1alpha1_OCIRegistryLastCheckedStatus_To_source_OCIRegistryLastCheckedStatus is an autogenerated conversion function.
+func Convert_v1alpha1_OCIRegistryLastCheckedStatus_To_source_OCIRegistryLastCheckedStatus(in *OCIRegistryLastCheckedStatus, out *source.OCIRegistryLastCheckedStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_OCIRegistryLastCheckedStatus_To_source_OCIRegistryLastCheckedStatus(in, out, s)
+}
+
+func autoConvert_source_OCIRegistryLastCheckedStatus_To_v1alpha1_OCIRegistryLastCheckedStatus(in *source.OCIRegistryLastCheckedStatus, out *OCIRegistryLastCheckedStatus, s conversion.Scope) error {
+	out.CheckedAt = in.CheckedAt
+	return nil
+}
+
+// Convert_source_OCIRegistryLastCheckedStatus_To_v1alpha1_OCIRegistryLastCheckedStatus is an autogenerated conversion function.
+func Convert_source_OCIRegistryLastCheckedStatus_To_v1alpha1_OCIRegistryLastCheckedStatus(in *source.OCIRegistryLastCheckedStatus, out *OCIRegistryLastCheckedStatus, s conversion.Scope) error {
+	return autoConvert_source_OCIRegistryLastCheckedStatus_To_v1alpha1_OCIRegistryLastCheckedStatus(in, out, s)
 }
 
 func autoConvert_v1alpha1_OCIRegistryList_To_source_OCIRegistryList(in *OCIRegistryList, out *source.OCIRegistryList, s conversion.Scope) error {
@@ -820,6 +914,13 @@ func Convert_source_OCIRegistryList_To_v1alpha1_OCIRegistryList(in *source.OCIRe
 }
 
 func autoConvert_v1alpha1_OCIRegistrySpec_To_source_OCIRegistrySpec(in *OCIRegistrySpec, out *source.OCIRegistrySpec, s conversion.Scope) error {
+	out.URL = in.URL
+	if err := Convert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
+		return err
+	}
+	out.Interval = in.Interval
+	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
+	out.DefaultContentType = source.ContentType(in.DefaultContentType)
 	return nil
 }
 
@@ -829,6 +930,13 @@ func Convert_v1alpha1_OCIRegistrySpec_To_source_OCIRegistrySpec(in *OCIRegistryS
 }
 
 func autoConvert_source_OCIRegistrySpec_To_v1alpha1_OCIRegistrySpec(in *source.OCIRegistrySpec, out *OCIRegistrySpec, s conversion.Scope) error {
+	out.URL = in.URL
+	if err := Convert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
+		return err
+	}
+	out.Interval = in.Interval
+	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
+	out.DefaultContentType = ContentType(in.DefaultContentType)
 	return nil
 }
 
@@ -838,6 +946,13 @@ func Convert_source_OCIRegistrySpec_To_v1alpha1_OCIRegistrySpec(in *source.OCIRe
 }
 
 func autoConvert_v1alpha1_OCIRegistryStatus_To_source_OCIRegistryStatus(in *OCIRegistryStatus, out *source.OCIRegistryStatus, s conversion.Scope) error {
+	out.ObservedGeneration = in.ObservedGeneration
+	if err := Convert_v1alpha1_OCIRegistryLastCheckedStatus_To_source_OCIRegistryLastCheckedStatus(&in.LastChecked, &out.LastChecked, s); err != nil {
+		return err
+	}
+	out.ReleaseCount = in.ReleaseCount
+	out.Webhooks = *(*[]source.WebhookStatus)(unsafe.Pointer(&in.Webhooks))
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
 
@@ -847,12 +962,69 @@ func Convert_v1alpha1_OCIRegistryStatus_To_source_OCIRegistryStatus(in *OCIRegis
 }
 
 func autoConvert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in *source.OCIRegistryStatus, out *OCIRegistryStatus, s conversion.Scope) error {
+	out.ObservedGeneration = in.ObservedGeneration
+	if err := Convert_source_OCIRegistryLastCheckedStatus_To_v1alpha1_OCIRegistryLastCheckedStatus(&in.LastChecked, &out.LastChecked, s); err != nil {
+		return err
+	}
+	out.ReleaseCount = in.ReleaseCount
+	out.Webhooks = *(*[]WebhookStatus)(unsafe.Pointer(&in.Webhooks))
+	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	return nil
 }
 
 // Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus is an autogenerated conversion function.
 func Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in *source.OCIRegistryStatus, out *OCIRegistryStatus, s conversion.Scope) error {
 	return autoConvert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_OCIRegistryWebhookFilterSpec_To_source_OCIRegistryWebhookFilterSpec(in *OCIRegistryWebhookFilterSpec, out *source.OCIRegistryWebhookFilterSpec, s conversion.Scope) error {
+	out.Repositories = *(*[]string)(unsafe.Pointer(&in.Repositories))
+	out.Tags = *(*[]string)(unsafe.Pointer(&in.Tags))
+	return nil
+}
+
+// Convert_v1alpha1_OCIRegistryWebhookFilterSpec_To_source_OCIRegistryWebhookFilterSpec is an autogenerated conversion function.
+func Convert_v1alpha1_OCIRegistryWebhookFilterSpec_To_source_OCIRegistryWebhookFilterSpec(in *OCIRegistryWebhookFilterSpec, out *source.OCIRegistryWebhookFilterSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_OCIRegistryWebhookFilterSpec_To_source_OCIRegistryWebhookFilterSpec(in, out, s)
+}
+
+func autoConvert_source_OCIRegistryWebhookFilterSpec_To_v1alpha1_OCIRegistryWebhookFilterSpec(in *source.OCIRegistryWebhookFilterSpec, out *OCIRegistryWebhookFilterSpec, s conversion.Scope) error {
+	out.Repositories = *(*[]string)(unsafe.Pointer(&in.Repositories))
+	out.Tags = *(*[]string)(unsafe.Pointer(&in.Tags))
+	return nil
+}
+
+// Convert_source_OCIRegistryWebhookFilterSpec_To_v1alpha1_OCIRegistryWebhookFilterSpec is an autogenerated conversion function.
+func Convert_source_OCIRegistryWebhookFilterSpec_To_v1alpha1_OCIRegistryWebhookFilterSpec(in *source.OCIRegistryWebhookFilterSpec, out *OCIRegistryWebhookFilterSpec, s conversion.Scope) error {
+	return autoConvert_source_OCIRegistryWebhookFilterSpec_To_v1alpha1_OCIRegistryWebhookFilterSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_OCIRegistryWebhookSpec_To_source_OCIRegistryWebhookSpec(in *OCIRegistryWebhookSpec, out *source.OCIRegistryWebhookSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Provider = in.Provider
+	out.SecretRef = in.SecretRef
+	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
+	out.Filters = (*source.OCIRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	return nil
+}
+
+// Convert_v1alpha1_OCIRegistryWebhookSpec_To_source_OCIRegistryWebhookSpec is an autogenerated conversion function.
+func Convert_v1alpha1_OCIRegistryWebhookSpec_To_source_OCIRegistryWebhookSpec(in *OCIRegistryWebhookSpec, out *source.OCIRegistryWebhookSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_OCIRegistryWebhookSpec_To_source_OCIRegistryWebhookSpec(in, out, s)
+}
+
+func autoConvert_source_OCIRegistryWebhookSpec_To_v1alpha1_OCIRegistryWebhookSpec(in *source.OCIRegistryWebhookSpec, out *OCIRegistryWebhookSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Provider = in.Provider
+	out.SecretRef = in.SecretRef
+	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
+	out.Filters = (*OCIRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	return nil
+}
+
+// Convert_source_OCIRegistryWebhookSpec_To_v1alpha1_OCIRegistryWebhookSpec is an autogenerated conversion function.
+func Convert_source_OCIRegistryWebhookSpec_To_v1alpha1_OCIRegistryWebhookSpec(in *source.OCIRegistryWebhookSpec, out *OCIRegistryWebhookSpec, s conversion.Scope) error {
+	return autoConvert_source_OCIRegistryWebhookSpec_To_v1alpha1_OCIRegistryWebhookSpec(in, out, s)
 }
 
 func autoConvert_v1alpha1_WebhookStatus_To_source_WebhookStatus(in *WebhookStatus, out *source.WebhookStatus, s conversion.Scope) error {

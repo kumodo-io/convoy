@@ -28,6 +28,9 @@ type GitRepositorySpec struct {
 	// IgnorePaths is a list of paths to ignore in the Git repository.
 	// +listType=atomic
 	IgnorePaths []string `json:"ignorePaths,omitempty"`
+
+	// TLS is the TLS configuration used to verify the Git repository.
+	TLS *authv1.TLSSpec `json:"tls,omitempty"`
 }
 
 // GitRepositoryRefSpec defines the desired state of the GitRepositoryRef.

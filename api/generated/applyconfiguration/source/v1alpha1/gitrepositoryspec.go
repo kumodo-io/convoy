@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	authv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,6 +40,8 @@ type GitRepositorySpecApplyConfiguration struct {
 	IncludePaths []string `json:"includePaths,omitempty"`
 	// IgnorePaths is a list of paths to ignore in the Git repository.
 	IgnorePaths []string `json:"ignorePaths,omitempty"`
+	// TLS is the TLS configuration used to verify the Git repository.
+	TLS *authv1alpha1.TLSSpecApplyConfiguration `json:"tls,omitempty"`
 }
 
 // GitRepositorySpecApplyConfiguration constructs a declarative configuration of the GitRepositorySpec type for use with
@@ -96,5 +99,13 @@ func (b *GitRepositorySpecApplyConfiguration) WithIgnorePaths(values ...string) 
 	for i := range values {
 		b.IgnorePaths = append(b.IgnorePaths, values[i])
 	}
+	return b
+}
+
+// WithTLS sets the TLS field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TLS field is set to the value of the last call.
+func (b *GitRepositorySpecApplyConfiguration) WithTLS(value *authv1alpha1.TLSSpecApplyConfiguration) *GitRepositorySpecApplyConfiguration {
+	b.TLS = value
 	return b
 }
