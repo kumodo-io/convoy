@@ -879,27 +879,27 @@ func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref common.Refere
 				Description: "ClusterDeletionPolicySpec defines the deletion policy of the cluster.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"releasesDeletionPolicy": {
+					"releasesDeletionPolic": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReleasesDeletionPolicy is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
+							Description: "Releases is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 							Enum:        []interface{}{"block", "delete", "orphan"},
 						},
 					},
-					"workloadsDeletionPolicy": {
+					"workloads": {
 						SchemaProps: spec.SchemaProps{
-							Description: "WorkloadsDeletionPolicy is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
+							Description: "Workloads is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 							Enum:        []interface{}{"leave", "prune"},
 						},
 					},
-					"onUnreachableDeletionPolicy": {
+					"onUnreachable": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OnUnreachableDeletionPolicy is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
+							Description: "OnUnreachable is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -907,7 +907,7 @@ func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref common.Refere
 						},
 					},
 				},
-				Required: []string{"releasesDeletionPolicy", "workloadsDeletionPolicy", "onUnreachableDeletionPolicy"},
+				Required: []string{"releasesDeletionPolic", "workloads", "onUnreachable"},
 			},
 		},
 	}

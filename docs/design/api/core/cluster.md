@@ -10,7 +10,7 @@
     * [token](#token)
     * [clientCert](#clientcert)
     * [workloadIdentity](#workloadidentity)
-    * [oidcClientCredentials](#oidcclientcredentials)
+    * [oidc](#oidc)
   * [Deletion Policy](#deletion-policy)
   * [Status](#status)
   * [Conditions](#conditions)
@@ -60,7 +60,7 @@ spec:
     
     # Authentication method — discriminated union. See "Authentication Methods" below.
     auth:
-      # type: kubeconfig | token | clientCert | execPlugin | workloadIdentity | oidcClientCredentials
+      # type: kubeconfig | token | clientCert | execPlugin | workloadIdentity | oidc
       type: execPlugin
       
       # type: execPlugin — for cloud-provider auth (EKS, GKE, AKS).
@@ -103,10 +103,9 @@ spec:
       # --------------------------------
       # type: workloadIdentity — controller pod has cloud-native identity
       # (IRSA on EKS, Workload Identity on GKE). No static creds needed.
-      # workloadIdentity: {}
 
       # --------------------------------
-      # oidcClientCredentials:
+      # oidc:
       # OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
       # to find the actual token endpoint. Standard OIDC.
       # issuerURL: https://auth.example.com/realms/internal
@@ -138,7 +137,7 @@ spec:
       # audience: helm-registry
       # Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
       # tls:
-      #   caBundleRef: { name: corporate-ca, key: ca.crt }
+      #   caPublicCertRef: { name: corporate-ca, key: ca.crt }
       #   insecureSkipVerify: false
     
     # Connection tuning (sane defaults; override for high-volume or rate-limited clusters).
@@ -359,10 +358,9 @@ spec:
   agentless:
     auth:
       type: workloadIdentity
-      workloadIdentity: {}
 ```
 
-### oidcClientCredentials
+### oidc
 
 OIDC client-credentials flow. The controller discovers the token endpoint via `/.well-known/openid-configuration` on the issuer and exchanges client credentials for a token. Client authentication itself is a nested discriminated union (`clientAuth.type`): `clientSecret` (shared secret, most common), `privateKeyJWT` (signed JWT assertion), or `tlsClientAuth` (mTLS).
 
@@ -370,8 +368,8 @@ OIDC client-credentials flow. The controller discovers the token endpoint via `/
 spec:
   agentless:
     auth:
-      type: oidcClientCredentials
-      oidcClientCredentials:
+      type: oidc
+      oidc:
         issuerURL: https://auth.example.com/realms/internal
         clientId: cd-controller
         clientAuth:

@@ -4,7 +4,7 @@
   * [Authentication Methods](#authentication-methods)
     * [basic](#basic)
     * [token](#token)
-    * [oidcClientCredentials](#oidcclientcredentials)
+    * [oidc](#oidc)
     * [workloadIdentity](#workloadidentity)
   * [Status](#status)
   * [Conditions](#conditions)
@@ -47,7 +47,7 @@ spec:
   # Authentication — optional, for private repos.
   # Discriminated union on auth.type. See "Authentication Methods" below.
   auth:
-    # type: basic | token | oidcClientCredentials | workloadIdentity
+    # type: basic | token | oidc | workloadIdentity
     type: basic
     
     basic:
@@ -60,7 +60,7 @@ spec:
     #   secretRef: { name: bitnami-token, key: token }
 
     # --------------------------------
-    # oidcClientCredentials:
+    # oidc:
     # OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
     # to find the actual token endpoint. Standard OIDC.
     # issuerURL: https://auth.example.com/realms/internal
@@ -125,11 +125,11 @@ status:
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
-      triggeredCount: 87
+      triggersCount: 87
       rejectedCount: 3
       filteredCount: 52
       lastRejection:
-        at: 2026-04-29T08:30:00Z
+        rejectedAt: 2026-04-29T08:30:00Z
         reason: SignatureMismatch
         message: "HMAC signature did not match expected value"
 
@@ -154,7 +154,7 @@ status:
 |--------------------------|----------|---------------------|---------|------------------------------------------------------------------------------------------------------------------------------------|
 | `url`                    | string   | yes                 | —       | Helm HTTP repository URL serving `index.yaml`.                                                                                     |
 | `auth`                   | object   | no                  | —       | Authentication — discriminated union on `auth.type`. Omit for public repos. See [Authentication Methods](#authentication-methods). |
-| `auth.type`              | enum     | yes (if `auth` set) | —       | One of `basic`, `token`, `oidcClientCredentials`, `workloadIdentity`.                                                              |
+| `auth.type`              | enum     | yes (if `auth` set) | —       | One of `basic`, `token`, `oidc`, `workloadIdentity`.                                                              |
 | `interval`               | duration | no                  | `5m`    | Polling interval for index refresh.                                                                                                |
 | `minSyncInterval`        | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs.                                                                           |
 | `tls`                    | object   | no                  | —       | TLS config for the registry.                                                                                                       |
@@ -190,15 +190,15 @@ spec:
       secretRef: { name: bitnami-token, key: token }
 ```
 
-### oidcClientCredentials
+### oidc
 
 OIDC client-credentials flow. The controller discovers the token endpoint via `/.well-known/openid-configuration` on the issuer and exchanges client credentials for a token. Client authentication itself is a nested discriminated union (`clientAuth.type`): `clientSecret` (shared secret, most common), `privateKeyJWT` (signed JWT assertion, used in regulated envs), or `tlsClientAuth` (mTLS, rare).
 
 ```yaml
 spec:
   auth:
-    type: oidcClientCredentials
-    oidcClientCredentials:
+    type: oidc
+    oidc:
       issuerURL: https://auth.example.com/realms/internal
       clientId: cd-controller
       clientAuth:
@@ -221,7 +221,6 @@ The controller pod uses its own cloud-native identity (e.g. Workload Identity on
 spec:
   auth:
     type: workloadIdentity
-    workloadIdentity: {}
 ```
 
 ## Status
@@ -398,11 +397,11 @@ status:
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
-      triggeredCount: 87
+      triggersCount: 87
       rejectedCount: 3
       filteredCount: 52
       lastRejection:
-        at: 2026-04-29T08:30:00Z
+        rejectedAt: 2026-04-29T08:30:00Z
         reason: SignatureMismatch
         message: "HMAC signature did not match expected value"
   
@@ -418,20 +417,20 @@ The `WebhookConfigured` condition is `True` if at least one webhook is configure
 
 ### Status Fields per Entry
 
-| Field                   | Type      | Description                                                                                      |
-|-------------------------|-----------|--------------------------------------------------------------------------------------------------|
-| `name`                  | string    | Matches the entry's name in the subresource.                                                     |
-| `url`                   | string    | Endpoint URL (mirrored from subresource for visibility).                                         |
-| `lastReceived`          | timestamp | Most recent webhook delivery received (regardless of outcome).                                   |
-| `lastTriggered`         | timestamp | Most recent delivery that passed verification and filters and triggered sync.                    |
-| `receivedCount`         | integer   | Total deliveries received since last status reset.                                               |
-| `triggeredCount`        | integer   | Deliveries that resulted in a sync.                                                              |
-| `rejectedCount`         | integer   | Deliveries rejected (signature failures, malformed payloads).                                    |
-| `filteredCount`         | integer   | Deliveries that passed verification but were filtered out (events/charts didn't match).          |
-| `lastRejection`         | object    | Details of the most recent rejection, if any.                                                    |
-| `lastRejection.at`      | timestamp | When the rejection occurred.                                                                     |
-| `lastRejection.reason`  | string    | Standardized reason: `SignatureMismatch`, `MalformedPayload`, `UnknownEvent`, `SecretNotFound`.  |
-| `lastRejection.message` | string    | Human-readable detail.                                                                           |
+| Field                      | Type      | Description                                                                                     |
+|----------------------------|-----------|-------------------------------------------------------------------------------------------------|
+| `name`                     | string    | Matches the entry's name in the subresource.                                                    |
+| `url`                      | string    | Endpoint URL (mirrored from subresource for visibility).                                        |
+| `lastReceived`             | timestamp | Most recent webhook delivery received (regardless of outcome).                                  |
+| `lastTriggered`            | timestamp | Most recent delivery that passed verification and filters and triggered sync.                   |
+| `receivedCount`            | integer   | Total deliveries received since last status reset.                                              |
+| `triggersCount`            | integer   | Deliveries that resulted in a sync.                                                             |
+| `rejectedCount`            | integer   | Deliveries rejected (signature failures, malformed payloads).                                   |
+| `filteredCount`            | integer   | Deliveries that passed verification but were filtered out (events/charts didn't match).         |
+| `lastRejection`            | object    | Details of the most recent rejection, if any.                                                   |
+| `lastRejection.rejectedAt` | timestamp | When the rejection occurred.                                                                    |
+| `lastRejection.reason`     | string    | Standardized reason: `SignatureMismatch`, `MalformedPayload`, `UnknownEvent`, `SecretNotFound`. |
+| `lastRejection.message`    | string    | Human-readable detail.                                                                          |
 
 ### RBAC
 

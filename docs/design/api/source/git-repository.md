@@ -99,7 +99,6 @@ spec:
 
     # type: workloadIdentity — controller uses cloud-native identity for cloud-hosted Git
     # (e.g., AWS CodeCommit via IRSA). No static credentials stored.
-    # workloadIdentity: {}
   
   # Polling interval for ref resolution and content fetching.
   # Lower = faster updates, higher git load. Webhooks can supplement.
@@ -162,11 +161,11 @@ status:
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
-      triggeredCount: 87
+      triggersCount: 87
       rejectedCount: 3
       filteredCount: 52
       lastRejection:
-        at: 2026-04-29T08:30:00Z
+        rejectedAt: 2026-04-29T08:30:00Z
         reason: SignatureMismatch
         message: "HMAC signature did not match expected value"
     - name: gitea-mirror
@@ -174,7 +173,7 @@ status:
       lastReceived: 2026-04-29T09:50:00Z
       lastTriggered: 2026-04-29T09:50:00Z
       receivedCount: 18
-      triggeredCount: 18
+      triggersCount: 18
       rejectedCount: 0
       filteredCount: 0
 
@@ -328,7 +327,6 @@ The controller pod uses its own cloud-native identity (e.g. IRSA on EKS) to auth
 spec:
   auth:
     type: workloadIdentity
-    workloadIdentity: {}
 ```
 
 ## Status
@@ -538,11 +536,11 @@ status:
       lastReceived: 2026-04-29T10:00:00Z
       lastTriggered: 2026-04-29T10:00:00Z
       receivedCount: 142
-      triggeredCount: 87
+      triggersCount: 87
       rejectedCount: 3
       filteredCount: 52
       lastRejection:
-        at: 2026-04-29T08:30:00Z
+        rejectedAt: 2026-04-29T08:30:00Z
         reason: SignatureMismatch
         message: "HMAC signature did not match expected value"
     
@@ -551,7 +549,7 @@ status:
       lastReceived: 2026-04-29T09:50:00Z
       lastTriggered: 2026-04-29T09:50:00Z
       receivedCount: 18
-      triggeredCount: 18
+      triggersCount: 18
       rejectedCount: 0
       filteredCount: 0
   
@@ -567,20 +565,20 @@ The `WebhookConfigured` condition is `True` if at least one webhook is configure
 
 ### Status Fields per Entry
 
-| Field                   | Type      | Description                                                                                      |
-|-------------------------|-----------|--------------------------------------------------------------------------------------------------|
-| `name`                  | string    | Matches the entry's name in the subresource.                                                     |
-| `url`                   | string    | Endpoint URL (mirrored from subresource for visibility).                                         |
-| `lastReceived`          | timestamp | Most recent webhook delivery received (regardless of outcome).                                   |
-| `lastTriggered`         | timestamp | Most recent delivery that passed verification and filters and triggered sync.                    |
-| `receivedCount`         | integer   | Total deliveries received since last status reset.                                               |
-| `triggeredCount`        | integer   | Deliveries that resulted in a sync.                                                              |
-| `rejectedCount`         | integer   | Deliveries rejected (signature failures, malformed payloads).                                    |
-| `filteredCount`         | integer   | Deliveries that passed verification but were filtered out (events/refs/paths didn't match).      |
-| `lastRejection`         | object    | Details of the most recent rejection, if any.                                                    |
-| `lastRejection.at`      | timestamp | When the rejection occurred.                                                                     |
-| `lastRejection.reason`  | string    | Standardized reason: `SignatureMismatch`, `MalformedPayload`, `UnknownEvent`, `SecretNotFound`.  |
-| `lastRejection.message` | string    | Human-readable detail.                                                                           |
+| Field                      | Type      | Description                                                                                     |
+|----------------------------|-----------|-------------------------------------------------------------------------------------------------|
+| `name`                     | string    | Matches the entry's name in the subresource.                                                    |
+| `url`                      | string    | Endpoint URL (mirrored from subresource for visibility).                                        |
+| `lastReceived`             | timestamp | Most recent webhook delivery received (regardless of outcome).                                  |
+| `lastTriggered`            | timestamp | Most recent delivery that passed verification and filters and triggered sync.                   |
+| `receivedCount`            | integer   | Total deliveries received since last status reset.                                              |
+| `triggersCount`            | integer   | Deliveries that resulted in a sync.                                                             |
+| `rejectedCount`            | integer   | Deliveries rejected (signature failures, malformed payloads).                                   |
+| `filteredCount`            | integer   | Deliveries that passed verification but were filtered out (events/refs/paths didn't match).     |
+| `lastRejection`            | object    | Details of the most recent rejection, if any.                                                   |
+| `lastRejection.rejectedAt` | timestamp | When the rejection occurred.                                                                    |
+| `lastRejection.reason`     | string    | Standardized reason: `SignatureMismatch`, `MalformedPayload`, `UnknownEvent`, `SecretNotFound`. |
+| `lastRejection.message`    | string    | Human-readable detail.                                                                          |
 
 ### RBAC
 

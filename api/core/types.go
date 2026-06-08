@@ -67,9 +67,9 @@ type ClusterCapabilitiesSpec struct {
 }
 
 type ClusterDeletionPolicySpec struct {
-	ReleasesDeletionPolicy      ReleasesDeletionPolicy
-	WorkloadsDeletionPolicy     WorkloadsDeletionPolicy
-	OnUnreachableDeletionPolicy OnUnreachableDeletionPolicy
+	Releases      ReleasesDeletionPolicy
+	Workloads     WorkloadsDeletionPolicy
+	OnUnreachable OnUnreachableDeletionPolicy
 }
 
 type ClusterConnectionParametersSpec struct {

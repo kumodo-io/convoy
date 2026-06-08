@@ -142,24 +142,24 @@ type ClusterCapabilitiesSpec struct {
 
 // ClusterDeletionPolicySpec defines the deletion policy of the cluster.
 type ClusterDeletionPolicySpec struct {
-	// ReleasesDeletionPolicy is the deletion policy for the Release objects in case of the cluster deletion.
+	// Releases is the deletion policy for the Release objects in case of the cluster deletion.
 	// Possible values are:
 	// - block (default, recommended)
 	// - delete
 	// - orphan
-	ReleasesDeletionPolicy ReleasesDeletionPolicy `json:"releasesDeletionPolicy"`
+	Releases ReleasesDeletionPolicy `json:"releasesDeletionPolic"`
 
-	// WorkloadsDeletionPolicy is the deletion policy for the workloads in case of the cluster deletion.
+	// Workloads is the deletion policy for the workloads in case of the cluster deletion.
 	// Possible values are:
 	// - prune (default)
 	// - leave
-	WorkloadsDeletionPolicy WorkloadsDeletionPolicy `json:"workloadsDeletionPolicy"`
+	Workloads WorkloadsDeletionPolicy `json:"workloads"`
 
-	// OnUnreachableDeletionPolicy is the deletion policy for the cluster in case the cluster is unreachable.
+	// OnUnreachable is the deletion policy for the cluster in case the cluster is unreachable.
 	// Possible values are:
 	// - block (default)
 	// - releasesOnly
-	OnUnreachableDeletionPolicy OnUnreachableDeletionPolicy `json:"onUnreachableDeletionPolicy"`
+	OnUnreachable OnUnreachableDeletionPolicy `json:"onUnreachable"`
 }
 
 // ClusterConnectionParametersSpec defines the connection parameters of the cluster.

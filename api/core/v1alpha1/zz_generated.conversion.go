@@ -620,9 +620,9 @@ func Convert_core_ClusterConnectionParametersSpec_To_v1alpha1_ClusterConnectionP
 }
 
 func autoConvert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec(in *ClusterDeletionPolicySpec, out *core.ClusterDeletionPolicySpec, s conversion.Scope) error {
-	out.ReleasesDeletionPolicy = core.ReleasesDeletionPolicy(in.ReleasesDeletionPolicy)
-	out.WorkloadsDeletionPolicy = core.WorkloadsDeletionPolicy(in.WorkloadsDeletionPolicy)
-	out.OnUnreachableDeletionPolicy = core.OnUnreachableDeletionPolicy(in.OnUnreachableDeletionPolicy)
+	out.Releases = core.ReleasesDeletionPolicy(in.Releases)
+	out.Workloads = core.WorkloadsDeletionPolicy(in.Workloads)
+	out.OnUnreachable = core.OnUnreachableDeletionPolicy(in.OnUnreachable)
 	return nil
 }
 
@@ -632,9 +632,9 @@ func Convert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpe
 }
 
 func autoConvert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec(in *core.ClusterDeletionPolicySpec, out *ClusterDeletionPolicySpec, s conversion.Scope) error {
-	out.ReleasesDeletionPolicy = ReleasesDeletionPolicy(in.ReleasesDeletionPolicy)
-	out.WorkloadsDeletionPolicy = WorkloadsDeletionPolicy(in.WorkloadsDeletionPolicy)
-	out.OnUnreachableDeletionPolicy = OnUnreachableDeletionPolicy(in.OnUnreachableDeletionPolicy)
+	out.Releases = ReleasesDeletionPolicy(in.Releases)
+	out.Workloads = WorkloadsDeletionPolicy(in.Workloads)
+	out.OnUnreachable = OnUnreachableDeletionPolicy(in.OnUnreachable)
 	return nil
 }
 
