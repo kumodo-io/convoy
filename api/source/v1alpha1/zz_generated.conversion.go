@@ -458,6 +458,7 @@ func autoConvert_v1alpha1_GitRepositorySpec_To_source_GitRepositorySpec(in *GitR
 		return err
 	}
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	out.IncludePaths = *(*[]string)(unsafe.Pointer(&in.IncludePaths))
 	out.IgnorePaths = *(*[]string)(unsafe.Pointer(&in.IgnorePaths))
 	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
@@ -478,6 +479,7 @@ func autoConvert_source_GitRepositorySpec_To_v1alpha1_GitRepositorySpec(in *sour
 		return err
 	}
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	out.IncludePaths = *(*[]string)(unsafe.Pointer(&in.IncludePaths))
 	out.IgnorePaths = *(*[]string)(unsafe.Pointer(&in.IgnorePaths))
 	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
@@ -681,6 +683,7 @@ func autoConvert_v1alpha1_HelmRegistrySpec_To_source_HelmRegistrySpec(in *HelmRe
 		return err
 	}
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	return nil
 }
@@ -696,6 +699,7 @@ func autoConvert_source_HelmRegistrySpec_To_v1alpha1_HelmRegistrySpec(in *source
 		return err
 	}
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	return nil
 }
@@ -919,6 +923,7 @@ func autoConvert_v1alpha1_OCIRegistrySpec_To_source_OCIRegistrySpec(in *OCIRegis
 		return err
 	}
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	out.DefaultContentType = source.ContentType(in.DefaultContentType)
 	return nil
@@ -935,6 +940,7 @@ func autoConvert_source_OCIRegistrySpec_To_v1alpha1_OCIRegistrySpec(in *source.O
 		return err
 	}
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
 	out.DefaultContentType = ContentType(in.DefaultContentType)
 	return nil

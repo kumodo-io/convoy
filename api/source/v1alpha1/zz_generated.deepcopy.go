@@ -195,6 +195,7 @@ func (in *GitRepositorySpec) DeepCopyInto(out *GitRepositorySpec) {
 	in.Ref.DeepCopyInto(&out.Ref)
 	in.Auth.DeepCopyInto(&out.Auth)
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	if in.IncludePaths != nil {
 		in, out := &in.IncludePaths, &out.IncludePaths
 		*out = make([]string, len(*in))
@@ -428,6 +429,7 @@ func (in *HelmRegistrySpec) DeepCopyInto(out *HelmRegistrySpec) {
 	*out = *in
 	in.Auth.DeepCopyInto(&out.Auth)
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
 		*out = new(authv1alpha1.TLSSpec)
@@ -671,6 +673,7 @@ func (in *OCIRegistrySpec) DeepCopyInto(out *OCIRegistrySpec) {
 	*out = *in
 	in.Auth.DeepCopyInto(&out.Auth)
 	out.Interval = in.Interval
+	out.MinSyncInterval = in.MinSyncInterval
 	if in.TLS != nil {
 		in, out := &in.TLS, &out.TLS
 		*out = new(authv1alpha1.TLSSpec)

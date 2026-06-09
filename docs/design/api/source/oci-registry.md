@@ -104,6 +104,8 @@ spec:
   # How often to check for new tags / artifact updates.
   interval: 5m
   
+  minSyncInterval: 10s
+  
   # Optional: TLS config for self-signed registries.
   # tls:
   #   caBundleRef: { configMapRef: { name: corporate-ca, key: ca.crt } }
@@ -174,22 +176,22 @@ status:
 
 ## Spec
 
-| Field                        | Type     | Required            | Default | Description                                                                                                 |
-|------------------------------|----------|---------------------|---------|-------------------------------------------------------------------------------------------------------------|
-| `url`                        | string   | yes                 | —       | OCI registry URL with `oci://` scheme.                                                                      |
-| `auth`                       | object   | no                  | —       | Authentication — discriminated union on `auth.type`. See [Authentication Methods](#authentication-methods). |
-| `auth.type`                  | enum     | yes (if `auth` set) | —       | One of `dockerConfig`, `basic`, `token`, `oidc`, `workloadIdentity`.                       |
-| `auth.dockerConfig`          | object   | one-of              | —       | Standard kubelet-style image pull secret (when `type: dockerConfig`).                                       |
-| `auth.basic`                 | object   | one-of              | —       | HTTP basic auth (when `type: basic`).                                                                       |
-| `auth.token`                 | object   | one-of              | —       | Bearer token auth (when `type: token`).                                                                     |
-| `auth.oidc` | object   | one-of              | —       | OIDC client credentials flow (when `type: oidc`).                                          |
-| `auth.workloadIdentity`      | object   | one-of              | —       | Cloud workload identity (when `type: workloadIdentity`); for ECR (IRSA), GAR (GCP Workload Identity), ACR.  |
-| `interval`                   | duration | no                  | `5m`    | Polling interval for tag/digest checks.                                                                     |
-| `minSyncInterval`            | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs.                                                    |
-| `defaultContentType`         | enum     | no                  | `helm`  | Default interpretation of artifacts. See [Content Types](#content-types). Overridable per Release.          |
-| `tls`                        | object   | no                  | —       | TLS config for the registry.                                                                                |
-| `tls.caBundleRef`            | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                          |
-| `tls.insecureSkipVerify`     | bool     | no                  | `false` | Skip TLS verification (not recommended).                                                                    |
+| Field                    | Type     | Required            | Default | Description                                                                                                 |
+|--------------------------|----------|---------------------|---------|-------------------------------------------------------------------------------------------------------------|
+| `url`                    | string   | yes                 | —       | OCI registry URL with `oci://` scheme.                                                                      |
+| `auth`                   | object   | no                  | —       | Authentication — discriminated union on `auth.type`. See [Authentication Methods](#authentication-methods). |
+| `auth.type`              | enum     | yes (if `auth` set) | —       | One of `dockerConfig`, `basic`, `token`, `oidc`, `workloadIdentity`.                                        |
+| `auth.dockerConfig`      | object   | one-of              | —       | Standard kubelet-style image pull secret (when `type: dockerConfig`).                                       |
+| `auth.basic`             | object   | one-of              | —       | HTTP basic auth (when `type: basic`).                                                                       |
+| `auth.token`             | object   | one-of              | —       | Bearer token auth (when `type: token`).                                                                     |
+| `auth.oidc`              | object   | one-of              | —       | OIDC client credentials flow (when `type: oidc`).                                                           |
+| `auth.workloadIdentity`  | object   | one-of              | —       | Cloud workload identity (when `type: workloadIdentity`); for ECR (IRSA), GAR (GCP Workload Identity), ACR.  |
+| `interval`               | duration | no                  | `5m`    | Polling interval for tag/digest checks.                                                                     |
+| `minSyncInterval`        | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs.                                                    |
+| `defaultContentType`     | enum     | no                  | `helm`  | Default interpretation of artifacts. See [Content Types](#content-types). Overridable per Release.          |
+| `tls`                    | object   | no                  | —       | TLS config for the registry.                                                                                |
+| `tls.caBundleRef`        | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                          |
+| `tls.insecureSkipVerify` | bool     | no                  | `false` | Skip TLS verification (not recommended).                                                                    |
 
 ## Authentication Methods
 

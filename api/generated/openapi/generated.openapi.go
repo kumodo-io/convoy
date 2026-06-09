@@ -3750,6 +3750,12 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"minSyncInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"includePaths": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -3797,7 +3803,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"url", "ref", "auth", "interval"},
+				Required: []string{"url", "ref", "auth", "interval", "minSyncInterval"},
 			},
 		},
 		Dependencies: []string{
@@ -4217,6 +4223,12 @@ func schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref common.ReferenceCall
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"minSyncInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"tls": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLS is the TLS configuration used to verify the Helm registry.",
@@ -4224,7 +4236,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"url", "auth", "interval"},
+				Required: []string{"url", "auth", "interval", "minSyncInterval"},
 			},
 		},
 		Dependencies: []string{
@@ -4659,6 +4671,12 @@ func schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref common.ReferenceCallb
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"minSyncInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"tls": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLS is the TLS configuration used to verify the OCI registry.",
@@ -4675,7 +4693,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"url", "auth", "interval", "defaultContentType"},
+				Required: []string{"url", "auth", "interval", "minSyncInterval", "defaultContentType"},
 			},
 		},
 		Dependencies: []string{

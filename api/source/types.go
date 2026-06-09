@@ -30,13 +30,14 @@ type LastRejectionStatus struct {
 // ---------- GitRepository types ----------
 
 type GitRepositorySpec struct {
-	URL          string
-	Ref          GitRepositoryRefSpec
-	Auth         GitRepositoryAuthSpec
-	Interval     metav1.Duration
-	IncludePaths []string
-	IgnorePaths  []string
-	TLS          *authv1.TLSSpec
+	URL             string
+	Ref             GitRepositoryRefSpec
+	Auth            GitRepositoryAuthSpec
+	Interval        metav1.Duration
+	MinSyncInterval metav1.Duration
+	IncludePaths    []string
+	IgnorePaths     []string
+	TLS             *authv1.TLSSpec
 }
 
 type GitRepositoryRefSpec struct {
@@ -107,10 +108,11 @@ type GitRepositoryList struct {
 // ---------- HelmRegistry types ----------
 
 type HelmRegistrySpec struct {
-	URL      string
-	Auth     HelmRegistryAuthSpec
-	Interval metav1.Duration
-	TLS      *authv1.TLSSpec
+	URL             string
+	Auth            HelmRegistryAuthSpec
+	Interval        metav1.Duration
+	MinSyncInterval metav1.Duration
+	TLS             *authv1.TLSSpec
 }
 
 type HelmRegistryAuthSpec struct {
@@ -180,6 +182,7 @@ type OCIRegistrySpec struct {
 	URL                string
 	Auth               OCIRegistryAuthSpec
 	Interval           metav1.Duration
+	MinSyncInterval    metav1.Duration
 	TLS                *authv1.TLSSpec
 	DefaultContentType ContentType
 }

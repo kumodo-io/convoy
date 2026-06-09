@@ -97,12 +97,40 @@ spec:
     #   installationID: "7890123"
     #   privateKeyRef: { secretRef: { name: github-app-key, key: key.pem } }
 
+    # --------------------------------
+    # oidc:
+    # OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
+    # to find the actual token endpoint. Standard OIDC.
+    # issuerURL: https://auth.example.com/realms/internal
+
+    # Client ID is non-sensitive; typically OK in spec
+    # clientId: cd-controller
+
+    # Client authentication method (RFC 6749 + OIDC core).
+    # - clientSecret:    standard shared secret (most common)
+    # - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
+    # - tlsClientAuth:   mTLS-based client auth (rare)
+    # clientAuth:
+    #   type: clientSecret      # | privateKeyJWT | tlsClientAuth
+    #   clientSecret:
+    #   secretRef:
+    #     name: oidc-client
+    #     key: client-secret
+    #   Alternative methods:
+    #   privateKeyJWT:
+    #     privateKeyRef: { secretRef: { name: oidc-client-key, key: key.pem } }
+    #   tlsClientAuth:
+    #     certRef: { secretRef: { name: oidc-mtls, key: tls.crt } }
+    #     keyRef:  { secretRef: { name: oidc-mtls, key: tls.key } }
+
     # type: workloadIdentity — controller uses cloud-native identity for cloud-hosted Git
     # (e.g., AWS CodeCommit via IRSA). No static credentials stored.
   
   # Polling interval for ref resolution and content fetching.
   # Lower = faster updates, higher git load. Webhooks can supplement.
   interval: 1m
+
+  minSyncInterval: 10s
   
   # Optional: path prefix filter — only consider changes under these paths
   # for triggering re-render. Reduces noise from unrelated commits.
@@ -114,7 +142,15 @@ spec:
   # ignorePaths:
   #   - "**/*.md"
   #   - docs/
-
+  
+  # Optional: TLS configuration
+  tls:
+    caPublicCertRef:
+      # config map name containing the CA public cert
+      name: payments-git-ca-cert
+      key: ca.crt
+    insecureSkipVerify: false
+  
 webhook:
   - name: github-primary
     provider: github

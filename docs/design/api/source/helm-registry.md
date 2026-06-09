@@ -88,10 +88,12 @@ spec:
   # How often to refresh the chart index.
   # Helm registries change less frequently than Git; longer intervals are fine.
   interval: 5m
+
+  minSyncInterval: 10s
   
   # Optional: TLS config for self-signed or custom CA registries.
   # tls:
-  #   caBundleRef: { configMapRef: { name: corporate-ca, key: ca.crt } }
+  #   caPublicCertRef: { configMapRef: { name: corporate-ca, key: ca.crt } }
   #   insecureSkipVerify: false
 
 webhook:
@@ -154,11 +156,11 @@ status:
 |--------------------------|----------|---------------------|---------|------------------------------------------------------------------------------------------------------------------------------------|
 | `url`                    | string   | yes                 | —       | Helm HTTP repository URL serving `index.yaml`.                                                                                     |
 | `auth`                   | object   | no                  | —       | Authentication — discriminated union on `auth.type`. Omit for public repos. See [Authentication Methods](#authentication-methods). |
-| `auth.type`              | enum     | yes (if `auth` set) | —       | One of `basic`, `token`, `oidc`, `workloadIdentity`.                                                              |
+| `auth.type`              | enum     | yes (if `auth` set) | —       | One of `basic`, `token`, `oidc`, `workloadIdentity`.                                                                               |
 | `interval`               | duration | no                  | `5m`    | Polling interval for index refresh.                                                                                                |
 | `minSyncInterval`        | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs.                                                                           |
 | `tls`                    | object   | no                  | —       | TLS config for the registry.                                                                                                       |
-| `tls.caBundleRef`        | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                                                 |
+| `tls.caPublicCertRef`    | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                                                 |
 | `tls.insecureSkipVerify` | bool     | no                  | `false` | Skip TLS verification (not recommended).                                                                                           |
 
 ## Authentication Methods

@@ -36,6 +36,8 @@ type GitRepositorySpecApplyConfiguration struct {
 	Auth *GitRepositoryAuthSpecApplyConfiguration `json:"auth,omitempty"`
 	// Interval is the poll interval for ref resolution and content fetching.
 	Interval *v1.Duration `json:"interval,omitempty"`
+	// MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.
+	MinSyncInterval *v1.Duration `json:"minSyncInterval,omitempty"`
 	// IncludePaths is a list of paths to include in the Git repository.
 	IncludePaths []string `json:"includePaths,omitempty"`
 	// IgnorePaths is a list of paths to ignore in the Git repository.
@@ -79,6 +81,14 @@ func (b *GitRepositorySpecApplyConfiguration) WithAuth(value *GitRepositoryAuthS
 // If called multiple times, the Interval field is set to the value of the last call.
 func (b *GitRepositorySpecApplyConfiguration) WithInterval(value v1.Duration) *GitRepositorySpecApplyConfiguration {
 	b.Interval = &value
+	return b
+}
+
+// WithMinSyncInterval sets the MinSyncInterval field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the MinSyncInterval field is set to the value of the last call.
+func (b *GitRepositorySpecApplyConfiguration) WithMinSyncInterval(value v1.Duration) *GitRepositorySpecApplyConfiguration {
+	b.MinSyncInterval = &value
 	return b
 }
 
