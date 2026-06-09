@@ -2,7 +2,22 @@ package extensions
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-type KindHealthRuleSpec struct{}
+type HealthRule struct {
+	Expression        string
+	ProgressDeadline  metav1.Duration
+	MessageExpression string
+}
+
+type KindHealthRuleSpec struct {
+	HealthRule
+	Target KindTarget
+}
+
+type KindTarget struct {
+	Group   string
+	Kind    string
+	Version string
+}
 
 // +genclient
 // +genclient:nonNamespaced
@@ -24,7 +39,18 @@ type KindHealthRuleList struct {
 	Items []KindHealthRule
 }
 
-type ResourceHealthRuleSpec struct{}
+type ResourceHealthRuleSpec struct {
+	HealthRule
+	Target ResourceTarget
+}
+
+type ResourceTarget struct {
+	Group     string
+	Kind      string
+	Version   string
+	Name      string
+	Namespace string
+}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

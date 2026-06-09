@@ -2,7 +2,25 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-type KindHealthRuleSpec struct{}
+// KindHealthRuleSpec defines the desired state of KindHealthRule
+type KindHealthRuleSpec struct {
+	HealthRule `json:",inline"`
+
+	// Target is the target kind.
+	Target KindTarget `json:"target"`
+}
+
+// KindTarget defines the target kind by its group, kind and version.
+type KindTarget struct {
+	// Group is the group of the target kind.
+	Group string `json:"group"`
+
+	// Kind is the target kind.
+	Kind string `json:"kind"`
+
+	// Version is the API version of the target kind.
+	Version string `json:"version"`
+}
 
 // +genclient
 // +genclient:nonNamespaced
