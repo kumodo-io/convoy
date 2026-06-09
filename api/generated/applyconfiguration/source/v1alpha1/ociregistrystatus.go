@@ -35,7 +35,7 @@ type OCIRegistryStatusApplyConfiguration struct {
 	ReleaseCount *int64 `json:"releaseCount,omitempty"`
 	// Webhooks is the list of statuses of webhooks that are configured for the OCIRegistry.
 	Webhooks []WebhookStatusApplyConfiguration `json:"webhooks,omitempty"`
-	// Conditions is the list of conditions related to the HelmRegistry.
+	// Conditions is the list of conditions related to the OCIRegistry.
 	Conditions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
 

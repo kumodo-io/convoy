@@ -33,6 +33,9 @@ type OCIRegistrySpec struct {
 	// Interval is the poll interval for ref resolution and content fetching.
 	Interval metav1.Duration `json:"interval"`
 
+	// MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.
+	MinSyncInterval metav1.Duration `json:"minSyncInterval"`
+
 	// TLS is the TLS configuration used to verify the OCI registry.
 	TLS *authv1.TLSSpec `json:"tls,omitempty"`
 
@@ -104,7 +107,7 @@ type OCIRegistryStatus struct {
 	// +listMapKey=name
 	Webhooks []WebhookStatus `json:"webhooks,omitempty"`
 
-	// Conditions is the list of conditions related to the HelmRegistry.
+	// Conditions is the list of conditions related to the OCIRegistry.
 	// +listType=map
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

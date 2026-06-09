@@ -21,6 +21,9 @@ type GitRepositorySpec struct {
 	// Interval is the poll interval for ref resolution and content fetching.
 	Interval metav1.Duration `json:"interval"`
 
+	// MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.
+	MinSyncInterval metav1.Duration `json:"minSyncInterval"`
+
 	// IncludePaths is a list of paths to include in the Git repository.
 	// +listType=atomic
 	IncludePaths []string `json:"includePaths,omitempty"`

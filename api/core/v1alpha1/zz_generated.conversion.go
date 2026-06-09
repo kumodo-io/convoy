@@ -26,6 +26,7 @@ import (
 
 	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	core "github.com/kumodo-io/convoy/api/core"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -140,6 +141,36 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*LifecycleHookSpec)(nil), (*core.LifecycleHookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(a.(*LifecycleHookSpec), b.(*core.LifecycleHookSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.LifecycleHookSpec)(nil), (*LifecycleHookSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(a.(*core.LifecycleHookSpec), b.(*LifecycleHookSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*LifecycleHookStatus)(nil), (*core.LifecycleHookStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(a.(*LifecycleHookStatus), b.(*core.LifecycleHookStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.LifecycleHookStatus)(nil), (*LifecycleHookStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(a.(*core.LifecycleHookStatus), b.(*LifecycleHookStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*LifecycleStatus)(nil), (*core.LifecycleStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(a.(*LifecycleStatus), b.(*core.LifecycleStatus), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.LifecycleStatus)(nil), (*LifecycleStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(a.(*core.LifecycleStatus), b.(*LifecycleStatus), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*Release)(nil), (*core.Release)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_Release_To_core_Release(a.(*Release), b.(*core.Release), scope)
 	}); err != nil {
@@ -237,6 +268,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ReleaseDeletionPolicyOverrideSpec)(nil), (*ReleaseDeletionPolicyOverrideSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(a.(*core.ReleaseDeletionPolicyOverrideSpec), b.(*ReleaseDeletionPolicyOverrideSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseHealthSummary)(nil), (*core.ReleaseHealthSummary)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(a.(*ReleaseHealthSummary), b.(*core.ReleaseHealthSummary), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseHealthSummary)(nil), (*ReleaseHealthSummary)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(a.(*core.ReleaseHealthSummary), b.(*ReleaseHealthSummary), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseLifecycle)(nil), (*core.ReleaseLifecycle)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(a.(*ReleaseLifecycle), b.(*core.ReleaseLifecycle), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseLifecycle)(nil), (*ReleaseLifecycle)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(a.(*core.ReleaseLifecycle), b.(*ReleaseLifecycle), scope)
 	}); err != nil {
 		return err
 	}
@@ -620,9 +671,9 @@ func Convert_core_ClusterConnectionParametersSpec_To_v1alpha1_ClusterConnectionP
 }
 
 func autoConvert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec(in *ClusterDeletionPolicySpec, out *core.ClusterDeletionPolicySpec, s conversion.Scope) error {
-	out.ReleasesDeletionPolicy = core.ReleasesDeletionPolicy(in.ReleasesDeletionPolicy)
-	out.WorkloadsDeletionPolicy = core.WorkloadsDeletionPolicy(in.WorkloadsDeletionPolicy)
-	out.OnUnreachableDeletionPolicy = core.OnUnreachableDeletionPolicy(in.OnUnreachableDeletionPolicy)
+	out.Releases = core.ReleasesDeletionPolicy(in.Releases)
+	out.Workloads = core.WorkloadsDeletionPolicy(in.Workloads)
+	out.OnUnreachable = core.OnUnreachableDeletionPolicy(in.OnUnreachable)
 	return nil
 }
 
@@ -632,9 +683,9 @@ func Convert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpe
 }
 
 func autoConvert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec(in *core.ClusterDeletionPolicySpec, out *ClusterDeletionPolicySpec, s conversion.Scope) error {
-	out.ReleasesDeletionPolicy = ReleasesDeletionPolicy(in.ReleasesDeletionPolicy)
-	out.WorkloadsDeletionPolicy = WorkloadsDeletionPolicy(in.WorkloadsDeletionPolicy)
-	out.OnUnreachableDeletionPolicy = OnUnreachableDeletionPolicy(in.OnUnreachableDeletionPolicy)
+	out.Releases = ReleasesDeletionPolicy(in.Releases)
+	out.Workloads = WorkloadsDeletionPolicy(in.Workloads)
+	out.OnUnreachable = OnUnreachableDeletionPolicy(in.OnUnreachable)
 	return nil
 }
 
@@ -735,6 +786,120 @@ func Convert_core_ClusterStatus_To_v1alpha1_ClusterStatus(in *core.ClusterStatus
 	return autoConvert_core_ClusterStatus_To_v1alpha1_ClusterStatus(in, out, s)
 }
 
+func autoConvert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in *LifecycleHookSpec, out *core.LifecycleHookSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Type = core.LifecycleHookType(in.Type)
+	out.When = in.When
+	out.Weight = in.Weight
+	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
+	out.OnFailure = core.LifecycleHookOnFailureAction(in.OnFailure)
+	out.DeleteBeforeCreation = in.DeleteBeforeCreation
+	out.Cleanup = core.LifecycleHookCleanup(in.Cleanup)
+	out.PodTemplate = (*corev1.PodTemplateSpec)(unsafe.Pointer(in.PodTemplate))
+	out.JobTemplate = (*batchv1.JobTemplateSpec)(unsafe.Pointer(in.JobTemplate))
+	return nil
+}
+
+// Convert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec is an autogenerated conversion function.
+func Convert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in *LifecycleHookSpec, out *core.LifecycleHookSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in, out, s)
+}
+
+func autoConvert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(in *core.LifecycleHookSpec, out *LifecycleHookSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Type = LifecycleHookType(in.Type)
+	out.When = in.When
+	out.Weight = in.Weight
+	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
+	out.OnFailure = LifecycleHookOnFailureAction(in.OnFailure)
+	out.DeleteBeforeCreation = in.DeleteBeforeCreation
+	out.Cleanup = LifecycleHookCleanup(in.Cleanup)
+	out.PodTemplate = (*corev1.PodTemplateSpec)(unsafe.Pointer(in.PodTemplate))
+	out.JobTemplate = (*batchv1.JobTemplateSpec)(unsafe.Pointer(in.JobTemplate))
+	return nil
+}
+
+// Convert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec is an autogenerated conversion function.
+func Convert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(in *core.LifecycleHookSpec, out *LifecycleHookSpec, s conversion.Scope) error {
+	return autoConvert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(in *LifecycleHookStatus, out *core.LifecycleHookStatus, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Source = core.LifecycleHookSource(in.Source)
+	out.Kind = in.Kind
+	out.ApiVersion = in.ApiVersion
+	out.ResourceName = in.ResourceName
+	out.ResourceNamespace = in.ResourceNamespace
+	out.State = core.LifecycleHookState(in.State)
+	out.Weight = in.Weight
+	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
+	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
+	out.CleanedUpAt = (*v1.Time)(unsafe.Pointer(in.CleanedUpAt))
+	out.Message = in.Message
+	out.FollowUpAction = (*core.LifecycleHookOnFailureAction)(unsafe.Pointer(in.FollowUpAction))
+	return nil
+}
+
+// Convert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus is an autogenerated conversion function.
+func Convert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(in *LifecycleHookStatus, out *core.LifecycleHookStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(in, out, s)
+}
+
+func autoConvert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in *core.LifecycleHookStatus, out *LifecycleHookStatus, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Source = LifecycleHookSource(in.Source)
+	out.Kind = in.Kind
+	out.ApiVersion = in.ApiVersion
+	out.ResourceName = in.ResourceName
+	out.ResourceNamespace = in.ResourceNamespace
+	out.State = LifecycleHookState(in.State)
+	out.Weight = in.Weight
+	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
+	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
+	out.CleanedUpAt = (*v1.Time)(unsafe.Pointer(in.CleanedUpAt))
+	out.Message = in.Message
+	out.FollowUpAction = (*LifecycleHookOnFailureAction)(unsafe.Pointer(in.FollowUpAction))
+	return nil
+}
+
+// Convert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus is an autogenerated conversion function.
+func Convert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in *core.LifecycleHookStatus, out *LifecycleHookStatus, s conversion.Scope) error {
+	return autoConvert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in, out, s)
+}
+
+func autoConvert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(in *LifecycleStatus, out *core.LifecycleStatus, s conversion.Scope) error {
+	out.PreRender = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PreRender))
+	out.PostRender = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PostRender))
+	out.PreSync = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PreSync))
+	out.SyncFailed = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.SyncFailed))
+	out.PostSync = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PostSync))
+	out.PreDelete = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PreDelete))
+	out.PostDelete = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PostDelete))
+	return nil
+}
+
+// Convert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus is an autogenerated conversion function.
+func Convert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(in *LifecycleStatus, out *core.LifecycleStatus, s conversion.Scope) error {
+	return autoConvert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(in, out, s)
+}
+
+func autoConvert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(in *core.LifecycleStatus, out *LifecycleStatus, s conversion.Scope) error {
+	out.PreRender = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PreRender))
+	out.PostRender = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PostRender))
+	out.PreSync = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PreSync))
+	out.SyncFailed = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.SyncFailed))
+	out.PostSync = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PostSync))
+	out.PreDelete = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PreDelete))
+	out.PostDelete = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PostDelete))
+	return nil
+}
+
+// Convert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus is an autogenerated conversion function.
+func Convert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(in *core.LifecycleStatus, out *LifecycleStatus, s conversion.Scope) error {
+	return autoConvert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(in, out, s)
+}
+
 func autoConvert_v1alpha1_Release_To_core_Release(in *Release, out *core.Release, s conversion.Scope) error {
 	out.ObjectMeta = in.ObjectMeta
 	if err := Convert_v1alpha1_ReleaseSpec_To_core_ReleaseSpec(&in.Spec, &out.Spec, s); err != nil {
@@ -744,6 +909,9 @@ func autoConvert_v1alpha1_Release_To_core_Release(in *Release, out *core.Release
 		return err
 	}
 	out.Mutations = *(*[]core.ReleaseMutation)(unsafe.Pointer(&in.Mutations))
+	if err := Convert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(&in.Lifecycle, &out.Lifecycle, s); err != nil {
+		return err
+	}
 	if err := Convert_v1alpha1_ReleasePin_To_core_ReleasePin(&in.Pin, &out.Pin, s); err != nil {
 		return err
 	}
@@ -764,6 +932,9 @@ func autoConvert_core_Release_To_v1alpha1_Release(in *core.Release, out *Release
 		return err
 	}
 	out.Mutations = *(*[]ReleaseMutation)(unsafe.Pointer(&in.Mutations))
+	if err := Convert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(&in.Lifecycle, &out.Lifecycle, s); err != nil {
+		return err
+	}
 	if err := Convert_core_ReleasePin_To_v1alpha1_ReleasePin(&in.Pin, &out.Pin, s); err != nil {
 		return err
 	}
@@ -779,6 +950,9 @@ func autoConvert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAtt
 	out.Stage = core.ReleaseRenderAttemptStage(in.Stage)
 	out.MutationIndex = in.MutationIndex
 	out.Message = in.Message
+	out.WaveNumber = in.WaveNumber
+	out.HookName = in.HookName
+	out.HookPhase = (*core.LifecycleHookPhase)(unsafe.Pointer(in.HookPhase))
 	return nil
 }
 
@@ -791,6 +965,9 @@ func autoConvert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAtt
 	out.Stage = ReleaseRenderAttemptStage(in.Stage)
 	out.MutationIndex = in.MutationIndex
 	out.Message = in.Message
+	out.WaveNumber = in.WaveNumber
+	out.HookName = in.HookName
+	out.HookPhase = (*LifecycleHookPhase)(unsafe.Pointer(in.HookPhase))
 	return nil
 }
 
@@ -999,6 +1176,68 @@ func autoConvert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDelet
 // Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec is an autogenerated conversion function.
 func Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in *core.ReleaseDeletionPolicyOverrideSpec, out *ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
 	return autoConvert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(in *ReleaseHealthSummary, out *core.ReleaseHealthSummary, s conversion.Scope) error {
+	out.Total = in.Total
+	out.Healthy = in.Healthy
+	out.Progressing = in.Progressing
+	out.Degraded = in.Degraded
+	out.Suspended = in.Suspended
+	out.Unknown = in.Unknown
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(in *ReleaseHealthSummary, out *core.ReleaseHealthSummary, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(in, out, s)
+}
+
+func autoConvert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in *core.ReleaseHealthSummary, out *ReleaseHealthSummary, s conversion.Scope) error {
+	out.Total = in.Total
+	out.Healthy = in.Healthy
+	out.Progressing = in.Progressing
+	out.Degraded = in.Degraded
+	out.Suspended = in.Suspended
+	out.Unknown = in.Unknown
+	return nil
+}
+
+// Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary is an autogenerated conversion function.
+func Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in *core.ReleaseHealthSummary, out *ReleaseHealthSummary, s conversion.Scope) error {
+	return autoConvert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in *ReleaseLifecycle, out *core.ReleaseLifecycle, s conversion.Scope) error {
+	out.PreRender = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PreRender))
+	out.PostRender = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PostRender))
+	out.PreSync = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PreSync))
+	out.SyncFailed = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.SyncFailed))
+	out.PostSync = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PostSync))
+	out.PreDelete = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PreDelete))
+	out.PostDelete = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PostDelete))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in *ReleaseLifecycle, out *core.ReleaseLifecycle, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in, out, s)
+}
+
+func autoConvert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(in *core.ReleaseLifecycle, out *ReleaseLifecycle, s conversion.Scope) error {
+	out.PreRender = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PreRender))
+	out.PostRender = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PostRender))
+	out.PreSync = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PreSync))
+	out.SyncFailed = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.SyncFailed))
+	out.PostSync = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PostSync))
+	out.PreDelete = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PreDelete))
+	out.PostDelete = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PostDelete))
+	return nil
+}
+
+// Convert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle is an autogenerated conversion function.
+func Convert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(in *core.ReleaseLifecycle, out *ReleaseLifecycle, s conversion.Scope) error {
+	return autoConvert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(in, out, s)
 }
 
 func autoConvert_v1alpha1_ReleaseList_To_core_ReleaseList(in *ReleaseList, out *core.ReleaseList, s conversion.Scope) error {
@@ -1316,6 +1555,12 @@ func autoConvert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus,
 	out.Waves = *(*[]core.ResourceWaveStatus)(unsafe.Pointer(&in.Waves))
 	out.ReconciledAt = (*v1.Time)(unsafe.Pointer(in.ReconciledAt))
 	out.HistoryTruncated = in.HistoryTruncated
+	if err := Convert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(&in.Lifecycle, &out.Lifecycle, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(&in.HealthSummary, &out.HealthSummary, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1341,6 +1586,12 @@ func autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseSt
 	out.Waves = *(*[]ResourceWaveStatus)(unsafe.Pointer(&in.Waves))
 	out.ReconciledAt = (*v1.Time)(unsafe.Pointer(in.ReconciledAt))
 	out.HistoryTruncated = in.HistoryTruncated
+	if err := Convert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(&in.Lifecycle, &out.Lifecycle, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(&in.HealthSummary, &out.HealthSummary, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1526,6 +1777,7 @@ func autoConvert_v1alpha1_ResolvedSource_To_core_ResolvedSource(in *ResolvedSour
 	out.UID = in.UID
 	out.ObservedGeneration = in.ObservedGeneration
 	out.URL = in.URL
+	out.Ref = in.Ref
 	out.Revision = in.Revision
 	out.ContentType = core.ReleaseContentType(in.ContentType)
 	out.Path = in.Path
@@ -1544,6 +1796,7 @@ func autoConvert_core_ResolvedSource_To_v1alpha1_ResolvedSource(in *core.Resolve
 	out.UID = in.UID
 	out.ObservedGeneration = in.ObservedGeneration
 	out.URL = in.URL
+	out.Ref = in.Ref
 	out.Revision = in.Revision
 	out.ContentType = ReleaseContentType(in.ContentType)
 	out.Path = in.Path

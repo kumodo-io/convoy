@@ -32,6 +32,7 @@ type ReleaseApplyConfiguration struct {
 	Spec                             *ReleaseSpecApplyConfiguration      `json:"spec,omitempty"`
 	Status                           *ReleaseStatusApplyConfiguration    `json:"status,omitempty"`
 	Mutations                        []ReleaseMutationApplyConfiguration `json:"mutations,omitempty"`
+	Lifecycle                        *ReleaseLifecycleApplyConfiguration `json:"lifecycle,omitempty"`
 	Pin                              *ReleasePinApplyConfiguration       `json:"pin,omitempty"`
 }
 
@@ -232,6 +233,14 @@ func (b *ReleaseApplyConfiguration) WithMutations(values ...*ReleaseMutationAppl
 		}
 		b.Mutations = append(b.Mutations, *values[i])
 	}
+	return b
+}
+
+// WithLifecycle sets the Lifecycle field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Lifecycle field is set to the value of the last call.
+func (b *ReleaseApplyConfiguration) WithLifecycle(value *ReleaseLifecycleApplyConfiguration) *ReleaseApplyConfiguration {
+	b.Lifecycle = value
 	return b
 }
 

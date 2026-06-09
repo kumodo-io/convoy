@@ -27,22 +27,22 @@ import (
 //
 // ClusterDeletionPolicySpec defines the deletion policy of the cluster.
 type ClusterDeletionPolicySpecApplyConfiguration struct {
-	// ReleasesDeletionPolicy is the deletion policy for the Release objects in case of the cluster deletion.
+	// Releases is the deletion policy for the Release objects in case of the cluster deletion.
 	// Possible values are:
 	// - block (default, recommended)
 	// - delete
 	// - orphan
-	ReleasesDeletionPolicy *corev1alpha1.ReleasesDeletionPolicy `json:"releasesDeletionPolicy,omitempty"`
-	// WorkloadsDeletionPolicy is the deletion policy for the workloads in case of the cluster deletion.
+	Releases *corev1alpha1.ReleasesDeletionPolicy `json:"releases,omitempty"`
+	// Workloads is the deletion policy for the workloads in case of the cluster deletion.
 	// Possible values are:
 	// - prune (default)
 	// - leave
-	WorkloadsDeletionPolicy *corev1alpha1.WorkloadsDeletionPolicy `json:"workloadsDeletionPolicy,omitempty"`
-	// OnUnreachableDeletionPolicy is the deletion policy for the cluster in case the cluster is unreachable.
+	Workloads *corev1alpha1.WorkloadsDeletionPolicy `json:"workloads,omitempty"`
+	// OnUnreachable is the deletion policy for the cluster in case the cluster is unreachable.
 	// Possible values are:
 	// - block (default)
 	// - releasesOnly
-	OnUnreachableDeletionPolicy *corev1alpha1.OnUnreachableDeletionPolicy `json:"onUnreachableDeletionPolicy,omitempty"`
+	OnUnreachable *corev1alpha1.OnUnreachableDeletionPolicy `json:"onUnreachable,omitempty"`
 }
 
 // ClusterDeletionPolicySpecApplyConfiguration constructs a declarative configuration of the ClusterDeletionPolicySpec type for use with
@@ -51,26 +51,26 @@ func ClusterDeletionPolicySpec() *ClusterDeletionPolicySpecApplyConfiguration {
 	return &ClusterDeletionPolicySpecApplyConfiguration{}
 }
 
-// WithReleasesDeletionPolicy sets the ReleasesDeletionPolicy field in the declarative configuration to the given value
+// WithReleases sets the Releases field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the ReleasesDeletionPolicy field is set to the value of the last call.
-func (b *ClusterDeletionPolicySpecApplyConfiguration) WithReleasesDeletionPolicy(value corev1alpha1.ReleasesDeletionPolicy) *ClusterDeletionPolicySpecApplyConfiguration {
-	b.ReleasesDeletionPolicy = &value
+// If called multiple times, the Releases field is set to the value of the last call.
+func (b *ClusterDeletionPolicySpecApplyConfiguration) WithReleases(value corev1alpha1.ReleasesDeletionPolicy) *ClusterDeletionPolicySpecApplyConfiguration {
+	b.Releases = &value
 	return b
 }
 
-// WithWorkloadsDeletionPolicy sets the WorkloadsDeletionPolicy field in the declarative configuration to the given value
+// WithWorkloads sets the Workloads field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the WorkloadsDeletionPolicy field is set to the value of the last call.
-func (b *ClusterDeletionPolicySpecApplyConfiguration) WithWorkloadsDeletionPolicy(value corev1alpha1.WorkloadsDeletionPolicy) *ClusterDeletionPolicySpecApplyConfiguration {
-	b.WorkloadsDeletionPolicy = &value
+// If called multiple times, the Workloads field is set to the value of the last call.
+func (b *ClusterDeletionPolicySpecApplyConfiguration) WithWorkloads(value corev1alpha1.WorkloadsDeletionPolicy) *ClusterDeletionPolicySpecApplyConfiguration {
+	b.Workloads = &value
 	return b
 }
 
-// WithOnUnreachableDeletionPolicy sets the OnUnreachableDeletionPolicy field in the declarative configuration to the given value
+// WithOnUnreachable sets the OnUnreachable field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the OnUnreachableDeletionPolicy field is set to the value of the last call.
-func (b *ClusterDeletionPolicySpecApplyConfiguration) WithOnUnreachableDeletionPolicy(value corev1alpha1.OnUnreachableDeletionPolicy) *ClusterDeletionPolicySpecApplyConfiguration {
-	b.OnUnreachableDeletionPolicy = &value
+// If called multiple times, the OnUnreachable field is set to the value of the last call.
+func (b *ClusterDeletionPolicySpecApplyConfiguration) WithOnUnreachable(value corev1alpha1.OnUnreachableDeletionPolicy) *ClusterDeletionPolicySpecApplyConfiguration {
+	b.OnUnreachable = &value
 	return b
 }

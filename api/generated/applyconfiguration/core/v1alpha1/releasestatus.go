@@ -50,6 +50,10 @@ type ReleaseStatusApplyConfiguration struct {
 	ReconciledAt *metav1.Time `json:"reconciledAt,omitempty"`
 	// HistoryTruncated is true if the release history is truncated.
 	HistoryTruncated *bool `json:"historyTruncated,omitempty"`
+	// Lifecycle reflects the observed state of the release lifecycle hooks.
+	Lifecycle *LifecycleStatusApplyConfiguration `json:"lifecycle,omitempty"`
+	// HealthSummary reflects the health status of the release.
+	HealthSummary *ReleaseHealthSummaryApplyConfiguration `json:"healthSummary,omitempty"`
 }
 
 // ReleaseStatusApplyConfiguration constructs a declarative configuration of the ReleaseStatus type for use with
@@ -145,5 +149,21 @@ func (b *ReleaseStatusApplyConfiguration) WithReconciledAt(value metav1.Time) *R
 // If called multiple times, the HistoryTruncated field is set to the value of the last call.
 func (b *ReleaseStatusApplyConfiguration) WithHistoryTruncated(value bool) *ReleaseStatusApplyConfiguration {
 	b.HistoryTruncated = &value
+	return b
+}
+
+// WithLifecycle sets the Lifecycle field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Lifecycle field is set to the value of the last call.
+func (b *ReleaseStatusApplyConfiguration) WithLifecycle(value *LifecycleStatusApplyConfiguration) *ReleaseStatusApplyConfiguration {
+	b.Lifecycle = value
+	return b
+}
+
+// WithHealthSummary sets the HealthSummary field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the HealthSummary field is set to the value of the last call.
+func (b *ReleaseStatusApplyConfiguration) WithHealthSummary(value *ReleaseHealthSummaryApplyConfiguration) *ReleaseStatusApplyConfiguration {
+	b.HealthSummary = value
 	return b
 }

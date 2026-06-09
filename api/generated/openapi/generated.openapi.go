@@ -52,6 +52,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                         schema_convoy_api_core_v1alpha1_ClusterList(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                         schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                       schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec":                   schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus":                 schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus":                     schema_convoy_api_core_v1alpha1_LifecycleStatus(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                             schema_convoy_api_core_v1alpha1_Release(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderFailureStatus": schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus":        schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref),
@@ -62,6 +65,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec":         schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec":                  schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec":   schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary":                schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseLifecycle":                    schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                         schema_convoy_api_core_v1alpha1_ReleaseList(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation":                     schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec":             schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
@@ -879,27 +884,27 @@ func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref common.Refere
 				Description: "ClusterDeletionPolicySpec defines the deletion policy of the cluster.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"releasesDeletionPolicy": {
+					"releases": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ReleasesDeletionPolicy is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
+							Description: "Releases is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 							Enum:        []interface{}{"block", "delete", "orphan"},
 						},
 					},
-					"workloadsDeletionPolicy": {
+					"workloads": {
 						SchemaProps: spec.SchemaProps{
-							Description: "WorkloadsDeletionPolicy is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
+							Description: "Workloads is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 							Enum:        []interface{}{"leave", "prune"},
 						},
 					},
-					"onUnreachableDeletionPolicy": {
+					"onUnreachable": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OnUnreachableDeletionPolicy is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
+							Description: "OnUnreachable is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -907,7 +912,7 @@ func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref common.Refere
 						},
 					},
 				},
-				Required: []string{"releasesDeletionPolicy", "workloadsDeletionPolicy", "onUnreachableDeletionPolicy"},
+				Required: []string{"releases", "workloads", "onUnreachable"},
 			},
 		},
 	}
@@ -1121,6 +1126,359 @@ func schema_convoy_api_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback)
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "LifecycleHookSpec defines the desired state of the LifecycleHook.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the type of the hook.\n\nPossible enum values:\n - `\"Job\"` is the type of a lifecycle hook that runs as a job.\n - `\"Pod\"` is the type of a lifecycle hook that runs as a pod.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Job", "Pod"},
+						},
+					},
+					"when": {
+						SchemaProps: spec.SchemaProps{
+							Description: "When is the hook execution condition written in CEL expression format.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"weight": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Weight is the weight of the hook.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timeout is the timeout for the hook. If not set, controller will wait indefinitely.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"onFailure": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OnFailure is the action to take when the hook fails.\n\nPossible enum values:\n - `\"Continue\"` is the action to take when a lifecycle hook fails and the Release processing should continue.\n - `\"Fail\"` is the action to take when a lifecycle hook fails and the Release processing should fail.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Continue", "Fail"},
+						},
+					},
+					"deleteBeforeCreation": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DeleteBeforeCreation is true if the hook should delete the resources before they are created.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"cleanup": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Cleanup is the action to take when the hook completes.\n\nPossible enum values:\n - `\"Never\"` is the condition to never perform a cleanup action when a lifecycle hook completes.\n - `\"OnCompletion\"` is the condition to perform a cleanup action when a lifecycle hook completes with any result.\n - `\"OnSuccess\"` is the condition to perform a cleanup action when a lifecycle hook succeeds.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Never", "OnCompletion", "OnSuccess"},
+						},
+					},
+					"podTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PodTemplate is the pod template for the hook. Mutual exclusive with JobTemplate.",
+							Ref:         ref("k8s.io/api/core/v1.PodTemplateSpec"),
+						},
+					},
+					"jobTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "JobTemplate is the job template for the hook. Mutual exclusive with PodTemplate.",
+							Ref:         ref("k8s.io/api/batch/v1.JobTemplateSpec"),
+						},
+					},
+				},
+				Required: []string{"name", "type", "weight", "onFailure", "cleanup"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/batch/v1.JobTemplateSpec", "k8s.io/api/core/v1.PodTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "LifecycleHookStatus reflects the status of a LifecycleHook.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"source": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Source is the source of the hook.\n\nPossible enum values:\n - `\"chart\"` is the source of a lifecycle hook that is defined in the Helm chart.\n - `\"lifecycle\"` is the source of a lifecycle hook that is defined in the Release.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"chart", "lifecycle"},
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is the kind of the resource created by the hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ApiVersion is the API version of the resource created by the hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResourceName is the name of the resource created by the hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResourceNamespace is the namespace of the resource created by the hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Description: "State is the state of the hook.\n\nPossible enum values:\n - `\"Failed\"` is the state of a lifecycle hook that has failed.\n - `\"Running\"` is the state of a lifecycle hook that is running.\n - `\"Skipped\"` is the state of a lifecycle hook that has been skipped.\n - `\"Succeeded\"` is the state of a lifecycle hook that has succeeded.\n - `\"TimedOut\"` is the state of a lifecycle hook that has timed out.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Failed", "Running", "Skipped", "Succeeded", "TimedOut"},
+						},
+					},
+					"weight": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Weight is the weight of the hook.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"startedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartedAt is the time when the hook started.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"completedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CompletedAt is the time when the hook completed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"cleanedUpAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CleanedUpAt is the time when the hook was cleaned up.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is the human-readable message containing the failure reason, if any.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"followUpAction": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FollowUpAction is the action to take after the hook failed.\n\nPossible enum values:\n - `\"Continue\"` is the action to take when a lifecycle hook fails and the Release processing should continue.\n - `\"Fail\"` is the action to take when a lifecycle hook fails and the Release processing should fail.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Continue", "Fail"},
+						},
+					},
+				},
+				Required: []string{"name", "source", "kind", "apiVersion", "resourceName", "resourceNamespace", "state", "weight"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"preRender": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PreRender are the pre-render hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+									},
+								},
+							},
+						},
+					},
+					"postRender": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PostRender are the post-render hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+									},
+								},
+							},
+						},
+					},
+					"preSync": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PreSync are the pre-sync hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+									},
+								},
+							},
+						},
+					},
+					"syncFailed": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "SyncFailed are the sync-failed hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+									},
+								},
+							},
+						},
+					},
+					"postSync": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PostSync are the post-sync hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+									},
+								},
+							},
+						},
+					},
+					"preDelete": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PreDelete are the pre-delete hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+									},
+								},
+							},
+						},
+					},
+					"postDelete": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PostDelete are the post-delete hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1177,6 +1535,12 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 							},
 						},
 					},
+					"lifecycle": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseLifecycle"),
+						},
+					},
 					"pin": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
@@ -1187,7 +1551,7 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseLifecycle", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -1200,11 +1564,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref com
 				Properties: map[string]spec.Schema{
 					"stage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Stage is the stage of the failure.\n\nPossible enum values:\n - `\"ClusterResolution\"` is the stage of a release render attempt that is resolving the cluster.\n - `\"MutationResolution\"` is the stage of a release render attempt that is resolving the mutations.\n - `\"Rendering\"` is the stage of a release render attempt that is rendering.\n - `\"SourceResolution\"` is the stage of a release render attempt that is resolving the source.\n - `\"Syncing\"` is the stage of a release render attempt that is syncing.",
+							Description: "Stage is the stage of the failure.\n\nPossible enum values:\n - `\"ClusterResolution\"` is the stage of a release render attempt that is resolving the cluster.\n - `\"HookFailed\"` is the stage of a release render attempt that failed due to a hook failure.\n - `\"MutationResolution\"` is the stage of a release render attempt that is resolving the mutations.\n - `\"Rendering\"` is the stage of a release render attempt that is rendering.\n - `\"SourceResolution\"` is the stage of a release render attempt that is resolving the source.\n - `\"Syncing\"` is the stage of a release render attempt that is syncing.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"ClusterResolution", "MutationResolution", "Rendering", "SourceResolution", "Syncing"},
+							Enum:        []interface{}{"ClusterResolution", "HookFailed", "MutationResolution", "Rendering", "SourceResolution", "Syncing"},
 						},
 					},
 					"mutationIndex": {
@@ -1220,6 +1584,28 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref com
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"waveNumber": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WaveNumber is the wave number of the failure.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"hookName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HookName is the name of the hook that failed.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"hookPhase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HookPhase is the phase of the hook that failed.\n\nPossible enum values:\n - `\"PostDelete\"` is the phase of a lifecycle hook that runs after the delete.\n - `\"PostRender\"` is the phase of a lifecycle hook that runs after the render.\n - `\"PostSync\"` is the phase of a lifecycle hook that runs after the sync.\n - `\"PreDelete\"` is the phase of a lifecycle hook that runs before the delete.\n - `\"PreRender\"` is the phase of a lifecycle hook that runs before the render.\n - `\"PreSync\"` is the phase of a lifecycle hook that runs before the sync.\n - `\"SyncFailed\"` is the phase of a lifecycle hook that runs when the sync fails.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"PostDelete", "PostRender", "PostSync", "PreDelete", "PreRender", "PreSync", "SyncFailed"},
 						},
 					},
 				},
@@ -1503,11 +1889,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref common.ReferenceCall
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the content. Immutable after creation.\n\nPossible enum values:\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
+							Description: "Type is the type of the content. Immutable after creation.\n\nPossible enum values:\n - `\"cue\"` is the content type used to fetch cue files.\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"helm", "jsonnet", "kustomize", "manifests"},
+							Enum:        []interface{}{"cue", "helm", "jsonnet", "kustomize", "manifests"},
 						},
 					},
 					"helm": {
@@ -1563,6 +1949,216 @@ func schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref commo
 				Required: []string{"workloads"},
 			},
 		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseHealthSummary reflects the health summary of the Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"total": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Total is the total number of resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"healthy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Healthy is the number of healthy resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"progressing": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Progressing is the number of progressing resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"degraded": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Degraded is the number of degraded resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"suspended": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Suspended is the number of suspended resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"unknown": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Unknown is the number of resources in an unknown state.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"total", "healthy", "progressing", "degraded", "suspended", "unknown"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseLifecycle defines the desired state of the ReleaseLifecycle.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"preRender": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PreRender are the pre-render hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+									},
+								},
+							},
+						},
+					},
+					"postRender": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PostRender are the post-render hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+									},
+								},
+							},
+						},
+					},
+					"preSync": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PreSync are the pre-sync hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+									},
+								},
+							},
+						},
+					},
+					"syncFailed": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "SyncFailed are the sync-failed hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+									},
+								},
+							},
+						},
+					},
+					"postSync": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PostSync are the post-sync hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+									},
+								},
+							},
+						},
+					},
+					"preDelete": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PreDelete are the pre-delete hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+									},
+								},
+							},
+						},
+					},
+					"postDelete": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "PostDelete are the post-delete hooks.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"},
 	}
 }
 
@@ -1623,11 +2219,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
 						},
 					},
 					"inline": {
@@ -1858,11 +2454,11 @@ func schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref common.Ref
 					},
 					"contentType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ContentType is the type of the content.\n\nPossible enum values:\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
+							Description: "ContentType is the type of the content.\n\nPossible enum values:\n - `\"cue\"` is the content type used to fetch cue files.\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"helm", "jsonnet", "kustomize", "manifests"},
+							Enum:        []interface{}{"cue", "helm", "jsonnet", "kustomize", "manifests"},
 						},
 					},
 					"contentPath": {
@@ -2171,12 +2767,26 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 							Format:      "",
 						},
 					},
+					"lifecycle": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Lifecycle reflects the observed state of the release lifecycle hooks.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus"),
+						},
+					},
+					"healthSummary": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HealthSummary reflects the health status of the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary"),
+						},
+					},
 				},
 				Required: []string{"historyTruncated"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2241,11 +2851,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref common.Referenc
 				Properties: map[string]spec.Schema{
 					"strategy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Strategy is the wave strategy.\n\nPossible enum values:\n - `\"waitForApplied\"` is the wave strategy that waits for all resources to be applied.\n - `\"waitForHealthy\"` is the wave strategy that waits for all resources to be healthy.",
+							Description: "Strategy is the wave strategy.\n\nPossible enum values:\n - `\"waitForApplied\"` is the wave strategy that waits for all resources to be applied.\n - `\"waitForHealthy\"` is the wave strategy that waits for all resources to be healthy.\n - `\"waitForHealthyWithTimeout\"` is the wave strategy that waits for all resources to be healthy with a timeout.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"waitForApplied", "waitForHealthy"},
+							Enum:        []interface{}{"waitForApplied", "waitForHealthy", "waitForHealthyWithTimeout"},
 						},
 					},
 					"timeout": {
@@ -2388,11 +2998,11 @@ func schema_convoy_api_core_v1alpha1_ResolvedMutation(ref common.ReferenceCallba
 					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
 						},
 					},
 					"sourceRef": {
@@ -2511,6 +3121,13 @@ func schema_convoy_api_core_v1alpha1_ResolvedSource(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ref is the ref of the source if applicable, e.g. branch, tag, commit.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"revision": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Revision is the revision of the source.",
@@ -2521,11 +3138,11 @@ func schema_convoy_api_core_v1alpha1_ResolvedSource(ref common.ReferenceCallback
 					},
 					"contentType": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ContentType is the type of the content.\n\nPossible enum values:\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
+							Description: "ContentType is the type of the content.\n\nPossible enum values:\n - `\"cue\"` is the content type used to fetch cue files.\n - `\"helm\"` is the content type used to fetch Helm charts.\n - `\"jsonnet\"` is the content type used to fetch jsonnet files.\n - `\"kustomize\"` is the content type used to fetch kustomize bundles.\n - `\"manifests\"` is the content type used to fetch tarballs of raw manifests.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"helm", "jsonnet", "kustomize", "manifests"},
+							Enum:        []interface{}{"cue", "helm", "jsonnet", "kustomize", "manifests"},
 						},
 					},
 					"path": {
@@ -2567,11 +3184,11 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 					},
 					"state": {
 						SchemaProps: spec.SchemaProps{
-							Description: "State is the state of the wave.\n\nPossible enum values:\n - `\"Completed\"` is the state of a resource wave that has been completed.\n - `\"Failed\"` is the state of a resource wave that has failed.\n - `\"InProgress\"` is the state of a resource wave that is in progress.",
+							Description: "State is the state of the wave.\n\nPossible enum values:\n - `\"Completed\"` is the state of a resource wave that has been completed.\n - `\"Failed\"` is the state of a resource wave that has failed.\n - `\"InProgress\"` is the state of a resource wave that is in progress.\n - `\"Pending\"` is the state of a resource wave that is pending.\n - `\"TimedOut\"` is the state of a resource wave that has timed out.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"Completed", "Failed", "InProgress"},
+							Enum:        []interface{}{"Completed", "Failed", "InProgress", "Pending", "TimedOut"},
 						},
 					},
 					"startedAt": {
@@ -3133,6 +3750,12 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"minSyncInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"includePaths": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -3180,7 +3803,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"url", "ref", "auth", "interval"},
+				Required: []string{"url", "ref", "auth", "interval", "minSyncInterval"},
 			},
 		},
 		Dependencies: []string{
@@ -3600,6 +4223,12 @@ func schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref common.ReferenceCall
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"minSyncInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"tls": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLS is the TLS configuration used to verify the Helm registry.",
@@ -3607,7 +4236,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"url", "auth", "interval"},
+				Required: []string{"url", "auth", "interval", "minSyncInterval"},
 			},
 		},
 		Dependencies: []string{
@@ -4042,6 +4671,12 @@ func schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref common.ReferenceCallb
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"minSyncInterval": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinSyncInterval is the minimum interval between syncs. Used to rate limit syncs.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 					"tls": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TLS is the TLS configuration used to verify the OCI registry.",
@@ -4058,7 +4693,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref common.ReferenceCallb
 						},
 					},
 				},
-				Required: []string{"url", "auth", "interval", "defaultContentType"},
+				Required: []string{"url", "auth", "interval", "minSyncInterval", "defaultContentType"},
 			},
 		},
 		Dependencies: []string{
@@ -4126,7 +4761,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref common.ReferenceCal
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Conditions is the list of conditions related to the HelmRegistry.",
+							Description: "Conditions is the list of conditions related to the OCIRegistry.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
