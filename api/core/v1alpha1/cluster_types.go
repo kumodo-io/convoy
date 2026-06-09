@@ -147,7 +147,7 @@ type ClusterDeletionPolicySpec struct {
 	// - block (default, recommended)
 	// - delete
 	// - orphan
-	Releases ReleasesDeletionPolicy `json:"releasesDeletionPolic"`
+	Releases ReleasesDeletionPolicy `json:"releases"`
 
 	// Workloads is the deletion policy for the workloads in case of the cluster deletion.
 	// Possible values are:

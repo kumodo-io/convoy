@@ -197,18 +197,19 @@ spec:
     # jsonnet:
     #   path: main.jsonnet
     #   tlaStr:
-    #     env: prod
+    #     - name:
+    #.      value:
   
   # Reference to the target Cluster.
   # IMMUTABLE after creation.
-  cluster:
-    ref: prod-eu
+  clusterRef:
+    name: prod-eu
     # namespace: platform-fleet  # if cluster is in a different namespace
   
   # Sync behavior controlling how reconciliation drives the cluster toward desired state.
   syncPolicy:
     # Auto-sync vs manual (POST /sync to trigger).
-    automated: true
+    automatic: true
     
     # Remove resources from cluster that exist in cluster but not in rendered state.
     # Independent of deletion policy; this is steady-state pruning.
@@ -237,7 +238,7 @@ spec:
   
   # Per-Release deletion behavior — what happens when this specific Release is deleted.
   # Overrides Cluster.spec.deletionPolicy (which governs cluster-cascade deletion).
-  deletionPolicyOverrides:
+  deletionPolicyOverride:
     # - prune: remove deployed manifests from the cluster (graceful shutdown)
     # - leave: leave workloads running (rare; for migration to another tool)
     workloads: prune
@@ -249,18 +250,16 @@ mutations:
   # 1. Environment-wide values (shared across all prod releases).
   - type: helmValues
     from:
-      sourceRef:
-        kind: GitRepository
-        name: payments-config-repo
-        path: env/prod/values.yaml
+      kind: GitRepository
+      name: payments-config-repo
+      path: env/prod/values.yaml
   
   # 2. Cluster-specific values (per-region overrides).
   - type: helmValues
     from:
-      sourceRef:
-        kind: GitRepository
-        name: payments-config-repo
-        path: clusters/prod-eu/values.yaml
+      kind: GitRepository
+      name: payments-config-repo
+      path: clusters/prod-eu/values.yaml
   
   # 3. Templated values using cluster metadata.
   # Default: applied AFTER Helm rendering on the rendered YAML, to avoid {{ }} collisions.
@@ -287,10 +286,9 @@ mutations:
   # 5. Strategic merge patch from a separate source (e.g., experimental feature).
   - type: strategicMergePatch
     from:
-      sourceRef:
-        kind: GitRepository
-        name: payments-experiments-repo
-        path: features/new-tracing/patch.yaml
+      kind: GitRepository
+      name: payments-experiments-repo
+      path: features/new-tracing/patch.yaml
 
 # Top-level field (not part of spec). Ordered lifecycle hooks, keyed by phase.
 # Exposed via the /lifecycle subresource for field-level RBAC and audit clarity.
@@ -390,7 +388,7 @@ status:
   # Retention policy resolved into operational state.
   resolvedRetentionPolicy:
     keepHistory: 50
-    currentHistoryCount: 23
+    historyCount: 23
   
   # Last successful render — represents what's actually deployed in the cluster.
   lastSuccessful:
@@ -399,6 +397,7 @@ status:
     resolvedSource:
       kind: GitRepository
       name: payments-charts-repo
+      uid: 0c81fcef-4470-4bf7-87e3-24c776cb222c
       observedSourceGeneration: 7    # Source.metadata.generation at render time
       url: https://github.com/example/payments-charts
       ref: main                       # spec.ref from Source
@@ -409,6 +408,7 @@ status:
     # Snapshot of resolved Cluster (kubeconfig server, metadata used for templating).
     resolvedCluster:
       name: prod-eu
+      uid: 7119fd26-3d58-4b18-88b9-5e0f4c9c76a0
       observedClusterGeneration: 3
       server: https://eks-prod-eu.example.com
       metadataSnapshot:
@@ -442,13 +442,13 @@ status:
         contentHash: sha256:2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d
     
     # S3 hash of the fully rendered manifest set. Lookup key for /history and /rollback.
-    renderedRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
+    renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
     
     syncedAt: 2026-04-29T10:00:05Z
-    appliedResources: 14
+    syncedResources: 14
   
   # Most recent reconciliation attempt — may be in-progress, succeeded, or failed.
-  # When phase: Succeeded and renderedRef matches lastSuccessful.renderedRef, all is well.
+  # When phase: Succeeded and renderRef matches lastSuccessful.renderRef, all is well.
   # When divergent, status describes what's being attempted and any failure.
   lastAttempted:
     resolvedSource:
@@ -475,7 +475,7 @@ status:
       - { index: 2, type: goTemplate, contentHash: "sha256:0a1b2c..." }
       - { index: 3, type: jsonPatch,  contentHash: "sha256:1b2c3d..." }
       - { index: 4, type: strategicMergePatch, sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d, contentHash: "sha256:2c3d4e..." }
-    renderedRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
+    renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
     attemptedAt: 2026-04-29T10:00:00Z
     
     # phase: Rendering | Syncing | Succeeded | Failed
@@ -513,7 +513,7 @@ status:
   
   # Last reconciliation timestamp, even when nothing changed.
   # Distinct from lastAttempted (which only updates on actual change attempts).
-  lastReconciledAt: 2026-04-29T10:03:00Z
+  reconciledAt: 2026-04-29T10:03:00Z
   
   historyTruncated: false
 ```
@@ -522,14 +522,14 @@ status:
 
 `spec` binds a source, a content interpretation, and a target cluster, plus sync/retention/deletion policy. Identity fields (`source`, `content.type`, `cluster`) are **immutable** after creation — to re-target, create a new Release. Routine fields (paths, versions, mutations, policies) are mutable.
 
-| Field                     | Type   | Required | Default | Description                                                                                                                              |
-|---------------------------|--------|----------|---------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `source`                  | object | yes      | —       | Reference (`kind` + `name` [+ `namespace`]) to a `Source` object. Polymorphic; see [Source Reference](#source-reference). Immutable.     |
-| `content`                 | object | yes      | —       | How to interpret fetched source content. Discriminated on `content.type`; see [Content Types](#content-types). `content.type` immutable. |
-| `cluster`                 | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                    |
-| `syncPolicy`              | object | no       | —       | Reconciliation behavior: `automated`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).       |
-| `retentionPolicy`         | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.            |
-| `deletionPolicyOverrides` | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`); overrides `Cluster.spec.deletionPolicy`.                                    |
+| Field                    | Type   | Required | Default | Description                                                                                                                              |
+|--------------------------|--------|----------|---------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `source`                 | object | yes      | —       | Reference (`kind` + `name` [+ `namespace`]) to a `Source` object. Polymorphic; see [Source Reference](#source-reference). Immutable.     |
+| `content`                | object | yes      | —       | How to interpret fetched source content. Discriminated on `content.type`; see [Content Types](#content-types). `content.type` immutable. |
+| `cluster`                | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                    |
+| `syncPolicy`             | object | no       | —       | Reconciliation behavior: `automatic`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).       |
+| `retentionPolicy`        | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.            |
+| `deletionPolicyOverride` | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`); overrides `Cluster.spec.deletionPolicy`.                                    |
 
 `mutations` is a **top-level field** (not under `spec`), exposed via the `/mutations` subresource for field-level RBAC and audit. It is an ordered, atomic (`+listType=atomic`) transformation pipeline; see [Mutation Types](#mutation-types).
 
@@ -686,19 +686,19 @@ mutations:
 
 ## Status
 
-| Field                     | Type        | Description                                                                                                                                                                    |
-|---------------------------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `observedGeneration`      | integer     | `spec` generation last reconciled.                                                                                                                                             |
-| `conditions`              | []Condition | See [Conditions](#conditions).                                                                                                                                                 |
+| Field                     | Type        | Description                                                                                                                                                                         |
+|---------------------------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `observedGeneration`      | integer     | `spec` generation last reconciled.                                                                                                                                                  |
+| `conditions`              | []Condition | See [Conditions](#conditions).                                                                                                                                                      |
 | `health.summary`          | object      | Aggregate health counts (`total`/`healthy`/`progressing`/`degraded`/`suspended`/`unknown`). The per-resource detail is served by [`/health`](#health-subresource), not stored here. |
-| `pin`                     | object      | Mirror of the *fact* of being pinned (`intent: freeze \| rollback`, `renderInputs`); full detail behind `/pin`.                                                                |
-| `resolvedDeletionPolicy`  | object      | Effective deletion policy, combining `Release.spec.deletionPolicyOverrides` and `Cluster.spec.deletionPolicy`.                                                                 |
-| `resolvedRetentionPolicy` | object      | Retention resolved into operational state (`keepHistory`, `currentHistoryCount`).                                                                                              |
-| `lastSuccessful`          | object      | Last successful render — what is actually deployed: resolved source/cluster/mutation snapshots, `renderedRef`, `syncedAt`, `appliedResources`.                                 |
-| `lastAttempted`           | object      | Most recent reconciliation attempt (may be in-progress/failed): same snapshots plus `phase` (`Rendering \| Syncing \| Succeeded \| Failed`) and a `failure` block when failed. |
-| `waves`                   | []object    | Per-wave apply progress; see [Sync Waves](#sync-waves).                                                                                                                        |
-| `lastReconciledAt`        | timestamp   | Last reconciliation timestamp, even when nothing changed (distinct from `lastAttempted`).                                                                                      |
-| `historyTruncated`        | bool        | Whether retained history was truncated below requested depth.                                                                                                                  |
+| `pin`                     | object      | Mirror of the *fact* of being pinned (`intent: freeze \| rollback`, `renderInputs`); full detail behind `/pin`.                                                                     |
+| `resolvedDeletionPolicy`  | object      | Effective deletion policy, combining `Release.spec.deletionPolicyOverride` and `Cluster.spec.deletionPolicy`.                                                                       |
+| `resolvedRetentionPolicy` | object      | Retention resolved into operational state (`keepHistory`, `historyCount`).                                                                                                          |
+| `lastSuccessful`          | object      | Last successful render — what is actually deployed: resolved source/cluster/mutation snapshots, `renderRef`, `syncedAt`, `syncedResources`.                                         |
+| `lastAttempted`           | object      | Most recent reconciliation attempt (may be in-progress/failed): same snapshots plus `phase` (`Rendering \| Syncing \| Succeeded \| Failed`) and a `failure` block when failed.      |
+| `waves`                   | []object    | Per-wave apply progress; see [Sync Waves](#sync-waves).                                                                                                                             |
+| `reconciledAt`            | timestamp   | Last reconciliation timestamp, even when nothing changed (distinct from `lastAttempted`).                                                                                           |
+| `historyTruncated`        | bool        | Whether retained history was truncated below requested depth.                                                                                                                       |
 
 ## Conditions
 
@@ -1494,14 +1494,14 @@ preSync:
     
     # Cleanup behavior
     deleteBeforeCreation: true
-    cleanupOnCompletion: OnSuccess  # | OnCompletion | Never
+    cleanup: OnSuccess  # | OnCompletion | Never
 
 postSync:
   - name: smoke-test
     type: Job
     jobTemplate: { ... }
     onFailure: Continue
-    cleanupOnCompletion: OnCompletion
+    cleanup: OnCompletion
 
 syncFail:
   - name: alert-oncall
@@ -1519,7 +1519,7 @@ syncFail:
                     value: "{{ .Release.name }}"
                   - name: FAILURE_STAGE
                     value: "{{ .Sync.failure.stage }}"
-    cleanupOnCompletion: OnCompletion
+    cleanup: OnCompletion
 
 preDelete:
   - name: backup-database
@@ -1568,16 +1568,24 @@ The optional `when` field on each hook makes hook execution conditional. When ab
 ```yaml
 # Production-only
 when: '.Cluster.metadata.tier == "production"'
+```
 
+```yaml
 # First deploy only
 when: '.Release.firstDeploy'
+```
 
+```yaml
 # Region-specific
 when: '.Cluster.metadata.region in ["eu-west-1", "eu-central-1"]'
+```
 
+```yaml
 # Specific failure stage
 when: '.Sync.failure.stage == "Rendering"'
+```
 
+```yaml
 # Combination
 when: '.Cluster.metadata.tier == "production" && .Release.firstDeploy'
 ```
@@ -1732,14 +1740,13 @@ status:
   lifecycle:
     preSync:
       - name: db-migration
-        type: Job
         source: lifecycle              # | chart
         kind: Job
-        apiGroup: batch
-        version: v1
-        namespace: payments-team
+        apiVersion: batch/v1
+        resourceNamespace: payments-team
         resourceName: db-migration-1745928000
         state: Succeeded
+        weight: 0
         startedAt: 2026-04-29T09:59:30Z
         completedAt: 2026-04-29T10:00:00Z
         cleanedUpAt: 2026-04-29T10:00:05Z
@@ -1747,7 +1754,6 @@ status:
     
     postSync:
       - name: smoke-test
-        type: Job
         source: lifecycle
         state: Failed
         startedAt: 2026-04-29T10:00:50Z
@@ -1756,10 +1762,8 @@ status:
         followUpAction: Continue
       
       - name: payments-helm-post-install
-        type: Job
         source: chart                   # came from helm.sh/hook annotation
         state: Skipped
-        skipReason: Condition
         message: "when condition evaluated to false"
   
   lifecycleRetention:
@@ -1776,20 +1780,20 @@ status:
 
 #### Per-hook status fields
 
-| Field                         | Description                                                                                           |
-|-------------------------------|-------------------------------------------------------------------------------------------------------|
-| `name`                        | Matches the hook's name in the subresource.                                                           |
-| `type`                        | Hook type (`Job`, `Pod`).                                                                             |
-| `source`                      | `lifecycle` (user-defined) or `chart` (translated from Helm hook annotation).                         |
-| `kind`, `apiGroup`, `version` | Resource kind of the created hook.                                                                    |
-| `namespace`, `resourceName`   | Identity of the actual created resource.                                                              |
-| `state`                       | `Pending`, `Running`, `Succeeded`, `Failed`, `TimedOut`, `Skipped`.                                   |
-| `skipReason`                  | When `state: Skipped`: `Condition` (when=false) or `EvaluationError`.                                 |
-| `startedAt`                   | When the hook resource was created and began running.                                                 |
-| `completedAt`                 | When the hook reached terminal state (success/failure/timeout).                                       |
-| `cleanedUpAt`                 | When the hook resource was deleted by cleanup logic. Absent when retained.                            |
-| `message`                     | Human-readable detail.                                                                                |
-| `followUpAction`              | What the controller did after the hook completed: `None`, `Continue`, `AbortedSync`, `AbortedDelete`. |
+| Field                               | Description                                                                                           |
+|-------------------------------------|-------------------------------------------------------------------------------------------------------|
+| `name`                              | Matches the hook's name in the subresource.                                                           |
+| `source`                            | `lifecycle` (user-defined) or `chart` (translated from Helm hook annotation).                         |
+| `kind`, `apiVersion`                | Resource kind of the created hook.                                                                    |
+| `resourceNamespace`, `resourceName` | Identity of the actual created resource.                                                              |
+| `state`                             | `Running`, `Succeeded`, `Failed`, `TimedOut`, `Skipped`.                                              |
+| `weight`                            | Weight of the hook.                                                                                   |
+| `skipReason`                        | When `state: Skipped`: `Condition` (when=false) or `EvaluationError`.                                 |
+| `startedAt`                         | When the hook resource was created and began running.                                                 |
+| `completedAt`                       | When the hook reached terminal state (success/failure/timeout).                                       |
+| `cleanedUpAt`                       | When the hook resource was deleted by cleanup logic. Absent when retained.                            |
+| `message`                           | Human-readable detail.                                                                                |
+| `followUpAction`                    | What the controller did after the hook completed: `None`, `Continue`, `AbortedSync`, `AbortedDelete`. |
 
 ### Interaction with Sync Waves
 
@@ -1848,7 +1852,7 @@ The context exposes three top-level objects, each a projection of an underlying 
 | `.Source`  | The Source object referenced by the Release                 | `PreRender`, `PostRender` only                                   |
 | `.Sync`    | Computed projection of the in-flight or just-completed sync | `PostRender` onward (with phase-specific availability per field) |
 
-Direct access to underlying resource fields (`.Release.status.lastAttempted.renderedRef`, etc.) is fully supported. Aliases exist purely for ergonomic access to commonly-referenced information; they are read-only projections that present the right value for the hook's phase.
+Direct access to underlying resource fields (`.Release.status.lastAttempted.renderRef`, etc.) is fully supported. Aliases exist purely for ergonomic access to commonly-referenced information; they are read-only projections that present the right value for the hook's phase.
 
 When the underlying status structure evolves between API versions, aliases preserve their documented semantics. Users referencing aliases are insulated from internal status reorganization; users using direct status access bear the responsibility of tracking schema changes.
 
@@ -1872,7 +1876,7 @@ Direct projection of the Release object. Available in all phases.
 | Alias                              | Backing                                          | Notes                                                                   |
 |------------------------------------|--------------------------------------------------|-------------------------------------------------------------------------|
 | `.Release.firstDeploy`             | computed: `!has(.Release.status.lastSuccessful)` | `true` on the first deploy of this Release; `false` thereafter.         |
-| `.Release.lastSuccessfulRenderRef` | `.Release.status.lastSuccessful.renderedRef`     | Hash of currently deployed render. `null` when `firstDeploy` is `true`. |
+| `.Release.lastSuccessfulRenderRef` | `.Release.status.lastSuccessful.renderRef`       | Hash of currently deployed render. `null` when `firstDeploy` is `true`. |
 | `.Release.lastSuccessfulSyncedAt`  | `.Release.status.lastSuccessful.syncedAt`        | When the previously deployed render was synced. `null` on first deploy. |
 
 ### `.Cluster` Bindings
@@ -1921,14 +1925,14 @@ Computed projection of the sync attempt the hook is part of. Aliases consolidate
 
 `.Sync.*` is **phase-dependent**: the underlying field that backs each alias varies by phase, so the alias presents the value meaningful for that phase without users needing to know which status field to read.
 
-| Alias                       | Backing (phase-dependent)                                                                                                                      | Available in                            | Notes                                                                                                                        |
-|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| `.Sync.renderRef`           | `.Release.status.lastAttempted.renderedRef` (PostRender, PreSync, PostSync, SyncFail); equals `lastSuccessful.renderedRef` once sync completes | PostRender, PreSync, PostSync, SyncFail | Hash of the render being applied (or just applied). May be `null` in `SyncFail` if failure occurred before render completed. |
-| `.Sync.renderCompletedAt`   | `.Release.status.lastAttempted.renderCompletedAt`                                                                                              | PostRender, PreSync, PostSync           | When rendering finished for the current attempt.                                                                             |
-| `.Sync.attemptedAt`         | `.Release.status.lastAttempted.attemptedAt`                                                                                                    | PreSync, PostSync, SyncFail             | When the current sync attempt started.                                                                                       |
-| `.Sync.completedAt`         | `.Release.status.lastSuccessful.syncedAt`                                                                                                      | PostSync                                | When sync finished.                                                                                                          |
-| `.Sync.appliedResources`    | `.Release.status.lastSuccessful.appliedResources`                                                                                              | PostSync                                | Count of resources applied in the just-completed sync.                                                                       |
-| `.Sync.changedFromPrevious` | computed: `lastAttempted.renderedRef != lastSuccessful.renderedRef` (or `true` if `lastSuccessful` is `null`)                                  | PostSync                                | `true` if this sync changed the deployed render hash; `false` if the same content was reapplied.                             |
+| Alias                       | Backing (phase-dependent)                                                                                                                  | Available in                            | Notes                                                                                                                        |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `.Sync.renderRef`           | `.Release.status.lastAttempted.renderRef` (PostRender, PreSync, PostSync, SyncFail); equals `lastSuccessful.renderRef` once sync completes | PostRender, PreSync, PostSync, SyncFail | Hash of the render being applied (or just applied). May be `null` in `SyncFail` if failure occurred before render completed. |
+| `.Sync.renderCompletedAt`   | `.Release.status.lastAttempted.renderCompletedAt`                                                                                          | PostRender, PreSync, PostSync           | When rendering finished for the current attempt.                                                                             |
+| `.Sync.attemptedAt`         | `.Release.status.lastAttempted.attemptedAt`                                                                                                | PreSync, PostSync, SyncFail             | When the current sync attempt started.                                                                                       |
+| `.Sync.completedAt`         | `.Release.status.lastSuccessful.syncedAt`                                                                                                  | PostSync                                | When sync finished.                                                                                                          |
+| `.Sync.syncedResources`     | `.Release.status.lastSuccessful.syncedResources`                                                                                           | PostSync                                | Count of resources applied in the just-completed sync.                                                                       |
+| `.Sync.changedFromPrevious` | computed: `lastAttempted.renderRef != lastSuccessful.renderRef` (or `true` if `lastSuccessful` is `null`)                                  | PostSync                                | `true` if this sync changed the deployed render hash; `false` if the same content was reapplied.                             |
 
 #### `.Sync.failure` (SyncFail only)
 
@@ -1952,7 +1956,7 @@ Computed projection of the sync attempt the hook is part of. Aliases consolidate
 | `.Sync.renderCompletedAt`   | —         | ✓          | ✓       | ✓        | —               | —         | —          |
 | `.Sync.attemptedAt`         | —         | —          | ✓       | ✓        | ✓               | —         | —          |
 | `.Sync.completedAt`         | —         | —          | —       | ✓        | —               | —         | —          |
-| `.Sync.appliedResources`    | —         | —          | —       | ✓        | —               | —         | —          |
+| `.Sync.syncedResources`     | —         | —          | —       | ✓        | —               | —         | —          |
 | `.Sync.changedFromPrevious` | —         | —          | —       | ✓        | —               | —         | —          |
 | `.Sync.failure.*`           | —         | —          | —       | —        | ✓               | —         | —          |
 
@@ -2148,20 +2152,19 @@ status:
       state: Completed
       startedAt: 2026-04-29T10:00:00Z
       completedAt: 2026-04-29T10:00:15Z
-      transitionReason: AppliedAndHealthy
     
     - number: 0
       resources: 12                     # most resources
       state: Completed
       startedAt: 2026-04-29T10:00:15Z
       completedAt: 2026-04-29T10:00:45Z
-      transitionReason: AppliedAndHealthy
     
     - number: 10
       resources: 1                      # Certificate (CR of the CRD above)
-      state: InProgress
+      state: Failed
       startedAt: 2026-04-29T10:00:45Z
-      transitionReason: ""
+      failedAt: 2026-04-29T10:00:55Z
+      message: "failed to apply"
   
   conditions:
     - type: Applied
@@ -2170,14 +2173,15 @@ status:
       message: "Wave 10 of 10 in progress (1 resource)"
 ```
 
-| Field              | Description                                                                                                         |
-|--------------------|---------------------------------------------------------------------------------------------------------------------|
-| `number`           | Wave number from manifest annotation.                                                                               |
-| `resources`        | Count of manifests in this wave.                                                                                    |
-| `state`            | `Pending`, `InProgress`, `Completed`, `Failed`, `TimedOut`.                                                         |
-| `startedAt`        | When the wave's first resource was applied.                                                                         |
-| `completedAt`      | When the wave's transition condition was met.                                                                       |
-| `transitionReason` | Why the wave transitioned: `AppliedAndHealthy`, `Applied` (when strategy is `waitForApplied`), `Timeout`, `Failed`. |
+| Field         | Description                                                        |
+|---------------|--------------------------------------------------------------------|
+| `number`      | Wave number from manifest annotation.                              |
+| `resources`   | Count of manifests in this wave.                                   |
+| `state`       | `Pending`, `InProgress`, `Completed`, `Failed`, `TimedOut`.        |
+| `startedAt`   | When the wave's first resource was applied.                        |
+| `completedAt` | When the wave's resources are successfully synced and healthy.     |
+| `failedAt`    | When the wave's resources are not successfully synced and healthy. |
+| `message`     | A human-readable message describing the failure reason.            |
 
 While a sync is in progress, the relevant `Applied` and `Healthy` conditions reflect intermediate state — `status: "Unknown"` rather than `True` or `False` — making clear that the verdict is pending wave completion.
 

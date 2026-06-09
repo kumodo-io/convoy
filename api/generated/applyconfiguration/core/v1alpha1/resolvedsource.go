@@ -39,6 +39,8 @@ type ResolvedSourceApplyConfiguration struct {
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
 	// URL is the URL of the source.
 	URL *string `json:"url,omitempty"`
+	// Ref is the ref of the source if applicable, e.g. branch, tag, commit.
+	Ref *string `json:"ref,omitempty"`
 	// Revision is the revision of the source.
 	Revision *string `json:"revision,omitempty"`
 	// ContentType is the type of the content.
@@ -98,6 +100,14 @@ func (b *ResolvedSourceApplyConfiguration) WithObservedGeneration(value int64) *
 // If called multiple times, the URL field is set to the value of the last call.
 func (b *ResolvedSourceApplyConfiguration) WithURL(value string) *ResolvedSourceApplyConfiguration {
 	b.URL = &value
+	return b
+}
+
+// WithRef sets the Ref field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Ref field is set to the value of the last call.
+func (b *ResolvedSourceApplyConfiguration) WithRef(value string) *ResolvedSourceApplyConfiguration {
+	b.Ref = &value
 	return b
 }
 

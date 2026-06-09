@@ -86,6 +86,12 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ClusterSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterStatus"):
 		return &applyconfigurationcorev1alpha1.ClusterStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("LifecycleHookSpec"):
+		return &applyconfigurationcorev1alpha1.LifecycleHookSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("LifecycleHookStatus"):
+		return &applyconfigurationcorev1alpha1.LifecycleHookStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("LifecycleStatus"):
+		return &applyconfigurationcorev1alpha1.LifecycleStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("Release"):
 		return &applyconfigurationcorev1alpha1.ReleaseApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseAttemptedRenderFailureStatus"):
@@ -106,6 +112,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseContentSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseDeletionPolicyOverrideSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseDeletionPolicyOverrideSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseLifecycle"):
+		return &applyconfigurationcorev1alpha1.ReleaseLifecycleApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutation"):
 		return &applyconfigurationcorev1alpha1.ReleaseMutationApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutationFromSpec"):

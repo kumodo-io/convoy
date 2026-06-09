@@ -32,7 +32,7 @@ type ClusterDeletionPolicySpecApplyConfiguration struct {
 	// - block (default, recommended)
 	// - delete
 	// - orphan
-	Releases *corev1alpha1.ReleasesDeletionPolicy `json:"releasesDeletionPolic,omitempty"`
+	Releases *corev1alpha1.ReleasesDeletionPolicy `json:"releases,omitempty"`
 	// Workloads is the deletion policy for the workloads in case of the cluster deletion.
 	// Possible values are:
 	// - prune (default)

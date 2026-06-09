@@ -1,6 +1,7 @@
 package core
 
 import (
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -122,6 +123,7 @@ const (
 	ReleaseContentTypeManifests ReleaseContentType = "manifests"
 	ReleaseContentTypeKustomize ReleaseContentType = "kustomize"
 	ReleaseContentTypeJsonnet   ReleaseContentType = "jsonnet"
+	ReleaseContentTypeCue       ReleaseContentType = "cue"
 )
 
 type ReleaseHelmDependencyMode string
@@ -134,8 +136,9 @@ const (
 type ReleaseWaveStrategy string
 
 const (
-	ReleaseWaveStrategyWaitForApplied ReleaseWaveStrategy = "waitForApplied"
-	ReleaseWaveStrategyWaitForHealthy ReleaseWaveStrategy = "waitForHealthy"
+	ReleaseWaveStrategyWaitForApplied            ReleaseWaveStrategy = "waitForApplied"
+	ReleaseWaveStrategyWaitForHealthy            ReleaseWaveStrategy = "waitForHealthy"
+	ReleaseWaveStrategyWaitForHealthyWithTimeout ReleaseWaveStrategy = "waitForHealthyWithTimeout"
 )
 
 type ReleaseMutationType string
@@ -145,6 +148,7 @@ const (
 	MutationTypeGoTemplate          ReleaseMutationType = "goTemplate"
 	MutationTypeJsonPatch           ReleaseMutationType = "jsonPatch"
 	MutationTypeStrategicMergePatch ReleaseMutationType = "strategicMergePatch"
+	MutationTypeCelTransform        ReleaseMutationType = "celTransform"
 )
 
 type JSONPatchOperation string
@@ -197,6 +201,45 @@ const (
 	ResourceWaveStateCompleted  ResourceWaveState = "Completed"
 	ResourceWaveStateInProgress ResourceWaveState = "InProgress"
 	ResourceWaveStateFailed     ResourceWaveState = "Failed"
+)
+
+type LifecycleHookType string
+
+const (
+	LifecycleHookTypePod LifecycleHookType = "Pod"
+	LifecycleHookTypeJob LifecycleHookType = "Job"
+)
+
+type LifecycleHookOnFailureAction string
+
+const (
+	LifecycleHookOnFailureActionContinue LifecycleHookOnFailureAction = "Continue"
+	LifecycleHookOnFailureActionFail     LifecycleHookOnFailureAction = "Fail"
+)
+
+type LifecycleHookCleanup string
+
+const (
+	LifecycleHookCleanupOnSuccess    LifecycleHookCleanup = "OnSuccess"
+	LifecycleHookCleanupOnCompletion LifecycleHookCleanup = "OnCompletion"
+	LifecycleHookCleanupNever        LifecycleHookCleanup = "Never"
+)
+
+type LifecycleHookSource string
+
+const (
+	LifecycleHookSourceLifecycle LifecycleHookSource = "lifecycle"
+	LifecycleHookSourceChart     LifecycleHookSource = "chart"
+)
+
+type LifecycleHookState string
+
+const (
+	LifecycleHookStateSkipped   LifecycleHookState = "Skipped"
+	LifecycleHookStateRunning   LifecycleHookState = "Running"
+	LifecycleHookStateSucceeded LifecycleHookState = "Succeeded"
+	LifecycleHookStateFailed    LifecycleHookState = "Failed"
+	LifecycleHookStateTimedOut  LifecycleHookState = "TimedOut"
 )
 
 type ReleaseSpec struct {
@@ -295,6 +338,29 @@ type ReleaseMutationPatchSpec struct {
 	Value *apiextensionsv1.JSON
 }
 
+type ReleaseLifecycle struct {
+	PreRenderHooks  []LifecycleHookSpec
+	PostRenderHooks []LifecycleHookSpec
+	PreSyncHooks    []LifecycleHookSpec
+	SyncFailedHooks []LifecycleHookSpec
+	PostSyncHooks   []LifecycleHookSpec
+	PreDeleteHooks  []LifecycleHookSpec
+	PostDeleteHooks []LifecycleHookSpec
+}
+
+type LifecycleHookSpec struct {
+	Name                 string
+	Type                 LifecycleHookType
+	When                 string
+	Weight               int32
+	Timeout              *metav1.Duration
+	OnFailure            LifecycleHookOnFailureAction
+	DeleteBeforeCreation bool
+	Cleanup              LifecycleHookCleanup
+	PodTemplate          *corev1.PodTemplateSpec
+	JobTemplate          *batchv1.JobTemplateSpec
+}
+
 type ReleasePin struct {
 	RenderRef string
 	PinnedAt  metav1.Time
@@ -313,6 +379,7 @@ type ReleaseStatus struct {
 	Waves                   []ResourceWaveStatus
 	ReconciledAt            *metav1.Time
 	HistoryTruncated        bool
+	Lifecycle               LifecycleStatus
 }
 
 type ReleasePinStatus struct {
@@ -366,6 +433,7 @@ type ResolvedSource struct {
 	UID                string
 	ObservedGeneration int64
 	URL                string
+	Ref                string
 	Revision           string
 	ContentType        ReleaseContentType
 	Path               string
@@ -404,6 +472,32 @@ type ResourceWaveStatus struct {
 	Message     string
 }
 
+type LifecycleStatus struct {
+	PreRenderHooks  []LifecycleHookStatus `json:"preRender,omitempty"`
+	PostRenderHooks []LifecycleHookStatus `json:"postRender,omitempty"`
+	PreSyncHooks    []LifecycleHookStatus `json:"preSync,omitempty"`
+	SyncFailedHooks []LifecycleHookStatus `json:"syncFailed,omitempty"`
+	PostSyncHooks   []LifecycleHookStatus `json:"postSync,omitempty"`
+	PreDeleteHooks  []LifecycleHookStatus `json:"preDelete,omitempty"`
+	PostDeleteHooks []LifecycleHookStatus `json:"postDelete,omitempty"`
+}
+
+type LifecycleHookStatus struct {
+	Name              string                        `json:"name"`
+	Source            LifecycleHookSource           `json:"source"`
+	Kind              string                        `json:"kind"`
+	ApiVersion        string                        `json:"apiVersion"`
+	ResourceName      string                        `json:"resourceName"`
+	ResourceNamespace string                        `json:"resourceNamespace"`
+	State             LifecycleHookState            `json:"state"`
+	Weight            int32                         `json:"weight"`
+	StartedAt         *metav1.Time                  `json:"startedAt,omitempty"`
+	CompletedAt       *metav1.Time                  `json:"completedAt,omitempty"`
+	CleanedUpAt       *metav1.Time                  `json:"cleanedUpAt,omitempty"`
+	Message           string                        `json:"message,omitempty"`
+	FollowUpAction    *LifecycleHookOnFailureAction `json:"followUpAction,omitempty"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -415,6 +509,7 @@ type Release struct {
 	Status ReleaseStatus
 
 	Mutations []ReleaseMutation
+	Lifecycle ReleaseLifecycle
 	Pin       ReleasePin
 }
 

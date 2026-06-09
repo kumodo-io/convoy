@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +23,9 @@ const (
 
 	// ReleaseContentTypeJsonnet is the content type used to fetch jsonnet files.
 	ReleaseContentTypeJsonnet ReleaseContentType = "jsonnet"
+
+	// ReleaseContentTypeCue is the content type used to fetch cue files.
+	ReleaseContentTypeCue ReleaseContentType = "cue"
 )
 
 // ReleaseHelmDependencyMode defines the dependency mode for Helm charts.
@@ -46,6 +50,9 @@ const (
 
 	// ReleaseWaveStrategyWaitForHealthy is the wave strategy that waits for all resources to be healthy.
 	ReleaseWaveStrategyWaitForHealthy ReleaseWaveStrategy = "waitForHealthy"
+
+	// ReleaseWaveStrategyWaitForHealthyWithTimeout is the wave strategy that waits for all resources to be healthy with a timeout.
+	ReleaseWaveStrategyWaitForHealthyWithTimeout ReleaseWaveStrategy = "waitForHealthyWithTimeout"
 )
 
 // ReleaseMutationType defines the type of mutation.
@@ -64,6 +71,9 @@ const (
 
 	// MutationTypeStrategicMergePatch is the mutation type that uses Strategic merge patch as mutation source.
 	MutationTypeStrategicMergePatch ReleaseMutationType = "strategicMergePatch"
+
+	// MutationTypeCelTransform is the mutation type that uses CEL as mutation source.
+	MutationTypeCelTransform ReleaseMutationType = "celTransform"
 )
 
 // JSONPatchOperation defines the JSON patch operation.
@@ -166,6 +176,89 @@ const (
 
 	// ResourceWaveStateFailed is the state of a resource wave that has failed.
 	ResourceWaveStateFailed ResourceWaveState = "Failed"
+
+	// ResourceWaveStatePending is the state of a resource wave that is pending.
+	ResourceWaveStatePending ResourceWaveState = "Pending"
+
+	// ResourceWaveStateTimedOut is the state of a resource wave that has timed out.
+	ResourceWaveStateTimedOut ResourceWaveState = "TimedOut"
+)
+
+// LifecycleHookType defines the type of a lifecycle hook.
+// +enum
+type LifecycleHookType string
+
+const (
+	// LifecycleHookTypePod is the type of a lifecycle hook that runs as a pod.
+	LifecycleHookTypePod LifecycleHookType = "Pod"
+
+	// LifecycleHookTypeJob is the type of a lifecycle hook that runs as a job.
+	LifecycleHookTypeJob LifecycleHookType = "Job"
+)
+
+// LifecycleHookOnFailureAction defines the action to take when a lifecycle hook fails.
+// +enum
+type LifecycleHookOnFailureAction string
+
+const (
+	// LifecycleHookOnFailureActionContinue is the action to take when a
+	// lifecycle hook fails and the Release processing should continue.
+	LifecycleHookOnFailureActionContinue LifecycleHookOnFailureAction = "Continue"
+
+	// LifecycleHookOnFailureActionFail is the action to take when a
+	// lifecycle hook fails and the Release processing should fail.
+	LifecycleHookOnFailureActionFail LifecycleHookOnFailureAction = "Fail"
+)
+
+// LifecycleHookCleanup defines the condition to perform a cleanup action when a lifecycle hook completes.
+// +enum
+type LifecycleHookCleanup string
+
+const (
+	// LifecycleHookCleanupOnSuccess is the condition to perform a
+	// cleanup action when a lifecycle hook succeeds.
+	LifecycleHookCleanupOnSuccess LifecycleHookCleanup = "OnSuccess"
+
+	// LifecycleHookCleanupOnCompletion is the condition to perform a
+	// cleanup action when a lifecycle hook completes with any result.
+	LifecycleHookCleanupOnCompletion LifecycleHookCleanup = "OnCompletion"
+
+	// LifecycleHookCleanupNever is the condition to never perform a
+	// cleanup action when a lifecycle hook completes.
+	LifecycleHookCleanupNever LifecycleHookCleanup = "Never"
+)
+
+// LifecycleHookSource defines the source of a lifecycle hook.
+// +enum
+type LifecycleHookSource string
+
+const (
+	// LifecycleHookSourceLifecycle is the source of a lifecycle hook that is defined in the Release.
+	LifecycleHookSourceLifecycle LifecycleHookSource = "lifecycle"
+
+	// LifecycleHookSourceChart is the source of a lifecycle hook that is defined in the Helm chart.
+	LifecycleHookSourceChart LifecycleHookSource = "chart"
+)
+
+// LifecycleHookState defines the state of a lifecycle hook.
+// +enum
+type LifecycleHookState string
+
+const (
+	// LifecycleHookStateSkipped is the state of a lifecycle hook that has been skipped.
+	LifecycleHookStateSkipped LifecycleHookState = "Skipped"
+
+	// LifecycleHookStateRunning is the state of a lifecycle hook that is running.
+	LifecycleHookStateRunning LifecycleHookState = "Running"
+
+	// LifecycleHookStateSucceeded is the state of a lifecycle hook that has succeeded.
+	LifecycleHookStateSucceeded LifecycleHookState = "Succeeded"
+
+	// LifecycleHookStateFailed is the state of a lifecycle hook that has failed.
+	LifecycleHookStateFailed LifecycleHookState = "Failed"
+
+	// LifecycleHookStateTimedOut is the state of a lifecycle hook that has timed out.
+	LifecycleHookStateTimedOut LifecycleHookState = "TimedOut"
 )
 
 // ReleaseSpec defines the desired state of the Release.
@@ -376,6 +469,70 @@ type ReleaseMutationPatchSpec struct {
 	Value *apiextensionsv1.JSON `json:"value,omitempty"`
 }
 
+// ReleaseLifecycle defines the desired state of the ReleaseLifecycle.
+type ReleaseLifecycle struct {
+	// PreRender are the pre-render hooks.
+	// +listType=atomic
+	PreRender []LifecycleHookSpec `json:"preRender,omitempty"`
+
+	// PostRender are the post-render hooks.
+	// +listType=atomic
+	PostRender []LifecycleHookSpec `json:"postRender,omitempty"`
+
+	// PreSync are the pre-sync hooks.
+	// +listType=atomic
+	PreSync []LifecycleHookSpec `json:"preSync,omitempty"`
+
+	// SyncFailed are the sync-failed hooks.
+	// +listType=atomic
+	SyncFailed []LifecycleHookSpec `json:"syncFailed,omitempty"`
+
+	// PostSync are the post-sync hooks.
+	// +listType=atomic
+	PostSync []LifecycleHookSpec `json:"postSync,omitempty"`
+
+	// PreDelete are the pre-delete hooks.
+	// +listType=atomic
+	PreDelete []LifecycleHookSpec `json:"preDelete,omitempty"`
+
+	// PostDelete are the post-delete hooks.
+	// +listType=atomic
+	PostDelete []LifecycleHookSpec `json:"postDelete,omitempty"`
+}
+
+// LifecycleHookSpec defines the desired state of the LifecycleHook.
+type LifecycleHookSpec struct {
+	// Name is the name of the hook.
+	Name string `json:"name"`
+
+	// Type is the type of the hook.
+	Type LifecycleHookType `json:"type"`
+
+	// When is the hook execution condition written in CEL expression format.
+	When string `json:"when,omitempty"`
+
+	// Weight is the weight of the hook.
+	Weight int32 `json:"weight"`
+
+	// Timeout is the timeout for the hook. If not set, controller will wait indefinitely.
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// OnFailure is the action to take when the hook fails.
+	OnFailure LifecycleHookOnFailureAction `json:"onFailure"`
+
+	// DeleteBeforeCreation is true if the hook should delete the resources before they are created.
+	DeleteBeforeCreation bool `json:"deleteBeforeCreation,omitempty"`
+
+	// Cleanup is the action to take when the hook completes.
+	Cleanup LifecycleHookCleanup `json:"cleanup"`
+
+	// PodTemplate is the pod template for the hook. Mutual exclusive with JobTemplate.
+	PodTemplate *corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+
+	// JobTemplate is the job template for the hook. Mutual exclusive with PodTemplate.
+	JobTemplate *batchv1.JobTemplateSpec `json:"jobTemplate,omitempty"`
+}
+
 // ReleasePin defines the desired state of the ReleasePin.
 type ReleasePin struct {
 	// RenderRef is the reference to the rendered state that is pinned.
@@ -427,6 +584,9 @@ type ReleaseStatus struct {
 
 	// HistoryTruncated is true if the release history is truncated.
 	HistoryTruncated bool `json:"historyTruncated"`
+
+	// Lifecycle reflects the observed state of the release lifecycle hooks.
+	Lifecycle LifecycleStatus `json:"lifecycle,omitempty"`
 }
 
 // ReleasePinStatus reflects the observed state of the ReleasePin.
@@ -550,6 +710,9 @@ type ResolvedSource struct {
 	// URL is the URL of the source.
 	URL string `json:"url"`
 
+	// Ref is the ref of the source if applicable, e.g. branch, tag, commit.
+	Ref string `json:"ref,omitempty"`
+
 	// Revision is the revision of the source.
 	Revision string `json:"revision"`
 
@@ -635,6 +798,78 @@ type ResourceWaveStatus struct {
 	Message string `json:"message,omitempty"`
 }
 
+type LifecycleStatus struct {
+	// PreRender are the pre-render hooks.
+	// +listType=atomic
+	PreRender []LifecycleHookStatus `json:"preRender,omitempty"`
+
+	// PostRender are the post-render hooks.
+	// +listType=atomic
+	PostRender []LifecycleHookStatus `json:"postRender,omitempty"`
+
+	// PreSync are the pre-sync hooks.
+	// +listType=atomic
+	PreSync []LifecycleHookStatus `json:"preSync,omitempty"`
+
+	// SyncFailed are the sync-failed hooks.
+	// +listType=atomic
+	SyncFailed []LifecycleHookStatus `json:"syncFailed,omitempty"`
+
+	// PostSync are the post-sync hooks.
+	// +listType=atomic
+	PostSync []LifecycleHookStatus `json:"postSync,omitempty"`
+
+	// PreDelete are the pre-delete hooks.
+	// +listType=atomic
+	PreDelete []LifecycleHookStatus `json:"preDelete,omitempty"`
+
+	// PostDelete are the post-delete hooks.
+	// +listType=atomic
+	PostDelete []LifecycleHookStatus `json:"postDelete,omitempty"`
+}
+
+// LifecycleHookStatus reflects the status of a LifecycleHook.
+type LifecycleHookStatus struct {
+	// Name is the name of the hook.
+	Name string `json:"name"`
+
+	// Source is the source of the hook.
+	Source LifecycleHookSource `json:"source"`
+
+	// Kind is the kind of the resource created by the hook.
+	Kind string `json:"kind"`
+
+	// ApiVersion is the API version of the resource created by the hook.
+	ApiVersion string `json:"apiVersion"`
+
+	// ResourceName is the name of the resource created by the hook.
+	ResourceName string `json:"resourceName"`
+
+	// ResourceNamespace is the namespace of the resource created by the hook.
+	ResourceNamespace string `json:"resourceNamespace"`
+
+	// State is the state of the hook.
+	State LifecycleHookState `json:"state"`
+
+	// Weight is the weight of the hook.
+	Weight int32 `json:"weight"`
+
+	// StartedAt is the time when the hook started.
+	StartedAt *metav1.Time `json:"startedAt,omitempty"`
+
+	// CompletedAt is the time when the hook completed.
+	CompletedAt *metav1.Time `json:"completedAt,omitempty"`
+
+	// CleanedUpAt is the time when the hook was cleaned up.
+	CleanedUpAt *metav1.Time `json:"cleanedUpAt,omitempty"`
+
+	// Message is the human-readable message containing the failure reason, if any.
+	Message string `json:"message,omitempty"`
+
+	// FollowUpAction is the action to take after the hook failed.
+	FollowUpAction *LifecycleHookOnFailureAction `json:"followUpAction,omitempty"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:prerelease-lifecycle-gen:introduced=1.0
@@ -649,6 +884,7 @@ type Release struct {
 
 	// +listType=atomic
 	Mutations []ReleaseMutation `json:"mutations,omitempty"`
+	Lifecycle ReleaseLifecycle  `json:"lifecycle,omitempty"`
 	Pin       ReleasePin        `json:"pin,omitempty"`
 }
 
