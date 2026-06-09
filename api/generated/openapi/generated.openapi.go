@@ -4761,7 +4761,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref common.ReferenceCal
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Conditions is the list of conditions related to the HelmRegistry.",
+							Description: "Conditions is the list of conditions related to the OCIRegistry.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

@@ -11,6 +11,7 @@
     * [sshKey](#sshkey)
     * [token](#token)
     * [githubApp](#githubapp)
+    * [oidc](#oidc)
     * [workloadIdentity](#workloadidentity)
   * [Status](#status)
   * [Conditions](#conditions)
@@ -68,7 +69,7 @@ spec:
   # Optional — omit for public repos.
   # Discriminated union on auth.type. See "Authentication Methods" below.
   auth:
-    # type: basic | sshKey | token | githubApp | workloadIdentity
+    # type: basic | sshKey | token | githubApp | oidc | workloadIdentity
     type: sshKey
     
     # type: sshKey — SSH private key in a Secret.
@@ -98,30 +99,45 @@ spec:
     #   privateKeyRef: { secretRef: { name: github-app-key, key: key.pem } }
 
     # --------------------------------
+    # type: oidc
     # oidc:
-    # OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
-    # to find the actual token endpoint. Standard OIDC.
-    # issuerURL: https://auth.example.com/realms/internal
-
-    # Client ID is non-sensitive; typically OK in spec
-    # clientId: cd-controller
-
-    # Client authentication method (RFC 6749 + OIDC core).
-    # - clientSecret:    standard shared secret (most common)
-    # - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
-    # - tlsClientAuth:   mTLS-based client auth (rare)
-    # clientAuth:
-    #   type: clientSecret      # | privateKeyJWT | tlsClientAuth
-    #   clientSecret:
-    #   secretRef:
-    #     name: oidc-client
-    #     key: client-secret
-    #   Alternative methods:
-    #   privateKeyJWT:
-    #     privateKeyRef: { secretRef: { name: oidc-client-key, key: key.pem } }
-    #   tlsClientAuth:
-    #     certRef: { secretRef: { name: oidc-mtls, key: tls.crt } }
-    #     keyRef:  { secretRef: { name: oidc-mtls, key: tls.key } }
+    #   OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
+    #   to find the actual token endpoint. Standard OIDC.
+    #   issuerURL: https://auth.example.com/realms/internal
+    #
+    #   Client ID is non-sensitive; typically OK in spec
+    #   clientId: cd-controller
+    #
+    #   Client authentication method (RFC 6749 + OIDC core).
+    #   - clientSecret:    standard shared secret (most common)
+    #   - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
+    #   - tlsClientAuth:   mTLS-based client auth (rare)
+    #   clientAuth:
+    #     type: clientSecret      # | privateKeyJWT | tlsClientAuth
+    #     clientSecret:
+    #     secretRef:
+    #       name: oidc-client
+    #       key: client-secret
+    #
+    #     Alternative methods:
+    #     privateKeyJWT:
+    #       privateKeyRef: { name: oidc-client-key, key: key.pem }
+    #     tlsClientAuth:
+    #       certRef: { name: oidc-mtls, key: tls.crt }
+    #       keyRef:  { name: oidc-mtls, key: tls.key }
+    #
+    #   Optional scopes requested in the token. Whether these are honored depends on IdP config.
+    #   scopes:
+    #     - openid
+    #     - read:charts
+    #
+    #   Optional audience claim. Many IdPs require this to scope tokens to specific resources.
+    #   audience: helm-registry
+    #
+    #   Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
+    #   tls:
+    #     caPublicCertRef: { name: corporate-ca, key: ca.crt }
+    #     insecureSkipVerify: false
 
     # type: workloadIdentity — controller uses cloud-native identity for cloud-hosted Git
     # (e.g., AWS CodeCommit via IRSA). No static credentials stored.
@@ -239,11 +255,12 @@ status:
 | `ref.commit`            | string   | one-of              | —       | Pin to a specific commit SHA (immutable resolution).                                                                               |
 | `ref.semver`            | string   | one-of              | —       | Semver constraint resolved against tags; selects highest matching.                                                                 |
 | `auth`                  | object   | no                  | —       | Authentication — discriminated union on `auth.type`. Omit for public repos. See [Authentication Methods](#authentication-methods). |
-| `auth.type`             | enum     | yes (if `auth` set) | —       | One of `basic`, `sshKey`, `token`, `githubApp`, `workloadIdentity`.                                                                |
+| `auth.type`             | enum     | yes (if `auth` set) | —       | One of `basic`, `sshKey`, `token`, `githubApp`, `oidc`, `workloadIdentity`.                                                        |
 | `auth.basic`            | object   | one-of              | —       | HTTP basic auth (when `type: basic`).                                                                                              |
 | `auth.sshKey`           | object   | one-of              | —       | SSH private key auth (when `type: sshKey`).                                                                                        |
 | `auth.token`            | object   | one-of              | —       | Bearer token auth (when `type: token`).                                                                                            |
 | `auth.githubApp`        | object   | one-of              | —       | GitHub App installation auth (when `type: githubApp`).                                                                             |
+| `auth.oidc`             | object   | one-of              | —       | OIDC client-credentials flow (when `type: oidc`).                                                                                  |
 | `auth.workloadIdentity` | object   | one-of              | —       | Cloud workload identity (when `type: workloadIdentity`); for cloud-hosted Git like CodeCommit.                                     |
 | `interval`              | duration | no                  | `1m`    | Polling interval for ref resolution and content fetching.                                                                          |
 | `minSyncInterval`       | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs. Rate-limits the `/sync` subresource.                                      |
@@ -353,6 +370,23 @@ spec:
       appID: "123456"
       installationID: "7890123"
       privateKeyRef: { secretRef: { name: github-app-key, key: key.pem } }
+```
+
+### oidc
+
+OIDC client-credentials flow — the controller discovers the token endpoint from the issuer's `/.well-known/openid-configuration` and exchanges client credentials for a token. Client authentication is a nested discriminated union (`clientAuth.type`): `clientSecret` (shared secret), `privateKeyJWT` (signed JWT assertion), or `tlsClientAuth` (mTLS).
+
+```yaml
+spec:
+  auth:
+    type: oidc
+    oidc:
+      issuerURL: https://auth.example.com/realms/internal
+      clientId: cd-controller
+      clientAuth:
+        type: clientSecret           # | privateKeyJWT | tlsClientAuth
+        clientSecret:
+          secretRef: { name: oidc-client, key: client-secret }
 ```
 
 ### workloadIdentity

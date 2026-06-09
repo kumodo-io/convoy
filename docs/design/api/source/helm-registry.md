@@ -60,30 +60,48 @@ spec:
     #   secretRef: { name: bitnami-token, key: token }
 
     # --------------------------------
+    # type: oidc
     # oidc:
-    # OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
-    # to find the actual token endpoint. Standard OIDC.
-    # issuerURL: https://auth.example.com/realms/internal
+    #   OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
+    #   to find the actual token endpoint. Standard OIDC.
+    #   issuerURL: https://auth.example.com/realms/internal
+    #
+    #   Client ID is non-sensitive; typically OK in spec
+    #   clientId: cd-controller
+    #
+    #   Client authentication method (RFC 6749 + OIDC core).
+    #   - clientSecret:    standard shared secret (most common)
+    #   - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
+    #   - tlsClientAuth:   mTLS-based client auth (rare)
+    #   clientAuth:
+    #     type: clientSecret      # | privateKeyJWT | tlsClientAuth
+    #     clientSecret:
+    #     secretRef:
+    #       name: oidc-client
+    #       key: client-secret
+    #
+    #     Alternative methods:
+    #     privateKeyJWT:
+    #       privateKeyRef: { name: oidc-client-key, key: key.pem }
+    #     tlsClientAuth:
+    #       certRef: { name: oidc-mtls, key: tls.crt }
+    #       keyRef:  { name: oidc-mtls, key: tls.key }
+    #
+    #   Optional scopes requested in the token. Whether these are honored depends on IdP config.
+    #   scopes:
+    #     - openid
+    #     - read:charts
+    #
+    #   Optional audience claim. Many IdPs require this to scope tokens to specific resources.
+    #   audience: helm-registry
+    #
+    #   Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
+    #   tls:
+    #     caPublicCertRef: { name: corporate-ca, key: ca.crt }
+    #     insecureSkipVerify: false
 
-    # Client ID is non-sensitive; typically OK in spec
-    # clientId: cd-controller
-
-    # Client authentication method (RFC 6749 + OIDC core).
-    # - clientSecret:    standard shared secret (most common)
-    # - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
-    # - tlsClientAuth:   mTLS-based client auth (rare)
-    # clientAuth:
-    #   type: clientSecret      # | privateKeyJWT | tlsClientAuth
-    #   clientSecret:
-    #   secretRef:
-    #     name: oidc-client
-    #     key: client-secret
-    #   Alternative methods:
-    #   privateKeyJWT:
-    #     privateKeyRef: { secretRef: { name: oidc-client-key, key: key.pem } }
-    #   tlsClientAuth:
-    #     certRef: { secretRef: { name: oidc-mtls, key: tls.crt } }
-    #     keyRef:  { secretRef: { name: oidc-mtls, key: tls.key } }
+    # type: workloadIdentity — controller uses cloud-native identity for cloud-hosted Git
+    # (e.g., AWS CodeCommit via IRSA). No static credentials stored.
   
   # How often to refresh the chart index.
   # Helm registries change less frequently than Git; longer intervals are fine.

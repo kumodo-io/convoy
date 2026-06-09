@@ -107,7 +107,7 @@ type OCIRegistryStatus struct {
 	// +listMapKey=name
 	Webhooks []WebhookStatus `json:"webhooks,omitempty"`
 
-	// Conditions is the list of conditions related to the HelmRegistry.
+	// Conditions is the list of conditions related to the OCIRegistry.
 	// +listType=map
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

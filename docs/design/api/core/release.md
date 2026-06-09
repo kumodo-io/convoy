@@ -196,9 +196,9 @@ spec:
     # type: jsonnet — for jsonnet-rendered manifests.
     # jsonnet:
     #   path: main.jsonnet
-    #   tlaStr:
-    #     - name:
-    #.      value:
+    #   tla:
+    #     - name: env
+    #       value: prod
   
   # Reference to the target Cluster.
   # IMMUTABLE after creation.
@@ -382,7 +382,7 @@ status:
       policy:
         releases: block
         workloads: prune
-        onUnreachable: abort
+        onUnreachable: releasesOnly
       sourceClusterGeneration: 3
   
   # Retention policy resolved into operational state.
@@ -398,7 +398,7 @@ status:
       kind: GitRepository
       name: payments-charts-repo
       uid: 0c81fcef-4470-4bf7-87e3-24c776cb222c
-      observedSourceGeneration: 7    # Source.metadata.generation at render time
+      observedGeneration: 7    # Source.metadata.generation at render time
       url: https://github.com/example/payments-charts
       ref: main                       # spec.ref from Source
       revision: abc123def456789aabbccddeeff001122334455   # actual resolved Git SHA
@@ -409,7 +409,7 @@ status:
     resolvedCluster:
       name: prod-eu
       uid: 7119fd26-3d58-4b18-88b9-5e0f4c9c76a0
-      observedClusterGeneration: 3
+      observedGeneration: 3
       server: https://eks-prod-eu.example.com
       metadataSnapshot:
         region: eu-west-1
@@ -454,7 +454,7 @@ status:
     resolvedSource:
       kind: GitRepository
       name: payments-charts-repo
-      observedSourceGeneration: 7
+      observedGeneration: 7
       url: https://github.com/example/payments-charts
       ref: main
       revision: abc123def456789aabbccddeeff001122334455
@@ -462,7 +462,7 @@ status:
       path: charts/payments-api
     resolvedCluster:
       name: prod-eu
-      observedClusterGeneration: 3
+      observedGeneration: 3
       server: https://eks-prod-eu.example.com
       metadataSnapshot:
         region: eu-west-1
@@ -499,20 +499,17 @@ status:
       state: Completed
       startedAt: 2026-04-29T10:00:00Z
       completedAt: 2026-04-29T10:00:15Z
-      transitionReason: AppliedAndHealthy
 
     - number: 0
       resources: 12                     # most resources
       state: Completed
       startedAt: 2026-04-29T10:00:15Z
       completedAt: 2026-04-29T10:00:45Z
-      transitionReason: AppliedAndHealthy
 
     - number: 10
       resources: 1                      # Certificate (CR of the CRD above)
       state: InProgress
       startedAt: 2026-04-29T10:00:45Z
-      transitionReason: ""
   
   # Last reconciliation timestamp, even when nothing changed.
   # Distinct from lastAttempted (which only updates on actual change attempts).
@@ -601,7 +598,7 @@ spec:
 
 ### jsonnet
 
-Render Jsonnet to manifests, optionally passing top-level arguments (`tlaStr`).
+Render Jsonnet to manifests, optionally passing top-level arguments (`tla`).
 
 ```yaml
 spec:
@@ -609,8 +606,9 @@ spec:
     type: jsonnet
     jsonnet:
       path: main.jsonnet
-      tlaStr:
-        env: prod
+      tla:
+        - name: env
+          value: prod
 ```
 
 ### cue
@@ -627,22 +625,24 @@ spec:
 
 ## Mutation Types
 
-`mutations[]` is an ordered pipeline; each entry declares its `type`. Entries run in order, each operating on the output of the previous one. Inline content is provided directly; external content is referenced via `from.sourceRef` (typically a `GitRepository`).
+`mutations[]` is an ordered pipeline; each entry declares its `type`. Entries run in order, each operating on the output of the previous one. Inline content is provided directly; external content is referenced via `from` (typically a `GitRepository`).
 
 ### helmValues
 
-Merge Helm values before chart rendering. Sourced from a values file (`from.sourceRef`) or inline.
+Merge Helm values before chart rendering. Sourced from a values file (`from`) or inline.
 
 ```yaml
 mutations:
   - type: helmValues
     from:
-      sourceRef: { kind: GitRepository, name: payments-config-repo, path: env/prod/values.yaml }
+      kind: GitRepository
+      name: payments-config-repo
+      path: env/prod/values.yaml
 ```
 
 ### goTemplate
 
-Apply a Go template. By default it runs **after** Helm rendering on the rendered YAML (to avoid `{{ }}` collisions). Template context: `.Cluster`, `.Release`, `.Source`. Provided `inline` or via `from.sourceRef`.
+Apply a Go template. By default it runs **after** Helm rendering on the rendered YAML (to avoid `{{ }}` collisions). Template context: `.Cluster`, `.Release`, `.Source`. Provided `inline` or via `from`.
 
 ```yaml
 mutations:
@@ -667,13 +667,15 @@ mutations:
 
 ### strategicMergePatch
 
-Apply a Kubernetes strategic merge patch (kind-aware list/map merging). Provided inline or via `from.sourceRef`.
+Apply a Kubernetes strategic merge patch (kind-aware list/map merging). Provided inline or via `from`.
 
 ```yaml
 mutations:
   - type: strategicMergePatch
     from:
-      sourceRef: { kind: GitRepository, name: payments-experiments-repo, path: features/new-tracing/patch.yaml }
+      kind: GitRepository
+      name: payments-experiments-repo
+      path: features/new-tracing/patch.yaml
 ```
 
 ### celTransform

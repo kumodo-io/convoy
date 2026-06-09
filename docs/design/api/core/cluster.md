@@ -53,10 +53,9 @@ spec:
     
     # CA certificate for verifying the API server's TLS cert.
     # Either inline (base64-PEM) or via reference. Use reference for rotation-friendliness.
-    caBundleRef:
-      configMapRef:
-        name: prod-eu-ca
-        key: ca.crt
+    caPublicCertRef:
+      name: prod-eu-ca
+      key: ca.crt
     
     # Authentication method — discriminated union. See "Authentication Methods" below.
     auth:
@@ -105,40 +104,45 @@ spec:
       # (IRSA on EKS, Workload Identity on GKE). No static creds needed.
 
       # --------------------------------
+      # type: oidc
       # oidc:
-      # OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
-      # to find the actual token endpoint. Standard OIDC.
-      # issuerURL: https://auth.example.com/realms/internal
-
-      # Client ID is non-sensitive; typically OK in spec
-      # clientId: cd-controller
-
-      # Client authentication method (RFC 6749 + OIDC core).
-      # - clientSecret:    standard shared secret (most common)
-      # - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
-      # - tlsClientAuth:   mTLS-based client auth (rare)
-      # clientAuth:
-      #   type: clientSecret      # | privateKeyJWT | tlsClientAuth
-      #   clientSecret:
-      #   secretRef:
-      #     name: oidc-client
-      #     key: client-secret
-      #   Alternative methods:
-      #   privateKeyJWT:
-      #     privateKeyRef: { name: oidc-client-key, key: key.pem }
-      #   tlsClientAuth:
-      #     certRef: { name: oidc-mtls, key: tls.crt }
-      #     keyRef:  { name: oidc-mtls, key: tls.key }
-      # Optional scopes requested in the token. Whether these are honored depends on IdP config.
-      # scopes:
-      #   - openid
-      #   - read:charts
-      # Optional audience claim. Many IdPs require this to scope tokens to specific resources.
-      # audience: helm-registry
-      # Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
-      # tls:
-      #   caPublicCertRef: { name: corporate-ca, key: ca.crt }
-      #   insecureSkipVerify: false
+      #   OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
+      #   to find the actual token endpoint. Standard OIDC.
+      #   issuerURL: https://auth.example.com/realms/internal
+      #
+      #   Client ID is non-sensitive; typically OK in spec
+      #   clientId: cd-controller
+      #
+      #   Client authentication method (RFC 6749 + OIDC core).
+      #   - clientSecret:    standard shared secret (most common)
+      #   - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
+      #   - tlsClientAuth:   mTLS-based client auth (rare)
+      #   clientAuth:
+      #     type: clientSecret      # | privateKeyJWT | tlsClientAuth
+      #     clientSecret:
+      #     secretRef:
+      #       name: oidc-client
+      #       key: client-secret
+      #
+      #     Alternative methods:
+      #     privateKeyJWT:
+      #       privateKeyRef: { name: oidc-client-key, key: key.pem }
+      #     tlsClientAuth:
+      #       certRef: { name: oidc-mtls, key: tls.crt }
+      #       keyRef:  { name: oidc-mtls, key: tls.key }
+      #
+      #   Optional scopes requested in the token. Whether these are honored depends on IdP config.
+      #   scopes:
+      #     - openid
+      #     - read:charts
+      #
+      #   Optional audience claim. Many IdPs require this to scope tokens to specific resources.
+      #   audience: helm-registry
+      #
+      #   Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
+      #   tls:
+      #     caPublicCertRef: { name: corporate-ca, key: ca.crt }
+      #     insecureSkipVerify: false
     
     # Connection tuning (sane defaults; override for high-volume or rate-limited clusters).
     connectionParameters:
@@ -239,7 +243,7 @@ status:
 | `connectionMode`                 | enum   | yes      | —          | `agentless` or `agent`. Selects which connection block applies. See [Connection Modes](#connection-modes).         |
 | `agentless`                      | object | one-of   | —          | Direct API-server access config (when `connectionMode: agentless`).                                                |
 | `agentless.server`               | string | yes      | —          | Target cluster's kube-apiserver URL.                                                                               |
-| `agentless.caBundleRef`          | object | no       | —          | Reference to the CA cert (ConfigMap) used to verify the API server's TLS cert.                                     |
+| `agentless.caPublicCertRef`      | object | no       | —          | Reference to the CA cert (ConfigMap) used to verify the API server's TLS cert.                                     |
 | `agentless.auth`                 | object | yes      | —          | Authentication method — discriminated union on `auth.type`. See [Authentication Methods](#authentication-methods). |
 | `agentless.connectionParameters` | object | no       | —          | Client tuning: `qps`, `burst`, `timeout`.                                                                          |
 | `agent`                          | object | one-of   | —          | Agent pull-mode config (when `connectionMode: agent`).                                                             |
@@ -260,8 +264,9 @@ spec:
   connectionMode: agentless
   agentless:
     server: https://eks-prod-eu.example.com
-    caBundleRef:
-      configMapRef: { name: prod-eu-ca, key: ca.crt }
+    caPublicCertRef:
+      name: prod-eu-ca
+      key: ca.crt
     auth:
       type: execPlugin
       execPlugin: { ... }
@@ -380,7 +385,7 @@ spec:
         audience: kube-apiserver
         # Optional TLS config for a self-signed corporate IdP:
         # tls:
-        #   caBundleRef: { name: corporate-ca, key: ca.crt }
+        #   caPublicCertRef: { name: corporate-ca, key: ca.crt }
         #   insecureSkipVerify: false
 ```
 

@@ -76,30 +76,45 @@ spec:
     # (IRSA for ECR, Workload Identity for GAR, managed identity for ACR).
 
     # --------------------------------
-    # type: oidc:
-    # OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
-    # to find the actual token endpoint. Standard OIDC.
-    # issuerURL: https://auth.example.com/realms/internal
-
-    # Client ID is non-sensitive; typically OK in spec
-    # clientId: cd-controller
-
-    # Client authentication method (RFC 6749 + OIDC core).
-    # - clientSecret:    standard shared secret (most common)
-    # - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
-    # - tlsClientAuth:   mTLS-based client auth (rare)
-    # clientAuth:
-    #   type: clientSecret      # | privateKeyJWT | tlsClientAuth
-    #   clientSecret:
-    #   secretRef:
-    #     name: oidc-client
-    #     key: client-secret
-    #   Alternative methods:
-    #   privateKeyJWT:
-    #     privateKeyRef: { secretRef: { name: oidc-client-key, key: key.pem } }
-    #   tlsClientAuth:
-    #     certRef: { secretRef: { name: oidc-mtls, key: tls.crt } }
-    #     keyRef:  { secretRef: { name: oidc-mtls, key: tls.key } }
+    # type: oidc
+    # oidc:
+    #   OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
+    #   to find the actual token endpoint. Standard OIDC.
+    #   issuerURL: https://auth.example.com/realms/internal
+    #
+    #   Client ID is non-sensitive; typically OK in spec
+    #   clientId: cd-controller
+    #
+    #   Client authentication method (RFC 6749 + OIDC core).
+    #   - clientSecret:    standard shared secret (most common)
+    #   - privateKeyJWT:   client signs a JWT assertion (more secure, used in regulated envs)
+    #   - tlsClientAuth:   mTLS-based client auth (rare)
+    #   clientAuth:
+    #     type: clientSecret      # | privateKeyJWT | tlsClientAuth
+    #     clientSecret:
+    #     secretRef:
+    #       name: oidc-client
+    #       key: client-secret
+    #
+    #     Alternative methods:
+    #     privateKeyJWT:
+    #       privateKeyRef: { name: oidc-client-key, key: key.pem }
+    #     tlsClientAuth:
+    #       certRef: { name: oidc-mtls, key: tls.crt }
+    #       keyRef:  { name: oidc-mtls, key: tls.key }
+    #
+    #   Optional scopes requested in the token. Whether these are honored depends on IdP config.
+    #   scopes:
+    #     - openid
+    #     - read:charts
+    #
+    #   Optional audience claim. Many IdPs require this to scope tokens to specific resources.
+    #   audience: helm-registry
+    #
+    #   Optional: TLS config for the IdP itself, useful for self-signed corporate IdPs.
+    #   tls:
+    #     caPublicCertRef: { name: corporate-ca, key: ca.crt }
+    #     insecureSkipVerify: false
   
   # How often to check for new tags / artifact updates.
   interval: 5m
@@ -108,7 +123,7 @@ spec:
   
   # Optional: TLS config for self-signed registries.
   # tls:
-  #   caBundleRef: { configMapRef: { name: corporate-ca, key: ca.crt } }
+  #   caPublicCertRef: { name: corporate-ca, key: ca.crt }
   #   insecureSkipVerify: false
   
   # Default content type for artifacts in this registry. See "Content Types" below.
@@ -190,7 +205,7 @@ status:
 | `minSyncInterval`        | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs.                                                    |
 | `defaultContentType`     | enum     | no                  | `helm`  | Default interpretation of artifacts. See [Content Types](#content-types). Overridable per Release.          |
 | `tls`                    | object   | no                  | —       | TLS config for the registry.                                                                                |
-| `tls.caBundleRef`        | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                          |
+| `tls.caPublicCertRef`    | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                          |
 | `tls.insecureSkipVerify` | bool     | no                  | `false` | Skip TLS verification (not recommended).                                                                    |
 
 ## Authentication Methods
@@ -255,7 +270,7 @@ spec:
       audience: oci-registry
       # Optional TLS config for a self-signed corporate IdP:
       # tls:
-      #   caBundleRef: { name: corporate-ca, key: ca.crt }
+      #   caPublicCertRef: { name: corporate-ca, key: ca.crt }
       #   insecureSkipVerify: false
 ```
 
