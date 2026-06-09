@@ -28,6 +28,7 @@ import (
 	"github.com/kumodo-io/convoy/api/core"
 	coreinstall "github.com/kumodo-io/convoy/api/core/install"
 	clusterstorage "github.com/kumodo-io/convoy/internal/registry/core/cluster"
+	releasestorage "github.com/kumodo-io/convoy/internal/registry/core/release"
 )
 
 var (
@@ -102,9 +103,16 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 		return nil, err
 	}
 
+	releaseREST, releaseStatusREST, err := releasestorage.NewREST(Scheme, c.GenericConfig.RESTOptionsGetter)
+	if err != nil {
+		return nil, err
+	}
+
 	v1alpha1storage := map[string]rest.Storage{
 		"clusters":        clusterREST,
 		"clusters/status": clusterStatusREST,
+		"releases":        releaseREST,
+		"releases/status": releaseStatusREST,
 	}
 	apiGroupInfo.VersionedResourcesStorageMap["v1alpha1"] = v1alpha1storage
 

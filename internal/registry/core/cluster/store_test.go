@@ -21,10 +21,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
-	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	genericregistrytest "k8s.io/apiserver/pkg/registry/generic/testing"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -34,26 +31,13 @@ import (
 	coreinstall "github.com/kumodo-io/convoy/api/core/install"
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clusterstorage "github.com/kumodo-io/convoy/internal/registry/core/cluster"
+	"github.com/kumodo-io/convoy/internal/registry/registrytest"
 )
 
 // newStorage builds Cluster REST storage backed by an in-process etcd test server.
 func newStorage(t *testing.T) (*genericregistry.Store, *clusterstorage.StatusREST, *etcd3testing.EtcdTestServer) {
-	scheme := runtime.NewScheme()
-	coreinstall.Install(scheme)
-	metav1.AddToGroupVersion(scheme, schema.GroupVersion{Version: "v1"})
-	codecs := serializer.NewCodecFactory(scheme)
+	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("clusters"))
 
-	server, etcdStorage := etcd3testing.NewUnsecuredEtcd3TestClientServer(t)
-	etcdStorage.Codec = codecs.LegacyCodec(corev1alpha1.SchemeGroupVersion)
-
-	restOptions := generic.RESTOptions{
-		StorageConfig:           etcdStorage.ForResource(core.Resource("clusters")),
-		Decorator:               generic.UndecoratedStorage,
-		DeleteCollectionWorkers: 1,
-		ResourcePrefix:          "clusters",
-	}
-
-	// generic.RESTOptions implements RESTOptionsGetter, so it can be passed directly.
 	restStorage, statusStorage, err := clusterstorage.NewREST(scheme, restOptions)
 	if err != nil {
 		server.Terminate(t)
