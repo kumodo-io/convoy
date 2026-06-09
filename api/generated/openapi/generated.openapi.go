@@ -88,12 +88,15 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedSource":                      schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus":                  schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResultingDeletionPolicy":             schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.HealthRule":                    schema_convoy_api_extensions_v1alpha1_HealthRule(ref),
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":                schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":            schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":            schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindTarget":                    schema_convoy_api_extensions_v1alpha1_KindTarget(ref),
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":            schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":        schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
 		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":        schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
+		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceTarget":                schema_convoy_api_extensions_v1alpha1_ResourceTarget(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                     schema_convoy_api_source_v1alpha1_GitRepository(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec":             schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
 		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus":    schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
@@ -3266,6 +3269,43 @@ func schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref common.Referenc
 	}
 }
 
+func schema_convoy_api_extensions_v1alpha1_HealthRule(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "HealthRule defines a health check rule.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"expression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expression is the inlined CEL expression to evaluate.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"progressDeadline": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProgressDeadline is the maximum time to wait for the health check to complete.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"messageExpression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MessageExpression is the inlined CEL expression to evaluate for the health check message.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"expression", "progressDeadline"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
 func schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3358,7 +3398,79 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref common.Referen
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "KindHealthRuleSpec defines the desired state of KindHealthRule",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"expression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expression is the inlined CEL expression to evaluate.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"progressDeadline": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProgressDeadline is the maximum time to wait for the health check to complete.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"messageExpression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MessageExpression is the inlined CEL expression to evaluate for the health check message.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"target": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Target is the target kind.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindTarget"),
+						},
+					},
+				},
+				Required: []string{"expression", "progressDeadline", "target"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindTarget", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_convoy_api_extensions_v1alpha1_KindTarget(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "KindTarget defines the target kind by its group, kind and version.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"group": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Group is the group of the target kind.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is the target kind.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the API version of the target kind.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"group", "kind", "version"},
 			},
 		},
 	}
@@ -3456,7 +3568,94 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref common.Ref
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
+				Description: "ResourceHealthRuleSpec defines the desired state of ResourceHealthRule.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"expression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expression is the inlined CEL expression to evaluate.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"progressDeadline": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProgressDeadline is the maximum time to wait for the health check to complete.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"messageExpression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MessageExpression is the inlined CEL expression to evaluate for the health check message.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"target": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Target is the target resource.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceTarget"),
+						},
+					},
+				},
+				Required: []string{"expression", "progressDeadline", "target"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceTarget", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_convoy_api_extensions_v1alpha1_ResourceTarget(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"group": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Group is the group of the target resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is the kind of the target resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the API version of the target resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the target resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the target resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"group", "kind", "version", "name", "namespace"},
 			},
 		},
 	}

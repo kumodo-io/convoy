@@ -19,7 +19,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -30,7 +29,7 @@ import (
 type KindHealthRuleApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *extensionsv1alpha1.KindHealthRuleSpec `json:"spec,omitempty"`
+	Spec                             *KindHealthRuleSpecApplyConfiguration `json:"spec,omitempty"`
 }
 
 // KindHealthRule constructs a declarative configuration of the KindHealthRule type for use with
@@ -206,8 +205,8 @@ func (b *KindHealthRuleApplyConfiguration) ensureObjectMetaApplyConfigurationExi
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *KindHealthRuleApplyConfiguration) WithSpec(value extensionsv1alpha1.KindHealthRuleSpec) *KindHealthRuleApplyConfiguration {
-	b.Spec = &value
+func (b *KindHealthRuleApplyConfiguration) WithSpec(value *KindHealthRuleSpecApplyConfiguration) *KindHealthRuleApplyConfiguration {
+	b.Spec = value
 	return b
 }
 
