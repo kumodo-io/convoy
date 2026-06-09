@@ -38,7 +38,7 @@
     * [`ResourceHealthRule` Resource](#resourcehealthrule-resource)
     * [Aggregation: Per-Resource → Release-Level `Healthy`](#aggregation-per-resource--release-level-healthy)
     * [Status Shape](#status-shape)
-      * [`health.summary`](#healthsummary)
+      * [`healthSummary`](#healthsummary)
     * [`/health` Subresource](#health-subresource)
       * [Per-resource fields](#per-resource-fields)
     * [What's Not Covered](#whats-not-covered)
@@ -690,7 +690,7 @@ mutations:
 |---------------------------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `observedGeneration`      | integer     | `spec` generation last reconciled.                                                                                                                                                  |
 | `conditions`              | []Condition | See [Conditions](#conditions).                                                                                                                                                      |
-| `health.summary`          | object      | Aggregate health counts (`total`/`healthy`/`progressing`/`degraded`/`suspended`/`unknown`). The per-resource detail is served by [`/health`](#health-subresource), not stored here. |
+| `healthSummary`           | object      | Aggregate health counts (`total`/`healthy`/`progressing`/`degraded`/`suspended`/`unknown`). The per-resource detail is served by [`/health`](#health-subresource), not stored here. |
 | `pin`                     | object      | Mirror of the *fact* of being pinned (`intent: freeze \| rollback`, `renderInputs`); full detail behind `/pin`.                                                                     |
 | `resolvedDeletionPolicy`  | object      | Effective deletion policy, combining `Release.spec.deletionPolicyOverride` and `Cluster.spec.deletionPolicy`.                                                                       |
 | `resolvedRetentionPolicy` | object      | Retention resolved into operational state (`keepHistory`, `historyCount`).                                                                                                          |
@@ -1053,7 +1053,7 @@ Key rules:
 
 ### Status Shape
 
-`status` carries only the **bounded aggregate**: the `Healthy` condition and a `health.summary` of counts. The per-resource detail is **not** stored in `status` — for a large Release it could exceed the API object size limit — and is served on demand by the [`/health` subresource](#health-subresource) instead.
+`status` carries only the **bounded aggregate**: the `Healthy` condition and a `healthSummary` of counts. The per-resource detail is **not** stored in `status` — for a large Release it could exceed the API object size limit — and is served on demand by the [`/health` subresource](#health-subresource) instead.
 
 ```yaml
 status:
@@ -1064,8 +1064,7 @@ status:
       lastTransitionTime: 2026-04-29T10:01:15Z
       message: "1 of 14 resources degraded"
   
-  health:
-    summary:
+  healthSummary:
       total: 14
       healthy: 11
       progressing: 1
@@ -1074,7 +1073,7 @@ status:
       unknown: 0
 ```
 
-#### `health.summary`
+#### `healthSummary`
 
 Always present. Aggregate counts by state across all managed resources. Lets tooling answer "is anything wrong" at a glance and produce dashboards without parsing the resource list.
 
@@ -1089,7 +1088,7 @@ Always present. Aggregate counts by state across all managed resources. Lets too
 
 ### `/health` Subresource
 
-`GET /releases/<name>/health` returns the per-resource health detail for the Release's managed resources. This detail is a runtime view re-evaluated by the controller from live cluster state; it is **not** persisted in `Release.status` (only the [`health.summary`](#healthsummary) aggregate is). Keeping the potentially large, high-churn per-resource list out of the object keeps `status` bounded regardless of Release size.
+`GET /releases/<name>/health` returns the per-resource health detail for the Release's managed resources. This detail is a runtime view re-evaluated by the controller from live cluster state; it is **not** persisted in `Release.status` (only the [`healthSummary`](#healthsummary) aggregate is). Keeping the potentially large, high-churn per-resource list out of the object keeps `status` bounded regardless of Release size.
 
 | Verb | Path                      | Purpose                                               |
 |------|---------------------------|-------------------------------------------------------|

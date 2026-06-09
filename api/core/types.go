@@ -380,6 +380,7 @@ type ReleaseStatus struct {
 	ReconciledAt            *metav1.Time
 	HistoryTruncated        bool
 	Lifecycle               LifecycleStatus
+	HealthSummary           ReleaseHealthSummary
 }
 
 type ReleasePinStatus struct {
@@ -473,29 +474,38 @@ type ResourceWaveStatus struct {
 }
 
 type LifecycleStatus struct {
-	PreRenderHooks  []LifecycleHookStatus `json:"preRender,omitempty"`
-	PostRenderHooks []LifecycleHookStatus `json:"postRender,omitempty"`
-	PreSyncHooks    []LifecycleHookStatus `json:"preSync,omitempty"`
-	SyncFailedHooks []LifecycleHookStatus `json:"syncFailed,omitempty"`
-	PostSyncHooks   []LifecycleHookStatus `json:"postSync,omitempty"`
-	PreDeleteHooks  []LifecycleHookStatus `json:"preDelete,omitempty"`
-	PostDeleteHooks []LifecycleHookStatus `json:"postDelete,omitempty"`
+	PreRenderHooks  []LifecycleHookStatus
+	PostRenderHooks []LifecycleHookStatus
+	PreSyncHooks    []LifecycleHookStatus
+	SyncFailedHooks []LifecycleHookStatus
+	PostSyncHooks   []LifecycleHookStatus
+	PreDeleteHooks  []LifecycleHookStatus
+	PostDeleteHooks []LifecycleHookStatus
 }
 
 type LifecycleHookStatus struct {
-	Name              string                        `json:"name"`
-	Source            LifecycleHookSource           `json:"source"`
-	Kind              string                        `json:"kind"`
-	ApiVersion        string                        `json:"apiVersion"`
-	ResourceName      string                        `json:"resourceName"`
-	ResourceNamespace string                        `json:"resourceNamespace"`
-	State             LifecycleHookState            `json:"state"`
-	Weight            int32                         `json:"weight"`
-	StartedAt         *metav1.Time                  `json:"startedAt,omitempty"`
-	CompletedAt       *metav1.Time                  `json:"completedAt,omitempty"`
-	CleanedUpAt       *metav1.Time                  `json:"cleanedUpAt,omitempty"`
-	Message           string                        `json:"message,omitempty"`
-	FollowUpAction    *LifecycleHookOnFailureAction `json:"followUpAction,omitempty"`
+	Name              string
+	Source            LifecycleHookSource
+	Kind              string
+	ApiVersion        string
+	ResourceName      string
+	ResourceNamespace string
+	State             LifecycleHookState
+	Weight            int32
+	StartedAt         *metav1.Time
+	CompletedAt       *metav1.Time
+	CleanedUpAt       *metav1.Time
+	Message           string
+	FollowUpAction    *LifecycleHookOnFailureAction
+}
+
+type ReleaseHealthSummary struct {
+	Total       int32
+	Healthy     int32
+	Progressing int32
+	Degraded    int32
+	Suspended   int32
+	Unknown     int32
 }
 
 // +genclient

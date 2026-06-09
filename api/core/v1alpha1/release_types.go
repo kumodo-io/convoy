@@ -587,6 +587,9 @@ type ReleaseStatus struct {
 
 	// Lifecycle reflects the observed state of the release lifecycle hooks.
 	Lifecycle LifecycleStatus `json:"lifecycle,omitempty"`
+
+	// HealthSummary reflects the health status of the release.
+	HealthSummary ReleaseHealthSummary `json:"healthSummary,omitempty"`
 }
 
 // ReleasePinStatus reflects the observed state of the ReleasePin.
@@ -868,6 +871,27 @@ type LifecycleHookStatus struct {
 
 	// FollowUpAction is the action to take after the hook failed.
 	FollowUpAction *LifecycleHookOnFailureAction `json:"followUpAction,omitempty"`
+}
+
+// ReleaseHealthSummary reflects the health summary of the Release.
+type ReleaseHealthSummary struct {
+	// Total is the total number of resources in the release.
+	Total int32 `json:"total"`
+
+	// Healthy is the number of healthy resources in the release.
+	Healthy int32 `json:"healthy"`
+
+	// Progressing is the number of progressing resources in the release.
+	Progressing int32 `json:"progressing"`
+
+	// Degraded is the number of degraded resources in the release.
+	Degraded int32 `json:"degraded"`
+
+	// Suspended is the number of suspended resources in the release.
+	Suspended int32 `json:"suspended"`
+
+	// Unknown is the number of resources in an unknown state.
+	Unknown int32 `json:"unknown"`
 }
 
 // +genclient

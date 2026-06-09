@@ -65,6 +65,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec":         schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec":                  schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec":   schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref),
+		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary":                schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseLifecycle":                    schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                         schema_convoy_api_core_v1alpha1_ReleaseList(ref),
 		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation":                     schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
@@ -1929,6 +1930,68 @@ func schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref commo
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseHealthSummary reflects the health summary of the Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"total": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Total is the total number of resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"healthy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Healthy is the number of healthy resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"progressing": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Progressing is the number of progressing resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"degraded": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Degraded is the number of degraded resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"suspended": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Suspended is the number of suspended resources in the release.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"unknown": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Unknown is the number of resources in an unknown state.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"total", "healthy", "progressing", "degraded", "suspended", "unknown"},
+			},
+		},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2689,12 +2752,19 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus"),
 						},
 					},
+					"healthSummary": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HealthSummary reflects the health status of the release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary"),
+						},
+					},
 				},
 				Required: []string{"historyTruncated"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
