@@ -33,6 +33,12 @@ type ReleaseAttemptedRenderFailureStatusApplyConfiguration struct {
 	MutationIndex *int `json:"mutationIndex,omitempty"`
 	// Message is the failure message.
 	Message *string `json:"message,omitempty"`
+	// WaveNumber is the wave number of the failure.
+	WaveNumber *int32 `json:"waveNumber,omitempty"`
+	// HookName is the name of the hook that failed.
+	HookName *string `json:"hookName,omitempty"`
+	// HookPhase is the phase of the hook that failed.
+	HookPhase *corev1alpha1.LifecycleHookPhase `json:"hookPhase,omitempty"`
 }
 
 // ReleaseAttemptedRenderFailureStatusApplyConfiguration constructs a declarative configuration of the ReleaseAttemptedRenderFailureStatus type for use with
@@ -62,5 +68,29 @@ func (b *ReleaseAttemptedRenderFailureStatusApplyConfiguration) WithMutationInde
 // If called multiple times, the Message field is set to the value of the last call.
 func (b *ReleaseAttemptedRenderFailureStatusApplyConfiguration) WithMessage(value string) *ReleaseAttemptedRenderFailureStatusApplyConfiguration {
 	b.Message = &value
+	return b
+}
+
+// WithWaveNumber sets the WaveNumber field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the WaveNumber field is set to the value of the last call.
+func (b *ReleaseAttemptedRenderFailureStatusApplyConfiguration) WithWaveNumber(value int32) *ReleaseAttemptedRenderFailureStatusApplyConfiguration {
+	b.WaveNumber = &value
+	return b
+}
+
+// WithHookName sets the HookName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the HookName field is set to the value of the last call.
+func (b *ReleaseAttemptedRenderFailureStatusApplyConfiguration) WithHookName(value string) *ReleaseAttemptedRenderFailureStatusApplyConfiguration {
+	b.HookName = &value
+	return b
+}
+
+// WithHookPhase sets the HookPhase field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the HookPhase field is set to the value of the last call.
+func (b *ReleaseAttemptedRenderFailureStatusApplyConfiguration) WithHookPhase(value corev1alpha1.LifecycleHookPhase) *ReleaseAttemptedRenderFailureStatusApplyConfiguration {
+	b.HookPhase = &value
 	return b
 }

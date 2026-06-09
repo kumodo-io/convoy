@@ -1564,11 +1564,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref com
 				Properties: map[string]spec.Schema{
 					"stage": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Stage is the stage of the failure.\n\nPossible enum values:\n - `\"ClusterResolution\"` is the stage of a release render attempt that is resolving the cluster.\n - `\"MutationResolution\"` is the stage of a release render attempt that is resolving the mutations.\n - `\"Rendering\"` is the stage of a release render attempt that is rendering.\n - `\"SourceResolution\"` is the stage of a release render attempt that is resolving the source.\n - `\"Syncing\"` is the stage of a release render attempt that is syncing.",
+							Description: "Stage is the stage of the failure.\n\nPossible enum values:\n - `\"ClusterResolution\"` is the stage of a release render attempt that is resolving the cluster.\n - `\"HookFailed\"` is the stage of a release render attempt that failed due to a hook failure.\n - `\"MutationResolution\"` is the stage of a release render attempt that is resolving the mutations.\n - `\"Rendering\"` is the stage of a release render attempt that is rendering.\n - `\"SourceResolution\"` is the stage of a release render attempt that is resolving the source.\n - `\"Syncing\"` is the stage of a release render attempt that is syncing.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"ClusterResolution", "MutationResolution", "Rendering", "SourceResolution", "Syncing"},
+							Enum:        []interface{}{"ClusterResolution", "HookFailed", "MutationResolution", "Rendering", "SourceResolution", "Syncing"},
 						},
 					},
 					"mutationIndex": {
@@ -1584,6 +1584,28 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref com
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"waveNumber": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WaveNumber is the wave number of the failure.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"hookName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HookName is the name of the hook that failed.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"hookPhase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HookPhase is the phase of the hook that failed.\n\nPossible enum values:\n - `\"PostDelete\"` is the phase of a lifecycle hook that runs after the delete.\n - `\"PostRender\"` is the phase of a lifecycle hook that runs after the render.\n - `\"PostSync\"` is the phase of a lifecycle hook that runs after the sync.\n - `\"PreDelete\"` is the phase of a lifecycle hook that runs before the delete.\n - `\"PreRender\"` is the phase of a lifecycle hook that runs before the render.\n - `\"PreSync\"` is the phase of a lifecycle hook that runs before the sync.\n - `\"SyncFailed\"` is the phase of a lifecycle hook that runs when the sync fails.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"PostDelete", "PostRender", "PostSync", "PreDelete", "PreRender", "PreSync", "SyncFailed"},
 						},
 					},
 				},

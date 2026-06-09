@@ -161,6 +161,9 @@ const (
 
 	// ReleaseRenderAttemptStageMutationResolution is the stage of a release render attempt that is resolving the mutations.
 	ReleaseRenderAttemptStageMutationResolution ReleaseRenderAttemptStage = "MutationResolution"
+
+	// ReleaseRenderAttemptStageHookFailed is the stage of a release render attempt that failed due to a hook failure.
+	ReleaseRenderAttemptStageHookFailed ReleaseRenderAttemptStage = "HookFailed"
 )
 
 // ResourceWaveState defines the state of a resource wave.
@@ -182,6 +185,33 @@ const (
 
 	// ResourceWaveStateTimedOut is the state of a resource wave that has timed out.
 	ResourceWaveStateTimedOut ResourceWaveState = "TimedOut"
+)
+
+// LifecycleHookPhase defines the phase of a lifecycle hook.
+// +enum
+type LifecycleHookPhase string
+
+const (
+	// LifecycleHookPhasePreSync is the phase of a lifecycle hook that runs before the sync.
+	LifecycleHookPhasePreSync LifecycleHookPhase = "PreSync"
+
+	// LifecycleHookPhasePostSync is the phase of a lifecycle hook that runs after the sync.
+	LifecycleHookPhasePostSync LifecycleHookPhase = "PostSync"
+
+	// LifecycleHookPhasePreDelete is the phase of a lifecycle hook that runs before the delete.
+	LifecycleHookPhasePreDelete LifecycleHookPhase = "PreDelete"
+
+	// LifecycleHookPhasePostDelete is the phase of a lifecycle hook that runs after the delete.
+	LifecycleHookPhasePostDelete LifecycleHookPhase = "PostDelete"
+
+	// LifecycleHookPhaseSyncFailed is the phase of a lifecycle hook that runs when the sync fails.
+	LifecycleHookPhaseSyncFailed LifecycleHookPhase = "SyncFailed"
+
+	// LifecycleHookPhasePreRender is the phase of a lifecycle hook that runs before the render.
+	LifecycleHookPhasePreRender LifecycleHookPhase = "PreRender"
+
+	// LifecycleHookPhasePostRender is the phase of a lifecycle hook that runs after the render.
+	LifecycleHookPhasePostRender LifecycleHookPhase = "PostRender"
 )
 
 // LifecycleHookType defines the type of a lifecycle hook.
@@ -775,6 +805,15 @@ type ReleaseAttemptedRenderFailureStatus struct {
 
 	// Message is the failure message.
 	Message string `json:"message"`
+
+	// WaveNumber is the wave number of the failure.
+	WaveNumber int32 `json:"waveNumber,omitempty"`
+
+	// HookName is the name of the hook that failed.
+	HookName string `json:"hookName,omitempty"`
+
+	// HookPhase is the phase of the hook that failed.
+	HookPhase *LifecycleHookPhase `json:"hookPhase,omitempty"`
 }
 
 // ResourceWaveStatus reflects the status of a wave of resources.

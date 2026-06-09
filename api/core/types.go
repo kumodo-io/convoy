@@ -193,6 +193,7 @@ const (
 	ReleaseRenderAttemptStageSourceResolution   ReleaseRenderAttemptStage = "SourceResolution"
 	ReleaseRenderAttemptStageClusterResolution  ReleaseRenderAttemptStage = "ClusterResolution"
 	ReleaseRenderAttemptStageMutationResolution ReleaseRenderAttemptStage = "MutationResolution"
+	ReleaseRenderAttemptStageHookFailed         ReleaseRenderAttemptStage = "HookFailed"
 )
 
 type ResourceWaveState string
@@ -201,6 +202,18 @@ const (
 	ResourceWaveStateCompleted  ResourceWaveState = "Completed"
 	ResourceWaveStateInProgress ResourceWaveState = "InProgress"
 	ResourceWaveStateFailed     ResourceWaveState = "Failed"
+)
+
+type LifecycleHookPhase string
+
+const (
+	LifecycleHookPhasePreSync    LifecycleHookPhase = "PreSync"
+	LifecycleHookPhasePostSync   LifecycleHookPhase = "PostSync"
+	LifecycleHookPhasePreDelete  LifecycleHookPhase = "PreDelete"
+	LifecycleHookPhasePostDelete LifecycleHookPhase = "PostDelete"
+	LifecycleHookPhaseSyncFailed LifecycleHookPhase = "SyncFailed"
+	LifecycleHookPhasePreRender  LifecycleHookPhase = "PreRender"
+	LifecycleHookPhasePostRender LifecycleHookPhase = "PostRender"
 )
 
 type LifecycleHookType string
@@ -339,13 +352,13 @@ type ReleaseMutationPatchSpec struct {
 }
 
 type ReleaseLifecycle struct {
-	PreRenderHooks  []LifecycleHookSpec
-	PostRenderHooks []LifecycleHookSpec
-	PreSyncHooks    []LifecycleHookSpec
-	SyncFailedHooks []LifecycleHookSpec
-	PostSyncHooks   []LifecycleHookSpec
-	PreDeleteHooks  []LifecycleHookSpec
-	PostDeleteHooks []LifecycleHookSpec
+	PreRender  []LifecycleHookSpec
+	PostRender []LifecycleHookSpec
+	PreSync    []LifecycleHookSpec
+	SyncFailed []LifecycleHookSpec
+	PostSync   []LifecycleHookSpec
+	PreDelete  []LifecycleHookSpec
+	PostDelete []LifecycleHookSpec
 }
 
 type LifecycleHookSpec struct {
@@ -461,6 +474,9 @@ type ReleaseAttemptedRenderFailureStatus struct {
 	Stage         ReleaseRenderAttemptStage
 	MutationIndex int
 	Message       string
+	WaveNumber    int32
+	HookName      string
+	HookPhase     *LifecycleHookPhase
 }
 
 type ResourceWaveStatus struct {
@@ -474,13 +490,13 @@ type ResourceWaveStatus struct {
 }
 
 type LifecycleStatus struct {
-	PreRenderHooks  []LifecycleHookStatus
-	PostRenderHooks []LifecycleHookStatus
-	PreSyncHooks    []LifecycleHookStatus
-	SyncFailedHooks []LifecycleHookStatus
-	PostSyncHooks   []LifecycleHookStatus
-	PreDeleteHooks  []LifecycleHookStatus
-	PostDeleteHooks []LifecycleHookStatus
+	PreRender  []LifecycleHookStatus
+	PostRender []LifecycleHookStatus
+	PreSync    []LifecycleHookStatus
+	SyncFailed []LifecycleHookStatus
+	PostSync   []LifecycleHookStatus
+	PreDelete  []LifecycleHookStatus
+	PostDelete []LifecycleHookStatus
 }
 
 type LifecycleHookStatus struct {

@@ -486,6 +486,9 @@ status:
     #   stage: SourceResolution | MutationResolution | Rendering | Syncing
     #   mutationIndex: 1   # if failure during mutation pipeline
     #   message: "failed to fetch values file: 404 not found"
+    #   waveNumber: 1
+    #   hookName: "my-hook"
+    #   hookPhase: PreRender
 
   # Waves reflects the order in which resources were applied and their health status.
   # Each wave entry represents a group of resources applied together, with a state indicating
@@ -1609,11 +1612,10 @@ Each hook's `onFailure` controls behavior when the hook fails. Defaults vary by 
 | `PreDelete`  | `AbortDelete`       |
 | `PostDelete` | `Continue`          |
 
-| Value         | Behavior                                                                                                                            |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| `AbortSync`   | Stop the sync. Set `Applied: False` with reason `HookFailed`. Run `SyncFail` hooks. Don't apply remaining waves or post-sync hooks. |
-| `AbortDelete` | Stop the deletion. Preserve workloads. Release stays in deleting state until policy or hook is changed.                             |
-| `Continue`    | Log the failure, continue with the rest of the sync. Failure is recorded in status but doesn't halt progress.                       |
+| Value      | Behavior                                                                                                      |
+|------------|---------------------------------------------------------------------------------------------------------------|
+| `Fail`     | Stop the `Release` processing.                                                                                |
+| `Continue` | Log the failure, continue with the rest of the sync. Failure is recorded in status but doesn't halt progress. |
 
 ### Cleanup
 
@@ -1935,14 +1937,14 @@ Computed projection of the sync attempt the hook is part of. Aliases consolidate
 
 #### `.Sync.failure` (SyncFail only)
 
-| Alias                         | Backing                                               | Notes                                                                                  |
-|-------------------------------|-------------------------------------------------------|----------------------------------------------------------------------------------------|
-| `.Sync.failure.stage`         | `.Release.status.lastAttempted.failure.stage`         | One of `SourceResolution`, `MutationResolution`, `Rendering`, `Syncing`, `HookFailed`  |
-| `.Sync.failure.message`       | `.Release.status.lastAttempted.failure.message`       | Human-readable failure detail                                                          |
-| `.Sync.failure.mutationIndex` | `.Release.status.lastAttempted.failure.mutationIndex` | When `stage: MutationResolution`, the index of the failing mutation. `null` otherwise. |
-| `.Sync.failure.waveNumber`    | `.Release.status.lastAttempted.failure.waveNumber`    | When `stage: Syncing`, the wave number where failure occurred. `null` otherwise.       |
-| `.Sync.failure.hookName`      | `.Release.status.lastAttempted.failure.hookName`      | When `stage: HookFailed`, the name of the failing hook. `null` otherwise.              |
-| `.Sync.failure.hookPhase`     | `.Release.status.lastAttempted.failure.hookPhase`     | When `stage: HookFailed`, the phase of the failing hook. `null` otherwise.             |
+| Alias                         | Backing                                               | Notes                                                                                                      |
+|-------------------------------|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| `.Sync.failure.stage`         | `.Release.status.lastAttempted.failure.stage`         | One of `ClusterResolution`, `SourceResolution`, `MutationResolution`, `Rendering`, `Syncing`, `HookFailed` |
+| `.Sync.failure.message`       | `.Release.status.lastAttempted.failure.message`       | Human-readable failure detail                                                                              |
+| `.Sync.failure.mutationIndex` | `.Release.status.lastAttempted.failure.mutationIndex` | When `stage: MutationResolution`, the index of the failing mutation. `null` otherwise.                     |
+| `.Sync.failure.waveNumber`    | `.Release.status.lastAttempted.failure.waveNumber`    | When `stage: Syncing`, the wave number where failure occurred. `null` otherwise.                           |
+| `.Sync.failure.hookName`      | `.Release.status.lastAttempted.failure.hookName`      | When `stage: HookFailed`, the name of the failing hook. `null` otherwise.                                  |
+| `.Sync.failure.hookPhase`     | `.Release.status.lastAttempted.failure.hookPhase`     | When `stage: HookFailed`, the phase of the failing hook. `null` otherwise.                                 |
 
 ### Phase Availability Summary
 
