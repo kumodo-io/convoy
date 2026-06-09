@@ -27,10 +27,14 @@ import (
 
 	"github.com/kumodo-io/convoy/api/core"
 	coreinstall "github.com/kumodo-io/convoy/api/core/install"
+	"github.com/kumodo-io/convoy/api/extensions"
+	extensionsinstall "github.com/kumodo-io/convoy/api/extensions/install"
 	"github.com/kumodo-io/convoy/api/source"
 	sourceinstall "github.com/kumodo-io/convoy/api/source/install"
 	clusterstorage "github.com/kumodo-io/convoy/internal/registry/core/cluster"
 	releasestorage "github.com/kumodo-io/convoy/internal/registry/core/release"
+	kindhealthrulestorage "github.com/kumodo-io/convoy/internal/registry/extensions/kindhealthrule"
+	resourcehealthrulestorage "github.com/kumodo-io/convoy/internal/registry/extensions/resourcehealthrule"
 	gitrepositorystorage "github.com/kumodo-io/convoy/internal/registry/source/gitrepository"
 	helmregistrystorage "github.com/kumodo-io/convoy/internal/registry/source/helmregistry"
 	ociregistrystorage "github.com/kumodo-io/convoy/internal/registry/source/ociregistry"
@@ -46,6 +50,7 @@ var (
 func init() {
 	coreinstall.Install(Scheme)
 	sourceinstall.Install(Scheme)
+	extensionsinstall.Install(Scheme)
 
 	// Expose metav1 types (ListOptions, DeleteOptions, etc.) and register the
 	// standard unversioned types so discovery and request decoding work.
@@ -146,7 +151,23 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 		"ociregistries/status":   ociStatusREST,
 	}
 
-	if err := s.GenericAPIServer.InstallAPIGroups(&coreGroup, &sourceGroup); err != nil {
+	// extensions API group
+	extensionsGroup := genericapiserver.NewDefaultAPIGroupInfo(extensions.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+
+	kindHealthRuleREST, err := kindhealthrulestorage.NewREST(Scheme, optsGetter)
+	if err != nil {
+		return nil, err
+	}
+	resourceHealthRuleREST, err := resourcehealthrulestorage.NewREST(Scheme, optsGetter)
+	if err != nil {
+		return nil, err
+	}
+	extensionsGroup.VersionedResourcesStorageMap["v1alpha1"] = map[string]rest.Storage{
+		"kindhealthrules":     kindHealthRuleREST,
+		"resourcehealthrules": resourceHealthRuleREST,
+	}
+
+	if err := s.GenericAPIServer.InstallAPIGroups(&coreGroup, &sourceGroup, &extensionsGroup); err != nil {
 		return nil, err
 	}
 
