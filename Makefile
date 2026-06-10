@@ -9,13 +9,27 @@ EXTERNAL_APPLYCONFIGS := k8s.io/api/core/v1.ConfigMapKeySelector:k8s.io/client-g
 CODE_GEN_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/code-generator 2>/dev/null)
 KUBE_OPENAPI_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/kube-openapi 2>/dev/null)
 GOLANGCI_LINT_VERSION := $(shell go list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2 2>/dev/null)
+HERMIT_VERSION := $(shell go list -m -f '{{.Version}}' github.com/cashapp/hermit 2>/dev/null)
+TILT_VERSION := 0.37.3
 
 CODE_GEN_TOOLS := applyconfiguration-gen client-gen conversion-gen deepcopy-gen informer-gen lister-gen
 
 # Tools
 
+.PHONY: hermit-init
+hermit-init: tools
+	$(TOOLS_BIN)/hermit init --no-git
+
+.PHONY: hermit-activate
+hermit-activate: hermit-init
+	$(shell source $(TOOLS_BIN)/activate-hermit)
+
+.PHONY: tilt
+tilt: hermit-activate
+	$(TOOLS_BIN)/hermit install tilt-$(TILT_VERSION)
+
 .PHONY: tools
-tools: $(addprefix $(TOOLS_BIN)/,$(CODE_GEN_TOOLS)) $(TOOLS_BIN)/openapi-gen $(TOOLS_BIN)/golangci-lint
+tools: $(addprefix $(TOOLS_BIN)/,$(CODE_GEN_TOOLS)) $(TOOLS_BIN)/hermit $(TOOLS_BIN)/openapi-gen $(TOOLS_BIN)/golangci-lint
 
 $(TOOLS_BIN)/openapi-gen:
 	GOBIN=$(abspath $(TOOLS_BIN)) go install k8s.io/kube-openapi/cmd/openapi-gen@$(KUBE_OPENAPI_VERSION)
@@ -25,6 +39,9 @@ $(TOOLS_BIN)/golangci-lint:
 
 $(TOOLS_BIN)/%:
 	GOBIN=$(abspath $(TOOLS_BIN)) go install k8s.io/code-generator/cmd/$*@$(CODE_GEN_VERSION)
+
+$(TOOLS_BIN)/hermit:
+	GOBIN=$(abspath $(TOOLS_BIN)) go install github.com/cashapp/hermit/cmd/hermit@$(HERMIT_VERSION)
 
 # Code generation
 
@@ -168,7 +185,7 @@ kind-test:
 # Tilt dev loop. Builds, deploys, and live-reloads the apiserver in place on
 # code changes.
 .PHONY: tilt-up
-tilt-up:
+tilt-up: tilt
 	tilt up
 
 .PHONY: tilt-down
