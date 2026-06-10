@@ -22,6 +22,9 @@ limitations under the License.
 package openapi
 
 import (
+	v1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -36,442 +39,442 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":                       schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":                  schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec":                schema_convoy_api_auth_v1alpha1_DockerConfigAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":                  schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":                   schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec":                  schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec":                         schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec":            schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec":           schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec":           schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec":                  schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec":                      schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec":                             schema_convoy_api_auth_v1alpha1_TLSSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":                       schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster":                             schema_convoy_api_core_v1alpha1_Cluster(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus":                  schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec":            schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec":                     schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec":             schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec":     schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec":           schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterList":                         schema_convoy_api_core_v1alpha1_ClusterList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec":                         schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus":                       schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec":                   schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus":                 schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus":                     schema_convoy_api_core_v1alpha1_LifecycleStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.Release":                             schema_convoy_api_core_v1alpha1_Release(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderFailureStatus": schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus":        schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseClusterRefSpec":               schema_convoy_api_core_v1alpha1_ReleaseClusterRefSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentHelmSpec":              schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentJsonnetSpec":           schema_convoy_api_core_v1alpha1_ReleaseContentJsonnetSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentKustomizeSpec":         schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec":         schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec":                  schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec":   schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary":                schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseLifecycle":                    schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseList":                         schema_convoy_api_core_v1alpha1_ReleaseList(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation":                     schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec":             schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationPatchSpec":            schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin":                          schema_convoy_api_core_v1alpha1_ReleasePin(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinRenderInputsStatus":        schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus":                    schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetentionPolicySpec":          schema_convoy_api_core_v1alpha1_ReleaseRetentionPolicySpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetryBackoffSpec":             schema_convoy_api_core_v1alpha1_ReleaseRetryBackoffSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSourceSpec":                   schema_convoy_api_core_v1alpha1_ReleaseSourceSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec":                         schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus":                       schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSyncPolicySpec":               schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseWaveStrategySpec":             schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedCluster":                     schema_convoy_api_core_v1alpha1_ResolvedCluster(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus":        schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedMutation":                    schema_convoy_api_core_v1alpha1_ResolvedMutation(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus":       schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedSource":                      schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus":                  schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
-		"github.com/kumodo-io/convoy/api/core/v1alpha1.ResultingDeletionPolicy":             schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.HealthRule":                    schema_convoy_api_extensions_v1alpha1_HealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule":                schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleList":            schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec":            schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindTarget":                    schema_convoy_api_extensions_v1alpha1_KindTarget(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule":            schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleList":        schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec":        schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
-		"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceTarget":                schema_convoy_api_extensions_v1alpha1_ResourceTarget(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository":                     schema_convoy_api_source_v1alpha1_GitRepository(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec":             schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus":    schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryList":                 schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec":              schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec":                 schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus":               schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec":    schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec":          schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry":                      schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec":              schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryLastFetchedStatus":     schema_convoy_api_source_v1alpha1_HelmRegistryLastFetchedStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryList":                  schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec":                  schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus":                schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookFilterSpec":     schema_convoy_api_source_v1alpha1_HelmRegistryWebhookFilterSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookSpec":           schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.LastRejectionStatus":               schema_convoy_api_source_v1alpha1_LastRejectionStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry":                       schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryAuthSpec":               schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryLastCheckedStatus":      schema_convoy_api_source_v1alpha1_OCIRegistryLastCheckedStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryList":                   schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec":                   schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus":                 schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookFilterSpec":      schema_convoy_api_source_v1alpha1_OCIRegistryWebhookFilterSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookSpec":            schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref),
-		"github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus":                     schema_convoy_api_source_v1alpha1_WebhookStatus(ref),
-		v1.CronJob{}.OpenAPIModelName():                                                     schema_k8sio_api_batch_v1_CronJob(ref),
-		v1.CronJobList{}.OpenAPIModelName():                                                 schema_k8sio_api_batch_v1_CronJobList(ref),
-		v1.CronJobSpec{}.OpenAPIModelName():                                                 schema_k8sio_api_batch_v1_CronJobSpec(ref),
-		v1.CronJobStatus{}.OpenAPIModelName():                                               schema_k8sio_api_batch_v1_CronJobStatus(ref),
-		v1.Job{}.OpenAPIModelName():                                                         schema_k8sio_api_batch_v1_Job(ref),
-		v1.JobCondition{}.OpenAPIModelName():                                                schema_k8sio_api_batch_v1_JobCondition(ref),
-		v1.JobList{}.OpenAPIModelName():                                                     schema_k8sio_api_batch_v1_JobList(ref),
-		v1.JobSpec{}.OpenAPIModelName():                                                     schema_k8sio_api_batch_v1_JobSpec(ref),
-		v1.JobStatus{}.OpenAPIModelName():                                                   schema_k8sio_api_batch_v1_JobStatus(ref),
-		v1.JobTemplateSpec{}.OpenAPIModelName():                                             schema_k8sio_api_batch_v1_JobTemplateSpec(ref),
-		v1.PodFailurePolicy{}.OpenAPIModelName():                                            schema_k8sio_api_batch_v1_PodFailurePolicy(ref),
-		v1.PodFailurePolicyOnExitCodesRequirement{}.OpenAPIModelName():                      schema_k8sio_api_batch_v1_PodFailurePolicyOnExitCodesRequirement(ref),
-		v1.PodFailurePolicyOnPodConditionsPattern{}.OpenAPIModelName():                      schema_k8sio_api_batch_v1_PodFailurePolicyOnPodConditionsPattern(ref),
-		v1.PodFailurePolicyRule{}.OpenAPIModelName():                                        schema_k8sio_api_batch_v1_PodFailurePolicyRule(ref),
-		v1.SuccessPolicy{}.OpenAPIModelName():                                               schema_k8sio_api_batch_v1_SuccessPolicy(ref),
-		v1.SuccessPolicyRule{}.OpenAPIModelName():                                           schema_k8sio_api_batch_v1_SuccessPolicyRule(ref),
-		v1.UncountedTerminatedPods{}.OpenAPIModelName():                                     schema_k8sio_api_batch_v1_UncountedTerminatedPods(ref),
-		corev1.AWSElasticBlockStoreVolumeSource{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
-		corev1.Affinity{}.OpenAPIModelName():                                                schema_k8sio_api_core_v1_Affinity(ref),
-		corev1.AppArmorProfile{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_AppArmorProfile(ref),
-		corev1.AttachedVolume{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_AttachedVolume(ref),
-		corev1.AvoidPods{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_AvoidPods(ref),
-		corev1.AzureDiskVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_AzureDiskVolumeSource(ref),
-		corev1.AzureFilePersistentVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_AzureFilePersistentVolumeSource(ref),
-		corev1.AzureFileVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_AzureFileVolumeSource(ref),
-		corev1.Binding{}.OpenAPIModelName():                                                 schema_k8sio_api_core_v1_Binding(ref),
-		corev1.CSIPersistentVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_CSIPersistentVolumeSource(ref),
-		corev1.CSIVolumeSource{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_CSIVolumeSource(ref),
-		corev1.Capabilities{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_Capabilities(ref),
-		corev1.CephFSPersistentVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_CephFSPersistentVolumeSource(ref),
-		corev1.CephFSVolumeSource{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_CephFSVolumeSource(ref),
-		corev1.CinderPersistentVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_CinderPersistentVolumeSource(ref),
-		corev1.CinderVolumeSource{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_CinderVolumeSource(ref),
-		corev1.ClientIPConfig{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_ClientIPConfig(ref),
-		corev1.ClusterTrustBundleProjection{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ClusterTrustBundleProjection(ref),
-		corev1.ComponentCondition{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_ComponentCondition(ref),
-		corev1.ComponentStatus{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_ComponentStatus(ref),
-		corev1.ComponentStatusList{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ComponentStatusList(ref),
-		corev1.ConfigMap{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_ConfigMap(ref),
-		corev1.ConfigMapEnvSource{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_ConfigMapEnvSource(ref),
-		corev1.ConfigMapKeySelector{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ConfigMapKeySelector(ref),
-		corev1.ConfigMapList{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_ConfigMapList(ref),
-		corev1.ConfigMapNodeConfigSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ConfigMapNodeConfigSource(ref),
-		corev1.ConfigMapProjection{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ConfigMapProjection(ref),
-		corev1.ConfigMapVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ConfigMapVolumeSource(ref),
-		corev1.Container{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_Container(ref),
-		corev1.ContainerExtendedResourceRequest{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_ContainerExtendedResourceRequest(ref),
-		corev1.ContainerImage{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_ContainerImage(ref),
-		corev1.ContainerPort{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_ContainerPort(ref),
-		corev1.ContainerResizePolicy{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ContainerResizePolicy(ref),
-		corev1.ContainerRestartRule{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ContainerRestartRule(ref),
-		corev1.ContainerRestartRuleOnExitCodes{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerRestartRuleOnExitCodes(ref),
-		corev1.ContainerState{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_ContainerState(ref),
-		corev1.ContainerStateRunning{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ContainerStateRunning(ref),
-		corev1.ContainerStateTerminated{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ContainerStateTerminated(ref),
-		corev1.ContainerStateWaiting{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ContainerStateWaiting(ref),
-		corev1.ContainerStatus{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_ContainerStatus(ref),
-		corev1.ContainerUser{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_ContainerUser(ref),
-		corev1.DaemonEndpoint{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_DaemonEndpoint(ref),
-		corev1.DownwardAPIProjection{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_DownwardAPIProjection(ref),
-		corev1.DownwardAPIVolumeFile{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_DownwardAPIVolumeFile(ref),
-		corev1.DownwardAPIVolumeSource{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_DownwardAPIVolumeSource(ref),
-		corev1.EmptyDirVolumeSource{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_EmptyDirVolumeSource(ref),
-		corev1.EndpointAddress{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_EndpointAddress(ref),
-		corev1.EndpointPort{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_EndpointPort(ref),
-		corev1.EndpointSubset{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_EndpointSubset(ref),
-		corev1.Endpoints{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_Endpoints(ref),
-		corev1.EndpointsList{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_EndpointsList(ref),
-		corev1.EnvFromSource{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_EnvFromSource(ref),
-		corev1.EnvVar{}.OpenAPIModelName():                                                  schema_k8sio_api_core_v1_EnvVar(ref),
-		corev1.EnvVarSource{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_EnvVarSource(ref),
-		corev1.EphemeralContainer{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_EphemeralContainer(ref),
-		corev1.EphemeralContainerCommon{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_EphemeralContainerCommon(ref),
-		corev1.EphemeralVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_EphemeralVolumeSource(ref),
-		corev1.Event{}.OpenAPIModelName():                                                   schema_k8sio_api_core_v1_Event(ref),
-		corev1.EventList{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_EventList(ref),
-		corev1.EventSeries{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_EventSeries(ref),
-		corev1.EventSource{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_EventSource(ref),
-		corev1.ExecAction{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_ExecAction(ref),
-		corev1.FCVolumeSource{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_FCVolumeSource(ref),
-		corev1.FileKeySelector{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_FileKeySelector(ref),
-		corev1.FlexPersistentVolumeSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_FlexPersistentVolumeSource(ref),
-		corev1.FlexVolumeSource{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_FlexVolumeSource(ref),
-		corev1.FlockerVolumeSource{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_FlockerVolumeSource(ref),
-		corev1.GCEPersistentDiskVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_GCEPersistentDiskVolumeSource(ref),
-		corev1.GRPCAction{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_GRPCAction(ref),
-		corev1.GitRepoVolumeSource{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_GitRepoVolumeSource(ref),
-		corev1.GlusterfsPersistentVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_GlusterfsPersistentVolumeSource(ref),
-		corev1.GlusterfsVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_GlusterfsVolumeSource(ref),
-		corev1.HTTPGetAction{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_HTTPGetAction(ref),
-		corev1.HTTPHeader{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_HTTPHeader(ref),
-		corev1.HostAlias{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_HostAlias(ref),
-		corev1.HostIP{}.OpenAPIModelName():                                                  schema_k8sio_api_core_v1_HostIP(ref),
-		corev1.HostPathVolumeSource{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_HostPathVolumeSource(ref),
-		corev1.ISCSIPersistentVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ISCSIPersistentVolumeSource(ref),
-		corev1.ISCSIVolumeSource{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_ISCSIVolumeSource(ref),
-		corev1.ImageVolumeSource{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_ImageVolumeSource(ref),
-		corev1.ImageVolumeStatus{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_ImageVolumeStatus(ref),
-		corev1.KeyToPath{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_KeyToPath(ref),
-		corev1.Lifecycle{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_Lifecycle(ref),
-		corev1.LifecycleHandler{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_LifecycleHandler(ref),
-		corev1.LimitRange{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_LimitRange(ref),
-		corev1.LimitRangeItem{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_LimitRangeItem(ref),
-		corev1.LimitRangeList{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_LimitRangeList(ref),
-		corev1.LimitRangeSpec{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_LimitRangeSpec(ref),
-		corev1.LinuxContainerUser{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_LinuxContainerUser(ref),
-		corev1.List{}.OpenAPIModelName():                                                    schema_k8sio_api_core_v1_List(ref),
-		corev1.LoadBalancerIngress{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_LoadBalancerIngress(ref),
-		corev1.LoadBalancerStatus{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_LoadBalancerStatus(ref),
-		corev1.LocalObjectReference{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_LocalObjectReference(ref),
-		corev1.LocalVolumeSource{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_LocalVolumeSource(ref),
-		corev1.ModifyVolumeStatus{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_ModifyVolumeStatus(ref),
-		corev1.NFSVolumeSource{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_NFSVolumeSource(ref),
-		corev1.Namespace{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_Namespace(ref),
-		corev1.NamespaceCondition{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_NamespaceCondition(ref),
-		corev1.NamespaceList{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_NamespaceList(ref),
-		corev1.NamespaceSpec{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_NamespaceSpec(ref),
-		corev1.NamespaceStatus{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_NamespaceStatus(ref),
-		corev1.Node{}.OpenAPIModelName():                                                    schema_k8sio_api_core_v1_Node(ref),
-		corev1.NodeAddress{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_NodeAddress(ref),
-		corev1.NodeAffinity{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_NodeAffinity(ref),
-		corev1.NodeAllocatableResourceClaimStatus{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_NodeAllocatableResourceClaimStatus(ref),
-		corev1.NodeCondition{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_NodeCondition(ref),
-		corev1.NodeConfigSource{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_NodeConfigSource(ref),
-		corev1.NodeConfigStatus{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_NodeConfigStatus(ref),
-		corev1.NodeDaemonEndpoints{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_NodeDaemonEndpoints(ref),
-		corev1.NodeFeatures{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_NodeFeatures(ref),
-		corev1.NodeList{}.OpenAPIModelName():                                                schema_k8sio_api_core_v1_NodeList(ref),
-		corev1.NodeProxyOptions{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_NodeProxyOptions(ref),
-		corev1.NodeRuntimeHandler{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_NodeRuntimeHandler(ref),
-		corev1.NodeRuntimeHandlerFeatures{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeRuntimeHandlerFeatures(ref),
-		corev1.NodeSelector{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_NodeSelector(ref),
-		corev1.NodeSelectorRequirement{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NodeSelectorRequirement(ref),
-		corev1.NodeSelectorTerm{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_NodeSelectorTerm(ref),
-		corev1.NodeSpec{}.OpenAPIModelName():                                                schema_k8sio_api_core_v1_NodeSpec(ref),
-		corev1.NodeStatus{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_NodeStatus(ref),
-		corev1.NodeSwapStatus{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_NodeSwapStatus(ref),
-		corev1.NodeSystemInfo{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_NodeSystemInfo(ref),
-		corev1.ObjectFieldSelector{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ObjectFieldSelector(ref),
-		corev1.ObjectReference{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_ObjectReference(ref),
-		corev1.PersistentVolume{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_PersistentVolume(ref),
-		corev1.PersistentVolumeClaim{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_PersistentVolumeClaim(ref),
-		corev1.PersistentVolumeClaimCondition{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PersistentVolumeClaimCondition(ref),
-		corev1.PersistentVolumeClaimList{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PersistentVolumeClaimList(ref),
-		corev1.PersistentVolumeClaimSpec{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PersistentVolumeClaimSpec(ref),
-		corev1.PersistentVolumeClaimStatus{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_PersistentVolumeClaimStatus(ref),
-		corev1.PersistentVolumeClaimTemplate{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_PersistentVolumeClaimTemplate(ref),
-		corev1.PersistentVolumeClaimVolumeSource{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_PersistentVolumeClaimVolumeSource(ref),
-		corev1.PersistentVolumeList{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_PersistentVolumeList(ref),
-		corev1.PersistentVolumeSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PersistentVolumeSource(ref),
-		corev1.PersistentVolumeSpec{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_PersistentVolumeSpec(ref),
-		corev1.PersistentVolumeStatus{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PersistentVolumeStatus(ref),
-		corev1.PhotonPersistentDiskVolumeSource{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PhotonPersistentDiskVolumeSource(ref),
-		corev1.Pod{}.OpenAPIModelName():                                                     schema_k8sio_api_core_v1_Pod(ref),
-		corev1.PodAffinity{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_PodAffinity(ref),
-		corev1.PodAffinityTerm{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodAffinityTerm(ref),
-		corev1.PodAntiAffinity{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodAntiAffinity(ref),
-		corev1.PodAttachOptions{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_PodAttachOptions(ref),
-		corev1.PodCertificateProjection{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_PodCertificateProjection(ref),
-		corev1.PodCondition{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_PodCondition(ref),
-		corev1.PodDNSConfig{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_PodDNSConfig(ref),
-		corev1.PodDNSConfigOption{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_PodDNSConfigOption(ref),
-		corev1.PodExecOptions{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_PodExecOptions(ref),
-		corev1.PodExtendedResourceClaimStatus{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PodExtendedResourceClaimStatus(ref),
-		corev1.PodIP{}.OpenAPIModelName():                                                   schema_k8sio_api_core_v1_PodIP(ref),
-		corev1.PodList{}.OpenAPIModelName():                                                 schema_k8sio_api_core_v1_PodList(ref),
-		corev1.PodLogOptions{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_PodLogOptions(ref),
-		corev1.PodOS{}.OpenAPIModelName():                                                   schema_k8sio_api_core_v1_PodOS(ref),
-		corev1.PodPortForwardOptions{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_PodPortForwardOptions(ref),
-		corev1.PodProxyOptions{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodProxyOptions(ref),
-		corev1.PodReadinessGate{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_PodReadinessGate(ref),
-		corev1.PodResourceClaim{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_PodResourceClaim(ref),
-		corev1.PodResourceClaimStatus{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodResourceClaimStatus(ref),
-		corev1.PodSchedulingGate{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_PodSchedulingGate(ref),
-		corev1.PodSchedulingGroup{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_PodSchedulingGroup(ref),
-		corev1.PodSecurityContext{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_PodSecurityContext(ref),
-		corev1.PodSignature{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_PodSignature(ref),
-		corev1.PodSpec{}.OpenAPIModelName():                                                 schema_k8sio_api_core_v1_PodSpec(ref),
-		corev1.PodStatus{}.OpenAPIModelName():                                               schema_k8sio_api_core_v1_PodStatus(ref),
-		corev1.PodStatusResult{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodStatusResult(ref),
-		corev1.PodTemplate{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_PodTemplate(ref),
-		corev1.PodTemplateList{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodTemplateList(ref),
-		corev1.PodTemplateSpec{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodTemplateSpec(ref),
-		corev1.PortStatus{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_PortStatus(ref),
-		corev1.PortworxVolumeSource{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_PortworxVolumeSource(ref),
-		corev1.PreferAvoidPodsEntry{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_PreferAvoidPodsEntry(ref),
-		corev1.PreferredSchedulingTerm{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_PreferredSchedulingTerm(ref),
-		corev1.Probe{}.OpenAPIModelName():                                                   schema_k8sio_api_core_v1_Probe(ref),
-		corev1.ProbeHandler{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_ProbeHandler(ref),
-		corev1.ProjectedVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ProjectedVolumeSource(ref),
-		corev1.QuobyteVolumeSource{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_QuobyteVolumeSource(ref),
-		corev1.RBDPersistentVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_RBDPersistentVolumeSource(ref),
-		corev1.RBDVolumeSource{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_RBDVolumeSource(ref),
-		corev1.RangeAllocation{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_RangeAllocation(ref),
-		corev1.ReplicationController{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ReplicationController(ref),
-		corev1.ReplicationControllerCondition{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_ReplicationControllerCondition(ref),
-		corev1.ReplicationControllerList{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ReplicationControllerList(ref),
-		corev1.ReplicationControllerSpec{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ReplicationControllerSpec(ref),
-		corev1.ReplicationControllerStatus{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ReplicationControllerStatus(ref),
-		corev1.ResourceClaim{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_ResourceClaim(ref),
-		corev1.ResourceFieldSelector{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ResourceFieldSelector(ref),
-		corev1.ResourceHealth{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_ResourceHealth(ref),
-		corev1.ResourceQuota{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_ResourceQuota(ref),
-		corev1.ResourceQuotaList{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_ResourceQuotaList(ref),
-		corev1.ResourceQuotaSpec{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_ResourceQuotaSpec(ref),
-		corev1.ResourceQuotaStatus{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ResourceQuotaStatus(ref),
-		corev1.ResourceRequirements{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ResourceRequirements(ref),
-		corev1.ResourceStatus{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_ResourceStatus(ref),
-		corev1.SELinuxOptions{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_SELinuxOptions(ref),
-		corev1.ScaleIOPersistentVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ScaleIOPersistentVolumeSource(ref),
-		corev1.ScaleIOVolumeSource{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ScaleIOVolumeSource(ref),
-		corev1.ScopeSelector{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_ScopeSelector(ref),
-		corev1.ScopedResourceSelectorRequirement{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_ScopedResourceSelectorRequirement(ref),
-		corev1.SeccompProfile{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_SeccompProfile(ref),
-		corev1.Secret{}.OpenAPIModelName():                                                  schema_k8sio_api_core_v1_Secret(ref),
-		corev1.SecretEnvSource{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_SecretEnvSource(ref),
-		corev1.SecretKeySelector{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_SecretKeySelector(ref),
-		corev1.SecretList{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_SecretList(ref),
-		corev1.SecretProjection{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_SecretProjection(ref),
-		corev1.SecretReference{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_SecretReference(ref),
-		corev1.SecretVolumeSource{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_SecretVolumeSource(ref),
-		corev1.SecurityContext{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_SecurityContext(ref),
-		corev1.SerializedReference{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_SerializedReference(ref),
-		corev1.Service{}.OpenAPIModelName():                                                 schema_k8sio_api_core_v1_Service(ref),
-		corev1.ServiceAccount{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_ServiceAccount(ref),
-		corev1.ServiceAccountList{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_ServiceAccountList(ref),
-		corev1.ServiceAccountTokenProjection{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ServiceAccountTokenProjection(ref),
-		corev1.ServiceList{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_ServiceList(ref),
-		corev1.ServicePort{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_ServicePort(ref),
-		corev1.ServiceProxyOptions{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ServiceProxyOptions(ref),
-		corev1.ServiceSpec{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_ServiceSpec(ref),
-		corev1.ServiceStatus{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_ServiceStatus(ref),
-		corev1.SessionAffinityConfig{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_SessionAffinityConfig(ref),
-		corev1.SleepAction{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_SleepAction(ref),
-		corev1.StorageOSPersistentVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_StorageOSPersistentVolumeSource(ref),
-		corev1.StorageOSVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_StorageOSVolumeSource(ref),
-		corev1.Sysctl{}.OpenAPIModelName():                                                  schema_k8sio_api_core_v1_Sysctl(ref),
-		corev1.TCPSocketAction{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_TCPSocketAction(ref),
-		corev1.Taint{}.OpenAPIModelName():                                                   schema_k8sio_api_core_v1_Taint(ref),
-		corev1.Toleration{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_Toleration(ref),
-		corev1.TopologySelectorLabelRequirement{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_TopologySelectorLabelRequirement(ref),
-		corev1.TopologySelectorTerm{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_TopologySelectorTerm(ref),
-		corev1.TopologySpreadConstraint{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_TopologySpreadConstraint(ref),
-		corev1.TypedLocalObjectReference{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_TypedLocalObjectReference(ref),
-		corev1.TypedObjectReference{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_TypedObjectReference(ref),
-		corev1.Volume{}.OpenAPIModelName():                                                  schema_k8sio_api_core_v1_Volume(ref),
-		corev1.VolumeDevice{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_VolumeDevice(ref),
-		corev1.VolumeMount{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_VolumeMount(ref),
-		corev1.VolumeMountStatus{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_VolumeMountStatus(ref),
-		corev1.VolumeNodeAffinity{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_VolumeNodeAffinity(ref),
-		corev1.VolumeProjection{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_VolumeProjection(ref),
-		corev1.VolumeResourceRequirements{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_VolumeResourceRequirements(ref),
-		corev1.VolumeSource{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_VolumeSource(ref),
-		corev1.VolumeStatus{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_VolumeStatus(ref),
-		corev1.VsphereVirtualDiskVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_VsphereVirtualDiskVolumeSource(ref),
-		corev1.WeightedPodAffinityTerm{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_WeightedPodAffinityTerm(ref),
-		corev1.WindowsSecurityContextOptions{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_WindowsSecurityContextOptions(ref),
-		apiextensionsv1.ConversionRequest{}.OpenAPIModelName():                              schema_pkg_apis_apiextensions_v1_ConversionRequest(ref),
-		apiextensionsv1.ConversionResponse{}.OpenAPIModelName():                             schema_pkg_apis_apiextensions_v1_ConversionResponse(ref),
-		apiextensionsv1.ConversionReview{}.OpenAPIModelName():                               schema_pkg_apis_apiextensions_v1_ConversionReview(ref),
-		apiextensionsv1.CustomResourceColumnDefinition{}.OpenAPIModelName():                 schema_pkg_apis_apiextensions_v1_CustomResourceColumnDefinition(ref),
-		apiextensionsv1.CustomResourceConversion{}.OpenAPIModelName():                       schema_pkg_apis_apiextensions_v1_CustomResourceConversion(ref),
-		apiextensionsv1.CustomResourceDefinition{}.OpenAPIModelName():                       schema_pkg_apis_apiextensions_v1_CustomResourceDefinition(ref),
-		apiextensionsv1.CustomResourceDefinitionCondition{}.OpenAPIModelName():              schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionCondition(ref),
-		apiextensionsv1.CustomResourceDefinitionList{}.OpenAPIModelName():                   schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionList(ref),
-		apiextensionsv1.CustomResourceDefinitionNames{}.OpenAPIModelName():                  schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionNames(ref),
-		apiextensionsv1.CustomResourceDefinitionSpec{}.OpenAPIModelName():                   schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionSpec(ref),
-		apiextensionsv1.CustomResourceDefinitionStatus{}.OpenAPIModelName():                 schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionStatus(ref),
-		apiextensionsv1.CustomResourceDefinitionVersion{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionVersion(ref),
-		apiextensionsv1.CustomResourceSubresourceScale{}.OpenAPIModelName():                 schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceScale(ref),
-		apiextensionsv1.CustomResourceSubresourceStatus{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceStatus(ref),
-		apiextensionsv1.CustomResourceSubresources{}.OpenAPIModelName():                     schema_pkg_apis_apiextensions_v1_CustomResourceSubresources(ref),
-		apiextensionsv1.CustomResourceValidation{}.OpenAPIModelName():                       schema_pkg_apis_apiextensions_v1_CustomResourceValidation(ref),
-		apiextensionsv1.ExternalDocumentation{}.OpenAPIModelName():                          schema_pkg_apis_apiextensions_v1_ExternalDocumentation(ref),
-		apiextensionsv1.JSON{}.OpenAPIModelName():                                           schema_pkg_apis_apiextensions_v1_JSON(ref),
-		apiextensionsv1.JSONSchemaProps{}.OpenAPIModelName():                                schema_pkg_apis_apiextensions_v1_JSONSchemaProps(ref),
-		apiextensionsv1.JSONSchemaPropsOrArray{}.OpenAPIModelName():                         schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrArray(ref),
-		apiextensionsv1.JSONSchemaPropsOrBool{}.OpenAPIModelName():                          schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrBool(ref),
-		apiextensionsv1.JSONSchemaPropsOrStringArray{}.OpenAPIModelName():                   schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrStringArray(ref),
-		apiextensionsv1.SelectableField{}.OpenAPIModelName():                                schema_pkg_apis_apiextensions_v1_SelectableField(ref),
-		apiextensionsv1.ServiceReference{}.OpenAPIModelName():                               schema_pkg_apis_apiextensions_v1_ServiceReference(ref),
-		apiextensionsv1.ValidationRule{}.OpenAPIModelName():                                 schema_pkg_apis_apiextensions_v1_ValidationRule(ref),
-		apiextensionsv1.WebhookClientConfig{}.OpenAPIModelName():                            schema_pkg_apis_apiextensions_v1_WebhookClientConfig(ref),
-		apiextensionsv1.WebhookConversion{}.OpenAPIModelName():                              schema_pkg_apis_apiextensions_v1_WebhookConversion(ref),
-		resource.Quantity{}.OpenAPIModelName():                                              schema_apimachinery_pkg_api_resource_Quantity(ref),
-		metav1.APIGroup{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_APIGroup(ref),
-		metav1.APIGroupList{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_APIGroupList(ref),
-		metav1.APIResource{}.OpenAPIModelName():                                             schema_pkg_apis_meta_v1_APIResource(ref),
-		metav1.APIResourceList{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_APIResourceList(ref),
-		metav1.APIVersions{}.OpenAPIModelName():                                             schema_pkg_apis_meta_v1_APIVersions(ref),
-		metav1.ApplyOptions{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_ApplyOptions(ref),
-		metav1.Condition{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_Condition(ref),
-		metav1.CreateOptions{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_CreateOptions(ref),
-		metav1.DeleteOptions{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_DeleteOptions(ref),
-		metav1.Duration{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_Duration(ref),
-		metav1.FieldSelectorRequirement{}.OpenAPIModelName():                                schema_pkg_apis_meta_v1_FieldSelectorRequirement(ref),
-		metav1.FieldsV1{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_FieldsV1(ref),
-		metav1.GetOptions{}.OpenAPIModelName():                                              schema_pkg_apis_meta_v1_GetOptions(ref),
-		metav1.GroupKind{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_GroupKind(ref),
-		metav1.GroupResource{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_GroupResource(ref),
-		metav1.GroupVersion{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_GroupVersion(ref),
-		metav1.GroupVersionForDiscovery{}.OpenAPIModelName():                                schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
-		metav1.GroupVersionKind{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_GroupVersionKind(ref),
-		metav1.GroupVersionResource{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_GroupVersionResource(ref),
-		metav1.InternalEvent{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_InternalEvent(ref),
-		metav1.LabelSelector{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_LabelSelector(ref),
-		metav1.LabelSelectorRequirement{}.OpenAPIModelName():                                schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
-		metav1.List{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_List(ref),
-		metav1.ListMeta{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_ListMeta(ref),
-		metav1.ListOptions{}.OpenAPIModelName():                                             schema_pkg_apis_meta_v1_ListOptions(ref),
-		metav1.ManagedFieldsEntry{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
-		metav1.MicroTime{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_MicroTime(ref),
-		metav1.ObjectMeta{}.OpenAPIModelName():                                              schema_pkg_apis_meta_v1_ObjectMeta(ref),
-		metav1.OwnerReference{}.OpenAPIModelName():                                          schema_pkg_apis_meta_v1_OwnerReference(ref),
-		metav1.PartialObjectMetadata{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
-		metav1.PartialObjectMetadataList{}.OpenAPIModelName():                               schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
-		metav1.Patch{}.OpenAPIModelName():                                                   schema_pkg_apis_meta_v1_Patch(ref),
-		metav1.PatchOptions{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_PatchOptions(ref),
-		metav1.Preconditions{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_Preconditions(ref),
-		metav1.RootPaths{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_RootPaths(ref),
-		metav1.ServerAddressByClientCIDR{}.OpenAPIModelName():                               schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
-		metav1.ShardInfo{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_ShardInfo(ref),
-		metav1.Status{}.OpenAPIModelName():                                                  schema_pkg_apis_meta_v1_Status(ref),
-		metav1.StatusCause{}.OpenAPIModelName():                                             schema_pkg_apis_meta_v1_StatusCause(ref),
-		metav1.StatusDetails{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_StatusDetails(ref),
-		metav1.Table{}.OpenAPIModelName():                                                   schema_pkg_apis_meta_v1_Table(ref),
-		metav1.TableColumnDefinition{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
-		metav1.TableOptions{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_TableOptions(ref),
-		metav1.TableRow{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_TableRow(ref),
-		metav1.TableRowCondition{}.OpenAPIModelName():                                       schema_pkg_apis_meta_v1_TableRowCondition(ref),
-		metav1.Time{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_Time(ref),
-		metav1.Timestamp{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_Timestamp(ref),
-		metav1.TypeMeta{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_TypeMeta(ref),
-		metav1.UpdateOptions{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_UpdateOptions(ref),
-		metav1.WatchEvent{}.OpenAPIModelName():                                              schema_pkg_apis_meta_v1_WatchEvent(ref),
-		runtime.RawExtension{}.OpenAPIModelName():                                           schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
-		runtime.TypeMeta{}.OpenAPIModelName():                                               schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
-		runtime.Unknown{}.OpenAPIModelName():                                                schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
-		intstr.IntOrString{}.OpenAPIModelName():                                             schema_apimachinery_pkg_util_intstr_IntOrString(ref),
-		version.Info{}.OpenAPIModelName():                                                   schema_k8sio_apimachinery_pkg_version_Info(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":             schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":        schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec":      schema_convoy_api_auth_v1alpha1_DockerConfigAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":        schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":         schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec":        schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec":               schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec":  schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec": schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec": schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec":        schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec":            schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec":                   schema_convoy_api_auth_v1alpha1_TLSSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":             schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
+		v1alpha1.Cluster{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_Cluster(ref),
+		v1alpha1.ClusterAgentStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
+		v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
+		v1alpha1.ClusterAuthSpec{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
+		v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
+		v1alpha1.ClusterConnectionParametersSpec{}.OpenAPIModelName():             schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
+		v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName():                   schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
+		v1alpha1.ClusterList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterList(ref),
+		v1alpha1.ClusterSpec{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
+		v1alpha1.ClusterStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
+		v1alpha1.LifecycleHookSpec{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref),
+		v1alpha1.LifecycleHookStatus{}.OpenAPIModelName():                         schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref),
+		v1alpha1.LifecycleStatus{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_LifecycleStatus(ref),
+		v1alpha1.Release{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_Release(ref),
+		v1alpha1.ReleaseAttemptedRenderFailureStatus{}.OpenAPIModelName():         schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
+		v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref),
+		v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseClusterRefSpec(ref),
+		v1alpha1.ReleaseContentHelmSpec{}.OpenAPIModelName():                      schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref),
+		v1alpha1.ReleaseContentJsonnetSpec{}.OpenAPIModelName():                   schema_convoy_api_core_v1alpha1_ReleaseContentJsonnetSpec(ref),
+		v1alpha1.ReleaseContentKustomizeSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref),
+		v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
+		v1alpha1.ReleaseContentSpec{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
+		v1alpha1.ReleaseDeletionPolicyOverrideSpec{}.OpenAPIModelName():           schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref),
+		v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
+		v1alpha1.ReleaseLifecycle{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
+		v1alpha1.ReleaseList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ReleaseList(ref),
+		v1alpha1.ReleaseMutation{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
+		v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
+		v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref),
+		v1alpha1.ReleasePin{}.OpenAPIModelName():                                  schema_convoy_api_core_v1alpha1_ReleasePin(ref),
+		v1alpha1.ReleasePinRenderInputsStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref),
+		v1alpha1.ReleasePinStatus{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref),
+		v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName():                  schema_convoy_api_core_v1alpha1_ReleaseRetentionPolicySpec(ref),
+		v1alpha1.ReleaseRetryBackoffSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseRetryBackoffSpec(ref),
+		v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_ReleaseSourceSpec(ref),
+		v1alpha1.ReleaseSpec{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
+		v1alpha1.ReleaseStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
+		v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref),
+		v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref),
+		v1alpha1.ResolvedCluster{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ResolvedCluster(ref),
+		v1alpha1.ResolvedDeletionPolicyStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref),
+		v1alpha1.ResolvedMutation{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ResolvedMutation(ref),
+		v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref),
+		v1alpha1.ResolvedSource{}.OpenAPIModelName():                              schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
+		v1alpha1.ResourceWaveStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
+		v1alpha1.ResultingDeletionPolicy{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref),
+		extensionsv1alpha1.HealthRule{}.OpenAPIModelName():                        schema_convoy_api_extensions_v1alpha1_HealthRule(ref),
+		extensionsv1alpha1.KindHealthRule{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
+		extensionsv1alpha1.KindHealthRuleList{}.OpenAPIModelName():                schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
+		extensionsv1alpha1.KindHealthRuleSpec{}.OpenAPIModelName():                schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
+		extensionsv1alpha1.KindTarget{}.OpenAPIModelName():                        schema_convoy_api_extensions_v1alpha1_KindTarget(ref),
+		extensionsv1alpha1.ResourceHealthRule{}.OpenAPIModelName():                schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
+		extensionsv1alpha1.ResourceHealthRuleList{}.OpenAPIModelName():            schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
+		extensionsv1alpha1.ResourceHealthRuleSpec{}.OpenAPIModelName():            schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
+		extensionsv1alpha1.ResourceTarget{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_ResourceTarget(ref),
+		sourcev1alpha1.GitRepository{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_GitRepository(ref),
+		sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName():                 schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
+		sourcev1alpha1.GitRepositoryLastFetchedStatus{}.OpenAPIModelName():        schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
+		sourcev1alpha1.GitRepositoryList{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
+		sourcev1alpha1.GitRepositoryRefSpec{}.OpenAPIModelName():                  schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref),
+		sourcev1alpha1.GitRepositorySpec{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
+		sourcev1alpha1.GitRepositoryStatus{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
+		sourcev1alpha1.GitRepositoryWebhookFilterSpec{}.OpenAPIModelName():        schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
+		sourcev1alpha1.GitRepositoryWebhookSpec{}.OpenAPIModelName():              schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
+		sourcev1alpha1.HelmRegistry{}.OpenAPIModelName():                          schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
+		sourcev1alpha1.HelmRegistryAuthSpec{}.OpenAPIModelName():                  schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
+		sourcev1alpha1.HelmRegistryLastFetchedStatus{}.OpenAPIModelName():         schema_convoy_api_source_v1alpha1_HelmRegistryLastFetchedStatus(ref),
+		sourcev1alpha1.HelmRegistryList{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
+		sourcev1alpha1.HelmRegistrySpec{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
+		sourcev1alpha1.HelmRegistryStatus{}.OpenAPIModelName():                    schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
+		sourcev1alpha1.HelmRegistryWebhookFilterSpec{}.OpenAPIModelName():         schema_convoy_api_source_v1alpha1_HelmRegistryWebhookFilterSpec(ref),
+		sourcev1alpha1.HelmRegistryWebhookSpec{}.OpenAPIModelName():               schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref),
+		sourcev1alpha1.LastRejectionStatus{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_LastRejectionStatus(ref),
+		sourcev1alpha1.OCIRegistry{}.OpenAPIModelName():                           schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
+		sourcev1alpha1.OCIRegistryAuthSpec{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref),
+		sourcev1alpha1.OCIRegistryLastCheckedStatus{}.OpenAPIModelName():          schema_convoy_api_source_v1alpha1_OCIRegistryLastCheckedStatus(ref),
+		sourcev1alpha1.OCIRegistryList{}.OpenAPIModelName():                       schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
+		sourcev1alpha1.OCIRegistrySpec{}.OpenAPIModelName():                       schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
+		sourcev1alpha1.OCIRegistryStatus{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
+		sourcev1alpha1.OCIRegistryWebhookFilterSpec{}.OpenAPIModelName():          schema_convoy_api_source_v1alpha1_OCIRegistryWebhookFilterSpec(ref),
+		sourcev1alpha1.OCIRegistryWebhookSpec{}.OpenAPIModelName():                schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref),
+		sourcev1alpha1.WebhookStatus{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_WebhookStatus(ref),
+		v1.CronJob{}.OpenAPIModelName():                                           schema_k8sio_api_batch_v1_CronJob(ref),
+		v1.CronJobList{}.OpenAPIModelName():                                       schema_k8sio_api_batch_v1_CronJobList(ref),
+		v1.CronJobSpec{}.OpenAPIModelName():                                       schema_k8sio_api_batch_v1_CronJobSpec(ref),
+		v1.CronJobStatus{}.OpenAPIModelName():                                     schema_k8sio_api_batch_v1_CronJobStatus(ref),
+		v1.Job{}.OpenAPIModelName():                                               schema_k8sio_api_batch_v1_Job(ref),
+		v1.JobCondition{}.OpenAPIModelName():                                      schema_k8sio_api_batch_v1_JobCondition(ref),
+		v1.JobList{}.OpenAPIModelName():                                           schema_k8sio_api_batch_v1_JobList(ref),
+		v1.JobSpec{}.OpenAPIModelName():                                           schema_k8sio_api_batch_v1_JobSpec(ref),
+		v1.JobStatus{}.OpenAPIModelName():                                         schema_k8sio_api_batch_v1_JobStatus(ref),
+		v1.JobTemplateSpec{}.OpenAPIModelName():                                   schema_k8sio_api_batch_v1_JobTemplateSpec(ref),
+		v1.PodFailurePolicy{}.OpenAPIModelName():                                  schema_k8sio_api_batch_v1_PodFailurePolicy(ref),
+		v1.PodFailurePolicyOnExitCodesRequirement{}.OpenAPIModelName():            schema_k8sio_api_batch_v1_PodFailurePolicyOnExitCodesRequirement(ref),
+		v1.PodFailurePolicyOnPodConditionsPattern{}.OpenAPIModelName():            schema_k8sio_api_batch_v1_PodFailurePolicyOnPodConditionsPattern(ref),
+		v1.PodFailurePolicyRule{}.OpenAPIModelName():                              schema_k8sio_api_batch_v1_PodFailurePolicyRule(ref),
+		v1.SuccessPolicy{}.OpenAPIModelName():                                     schema_k8sio_api_batch_v1_SuccessPolicy(ref),
+		v1.SuccessPolicyRule{}.OpenAPIModelName():                                 schema_k8sio_api_batch_v1_SuccessPolicyRule(ref),
+		v1.UncountedTerminatedPods{}.OpenAPIModelName():                           schema_k8sio_api_batch_v1_UncountedTerminatedPods(ref),
+		corev1.AWSElasticBlockStoreVolumeSource{}.OpenAPIModelName():              schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
+		corev1.Affinity{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_Affinity(ref),
+		corev1.AppArmorProfile{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_AppArmorProfile(ref),
+		corev1.AttachedVolume{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_AttachedVolume(ref),
+		corev1.AvoidPods{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_AvoidPods(ref),
+		corev1.AzureDiskVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_AzureDiskVolumeSource(ref),
+		corev1.AzureFilePersistentVolumeSource{}.OpenAPIModelName():               schema_k8sio_api_core_v1_AzureFilePersistentVolumeSource(ref),
+		corev1.AzureFileVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_AzureFileVolumeSource(ref),
+		corev1.Binding{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_Binding(ref),
+		corev1.CSIPersistentVolumeSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_CSIPersistentVolumeSource(ref),
+		corev1.CSIVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_CSIVolumeSource(ref),
+		corev1.Capabilities{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_Capabilities(ref),
+		corev1.CephFSPersistentVolumeSource{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_CephFSPersistentVolumeSource(ref),
+		corev1.CephFSVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_CephFSVolumeSource(ref),
+		corev1.CinderPersistentVolumeSource{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_CinderPersistentVolumeSource(ref),
+		corev1.CinderVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_CinderVolumeSource(ref),
+		corev1.ClientIPConfig{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ClientIPConfig(ref),
+		corev1.ClusterTrustBundleProjection{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_ClusterTrustBundleProjection(ref),
+		corev1.ComponentCondition{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ComponentCondition(ref),
+		corev1.ComponentStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ComponentStatus(ref),
+		corev1.ComponentStatusList{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ComponentStatusList(ref),
+		corev1.ConfigMap{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ConfigMap(ref),
+		corev1.ConfigMapEnvSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ConfigMapEnvSource(ref),
+		corev1.ConfigMapKeySelector{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_ConfigMapKeySelector(ref),
+		corev1.ConfigMapList{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ConfigMapList(ref),
+		corev1.ConfigMapNodeConfigSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_ConfigMapNodeConfigSource(ref),
+		corev1.ConfigMapProjection{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ConfigMapProjection(ref),
+		corev1.ConfigMapVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ConfigMapVolumeSource(ref),
+		corev1.Container{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Container(ref),
+		corev1.ContainerExtendedResourceRequest{}.OpenAPIModelName():              schema_k8sio_api_core_v1_ContainerExtendedResourceRequest(ref),
+		corev1.ContainerImage{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ContainerImage(ref),
+		corev1.ContainerPort{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ContainerPort(ref),
+		corev1.ContainerResizePolicy{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerResizePolicy(ref),
+		corev1.ContainerRestartRule{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_ContainerRestartRule(ref),
+		corev1.ContainerRestartRuleOnExitCodes{}.OpenAPIModelName():               schema_k8sio_api_core_v1_ContainerRestartRuleOnExitCodes(ref),
+		corev1.ContainerState{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ContainerState(ref),
+		corev1.ContainerStateRunning{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerStateRunning(ref),
+		corev1.ContainerStateTerminated{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_ContainerStateTerminated(ref),
+		corev1.ContainerStateWaiting{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerStateWaiting(ref),
+		corev1.ContainerStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ContainerStatus(ref),
+		corev1.ContainerUser{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ContainerUser(ref),
+		corev1.DaemonEndpoint{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_DaemonEndpoint(ref),
+		corev1.DownwardAPIProjection{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_DownwardAPIProjection(ref),
+		corev1.DownwardAPIVolumeFile{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_DownwardAPIVolumeFile(ref),
+		corev1.DownwardAPIVolumeSource{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_DownwardAPIVolumeSource(ref),
+		corev1.EmptyDirVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_EmptyDirVolumeSource(ref),
+		corev1.EndpointAddress{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_EndpointAddress(ref),
+		corev1.EndpointPort{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_EndpointPort(ref),
+		corev1.EndpointSubset{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_EndpointSubset(ref),
+		corev1.Endpoints{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Endpoints(ref),
+		corev1.EndpointsList{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_EndpointsList(ref),
+		corev1.EnvFromSource{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_EnvFromSource(ref),
+		corev1.EnvVar{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_EnvVar(ref),
+		corev1.EnvVarSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_EnvVarSource(ref),
+		corev1.EphemeralContainer{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_EphemeralContainer(ref),
+		corev1.EphemeralContainerCommon{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_EphemeralContainerCommon(ref),
+		corev1.EphemeralVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_EphemeralVolumeSource(ref),
+		corev1.Event{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_Event(ref),
+		corev1.EventList{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_EventList(ref),
+		corev1.EventSeries{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_EventSeries(ref),
+		corev1.EventSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_EventSource(ref),
+		corev1.ExecAction{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ExecAction(ref),
+		corev1.FCVolumeSource{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_FCVolumeSource(ref),
+		corev1.FileKeySelector{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_FileKeySelector(ref),
+		corev1.FlexPersistentVolumeSource{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_FlexPersistentVolumeSource(ref),
+		corev1.FlexVolumeSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_FlexVolumeSource(ref),
+		corev1.FlockerVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_FlockerVolumeSource(ref),
+		corev1.GCEPersistentDiskVolumeSource{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_GCEPersistentDiskVolumeSource(ref),
+		corev1.GRPCAction{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_GRPCAction(ref),
+		corev1.GitRepoVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_GitRepoVolumeSource(ref),
+		corev1.GlusterfsPersistentVolumeSource{}.OpenAPIModelName():               schema_k8sio_api_core_v1_GlusterfsPersistentVolumeSource(ref),
+		corev1.GlusterfsVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_GlusterfsVolumeSource(ref),
+		corev1.HTTPGetAction{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_HTTPGetAction(ref),
+		corev1.HTTPHeader{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_HTTPHeader(ref),
+		corev1.HostAlias{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_HostAlias(ref),
+		corev1.HostIP{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_HostIP(ref),
+		corev1.HostPathVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_HostPathVolumeSource(ref),
+		corev1.ISCSIPersistentVolumeSource{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_ISCSIPersistentVolumeSource(ref),
+		corev1.ISCSIVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ISCSIVolumeSource(ref),
+		corev1.ImageVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ImageVolumeSource(ref),
+		corev1.ImageVolumeStatus{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ImageVolumeStatus(ref),
+		corev1.KeyToPath{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_KeyToPath(ref),
+		corev1.Lifecycle{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Lifecycle(ref),
+		corev1.LifecycleHandler{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_LifecycleHandler(ref),
+		corev1.LimitRange{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_LimitRange(ref),
+		corev1.LimitRangeItem{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_LimitRangeItem(ref),
+		corev1.LimitRangeList{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_LimitRangeList(ref),
+		corev1.LimitRangeSpec{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_LimitRangeSpec(ref),
+		corev1.LinuxContainerUser{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_LinuxContainerUser(ref),
+		corev1.List{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_List(ref),
+		corev1.LoadBalancerIngress{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_LoadBalancerIngress(ref),
+		corev1.LoadBalancerStatus{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_LoadBalancerStatus(ref),
+		corev1.LocalObjectReference{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_LocalObjectReference(ref),
+		corev1.LocalVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_LocalVolumeSource(ref),
+		corev1.ModifyVolumeStatus{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ModifyVolumeStatus(ref),
+		corev1.NFSVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_NFSVolumeSource(ref),
+		corev1.Namespace{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Namespace(ref),
+		corev1.NamespaceCondition{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_NamespaceCondition(ref),
+		corev1.NamespaceList{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NamespaceList(ref),
+		corev1.NamespaceSpec{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NamespaceSpec(ref),
+		corev1.NamespaceStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_NamespaceStatus(ref),
+		corev1.Node{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_Node(ref),
+		corev1.NodeAddress{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_NodeAddress(ref),
+		corev1.NodeAffinity{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NodeAffinity(ref),
+		corev1.NodeAllocatableResourceClaimStatus{}.OpenAPIModelName():            schema_k8sio_api_core_v1_NodeAllocatableResourceClaimStatus(ref),
+		corev1.NodeCondition{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NodeCondition(ref),
+		corev1.NodeConfigSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeConfigSource(ref),
+		corev1.NodeConfigStatus{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeConfigStatus(ref),
+		corev1.NodeDaemonEndpoints{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_NodeDaemonEndpoints(ref),
+		corev1.NodeFeatures{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NodeFeatures(ref),
+		corev1.NodeList{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_NodeList(ref),
+		corev1.NodeProxyOptions{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeProxyOptions(ref),
+		corev1.NodeRuntimeHandler{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_NodeRuntimeHandler(ref),
+		corev1.NodeRuntimeHandlerFeatures{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_NodeRuntimeHandlerFeatures(ref),
+		corev1.NodeSelector{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NodeSelector(ref),
+		corev1.NodeSelectorRequirement{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_NodeSelectorRequirement(ref),
+		corev1.NodeSelectorTerm{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeSelectorTerm(ref),
+		corev1.NodeSpec{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_NodeSpec(ref),
+		corev1.NodeStatus{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_NodeStatus(ref),
+		corev1.NodeSwapStatus{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_NodeSwapStatus(ref),
+		corev1.NodeSystemInfo{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_NodeSystemInfo(ref),
+		corev1.ObjectFieldSelector{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ObjectFieldSelector(ref),
+		corev1.ObjectReference{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ObjectReference(ref),
+		corev1.PersistentVolume{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PersistentVolume(ref),
+		corev1.PersistentVolumeClaim{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_PersistentVolumeClaim(ref),
+		corev1.PersistentVolumeClaimCondition{}.OpenAPIModelName():                schema_k8sio_api_core_v1_PersistentVolumeClaimCondition(ref),
+		corev1.PersistentVolumeClaimList{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_PersistentVolumeClaimList(ref),
+		corev1.PersistentVolumeClaimSpec{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_PersistentVolumeClaimSpec(ref),
+		corev1.PersistentVolumeClaimStatus{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_PersistentVolumeClaimStatus(ref),
+		corev1.PersistentVolumeClaimTemplate{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_PersistentVolumeClaimTemplate(ref),
+		corev1.PersistentVolumeClaimVolumeSource{}.OpenAPIModelName():             schema_k8sio_api_core_v1_PersistentVolumeClaimVolumeSource(ref),
+		corev1.PersistentVolumeList{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PersistentVolumeList(ref),
+		corev1.PersistentVolumeSource{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PersistentVolumeSource(ref),
+		corev1.PersistentVolumeSpec{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PersistentVolumeSpec(ref),
+		corev1.PersistentVolumeStatus{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PersistentVolumeStatus(ref),
+		corev1.PhotonPersistentDiskVolumeSource{}.OpenAPIModelName():              schema_k8sio_api_core_v1_PhotonPersistentDiskVolumeSource(ref),
+		corev1.Pod{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_Pod(ref),
+		corev1.PodAffinity{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_PodAffinity(ref),
+		corev1.PodAffinityTerm{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodAffinityTerm(ref),
+		corev1.PodAntiAffinity{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodAntiAffinity(ref),
+		corev1.PodAttachOptions{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PodAttachOptions(ref),
+		corev1.PodCertificateProjection{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_PodCertificateProjection(ref),
+		corev1.PodCondition{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodCondition(ref),
+		corev1.PodDNSConfig{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodDNSConfig(ref),
+		corev1.PodDNSConfigOption{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PodDNSConfigOption(ref),
+		corev1.PodExecOptions{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_PodExecOptions(ref),
+		corev1.PodExtendedResourceClaimStatus{}.OpenAPIModelName():                schema_k8sio_api_core_v1_PodExtendedResourceClaimStatus(ref),
+		corev1.PodIP{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodIP(ref),
+		corev1.PodList{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_PodList(ref),
+		corev1.PodLogOptions{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_PodLogOptions(ref),
+		corev1.PodOS{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodOS(ref),
+		corev1.PodPortForwardOptions{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_PodPortForwardOptions(ref),
+		corev1.PodProxyOptions{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodProxyOptions(ref),
+		corev1.PodReadinessGate{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PodReadinessGate(ref),
+		corev1.PodResourceClaim{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PodResourceClaim(ref),
+		corev1.PodResourceClaimStatus{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PodResourceClaimStatus(ref),
+		corev1.PodSchedulingGate{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_PodSchedulingGate(ref),
+		corev1.PodSchedulingGroup{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PodSchedulingGroup(ref),
+		corev1.PodSecurityContext{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PodSecurityContext(ref),
+		corev1.PodSignature{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodSignature(ref),
+		corev1.PodSpec{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_PodSpec(ref),
+		corev1.PodStatus{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_PodStatus(ref),
+		corev1.PodStatusResult{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodStatusResult(ref),
+		corev1.PodTemplate{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_PodTemplate(ref),
+		corev1.PodTemplateList{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodTemplateList(ref),
+		corev1.PodTemplateSpec{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodTemplateSpec(ref),
+		corev1.PortStatus{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_PortStatus(ref),
+		corev1.PortworxVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PortworxVolumeSource(ref),
+		corev1.PreferAvoidPodsEntry{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PreferAvoidPodsEntry(ref),
+		corev1.PreferredSchedulingTerm{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_PreferredSchedulingTerm(ref),
+		corev1.Probe{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_Probe(ref),
+		corev1.ProbeHandler{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_ProbeHandler(ref),
+		corev1.ProjectedVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ProjectedVolumeSource(ref),
+		corev1.QuobyteVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_QuobyteVolumeSource(ref),
+		corev1.RBDPersistentVolumeSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_RBDPersistentVolumeSource(ref),
+		corev1.RBDVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_RBDVolumeSource(ref),
+		corev1.RangeAllocation{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_RangeAllocation(ref),
+		corev1.ReplicationController{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ReplicationController(ref),
+		corev1.ReplicationControllerCondition{}.OpenAPIModelName():                schema_k8sio_api_core_v1_ReplicationControllerCondition(ref),
+		corev1.ReplicationControllerList{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_ReplicationControllerList(ref),
+		corev1.ReplicationControllerSpec{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_ReplicationControllerSpec(ref),
+		corev1.ReplicationControllerStatus{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_ReplicationControllerStatus(ref),
+		corev1.ResourceClaim{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ResourceClaim(ref),
+		corev1.ResourceFieldSelector{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ResourceFieldSelector(ref),
+		corev1.ResourceHealth{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ResourceHealth(ref),
+		corev1.ResourceQuota{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ResourceQuota(ref),
+		corev1.ResourceQuotaList{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ResourceQuotaList(ref),
+		corev1.ResourceQuotaSpec{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ResourceQuotaSpec(ref),
+		corev1.ResourceQuotaStatus{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ResourceQuotaStatus(ref),
+		corev1.ResourceRequirements{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_ResourceRequirements(ref),
+		corev1.ResourceStatus{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ResourceStatus(ref),
+		corev1.SELinuxOptions{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_SELinuxOptions(ref),
+		corev1.ScaleIOPersistentVolumeSource{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_ScaleIOPersistentVolumeSource(ref),
+		corev1.ScaleIOVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ScaleIOVolumeSource(ref),
+		corev1.ScopeSelector{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ScopeSelector(ref),
+		corev1.ScopedResourceSelectorRequirement{}.OpenAPIModelName():             schema_k8sio_api_core_v1_ScopedResourceSelectorRequirement(ref),
+		corev1.SeccompProfile{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_SeccompProfile(ref),
+		corev1.Secret{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Secret(ref),
+		corev1.SecretEnvSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_SecretEnvSource(ref),
+		corev1.SecretKeySelector{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_SecretKeySelector(ref),
+		corev1.SecretList{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_SecretList(ref),
+		corev1.SecretProjection{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_SecretProjection(ref),
+		corev1.SecretReference{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_SecretReference(ref),
+		corev1.SecretVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_SecretVolumeSource(ref),
+		corev1.SecurityContext{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_SecurityContext(ref),
+		corev1.SerializedReference{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_SerializedReference(ref),
+		corev1.Service{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_Service(ref),
+		corev1.ServiceAccount{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ServiceAccount(ref),
+		corev1.ServiceAccountList{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ServiceAccountList(ref),
+		corev1.ServiceAccountTokenProjection{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_ServiceAccountTokenProjection(ref),
+		corev1.ServiceList{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ServiceList(ref),
+		corev1.ServicePort{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ServicePort(ref),
+		corev1.ServiceProxyOptions{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ServiceProxyOptions(ref),
+		corev1.ServiceSpec{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ServiceSpec(ref),
+		corev1.ServiceStatus{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ServiceStatus(ref),
+		corev1.SessionAffinityConfig{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_SessionAffinityConfig(ref),
+		corev1.SleepAction{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_SleepAction(ref),
+		corev1.StorageOSPersistentVolumeSource{}.OpenAPIModelName():               schema_k8sio_api_core_v1_StorageOSPersistentVolumeSource(ref),
+		corev1.StorageOSVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_StorageOSVolumeSource(ref),
+		corev1.Sysctl{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Sysctl(ref),
+		corev1.TCPSocketAction{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_TCPSocketAction(ref),
+		corev1.Taint{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_Taint(ref),
+		corev1.Toleration{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_Toleration(ref),
+		corev1.TopologySelectorLabelRequirement{}.OpenAPIModelName():              schema_k8sio_api_core_v1_TopologySelectorLabelRequirement(ref),
+		corev1.TopologySelectorTerm{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_TopologySelectorTerm(ref),
+		corev1.TopologySpreadConstraint{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_TopologySpreadConstraint(ref),
+		corev1.TypedLocalObjectReference{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_TypedLocalObjectReference(ref),
+		corev1.TypedObjectReference{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_TypedObjectReference(ref),
+		corev1.Volume{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Volume(ref),
+		corev1.VolumeDevice{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_VolumeDevice(ref),
+		corev1.VolumeMount{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_VolumeMount(ref),
+		corev1.VolumeMountStatus{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_VolumeMountStatus(ref),
+		corev1.VolumeNodeAffinity{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_VolumeNodeAffinity(ref),
+		corev1.VolumeProjection{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_VolumeProjection(ref),
+		corev1.VolumeResourceRequirements{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_VolumeResourceRequirements(ref),
+		corev1.VolumeSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_VolumeSource(ref),
+		corev1.VolumeStatus{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_VolumeStatus(ref),
+		corev1.VsphereVirtualDiskVolumeSource{}.OpenAPIModelName():                schema_k8sio_api_core_v1_VsphereVirtualDiskVolumeSource(ref),
+		corev1.WeightedPodAffinityTerm{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_WeightedPodAffinityTerm(ref),
+		corev1.WindowsSecurityContextOptions{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_WindowsSecurityContextOptions(ref),
+		apiextensionsv1.ConversionRequest{}.OpenAPIModelName():                    schema_pkg_apis_apiextensions_v1_ConversionRequest(ref),
+		apiextensionsv1.ConversionResponse{}.OpenAPIModelName():                   schema_pkg_apis_apiextensions_v1_ConversionResponse(ref),
+		apiextensionsv1.ConversionReview{}.OpenAPIModelName():                     schema_pkg_apis_apiextensions_v1_ConversionReview(ref),
+		apiextensionsv1.CustomResourceColumnDefinition{}.OpenAPIModelName():       schema_pkg_apis_apiextensions_v1_CustomResourceColumnDefinition(ref),
+		apiextensionsv1.CustomResourceConversion{}.OpenAPIModelName():             schema_pkg_apis_apiextensions_v1_CustomResourceConversion(ref),
+		apiextensionsv1.CustomResourceDefinition{}.OpenAPIModelName():             schema_pkg_apis_apiextensions_v1_CustomResourceDefinition(ref),
+		apiextensionsv1.CustomResourceDefinitionCondition{}.OpenAPIModelName():    schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionCondition(ref),
+		apiextensionsv1.CustomResourceDefinitionList{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionList(ref),
+		apiextensionsv1.CustomResourceDefinitionNames{}.OpenAPIModelName():        schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionNames(ref),
+		apiextensionsv1.CustomResourceDefinitionSpec{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionSpec(ref),
+		apiextensionsv1.CustomResourceDefinitionStatus{}.OpenAPIModelName():       schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionStatus(ref),
+		apiextensionsv1.CustomResourceDefinitionVersion{}.OpenAPIModelName():      schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionVersion(ref),
+		apiextensionsv1.CustomResourceSubresourceScale{}.OpenAPIModelName():       schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceScale(ref),
+		apiextensionsv1.CustomResourceSubresourceStatus{}.OpenAPIModelName():      schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceStatus(ref),
+		apiextensionsv1.CustomResourceSubresources{}.OpenAPIModelName():           schema_pkg_apis_apiextensions_v1_CustomResourceSubresources(ref),
+		apiextensionsv1.CustomResourceValidation{}.OpenAPIModelName():             schema_pkg_apis_apiextensions_v1_CustomResourceValidation(ref),
+		apiextensionsv1.ExternalDocumentation{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_ExternalDocumentation(ref),
+		apiextensionsv1.JSON{}.OpenAPIModelName():                                 schema_pkg_apis_apiextensions_v1_JSON(ref),
+		apiextensionsv1.JSONSchemaProps{}.OpenAPIModelName():                      schema_pkg_apis_apiextensions_v1_JSONSchemaProps(ref),
+		apiextensionsv1.JSONSchemaPropsOrArray{}.OpenAPIModelName():               schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrArray(ref),
+		apiextensionsv1.JSONSchemaPropsOrBool{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrBool(ref),
+		apiextensionsv1.JSONSchemaPropsOrStringArray{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrStringArray(ref),
+		apiextensionsv1.SelectableField{}.OpenAPIModelName():                      schema_pkg_apis_apiextensions_v1_SelectableField(ref),
+		apiextensionsv1.ServiceReference{}.OpenAPIModelName():                     schema_pkg_apis_apiextensions_v1_ServiceReference(ref),
+		apiextensionsv1.ValidationRule{}.OpenAPIModelName():                       schema_pkg_apis_apiextensions_v1_ValidationRule(ref),
+		apiextensionsv1.WebhookClientConfig{}.OpenAPIModelName():                  schema_pkg_apis_apiextensions_v1_WebhookClientConfig(ref),
+		apiextensionsv1.WebhookConversion{}.OpenAPIModelName():                    schema_pkg_apis_apiextensions_v1_WebhookConversion(ref),
+		resource.Quantity{}.OpenAPIModelName():                                    schema_apimachinery_pkg_api_resource_Quantity(ref),
+		metav1.APIGroup{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_APIGroup(ref),
+		metav1.APIGroupList{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_APIGroupList(ref),
+		metav1.APIResource{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_APIResource(ref),
+		metav1.APIResourceList{}.OpenAPIModelName():                               schema_pkg_apis_meta_v1_APIResourceList(ref),
+		metav1.APIVersions{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_APIVersions(ref),
+		metav1.ApplyOptions{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_ApplyOptions(ref),
+		metav1.Condition{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_Condition(ref),
+		metav1.CreateOptions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_CreateOptions(ref),
+		metav1.DeleteOptions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_DeleteOptions(ref),
+		metav1.Duration{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_Duration(ref),
+		metav1.FieldSelectorRequirement{}.OpenAPIModelName():                      schema_pkg_apis_meta_v1_FieldSelectorRequirement(ref),
+		metav1.FieldsV1{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_FieldsV1(ref),
+		metav1.GetOptions{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_GetOptions(ref),
+		metav1.GroupKind{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_GroupKind(ref),
+		metav1.GroupResource{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_GroupResource(ref),
+		metav1.GroupVersion{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_GroupVersion(ref),
+		metav1.GroupVersionForDiscovery{}.OpenAPIModelName():                      schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
+		metav1.GroupVersionKind{}.OpenAPIModelName():                              schema_pkg_apis_meta_v1_GroupVersionKind(ref),
+		metav1.GroupVersionResource{}.OpenAPIModelName():                          schema_pkg_apis_meta_v1_GroupVersionResource(ref),
+		metav1.InternalEvent{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_InternalEvent(ref),
+		metav1.LabelSelector{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_LabelSelector(ref),
+		metav1.LabelSelectorRequirement{}.OpenAPIModelName():                      schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
+		metav1.List{}.OpenAPIModelName():                                          schema_pkg_apis_meta_v1_List(ref),
+		metav1.ListMeta{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_ListMeta(ref),
+		metav1.ListOptions{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_ListOptions(ref),
+		metav1.ManagedFieldsEntry{}.OpenAPIModelName():                            schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
+		metav1.MicroTime{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_MicroTime(ref),
+		metav1.ObjectMeta{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_ObjectMeta(ref),
+		metav1.OwnerReference{}.OpenAPIModelName():                                schema_pkg_apis_meta_v1_OwnerReference(ref),
+		metav1.PartialObjectMetadata{}.OpenAPIModelName():                         schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
+		metav1.PartialObjectMetadataList{}.OpenAPIModelName():                     schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
+		metav1.Patch{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_Patch(ref),
+		metav1.PatchOptions{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_PatchOptions(ref),
+		metav1.Preconditions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_Preconditions(ref),
+		metav1.RootPaths{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_RootPaths(ref),
+		metav1.ServerAddressByClientCIDR{}.OpenAPIModelName():                     schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
+		metav1.ShardInfo{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_ShardInfo(ref),
+		metav1.Status{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_Status(ref),
+		metav1.StatusCause{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_StatusCause(ref),
+		metav1.StatusDetails{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_StatusDetails(ref),
+		metav1.Table{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_Table(ref),
+		metav1.TableColumnDefinition{}.OpenAPIModelName():                         schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
+		metav1.TableOptions{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_TableOptions(ref),
+		metav1.TableRow{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_TableRow(ref),
+		metav1.TableRowCondition{}.OpenAPIModelName():                             schema_pkg_apis_meta_v1_TableRowCondition(ref),
+		metav1.Time{}.OpenAPIModelName():                                          schema_pkg_apis_meta_v1_Time(ref),
+		metav1.Timestamp{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_Timestamp(ref),
+		metav1.TypeMeta{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_TypeMeta(ref),
+		metav1.UpdateOptions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_UpdateOptions(ref),
+		metav1.WatchEvent{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_WatchEvent(ref),
+		runtime.RawExtension{}.OpenAPIModelName():                                 schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
+		runtime.TypeMeta{}.OpenAPIModelName():                                     schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
+		runtime.Unknown{}.OpenAPIModelName():                                      schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
+		intstr.IntOrString{}.OpenAPIModelName():                                   schema_apimachinery_pkg_util_intstr_IntOrString(ref),
+		version.Info{}.OpenAPIModelName():                                         schema_k8sio_apimachinery_pkg_version_Info(ref),
 	}
 }
 
@@ -997,20 +1000,20 @@ func schema_convoy_api_core_v1alpha1_Cluster(ref common.ReferenceCallback) commo
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec"),
+							Ref:     ref(v1alpha1.ClusterSpec{}.OpenAPIModelName()),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus"),
+							Ref:     ref(v1alpha1.ClusterStatus{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterStatus", metav1.ObjectMeta{}.OpenAPIModelName()},
+			v1alpha1.ClusterSpec{}.OpenAPIModelName(), v1alpha1.ClusterStatus{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1076,13 +1079,13 @@ func schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref common.Referen
 						SchemaProps: spec.SchemaProps{
 							Description: "Auth is the authentication configuration for the agentless connection mode.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec"),
+							Ref:         ref(v1alpha1.ClusterAuthSpec{}.OpenAPIModelName()),
 						},
 					},
 					"connectionParameters": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec"),
+							Ref:     ref(v1alpha1.ClusterConnectionParametersSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -1090,7 +1093,7 @@ func schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAuthSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterConnectionParametersSpec", corev1.ConfigMapKeySelector{}.OpenAPIModelName()},
+			v1alpha1.ClusterAuthSpec{}.OpenAPIModelName(), v1alpha1.ClusterConnectionParametersSpec{}.OpenAPIModelName(), corev1.ConfigMapKeySelector{}.OpenAPIModelName()},
 	}
 }
 
@@ -1302,7 +1305,7 @@ func schema_convoy_api_core_v1alpha1_ClusterList(ref common.ReferenceCallback) c
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster"),
+										Ref:     ref(v1alpha1.Cluster{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1313,7 +1316,7 @@ func schema_convoy_api_core_v1alpha1_ClusterList(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.Cluster", metav1.ListMeta{}.OpenAPIModelName()},
+			v1alpha1.Cluster{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1336,7 +1339,7 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 					"agentless": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Agentless is the configuration of the agentless connection mode.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec"),
+							Ref:         ref(v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName()),
 						},
 					},
 					"metadata": {
@@ -1359,14 +1362,14 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "Capabilities is the capabilities of the cluster.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec"),
+							Ref:         ref(v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName()),
 						},
 					},
 					"deletionPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DeletionPolicy is the deletion policy of the cluster.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec"),
+							Ref:         ref(v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -1374,7 +1377,7 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentlessModeSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterCapabilitiesSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterDeletionPolicySpec"},
+			v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName(), v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -1443,7 +1446,7 @@ func schema_convoy_api_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback)
 					"agentStatus": {
 						SchemaProps: spec.SchemaProps{
 							Description: "AgentStatus is the status of the agent running on the cluster. Applicable only if the cluster connection mode is agent.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus"),
+							Ref:         ref(v1alpha1.ClusterAgentStatus{}.OpenAPIModelName()),
 						},
 					},
 					"conditions": {
@@ -1473,7 +1476,7 @@ func schema_convoy_api_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ClusterAgentStatus", metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
+			v1alpha1.ClusterAgentStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -1702,7 +1705,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+										Ref:     ref(v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1721,7 +1724,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+										Ref:     ref(v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1740,7 +1743,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+										Ref:     ref(v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1759,7 +1762,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+										Ref:     ref(v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1778,7 +1781,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+										Ref:     ref(v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1797,7 +1800,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+										Ref:     ref(v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1816,7 +1819,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"),
+										Ref:     ref(v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1826,7 +1829,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookStatus"},
+			v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()},
 	}
 }
 
@@ -1859,13 +1862,13 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec"),
+							Ref:     ref(v1alpha1.ReleaseSpec{}.OpenAPIModelName()),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus"),
+							Ref:     ref(v1alpha1.ReleaseStatus{}.OpenAPIModelName()),
 						},
 					},
 					"mutations": {
@@ -1880,7 +1883,7 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation"),
+										Ref:     ref(v1alpha1.ReleaseMutation{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -1889,20 +1892,20 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 					"lifecycle": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseLifecycle"),
+							Ref:     ref(v1alpha1.ReleaseLifecycle{}.OpenAPIModelName()),
 						},
 					},
 					"pin": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin"),
+							Ref:     ref(v1alpha1.ReleasePin{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseLifecycle", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutation", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePin", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseStatus", metav1.ObjectMeta{}.OpenAPIModelName()},
+			v1alpha1.ReleaseLifecycle{}.OpenAPIModelName(), v1alpha1.ReleaseMutation{}.OpenAPIModelName(), v1alpha1.ReleasePin{}.OpenAPIModelName(), v1alpha1.ReleaseSpec{}.OpenAPIModelName(), v1alpha1.ReleaseStatus{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1977,14 +1980,14 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref common.Ref
 						SchemaProps: spec.SchemaProps{
 							Description: "ResolvedSource is the resolved source of the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedSource"),
+							Ref:         ref(v1alpha1.ResolvedSource{}.OpenAPIModelName()),
 						},
 					},
 					"resolvedCluster": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ResolvedCluster is the resolved cluster of the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedCluster"),
+							Ref:         ref(v1alpha1.ResolvedCluster{}.OpenAPIModelName()),
 						},
 					},
 					"resolvedMutations": {
@@ -2000,7 +2003,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref common.Ref
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedMutation"),
+										Ref:     ref(v1alpha1.ResolvedMutation{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2044,7 +2047,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref common.Ref
 					"failure": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Failure is the failure status of the release render attempt.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderFailureStatus"),
+							Ref:         ref(v1alpha1.ReleaseAttemptedRenderFailureStatus{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -2052,7 +2055,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref common.Ref
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderFailureStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedCluster", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedMutation", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedSource", metav1.Time{}.OpenAPIModelName()},
+			v1alpha1.ReleaseAttemptedRenderFailureStatus{}.OpenAPIModelName(), v1alpha1.ResolvedCluster{}.OpenAPIModelName(), v1alpha1.ResolvedMutation{}.OpenAPIModelName(), v1alpha1.ResolvedSource{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -2250,25 +2253,25 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref common.ReferenceCall
 					"helm": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Helm is the Helm chart content of the release.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentHelmSpec"),
+							Ref:         ref(v1alpha1.ReleaseContentHelmSpec{}.OpenAPIModelName()),
 						},
 					},
 					"manifests": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Manifests is the manifests content of the release.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec"),
+							Ref:         ref(v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName()),
 						},
 					},
 					"kustomize": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Kustomize is the kustomize content of the release.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentKustomizeSpec"),
+							Ref:         ref(v1alpha1.ReleaseContentKustomizeSpec{}.OpenAPIModelName()),
 						},
 					},
 					"jsonnet": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Jsonnet is the jsonnet content of the release.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentJsonnetSpec"),
+							Ref:         ref(v1alpha1.ReleaseContentJsonnetSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -2276,7 +2279,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentHelmSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentJsonnetSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentKustomizeSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentManifestsSpec"},
+			v1alpha1.ReleaseContentHelmSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentJsonnetSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentKustomizeSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -2385,7 +2388,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2404,7 +2407,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2423,7 +2426,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2442,7 +2445,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2461,7 +2464,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2480,7 +2483,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2499,7 +2502,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"),
+										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2509,7 +2512,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleHookSpec"},
+			v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -2546,7 +2549,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseList(ref common.ReferenceCallback) c
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.Release"),
+										Ref:     ref(v1alpha1.Release{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2557,7 +2560,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseList(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.Release", metav1.ListMeta{}.OpenAPIModelName()},
+			v1alpha1.Release{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2600,7 +2603,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 					"from": {
 						SchemaProps: spec.SchemaProps{
 							Description: "From is the source of the mutation.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec"),
+							Ref:         ref(v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName()),
 						},
 					},
 					"patches": {
@@ -2616,7 +2619,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationPatchSpec"),
+										Ref:     ref(v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -2627,7 +2630,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationPatchSpec"},
+			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -2852,7 +2855,7 @@ func schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref common.ReferenceCallba
 					"renderInputs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "RenderInputs is the inputs used to render the release.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinRenderInputsStatus"),
+							Ref:         ref(v1alpha1.ReleasePinRenderInputsStatus{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -2860,7 +2863,7 @@ func schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinRenderInputsStatus"},
+			v1alpha1.ReleasePinRenderInputsStatus{}.OpenAPIModelName()},
 	}
 }
 
@@ -2970,41 +2973,41 @@ func schema_convoy_api_core_v1alpha1_ReleaseSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "Source is the content source of the release. Immutable after creation. To re-target, create a new Release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSourceSpec"),
+							Ref:         ref(v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName()),
 						},
 					},
 					"content": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Content is the content of the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec"),
+							Ref:         ref(v1alpha1.ReleaseContentSpec{}.OpenAPIModelName()),
 						},
 					},
 					"clusterRef": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ClusterRef is the reference to the cluster where the release will be deployed. Immutable after creation.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseClusterRefSpec"),
+							Ref:         ref(v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName()),
 						},
 					},
 					"syncPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SyncPolicy is the sync policy for the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSyncPolicySpec"),
+							Ref:         ref(v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()),
 						},
 					},
 					"retentionPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "RetentionPolicy is the retention policy for the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetentionPolicySpec"),
+							Ref:         ref(v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName()),
 						},
 					},
 					"deletionPolicyOverride": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DeletionPolicyOverride is the override for the deletion policy of the cluster Release is bound to.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec"),
+							Ref:         ref(v1alpha1.ReleaseDeletionPolicyOverrideSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -3012,7 +3015,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseClusterRefSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseContentSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseDeletionPolicyOverrideSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetentionPolicySpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSourceSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseSyncPolicySpec"},
+			v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentSpec{}.OpenAPIModelName(), v1alpha1.ReleaseDeletionPolicyOverrideSpec{}.OpenAPIModelName(), v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName(), v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName(), v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -3056,33 +3059,33 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 						SchemaProps: spec.SchemaProps{
 							Description: "Pin is the status of the release pin.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus"),
+							Ref:         ref(v1alpha1.ReleasePinStatus{}.OpenAPIModelName()),
 						},
 					},
 					"resolvedDeletionPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ResolvedDeletionPolicy is the resolved deletion policy of the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus"),
+							Ref:         ref(v1alpha1.ResolvedDeletionPolicyStatus{}.OpenAPIModelName()),
 						},
 					},
 					"resolvedRetentionPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ResolvedRetentionPolicy is the resolved retention policy of the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus"),
+							Ref:         ref(v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName()),
 						},
 					},
 					"lastSuccessful": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastSuccessful is the last successful sync attempt.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus"),
+							Ref:         ref(v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName()),
 						},
 					},
 					"lastAttempted": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastAttempted is the last attempted sync attempt.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus"),
+							Ref:         ref(v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName()),
 						},
 					},
 					"waves": {
@@ -3098,7 +3101,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus"),
+										Ref:     ref(v1alpha1.ResourceWaveStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -3122,14 +3125,14 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 						SchemaProps: spec.SchemaProps{
 							Description: "Lifecycle reflects the observed state of the release lifecycle hooks.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus"),
+							Ref:         ref(v1alpha1.LifecycleStatus{}.OpenAPIModelName()),
 						},
 					},
 					"healthSummary": {
 						SchemaProps: spec.SchemaProps{
 							Description: "HealthSummary reflects the health status of the release.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary"),
+							Ref:         ref(v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -3137,7 +3140,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.LifecycleStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseAttemptedRenderStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseHealthSummary", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleasePinStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedDeletionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResolvedRetentionPolicyStatus", "github.com/kumodo-io/convoy/api/core/v1alpha1.ResourceWaveStatus", metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
+			v1alpha1.LifecycleStatus{}.OpenAPIModelName(), v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName(), v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName(), v1alpha1.ReleasePinStatus{}.OpenAPIModelName(), v1alpha1.ResolvedDeletionPolicyStatus{}.OpenAPIModelName(), v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName(), v1alpha1.ResourceWaveStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -3174,14 +3177,14 @@ func schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref common.ReferenceC
 						SchemaProps: spec.SchemaProps{
 							Description: "RetryBackoff defines the backoff policy for retrying failed syncs.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetryBackoffSpec"),
+							Ref:         ref(v1alpha1.ReleaseRetryBackoffSpec{}.OpenAPIModelName()),
 						},
 					},
 					"waveStrategy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "WaveStrategy defines the wave strategy.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseWaveStrategySpec"),
+							Ref:         ref(v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -3189,7 +3192,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseRetryBackoffSpec", "github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseWaveStrategySpec", metav1.Duration{}.OpenAPIModelName()},
+			v1alpha1.ReleaseRetryBackoffSpec{}.OpenAPIModelName(), v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -3313,7 +3316,7 @@ func schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref common.Ref
 						SchemaProps: spec.SchemaProps{
 							Description: "Policy is the resolved deletion policy.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ResultingDeletionPolicy"),
+							Ref:         ref(v1alpha1.ResultingDeletionPolicy{}.OpenAPIModelName()),
 						},
 					},
 					"sourceClusterGeneration": {
@@ -3328,7 +3331,7 @@ func schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref common.Ref
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ResultingDeletionPolicy"},
+			v1alpha1.ResultingDeletionPolicy{}.OpenAPIModelName()},
 	}
 }
 
@@ -3360,7 +3363,7 @@ func schema_convoy_api_core_v1alpha1_ResolvedMutation(ref common.ReferenceCallba
 						SchemaProps: spec.SchemaProps{
 							Description: "SourceRef is the source reference of the mutation.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec"),
+							Ref:         ref(v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName()),
 						},
 					},
 					"sourceRevision": {
@@ -3384,7 +3387,7 @@ func schema_convoy_api_core_v1alpha1_ResolvedMutation(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/core/v1alpha1.ReleaseMutationFromSpec"},
+			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -3683,14 +3686,14 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref common.ReferenceCa
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec"),
+							Ref:     ref(extensionsv1alpha1.KindHealthRuleSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRuleSpec", metav1.ObjectMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.KindHealthRuleSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3727,7 +3730,7 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref common.Referen
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule"),
+										Ref:     ref(extensionsv1alpha1.KindHealthRule{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -3738,7 +3741,7 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindHealthRule", metav1.ListMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.KindHealthRule{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3774,7 +3777,7 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref common.Referen
 						SchemaProps: spec.SchemaProps{
 							Description: "Target is the target kind.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindTarget"),
+							Ref:         ref(extensionsv1alpha1.KindTarget{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -3782,7 +3785,7 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.KindTarget", metav1.Duration{}.OpenAPIModelName()},
+			extensionsv1alpha1.KindTarget{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -3853,14 +3856,14 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref common.Referen
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec"),
+							Ref:     ref(extensionsv1alpha1.ResourceHealthRuleSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRuleSpec", metav1.ObjectMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.ResourceHealthRuleSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3897,7 +3900,7 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref common.Ref
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule"),
+										Ref:     ref(extensionsv1alpha1.ResourceHealthRule{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -3908,7 +3911,7 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref common.Ref
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceHealthRule", metav1.ListMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.ResourceHealthRule{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3944,7 +3947,7 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref common.Ref
 						SchemaProps: spec.SchemaProps{
 							Description: "Target is the target resource.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceTarget"),
+							Ref:         ref(extensionsv1alpha1.ResourceTarget{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -3952,7 +3955,7 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref common.Ref
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/extensions/v1alpha1.ResourceTarget", metav1.Duration{}.OpenAPIModelName()},
+			extensionsv1alpha1.ResourceTarget{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -4038,7 +4041,7 @@ func schema_convoy_api_source_v1alpha1_GitRepository(ref common.ReferenceCallbac
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec"),
+							Ref:     ref(sourcev1alpha1.GitRepositorySpec{}.OpenAPIModelName()),
 						},
 					},
 					"webhook": {
@@ -4056,7 +4059,7 @@ func schema_convoy_api_source_v1alpha1_GitRepository(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec"),
+										Ref:     ref(sourcev1alpha1.GitRepositoryWebhookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4065,14 +4068,14 @@ func schema_convoy_api_source_v1alpha1_GitRepository(ref common.ReferenceCallbac
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus"),
+							Ref:     ref(sourcev1alpha1.GitRepositoryStatus{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositorySpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookSpec", metav1.ObjectMeta{}.OpenAPIModelName()},
+			sourcev1alpha1.GitRepositorySpec{}.OpenAPIModelName(), sourcev1alpha1.GitRepositoryStatus{}.OpenAPIModelName(), sourcev1alpha1.GitRepositoryWebhookSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4206,7 +4209,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryList(ref common.ReferenceCal
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository"),
+										Ref:     ref(sourcev1alpha1.GitRepository{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4217,7 +4220,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryList(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository", metav1.ListMeta{}.OpenAPIModelName()},
+			sourcev1alpha1.GitRepository{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4281,14 +4284,14 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 						SchemaProps: spec.SchemaProps{
 							Description: "Ref is what to track in the Git repository.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec"),
+							Ref:         ref(sourcev1alpha1.GitRepositoryRefSpec{}.OpenAPIModelName()),
 						},
 					},
 					"auth": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Auth is the authentication method used to access the Git repository.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec"),
+							Ref:         ref(sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName()),
 						},
 					},
 					"interval": {
@@ -4354,7 +4357,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryAuthSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryRefSpec", metav1.Duration{}.OpenAPIModelName()},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName(), sourcev1alpha1.GitRepositoryRefSpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -4376,7 +4379,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 						SchemaProps: spec.SchemaProps{
 							Description: "LastFetched is the last time the Git repository was fetched.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus"),
+							Ref:         ref(sourcev1alpha1.GitRepositoryLastFetchedStatus{}.OpenAPIModelName()),
 						},
 					},
 					"releaseCount": {
@@ -4402,7 +4405,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus"),
+										Ref:     ref(sourcev1alpha1.WebhookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4434,7 +4437,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryLastFetchedStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus", metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.GitRepositoryLastFetchedStatus{}.OpenAPIModelName(), sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
 	}
 }
 
@@ -4545,7 +4548,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref common.Refer
 					"filters": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Filters is the list of paths and branches that trigger the webhook.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec"),
+							Ref:         ref(sourcev1alpha1.GitRepositoryWebhookFilterSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -4553,7 +4556,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref common.Refer
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepositoryWebhookFilterSpec", corev1.SecretKeySelector{}.OpenAPIModelName()},
+			sourcev1alpha1.GitRepositoryWebhookFilterSpec{}.OpenAPIModelName(), corev1.SecretKeySelector{}.OpenAPIModelName()},
 	}
 }
 
@@ -4586,7 +4589,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistry(ref common.ReferenceCallback
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec"),
+							Ref:     ref(sourcev1alpha1.HelmRegistrySpec{}.OpenAPIModelName()),
 						},
 					},
 					"webhook": {
@@ -4604,7 +4607,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistry(ref common.ReferenceCallback
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookSpec"),
+										Ref:     ref(sourcev1alpha1.HelmRegistryWebhookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4613,14 +4616,14 @@ func schema_convoy_api_source_v1alpha1_HelmRegistry(ref common.ReferenceCallback
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus"),
+							Ref:     ref(sourcev1alpha1.HelmRegistryStatus{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistrySpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookSpec", metav1.ObjectMeta{}.OpenAPIModelName()},
+			sourcev1alpha1.HelmRegistrySpec{}.OpenAPIModelName(), sourcev1alpha1.HelmRegistryStatus{}.OpenAPIModelName(), sourcev1alpha1.HelmRegistryWebhookSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4727,7 +4730,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryList(ref common.ReferenceCall
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry"),
+										Ref:     ref(sourcev1alpha1.HelmRegistry{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4738,7 +4741,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryList(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry", metav1.ListMeta{}.OpenAPIModelName()},
+			sourcev1alpha1.HelmRegistry{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4761,7 +4764,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref common.ReferenceCall
 						SchemaProps: spec.SchemaProps{
 							Description: "Auth is the authentication method used to access the Helm registry.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec"),
+							Ref:         ref(sourcev1alpha1.HelmRegistryAuthSpec{}.OpenAPIModelName()),
 						},
 					},
 					"interval": {
@@ -4787,7 +4790,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryAuthSpec", metav1.Duration{}.OpenAPIModelName()},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", sourcev1alpha1.HelmRegistryAuthSpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -4809,7 +4812,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 						SchemaProps: spec.SchemaProps{
 							Description: "LastFetched is the last time the Helm registry was fetched.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryLastFetchedStatus"),
+							Ref:         ref(sourcev1alpha1.HelmRegistryLastFetchedStatus{}.OpenAPIModelName()),
 						},
 					},
 					"releaseCount": {
@@ -4835,7 +4838,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus"),
+										Ref:     ref(sourcev1alpha1.WebhookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4867,7 +4870,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryLastFetchedStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus", metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.HelmRegistryLastFetchedStatus{}.OpenAPIModelName(), sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
 	}
 }
 
@@ -4958,7 +4961,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref common.Refere
 					"filters": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Filters is the list of charts that trigger the webhook.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookFilterSpec"),
+							Ref:         ref(sourcev1alpha1.HelmRegistryWebhookFilterSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -4966,7 +4969,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref common.Refere
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistryWebhookFilterSpec", corev1.SecretKeySelector{}.OpenAPIModelName()},
+			sourcev1alpha1.HelmRegistryWebhookFilterSpec{}.OpenAPIModelName(), corev1.SecretKeySelector{}.OpenAPIModelName()},
 	}
 }
 
@@ -5034,7 +5037,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistry(ref common.ReferenceCallback)
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec"),
+							Ref:     ref(sourcev1alpha1.OCIRegistrySpec{}.OpenAPIModelName()),
 						},
 					},
 					"webhook": {
@@ -5052,7 +5055,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistry(ref common.ReferenceCallback)
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookSpec"),
+										Ref:     ref(sourcev1alpha1.OCIRegistryWebhookSpec{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -5061,14 +5064,14 @@ func schema_convoy_api_source_v1alpha1_OCIRegistry(ref common.ReferenceCallback)
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus"),
+							Ref:     ref(sourcev1alpha1.OCIRegistryStatus{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistrySpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookSpec", metav1.ObjectMeta{}.OpenAPIModelName()},
+			sourcev1alpha1.OCIRegistrySpec{}.OpenAPIModelName(), sourcev1alpha1.OCIRegistryStatus{}.OpenAPIModelName(), sourcev1alpha1.OCIRegistryWebhookSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -5175,7 +5178,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryList(ref common.ReferenceCallb
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry"),
+										Ref:     ref(sourcev1alpha1.OCIRegistry{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -5186,7 +5189,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryList(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry", metav1.ListMeta{}.OpenAPIModelName()},
+			sourcev1alpha1.OCIRegistry{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -5209,7 +5212,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref common.ReferenceCallb
 						SchemaProps: spec.SchemaProps{
 							Description: "Auth is the authentication method used to access the OCI registry.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryAuthSpec"),
+							Ref:         ref(sourcev1alpha1.OCIRegistryAuthSpec{}.OpenAPIModelName()),
 						},
 					},
 					"interval": {
@@ -5244,7 +5247,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", "github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryAuthSpec", metav1.Duration{}.OpenAPIModelName()},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", sourcev1alpha1.OCIRegistryAuthSpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -5266,7 +5269,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref common.ReferenceCal
 						SchemaProps: spec.SchemaProps{
 							Description: "LastChecked is the last time the OCI registry was checked.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryLastCheckedStatus"),
+							Ref:         ref(sourcev1alpha1.OCIRegistryLastCheckedStatus{}.OpenAPIModelName()),
 						},
 					},
 					"releaseCount": {
@@ -5292,7 +5295,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref common.ReferenceCal
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus"),
+										Ref:     ref(sourcev1alpha1.WebhookStatus{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -5324,7 +5327,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryLastCheckedStatus", "github.com/kumodo-io/convoy/api/source/v1alpha1.WebhookStatus", metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.OCIRegistryLastCheckedStatus{}.OpenAPIModelName(), sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
 	}
 }
 
@@ -5435,7 +5438,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref common.Referen
 					"filters": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Filters is the list of repositories and tags that trigger the webhook.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookFilterSpec"),
+							Ref:         ref(sourcev1alpha1.OCIRegistryWebhookFilterSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -5443,7 +5446,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistryWebhookFilterSpec", corev1.SecretKeySelector{}.OpenAPIModelName()},
+			sourcev1alpha1.OCIRegistryWebhookFilterSpec{}.OpenAPIModelName(), corev1.SecretKeySelector{}.OpenAPIModelName()},
 	}
 }
 
@@ -5513,7 +5516,7 @@ func schema_convoy_api_source_v1alpha1_WebhookStatus(ref common.ReferenceCallbac
 					"lastRejection": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastRejection is the last time, reason and message the webhook was rejected.",
-							Ref:         ref("github.com/kumodo-io/convoy/api/source/v1alpha1.LastRejectionStatus"),
+							Ref:         ref(sourcev1alpha1.LastRejectionStatus{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -5521,7 +5524,7 @@ func schema_convoy_api_source_v1alpha1_WebhookStatus(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/source/v1alpha1.LastRejectionStatus", metav1.Time{}.OpenAPIModelName()},
+			sourcev1alpha1.LastRejectionStatus{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 

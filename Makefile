@@ -83,6 +83,15 @@ generate: tools
 		--output-dir api/generated/openapi \
 		--output-pkg $(MODULE)/api/generated/openapi \
 		--report-filename hack/openapi-violation-exceptions.list \
+		--output-model-name-file zz_generated.model_name.go \
+		--readonly-pkg k8s.io/apimachinery/pkg/apis/meta/v1 \
+		--readonly-pkg k8s.io/apimachinery/pkg/runtime \
+		--readonly-pkg k8s.io/apimachinery/pkg/version \
+		--readonly-pkg k8s.io/apimachinery/pkg/util/intstr \
+		--readonly-pkg k8s.io/apimachinery/pkg/api/resource \
+		--readonly-pkg k8s.io/api/core/v1 \
+		--readonly-pkg k8s.io/api/batch/v1 \
+		--readonly-pkg k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1 \
 		$(MODULE)/api/... \
 		k8s.io/apimachinery/pkg/apis/meta/v1 \
 		k8s.io/apimachinery/pkg/runtime \
