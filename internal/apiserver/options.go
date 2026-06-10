@@ -22,15 +22,17 @@ import (
 	"net"
 
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	genericoptions "k8s.io/apiserver/pkg/server/options"
+	"k8s.io/apiserver/pkg/util/compatibility"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
 	generatedopenapi "github.com/kumodo-io/convoy/api/generated/openapi"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 )
 
 const defaultEtcdPathPrefix = "/registry/convoy.kumodo.io"
@@ -47,13 +49,32 @@ func NewOptions() *Options {
 	o := &Options{
 		RecommendedOptions: genericoptions.NewRecommendedOptions(
 			defaultEtcdPathPrefix,
-			Codecs.LegacyCodec(corev1alpha1.SchemeGroupVersion),
+			// Storage codec: must cover every served group so each object encodes
+			// to its own group's v1alpha1 (a core-only codec can't encode the
+			// source/extensions types).
+			Codecs.LegacyCodec(
+				corev1alpha1.SchemeGroupVersion,
+				sourcev1alpha1.SchemeGroupVersion,
+				extensionsv1alpha1.SchemeGroupVersion,
+			),
 		),
 	}
-	// Store objects in etcd as the v1alpha1 external version.
-	o.RecommendedOptions.Etcd.StorageConfig.EncodeVersioner = runtime.NewMultiGroupVersioner(
+	// Store objects in etcd as each group's v1alpha1 external version. A
+	// schema.GroupVersions versioner maps every object to its own group's
+	// version; a single MultiGroupVersioner would force all objects onto one
+	// group and fail to encode the other groups' types.
+	o.RecommendedOptions.Etcd.StorageConfig.EncodeVersioner = schema.GroupVersions{
 		corev1alpha1.SchemeGroupVersion,
-		schema.GroupKind{Group: corev1alpha1.SchemeGroupVersion.Group},
+		sourcev1alpha1.SchemeGroupVersion,
+		extensionsv1alpha1.SchemeGroupVersion,
+	}
+	// MutatingAdmissionPolicy is enabled by default in the apiserver libraries we
+	// build against, and its informers watch admissionregistration resources that
+	// older host clusters don't serve at v1 — that never syncs and blocks /readyz.
+	// convoy doesn't use it, so disable it.
+	o.RecommendedOptions.Admission.DisablePlugins = append(
+		o.RecommendedOptions.Admission.DisablePlugins,
+		"MutatingAdmissionPolicy",
 	)
 	return o
 }
@@ -73,6 +94,11 @@ func (o *Options) Config() (*Config, error) {
 	}
 
 	serverConfig := genericapiserver.NewRecommendedConfig(Codecs)
+
+	// Required since k8s 1.31: an aggregated apiserver must set its own effective
+	// version (RecommendedOptions.ApplyTo no longer fills it in). Without it,
+	// Config.Complete nil-derefs on EffectiveVersion.EmulationVersion().
+	serverConfig.EffectiveVersion = compatibility.DefaultBuildEffectiveVersion()
 
 	serverConfig.OpenAPIConfig = genericapiserver.DefaultOpenAPIConfig(generatedopenapi.GetOpenAPIDefinitions, openapinamer.NewDefinitionNamer(Scheme))
 	serverConfig.OpenAPIConfig.Info.Title = "convoy"
