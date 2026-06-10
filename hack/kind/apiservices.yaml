@@ -1,0 +1,47 @@
+# Register convoy's three API groups with the host kube-aggregator. For dev we
+# skip TLS verification of the apiserver's self-signed serving cert; in a real
+# deployment, set caBundle to the serving CA instead.
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.core.convoy.kumodo.io
+spec:
+  group: core.convoy.kumodo.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  insecureSkipTLSVerify: true
+  service:
+    name: convoy-apiserver
+    namespace: convoy-system
+    port: 443
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.source.convoy.kumodo.io
+spec:
+  group: source.convoy.kumodo.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  insecureSkipTLSVerify: true
+  service:
+    name: convoy-apiserver
+    namespace: convoy-system
+    port: 443
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.extensions.convoy.kumodo.io
+spec:
+  group: extensions.convoy.kumodo.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  insecureSkipTLSVerify: true
+  service:
+    name: convoy-apiserver
+    namespace: convoy-system
+    port: 443

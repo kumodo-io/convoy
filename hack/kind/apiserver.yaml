@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: convoy-apiserver
+  namespace: convoy-system
+---
+# Allow the apiserver to delegate authn/authz to the host kube-apiserver
+# (TokenReview / SubjectAccessReview).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: convoy-apiserver-auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: convoy-apiserver
+    namespace: convoy-system
+---
+# Allow reading the extension-apiserver-authentication configmap (requestheader CA).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: convoy-apiserver-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: convoy-apiserver
+    namespace: convoy-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: convoy-apiserver
+  namespace: convoy-system
+  labels:
+    app: convoy-apiserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: convoy-apiserver
+  template:
+    metadata:
+      labels:
+        app: convoy-apiserver
+    spec:
+      serviceAccountName: convoy-apiserver
+      # Dev-only: runs as root with a writable root fs so Tilt live-update can
+      # overwrite /convoy-apiserver in place. Not a production posture.
+      containers:
+        - name: apiserver
+          image: convoy-apiserver:dev
+          imagePullPolicy: IfNotPresent
+          args:
+            - --etcd-servers=http://convoy-etcd:2379
+            - --secure-port=8443
+            - --cert-dir=/tmp
+          ports:
+            - name: https
+              containerPort: 8443
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: convoy-apiserver
+  namespace: convoy-system
+spec:
+  selector:
+    app: convoy-apiserver
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443

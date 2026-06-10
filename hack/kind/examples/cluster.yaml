@@ -1,0 +1,22 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Cluster
+metadata:
+  name: prod-eu
+  namespace: default
+spec:
+  connectionMode: agentless
+  agentless:
+    server: https://example.com:6443
+    caPublicCertRef:
+      name: prod-eu-ca
+      key: ca.crt
+    auth:
+      type: token
+    connectionParameters:
+      qps: 50
+      burst: 100
+      timeout: 30s
+  deletionPolicy:
+    releases: block
+    workloads: prune
+    onUnreachable: block

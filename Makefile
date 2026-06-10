@@ -82,7 +82,14 @@ generate: tools
 		--go-header-file $(BOILERPLATE) \
 		--output-dir api/generated/openapi \
 		--output-pkg $(MODULE)/api/generated/openapi \
-		$(MODULE)/api/...
+		$(MODULE)/api/... \
+		k8s.io/apimachinery/pkg/apis/meta/v1 \
+		k8s.io/apimachinery/pkg/runtime \
+		k8s.io/apimachinery/pkg/util/intstr \
+		k8s.io/apimachinery/pkg/api/resource \
+		k8s.io/api/core/v1 \
+		k8s.io/api/batch/v1 \
+		k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
 
 # Dependencies
 
@@ -105,3 +112,58 @@ test:
 .PHONY: lint
 lint: $(TOOLS_BIN)/golangci-lint
 	$(TOOLS_BIN)/golangci-lint run ./...
+
+# Local dev cluster (kind + Tilt)
+
+KIND_CLUSTER := convoy-dev
+IMAGE        := convoy-apiserver:dev
+
+# Build a static linux binary matching the local arch (kind nodes are linux/$GOARCH).
+.PHONY: build-linux
+build-linux:
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(shell go env GOARCH) go build -o bin/convoy-apiserver ./cmd/convoy-apiserver
+
+.PHONY: image
+image: build-linux
+	docker build -t $(IMAGE) .
+
+.PHONY: kind-up
+kind-up:
+	kind get clusters | grep -qx $(KIND_CLUSTER) || kind create cluster --config hack/kind/kind-config.yaml
+
+.PHONY: kind-down
+kind-down:
+	kind delete cluster --name $(KIND_CLUSTER)
+
+# Build, load, and deploy convoy into the kind cluster (no Tilt required).
+.PHONY: kind-deploy
+kind-deploy: image
+	kind load docker-image $(IMAGE) --name $(KIND_CLUSTER)
+	kubectl apply -k hack/kind
+	kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
+	kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
+	kubectl wait --for=condition=Available --timeout=120s \
+		apiservice/v1alpha1.core.convoy.kumodo.io \
+		apiservice/v1alpha1.source.convoy.kumodo.io \
+		apiservice/v1alpha1.extensions.convoy.kumodo.io
+
+# Smoke-test the served API end-to-end.
+.PHONY: kind-test
+kind-test:
+	kubectl apply -f hack/kind/examples/cluster.yaml
+	kubectl get clusters -A
+	kubectl api-resources --api-group=core.convoy.kumodo.io
+
+# Tilt dev loop. Builds, deploys, and live-reloads the apiserver in place on
+# code changes.
+.PHONY: tilt-up
+tilt-up:
+	tilt up
+
+.PHONY: tilt-down
+tilt-down:
+	tilt down
+
+# One-shot: ensure the kind cluster exists, then start Tilt.
+.PHONY: dev
+dev: kind-up tilt-up

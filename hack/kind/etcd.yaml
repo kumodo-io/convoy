@@ -1,0 +1,55 @@
+# A single-node etcd backing the convoy aggregated apiserver's own storage.
+# Data lives in an emptyDir: it survives apiserver reloads (the etcd pod is not
+# restarted by Tilt) but is discarded when the etcd pod is recreated.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: convoy-etcd
+  namespace: convoy-system
+  labels:
+    app: convoy-etcd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: convoy-etcd
+  template:
+    metadata:
+      labels:
+        app: convoy-etcd
+    spec:
+      containers:
+        - name: etcd
+          image: registry.k8s.io/etcd:3.5.16-0
+          command:
+            - etcd
+            - --data-dir=/var/run/etcd
+            - --listen-client-urls=http://0.0.0.0:2379
+            - --advertise-client-urls=http://convoy-etcd:2379
+          ports:
+            - name: client
+              containerPort: 2379
+          readinessProbe:
+            exec:
+              command: ["etcdctl", "endpoint", "health"]
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /var/run/etcd
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: convoy-etcd
+  namespace: convoy-system
+spec:
+  selector:
+    app: convoy-etcd
+  ports:
+    - name: client
+      port: 2379
+      targetPort: 2379
