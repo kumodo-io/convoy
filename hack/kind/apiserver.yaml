@@ -34,6 +34,29 @@ subjects:
     name: convoy-apiserver
     namespace: convoy-system
 ---
+# Allow the apiserver to access any resource in the cluster.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: convoy-apiserver-cluster-admin
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: convoy-apiserver-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: convoy-apiserver-cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: convoy-apiserver
+    namespace: convoy-system
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

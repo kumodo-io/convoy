@@ -82,9 +82,11 @@ generate: tools
 		--go-header-file $(BOILERPLATE) \
 		--output-dir api/generated/openapi \
 		--output-pkg $(MODULE)/api/generated/openapi \
+		--report-filename hack/openapi-violation-exceptions.list \
 		$(MODULE)/api/... \
 		k8s.io/apimachinery/pkg/apis/meta/v1 \
 		k8s.io/apimachinery/pkg/runtime \
+		k8s.io/apimachinery/pkg/version \
 		k8s.io/apimachinery/pkg/util/intstr \
 		k8s.io/apimachinery/pkg/api/resource \
 		k8s.io/api/core/v1 \
