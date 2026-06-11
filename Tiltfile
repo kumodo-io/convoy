@@ -30,10 +30,10 @@ local_resource(
 # syncing the new binary and restarting preserves those args.
 docker_build_with_restart(
     'convoy-apiserver:dev',
-    '.',
+    'bin',
     dockerfile='hack/Dockerfile.dev',
     entrypoint=['/convoy-apiserver'],
-    only=['bin/convoy-apiserver'],
+    only=['convoy-apiserver'],
     live_update=[
         sync('bin/convoy-apiserver', '/convoy-apiserver'),
     ],
