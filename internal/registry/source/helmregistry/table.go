@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/kumodo-io/convoy/api/source"
+	"github.com/kumodo-io/convoy/internal/helper"
 )
 
 func newTableConvertor() rest.TableConvertor { return tableConvertor{} }
@@ -37,10 +38,10 @@ type tableConvertor struct{}
 func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _ runtime.Object) (*metav1.Table, error) {
 	table := &metav1.Table{
 		ColumnDefinitions: []metav1.TableColumnDefinition{
-			{Name: "Name", Type: "string", Format: "name", Description: "Name of the HelmRegistry"},
-			{Name: "URL", Type: "string", Description: "Helm repository URL"},
+			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the HelmRegistry"},
+			{Name: "URL", Type: helper.StringValueString, Description: "Helm repository URL"},
 			{Name: "Charts", Type: "integer", Description: "Number of charts in the last fetched index"},
-			{Name: "Age", Type: "date", Description: "Time since the HelmRegistry was created"},
+			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the HelmRegistry was created"},
 		},
 	}
 
@@ -50,7 +51,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			age = duration.HumanDuration(time.Since(r.CreationTimestamp.Time))
 		}
 		return metav1.TableRow{
-			Cells:  []interface{}{r.Name, r.Spec.URL, r.Status.LastFetched.ChartCount, age},
+			Cells:  []any{r.Name, r.Spec.URL, r.Status.LastFetched.ChartCount, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}

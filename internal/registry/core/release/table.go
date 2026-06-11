@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/kumodo-io/convoy/api/core"
+	"github.com/kumodo-io/convoy/internal/helper"
 )
 
 func newTableConvertor() rest.TableConvertor { return tableConvertor{} }
@@ -37,11 +38,11 @@ type tableConvertor struct{}
 func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _ runtime.Object) (*metav1.Table, error) {
 	table := &metav1.Table{
 		ColumnDefinitions: []metav1.TableColumnDefinition{
-			{Name: "Name", Type: "string", Format: "name", Description: "Name of the Release"},
-			{Name: "Content", Type: "string", Description: "Content interpretation type"},
-			{Name: "Source", Type: "string", Description: "Referenced source (kind/name)"},
-			{Name: "Cluster", Type: "string", Description: "Target cluster"},
-			{Name: "Age", Type: "date", Description: "Time since the Release was created"},
+			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the Release"},
+			{Name: "Content", Type: helper.StringValueString, Description: "Content interpretation type"},
+			{Name: "Source", Type: helper.StringValueString, Description: "Referenced source (kind/name)"},
+			{Name: "Cluster", Type: helper.StringValueString, Description: "Target cluster"},
+			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the Release was created"},
 		},
 	}
 
@@ -55,7 +56,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			source = fmt.Sprintf("%s/%s", r.Spec.Source.Kind, r.Spec.Source.Name)
 		}
 		return metav1.TableRow{
-			Cells:  []interface{}{r.Name, string(r.Spec.Content.Type), source, r.Spec.ClusterRef.Name, age},
+			Cells:  []any{r.Name, string(r.Spec.Content.Type), source, r.Spec.ClusterRef.Name, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}

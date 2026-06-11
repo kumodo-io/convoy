@@ -156,7 +156,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("given object is not a Release")
 	}
-	return labels.Set(release.ObjectMeta.Labels), selectableFields(release), nil
+	return labels.Set(release.Labels), selectableFields(release), nil
 }
 
 // MatchRelease returns a selection predicate for the given label/field selectors.
