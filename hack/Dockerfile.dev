@@ -6,7 +6,9 @@
 # container and restart the process in place — no full image rebuild per edit.
 #
 # Only the Tiltfile uses this; CI and `make kind-deploy` use the root Dockerfile.
+# The Tilt build uses bin/ as its context (so the repo-root .dockerignore, which
+# excludes bin/, doesn't apply here), hence the COPY path is relative to bin/.
 
 FROM debian:stable-slim
-COPY bin/convoy-apiserver /convoy-apiserver
+COPY convoy-apiserver /convoy-apiserver
 ENTRYPOINT ["/convoy-apiserver"]
