@@ -24,13 +24,14 @@ local_resource(
     ignore=['**/*_test.go'],
 )
 
-# Build the dev image from the prebuilt binary. The flags come from the
-# Deployment's args; the restart wrapper owns the ENTRYPOINT, so syncing the new
-# binary and restarting preserves those args.
+# Build the dev image from the prebuilt binary using hack/Dockerfile.dev (the
+# root Dockerfile compiles from source and is for CI / kind-deploy). The flags
+# come from the Deployment's args; the restart wrapper owns the ENTRYPOINT, so
+# syncing the new binary and restarting preserves those args.
 docker_build_with_restart(
     'convoy-apiserver:dev',
     '.',
-    dockerfile='Dockerfile',
+    dockerfile='hack/Dockerfile.dev',
     entrypoint=['/convoy-apiserver'],
     only=['bin/convoy-apiserver'],
     live_update=[
