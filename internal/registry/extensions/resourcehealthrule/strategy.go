@@ -100,7 +100,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("given object is not a ResourceHealthRule")
 	}
-	return labels.Set(rule.ObjectMeta.Labels), selectableFields(rule), nil
+	return labels.Set(rule.Labels), selectableFields(rule), nil
 }
 
 // MatchResourceHealthRule returns a selection predicate for the given selectors.

@@ -149,7 +149,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("given object is not a Cluster")
 	}
-	return labels.Set(cluster.ObjectMeta.Labels), selectableFields(cluster), nil
+	return labels.Set(cluster.Labels), selectableFields(cluster), nil
 }
 
 // MatchCluster returns a selection predicate for the given label/field selectors.

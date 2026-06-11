@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1
+#
+# Dev-only image for the Tilt live-reload loop. Unlike the root Dockerfile (which
+# compiles from source), this copies a binary already built on the host by
+# `make build-linux`, so Tilt can sync a freshly compiled binary into the running
+# container and restart the process in place — no full image rebuild per edit.
+#
+# Only the Tiltfile uses this; CI and `make kind-deploy` use the root Dockerfile.
+
+FROM debian:stable-slim
+COPY bin/convoy-apiserver /convoy-apiserver
+ENTRYPOINT ["/convoy-apiserver"]

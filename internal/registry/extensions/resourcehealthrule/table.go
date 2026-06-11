@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/kumodo-io/convoy/api/extensions"
+	"github.com/kumodo-io/convoy/internal/helper"
 )
 
 func newTableConvertor() rest.TableConvertor { return tableConvertor{} }
@@ -37,10 +38,10 @@ type tableConvertor struct{}
 func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _ runtime.Object) (*metav1.Table, error) {
 	table := &metav1.Table{
 		ColumnDefinitions: []metav1.TableColumnDefinition{
-			{Name: "Name", Type: "string", Format: "name", Description: "Name of the ResourceHealthRule"},
-			{Name: "Kind", Type: "string", Description: "Targeted kind"},
-			{Name: "Target", Type: "string", Description: "Targeted resource instance (namespace/name)"},
-			{Name: "Age", Type: "date", Description: "Time since the ResourceHealthRule was created"},
+			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the ResourceHealthRule"},
+			{Name: "Kind", Type: helper.StringValueString, Description: "Targeted kind"},
+			{Name: "Target", Type: helper.StringValueString, Description: "Targeted resource instance (namespace/name)"},
+			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the ResourceHealthRule was created"},
 		},
 	}
 
@@ -54,7 +55,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			target = fmt.Sprintf("%s/%s", r.Spec.Target.Namespace, r.Spec.Target.Name)
 		}
 		return metav1.TableRow{
-			Cells:  []interface{}{r.Name, r.Spec.Target.Kind, target, age},
+			Cells:  []any{r.Name, r.Spec.Target.Kind, target, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}

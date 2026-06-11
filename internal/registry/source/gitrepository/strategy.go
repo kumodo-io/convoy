@@ -152,7 +152,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("given object is not a GitRepository")
 	}
-	return labels.Set(repo.ObjectMeta.Labels), selectableFields(repo), nil
+	return labels.Set(repo.Labels), selectableFields(repo), nil
 }
 
 // MatchGitRepository returns a selection predicate for the given selectors.

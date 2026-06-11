@@ -1,3 +1,10 @@
-# The image only needs the prebuilt binary; keep the build context tiny.
-*
-!bin/convoy-apiserver
+# The multi-stage build compiles from source, so the build context must include
+# the Go sources plus go.mod/go.sum. Keep everything else out to stay lean.
+.git
+.github
+.idea
+.vscode
+bin
+docs
+hack
+*.md

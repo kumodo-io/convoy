@@ -151,7 +151,7 @@ func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	if !ok {
 		return nil, nil, fmt.Errorf("given object is not a HelmRegistry")
 	}
-	return labels.Set(reg.ObjectMeta.Labels), selectableFields(reg), nil
+	return labels.Set(reg.Labels), selectableFields(reg), nil
 }
 
 // MatchHelmRegistry returns a selection predicate for the given selectors.

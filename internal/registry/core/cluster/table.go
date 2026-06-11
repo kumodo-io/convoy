@@ -27,6 +27,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 
 	"github.com/kumodo-io/convoy/api/core"
+	"github.com/kumodo-io/convoy/internal/helper"
 )
 
 func newTableConvertor() rest.TableConvertor { return tableConvertor{} }
@@ -37,11 +38,11 @@ type tableConvertor struct{}
 func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _ runtime.Object) (*metav1.Table, error) {
 	table := &metav1.Table{
 		ColumnDefinitions: []metav1.TableColumnDefinition{
-			{Name: "Name", Type: "string", Format: "name", Description: "Name of the Cluster"},
-			{Name: "Mode", Type: "string", Description: "Connection mode (agentless or agent)"},
-			{Name: "Reachable", Type: "string", Description: "Whether the cluster is reachable"},
-			{Name: "Version", Type: "string", Description: "Discovered Kubernetes version"},
-			{Name: "Age", Type: "date", Description: "Time since the Cluster was created"},
+			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the Cluster"},
+			{Name: "Mode", Type: helper.StringValueString, Description: "Connection mode (agentless or agent)"},
+			{Name: "Reachable", Type: helper.StringValueString, Description: "Whether the cluster is reachable"},
+			{Name: "Version", Type: helper.StringValueString, Description: "Discovered Kubernetes version"},
+			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the Cluster was created"},
 		},
 	}
 
@@ -55,7 +56,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			reachable = fmt.Sprintf("%t", c.Status.Reachable)
 		}
 		return metav1.TableRow{
-			Cells:  []interface{}{c.Name, string(c.Spec.ConnectionMode), reachable, c.Status.DiscoveredVersion, age},
+			Cells:  []any{c.Name, string(c.Spec.ConnectionMode), reachable, c.Status.DiscoveredVersion, age},
 			Object: runtime.RawExtension{Object: c},
 		}
 	}
