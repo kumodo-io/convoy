@@ -1,6 +1,5 @@
-name: Convoy CI
+name: Convoy Pull Request CI
 on:
-  workflow_dispatch:
   push:
     branches-ignore:
       - "main"
