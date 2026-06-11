@@ -29,6 +29,15 @@ jobs:
         with:
           context: .
           push: true
+          target: apiserver
           tags: ghcr.io/${{ github.repository }}/convoy-apiserver:auto-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=apiserver
+          cache-to: type=gha,mode=max,scope=apiserver
+      - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: .
+          push: true
+          target: controller-manager
+          tags: ghcr.io/${{ github.repository }}/convoy-controller-manager:auto-${{ github.sha }}
+          cache-from: type=gha,scope=controller-manager
+          cache-to: type=gha,mode=max,scope=controller-manager
