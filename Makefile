@@ -2,6 +2,9 @@ MODULE := github.com/kumodo-io/convoy
 TOOLS_BIN := bin
 BOILERPLATE := hack/boilerplate.go.txt
 
+# Add ./bin to path
+# export PATH := $(abspath $(TOOLS_BIN)):$(PATH)
+
 # External apply configurations: appended to the built-in defaults (meta/v1).
 # applyconfiguration-gen errors silently on referenced external types it doesn't know about.
 EXTERNAL_APPLYCONFIGS := k8s.io/api/core/v1.ConfigMapKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.EnvVar:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretReference:k8s.io/client-go/applyconfigurations/core/v1
@@ -11,6 +14,9 @@ KUBE_OPENAPI_VERSION := $(shell go list -m -f '{{.Version}}' k8s.io/kube-openapi
 GOLANGCI_LINT_VERSION := $(shell go list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2 2>/dev/null)
 HERMIT_VERSION := $(shell go list -m -f '{{.Version}}' github.com/cashapp/hermit 2>/dev/null)
 TILT_VERSION := 0.37.3
+KUSTOMIZE_VERSION := 5.8.1
+KIND_VERSION := 0.32.0
+KUBECTL_VERSION := 1.35.2
 
 CODE_GEN_TOOLS := applyconfiguration-gen client-gen conversion-gen deepcopy-gen informer-gen lister-gen
 
@@ -20,13 +26,21 @@ CODE_GEN_TOOLS := applyconfiguration-gen client-gen conversion-gen deepcopy-gen 
 hermit-init: tools
 	$(TOOLS_BIN)/hermit init --no-git
 
-.PHONY: hermit-activate
-hermit-activate: hermit-init
-	$(shell source $(TOOLS_BIN)/activate-hermit)
-
 .PHONY: tilt
-tilt: hermit-activate
+tilt:
 	$(TOOLS_BIN)/hermit install tilt-$(TILT_VERSION)
+
+.PHONY: kustomize
+kustomize:
+	$(TOOLS_BIN)/hermit install kustomize-$(KUSTOMIZE_VERSION)
+
+.PHONY: kind
+kind:
+	$(TOOLS_BIN)/hermit install kind-$(KIND_VERSION)
+
+.PHONY: kubectl
+kubectl:
+	$(TOOLS_BIN)/hermit install kubectl-$(KUBECTL_VERSION)
 
 .PHONY: tools
 tools: $(addprefix $(TOOLS_BIN)/,$(CODE_GEN_TOOLS)) $(TOOLS_BIN)/hermit $(TOOLS_BIN)/openapi-gen $(TOOLS_BIN)/golangci-lint
@@ -159,43 +173,43 @@ image:
 	docker build --target controller-manager -t $(CONTROLLER_IMAGE) .
 
 .PHONY: kind-up
-kind-up:
-	kind get clusters | grep -qx $(KIND_CLUSTER) || kind create cluster --config hack/kind/kind-config.yaml
+kind-up: kind
+	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER) || $(TOOLS_BIN)/kind create cluster --config hack/kind/kind-config.yaml
 
 .PHONY: kind-down
-kind-down:
-	kind delete cluster --name $(KIND_CLUSTER)
+kind-down: kind
+	$(TOOLS_BIN)/kind delete cluster --name $(KIND_CLUSTER)
 
 # Build, load, and deploy convoy into the kind cluster (no Tilt required).
 .PHONY: kind-deploy
-kind-deploy: image
-	kind load docker-image $(API_SERVER_IMAGE) --name $(KIND_CLUSTER)
-	kind load docker-image $(CONTROLLER_IMAGE) --name $(KIND_CLUSTER)
-	kubectl apply -k hack/kind
-	kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
-	kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
-	kubectl wait --for=condition=Available --timeout=120s \
+kind-deploy: image kind kubectl
+	$(TOOLS_BIN)/kind load docker-image $(API_SERVER_IMAGE) --name $(KIND_CLUSTER)
+	$(TOOLS_BIN)/kind load docker-image $(CONTROLLER_IMAGE) --name $(KIND_CLUSTER)
+	$(TOOLS_BIN)/kubectl apply -k hack/kind
+	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
+	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
+	$(TOOLS_BIN)/kubectl wait --for=condition=Available --timeout=120s \
 		apiservice/v1alpha1.core.convoy.kumodo.io \
 		apiservice/v1alpha1.source.convoy.kumodo.io \
 		apiservice/v1alpha1.extensions.convoy.kumodo.io
-	kubectl -n convoy-system rollout status deploy/convoy-controller-manager --timeout=120s
+	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-controller-manager --timeout=120s
 
 # Smoke-test the served API end-to-end.
 .PHONY: kind-test
-kind-test:
-	kubectl apply -f hack/kind/examples/cluster.yaml
-	kubectl get clusters -A
-	kubectl api-resources --api-group=core.convoy.kumodo.io
+kind-test: kubectl
+	$(TOOLS_BIN)/kubectl apply -f hack/kind/examples/cluster.yaml
+	$(TOOLS_BIN)/kubectl get clusters -A
+	$(TOOLS_BIN)/kubectl api-resources --api-group=core.convoy.kumodo.io
 
 # Tilt dev loop. Builds, deploys, and live-reloads the apiserver in place on
 # code changes.
 .PHONY: tilt-up
-tilt-up: tilt
-	tilt up
+tilt-up: tilt kustomize
+	$(TOOLS_BIN)/tilt up
 
 .PHONY: tilt-down
-tilt-down:
-	tilt down
+tilt-down: tilt
+	$(TOOLS_BIN)/tilt down
 
 # One-shot: ensure the kind cluster exists, then start Tilt.
 .PHONY: dev
