@@ -31,7 +31,9 @@ import (
 // todo: move to API package
 const (
 	conditionReady             = "Ready"
+	conditionReasonReachable   = "Reachable"
 	conditionReasonUnsupported = "Unsupported"
+	conditionReasonProbeFailed = "ProbeFailed"
 )
 
 // computeStatus derives the desired ClusterStatus from the current object plus
@@ -52,17 +54,22 @@ func computeStatus(cluster *corev1alpha1.Cluster, result ProbeResult, probeErr e
 	if probeErr != nil {
 		status.Reachable = false
 		cond.Status = metav1.ConditionFalse
-		if _, ok := errors.AsType[*ErrUnsupported](probeErr); ok {
-			cond.Reason = conditionReasonUnsupported
-		}
 		cond.Message = probeErr.Error()
+		switch {
+		case errors.Is(probeErr, ErrUnsupported):
+			cond.Reason = conditionReasonUnsupported
+		case errors.Is(probeErr, ErrProbeFailed):
+			cond.Reason = conditionReasonProbeFailed
+		default:
+			cond.Reason = conditionReasonProbeFailed
+		}
 	} else {
 		status.Reachable = true
 		status.LastSeen = now
 		status.DiscoveredVersion = result.Version
 		status.DiscoveredAPIVersions = result.APIVersions
 		cond.Status = metav1.ConditionTrue
-		cond.Reason = "Reachable"
+		cond.Reason = conditionReasonReachable
 		cond.Message = "cluster is reachable"
 	}
 

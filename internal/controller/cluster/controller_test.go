@@ -105,7 +105,7 @@ func TestSyncHandler_ReachableWritesStatus(t *testing.T) {
 
 func TestSyncHandler_UnsupportedDoesNotRequeue(t *testing.T) {
 	c, client, _ := newTestController(t, agentlessCluster(),
-		fakeProber{err: &ErrUnsupported{Reason: "auth not supported"}})
+		fakeProber{err: errors.Join(ErrUnsupported, errors.New("auth not supported"))})
 
 	// ErrUnsupported is terminal: status is written but syncHandler must not
 	// return an error (which would hot-loop the rate-limited queue).

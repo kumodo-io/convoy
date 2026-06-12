@@ -18,6 +18,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/client-go/discovery"
@@ -42,12 +43,16 @@ type Prober interface {
 	Probe(ctx context.Context, cluster *corev1alpha1.Cluster) (ProbeResult, error)
 }
 
-// ErrUnsupported is returned by a Prober when the Cluster requests a connection
-// mode or auth type this build does not implement yet. Reconcile surfaces it as
-// a non-Ready condition rather than retrying forever.
-type ErrUnsupported struct{ Reason string }
-
-func (e *ErrUnsupported) Error() string { return e.Reason }
+var (
+	// ErrUnsupported marks a probe rejected because the Cluster requests a
+	// connection mode or auth type this build does not implement yet. It is
+	// terminal — reconcile surfaces it as a non-Ready condition without
+	// requeuing. Probers join it with a detail error describing what was asked.
+	ErrUnsupported = errors.New("unsupported cluster configuration")
+	// ErrProbeFailed marks a transient failure to reach the target cluster.
+	// Probers join it with the underlying connection/discovery error.
+	ErrProbeFailed = errors.New("probe failed")
+)
 
 // inClusterProber implements Prober for the workload-identity case: it connects
 // using the controller pod's own identity (the supplied in-cluster rest.Config)
@@ -66,25 +71,25 @@ func NewInClusterProber(cfg *rest.Config) Prober {
 
 func (p *inClusterProber) Probe(ctx context.Context, cluster *corev1alpha1.Cluster) (ProbeResult, error) {
 	if cluster.Spec.ConnectionMode != corev1alpha1.ClusterConnectionModeAgentless {
-		return ProbeResult{}, &ErrUnsupported{Reason: fmt.Sprintf("connection mode %q is not supported yet (only %q)", cluster.Spec.ConnectionMode, corev1alpha1.ClusterConnectionModeAgentless)}
+		return ProbeResult{}, errors.Join(ErrUnsupported, fmt.Errorf("connection mode %q is not supported yet (only %q)", cluster.Spec.ConnectionMode, corev1alpha1.ClusterConnectionModeAgentless))
 	}
 	if cluster.Spec.Agentless == nil || cluster.Spec.Agentless.Auth.Type != authv1alpha1.AuthTypeWorkloadIdentity {
-		return ProbeResult{}, &ErrUnsupported{Reason: fmt.Sprintf("auth type is not supported yet (only %q)", authv1alpha1.AuthTypeWorkloadIdentity)}
+		return ProbeResult{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type is not supported yet (only %q)", authv1alpha1.AuthTypeWorkloadIdentity))
 	}
 
 	dc, err := discovery.NewDiscoveryClientForConfig(p.cfg)
 	if err != nil {
-		return ProbeResult{}, fmt.Errorf("building discovery client: %w", err)
+		return ProbeResult{}, errors.Join(ErrProbeFailed, fmt.Errorf("building discovery client: %w", err))
 	}
 
 	info, err := dc.ServerVersion()
 	if err != nil {
-		return ProbeResult{}, fmt.Errorf("fetching server version: %w", err)
+		return ProbeResult{}, errors.Join(ErrProbeFailed, fmt.Errorf("fetching server version: %w", err))
 	}
 
 	groups, err := dc.ServerGroups()
 	if err != nil {
-		return ProbeResult{}, fmt.Errorf("fetching server groups: %w", err)
+		return ProbeResult{}, errors.Join(ErrProbeFailed, fmt.Errorf("fetching server groups: %w", err))
 	}
 
 	var apiVersions []string

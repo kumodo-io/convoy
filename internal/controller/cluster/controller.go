@@ -21,6 +21,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -156,8 +157,8 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	// queue retries it. Periodic re-probes of healthy clusters come from the
 	// informer's resync.
 	if probeErr != nil {
-		if _, ok := probeErr.(*ErrUnsupported); ok {
-			return nil // not transient; don't hot-loop
+		if errors.Is(probeErr, ErrUnsupported) {
+			return nil // terminal; don't hot-loop
 		}
 		return probeErr
 	}
