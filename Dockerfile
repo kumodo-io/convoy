@@ -5,7 +5,7 @@
 # prebuilt binary, `make`, or Go toolchain on the host required. Used by CI and
 # `make kind-deploy`.
 
-FROM golang:1.26-bookworm AS build
+FROM golang:1.26-bookworm AS base
 WORKDIR /src
 
 # Download modules in a separate layer so source edits don't re-fetch deps.
@@ -13,12 +13,26 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 COPY . .
-RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -o /convoy-apiserver ./cmd/convoy-apiserver
 
-# Runtime image. debian-slim (not distroless) so Tilt's restart wrapper — which
-# needs basic coreutils (touch/chmod) — still works if this image is used for
-# the live-reload dev loop.
-FROM debian:stable-slim
-COPY --from=build /convoy-apiserver /convoy-apiserver
+# Per-binary build stages. Selecting a final target only pulls in that binary's
+# build stage (BuildKit prunes the rest), so the apiserver image doesn't compile
+# the controller-manager and vice versa.
+FROM base AS build-apiserver
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -o /apiserver ./cmd/convoy-apiserver
+
+FROM base AS build-controller-manager
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -o /controller-manager ./cmd/convoy-controller-manager
+
+# Runtime images. debian-slim (not distroless) so Tilt's restart wrapper — which
+# needs basic coreutils (touch/chmod) — still works if these are used for the
+# live-reload dev loop. Build with `docker build --target controller-manager`.
+FROM debian:stable-slim AS controller-manager
+COPY --from=build-controller-manager /controller-manager /convoy-controller-manager
+ENTRYPOINT ["/convoy-controller-manager"]
+
+# apiserver is the last stage, so a plain `docker build` (CI) builds it by default.
+FROM debian:stable-slim AS apiserver
+COPY --from=build-apiserver /apiserver /convoy-apiserver
 ENTRYPOINT ["/convoy-apiserver"]

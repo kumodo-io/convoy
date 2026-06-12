@@ -7,8 +7,14 @@
 #
 # Only the Tiltfile uses this; CI and `make kind-deploy` use the root Dockerfile.
 # The Tilt build uses bin/ as its context (so the repo-root .dockerignore, which
-# excludes bin/, doesn't apply here), hence the COPY path is relative to bin/.
+# excludes bin/, doesn't apply here), hence the COPY paths are relative to bin/.
+# One target per binary; each Tilt build selects its target, so the other
+# target's COPY (and its missing binary) is never evaluated.
 
-FROM debian:stable-slim
+FROM debian:stable-slim AS apiserver
 COPY convoy-apiserver /convoy-apiserver
 ENTRYPOINT ["/convoy-apiserver"]
+
+FROM debian:stable-slim AS controller-manager
+COPY convoy-controller-manager /convoy-controller-manager
+ENTRYPOINT ["/convoy-controller-manager"]

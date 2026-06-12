@@ -143,17 +143,20 @@ lint: $(TOOLS_BIN)/golangci-lint
 
 # Local dev cluster (kind + Tilt)
 
-KIND_CLUSTER := convoy-dev
-IMAGE        := convoy-apiserver:dev
+KIND_CLUSTER     := convoy-dev
+API_SERVER_IMAGE := convoy-apiserver:dev
+CONTROLLER_IMAGE := convoy-controller-manager:dev
 
-# Build a static linux binary matching the local arch (kind nodes are linux/$GOARCH).
+# Build static linux binaries matching the local arch (kind nodes are linux/$GOARCH).
 .PHONY: build-linux
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(shell go env GOARCH) go build -o bin/convoy-apiserver ./cmd/convoy-apiserver
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(shell go env GOARCH) go build -o bin/convoy-controller-manager ./cmd/convoy-controller-manager
 
 .PHONY: image
-image: build-linux
-	docker build -t $(IMAGE) .
+image:
+	docker build --target apiserver -t $(API_SERVER_IMAGE) .
+	docker build --target controller-manager -t $(CONTROLLER_IMAGE) .
 
 .PHONY: kind-up
 kind-up:
@@ -166,7 +169,8 @@ kind-down:
 # Build, load, and deploy convoy into the kind cluster (no Tilt required).
 .PHONY: kind-deploy
 kind-deploy: image
-	kind load docker-image $(IMAGE) --name $(KIND_CLUSTER)
+	kind load docker-image $(API_SERVER_IMAGE) --name $(KIND_CLUSTER)
+	kind load docker-image $(CONTROLLER_IMAGE) --name $(KIND_CLUSTER)
 	kubectl apply -k hack/kind
 	kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
 	kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
@@ -174,6 +178,7 @@ kind-deploy: image
 		apiservice/v1alpha1.core.convoy.kumodo.io \
 		apiservice/v1alpha1.source.convoy.kumodo.io \
 		apiservice/v1alpha1.extensions.convoy.kumodo.io
+	kubectl -n convoy-system rollout status deploy/convoy-controller-manager --timeout=120s
 
 # Smoke-test the served API end-to-end.
 .PHONY: kind-test

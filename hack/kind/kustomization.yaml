@@ -5,3 +5,4 @@ resources:
   - etcd.yaml
   - apiserver.yaml
   - apiservices.yaml
+  - controller.yaml
