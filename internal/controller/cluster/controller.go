@@ -23,28 +23,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	listers "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/controller/base"
 )
 
-// Controller reconciles Cluster objects.
+// Controller reconciles Cluster objects. The work-queue, workers, and retry
+// machinery live in the embedded base.Controller; this type supplies only the
+// Cluster-specific reconcile logic.
 type Controller struct {
+	*base.Controller
 	client clientset.Interface
 	lister listers.ClusterLister
-	synced cache.InformerSynced
 	prober Prober
-	queue  workqueue.TypedRateLimitingInterface[string]
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
 }
@@ -55,74 +54,12 @@ func NewController(client clientset.Interface, informer informers.ClusterInforme
 	c := &Controller{
 		client: client,
 		lister: informer.Lister(),
-		synced: informer.Informer().HasSynced,
 		prober: prober,
-		queue: workqueue.NewTypedRateLimitingQueue(
-			workqueue.DefaultTypedControllerRateLimiter[string](),
-		),
-		now: metav1.Now,
+		now:    metav1.Now,
 	}
-
-	_, err := informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: c.enqueue,
-		UpdateFunc: func(_, newObj any) {
-			c.enqueue(newObj)
-		},
-		DeleteFunc: c.enqueue,
-	})
-	utilruntime.Must(err)
-
+	c.Controller = base.NewController("cluster", c.syncHandler)
+	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
-}
-
-// enqueue extracts a namespace/name key from an object and queues it.
-func (c *Controller) enqueue(obj any) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-	if err != nil {
-		utilruntime.HandleError(err)
-		return
-	}
-	c.queue.Add(key)
-}
-
-// Run starts workers and blocks until ctx is cancelled.
-func (c *Controller) Run(ctx context.Context, workers int) error {
-	defer utilruntime.HandleCrash()
-	defer c.queue.ShutDown()
-
-	klog.InfoS("starting cluster controller", "workers", workers)
-	if !cache.WaitForCacheSync(ctx.Done(), c.synced) {
-		return fmt.Errorf("failed to wait for cluster informer cache to sync")
-	}
-
-	for i := 0; i < workers; i++ {
-		go wait.UntilWithContext(ctx, c.runWorker, time.Second)
-	}
-
-	<-ctx.Done()
-	klog.InfoS("shutting down cluster controller")
-	return nil
-}
-
-func (c *Controller) runWorker(ctx context.Context) {
-	for c.processNextItem(ctx) {
-	}
-}
-
-func (c *Controller) processNextItem(ctx context.Context) bool {
-	key, shutdown := c.queue.Get()
-	if shutdown {
-		return false
-	}
-	defer c.queue.Done(key)
-
-	if err := c.syncHandler(ctx, key); err != nil {
-		c.queue.AddRateLimited(key)
-		utilruntime.HandleError(fmt.Errorf("syncing cluster %q: %w", key, err))
-		return true
-	}
-	c.queue.Forget(key)
-	return true
 }
 
 // syncHandler reconciles a single Cluster: probe the target and write status.
