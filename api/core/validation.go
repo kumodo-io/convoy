@@ -82,6 +82,58 @@ func validateClusterSpec(spec *ClusterSpec, fldPath *field.Path) field.ErrorList
 		}
 	}
 
+	if spec.ConnectionMode == ClusterConnectionModeAgentless && spec.Agentless != nil {
+		allErrs = append(allErrs, validateClusterAuthSpec(&spec.Agentless.Auth, fldPath.Child("agentless", "auth"))...)
+	}
+
+	return allErrs
+}
+
+func validateClusterAuthSpec(spec *ClusterAuthSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	type clusterAuthConfig struct {
+		name      string
+		ownerType ClusterAuthType
+		present   bool
+	}
+
+	configs := []clusterAuthConfig{
+		{"kubeconfig", ClusterAuthTypeKubeconfig, spec.Kubeconfig != nil},
+		{"token", ClusterAuthTypeToken, spec.Token != nil},
+		{"clientCert", ClusterAuthTypeClientCert, spec.ClientCert != nil},
+		{"execPlugin", ClusterAuthTypeExecPlugin, spec.ExecPlugin != nil},
+		{"oidc", ClusterAuthTypeOIDC, spec.OIDC != nil},
+	}
+
+	// fail-fast if the auth type is not set
+	if spec.Type == "" {
+		return append(allErrs, field.Required(fldPath.Child("type"), ""))
+	}
+
+	// fail-fast if the auth type is not known
+	known := slices.ContainsFunc(configs, func(c clusterAuthConfig) bool {
+		return c.ownerType == spec.Type
+	})
+	if !known {
+		return append(allErrs, field.NotSupported(fldPath.Child("type"), spec.Type, []string{
+			string(ClusterAuthTypeKubeconfig),
+			string(ClusterAuthTypeToken),
+			string(ClusterAuthTypeClientCert),
+			string(ClusterAuthTypeExecPlugin),
+			string(ClusterAuthTypeOIDC),
+		}))
+	}
+
+	for _, c := range configs {
+		switch {
+		case c.ownerType == spec.Type && !c.present:
+			allErrs = append(allErrs, field.Required(fldPath.Child(c.name), fmt.Sprintf("must be set when auth type is %q", c.ownerType)))
+		case c.ownerType != spec.Type && c.present:
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child(c.name), fmt.Sprintf("must not be set when auth type is %q", c.ownerType)))
+		}
+	}
+
 	return allErrs
 }
 

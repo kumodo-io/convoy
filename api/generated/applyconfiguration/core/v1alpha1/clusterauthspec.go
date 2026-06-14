@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
-	applyconfigurationauthv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	authv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
 )
 
 // ClusterAuthSpecApplyConfiguration represents a declarative configuration of the ClusterAuthSpec type for use
@@ -32,17 +32,17 @@ type ClusterAuthSpecApplyConfiguration struct {
 	// Type is the authentication mode used to connect to the target cluster.
 	// The workload identity authentication mode does not require specific
 	// configuration as it uses the identity of the controller's pod.
-	Type *authv1alpha1.AuthType `json:"type,omitempty"`
+	Type *corev1alpha1.ClusterAuthType `json:"type,omitempty"`
 	// Kubeconfig is the authentication mode using a kubeconfig file.
-	Kubeconfig *applyconfigurationauthv1alpha1.KubeconfigAuthSpecApplyConfiguration `json:"kubeconfig,omitempty"`
+	Kubeconfig *authv1alpha1.KubeconfigAuthSpecApplyConfiguration `json:"kubeconfig,omitempty"`
 	// Token is the authentication mode using a token.
-	Token *applyconfigurationauthv1alpha1.TokenAuthSpecApplyConfiguration `json:"token,omitempty"`
+	Token *authv1alpha1.TokenAuthSpecApplyConfiguration `json:"token,omitempty"`
 	// ClientCert is the authentication mode using a client certificate.
-	ClientCert *applyconfigurationauthv1alpha1.ClientCertAuthSpecApplyConfiguration `json:"clientCert,omitempty"`
+	ClientCert *authv1alpha1.ClientCertAuthSpecApplyConfiguration `json:"clientCert,omitempty"`
 	// ExecPlugin is the authentication mode using an exec plugin.
-	ExecPlugin *applyconfigurationauthv1alpha1.ExecPluginAuthSpecApplyConfiguration `json:"execPlugin,omitempty"`
+	ExecPlugin *authv1alpha1.ExecPluginAuthSpecApplyConfiguration `json:"execPlugin,omitempty"`
 	// OIDC is the authentication mode using OIDC client credentials.
-	OIDC *applyconfigurationauthv1alpha1.OIDAuthSpecApplyConfiguration `json:"oidc,omitempty"`
+	OIDC *authv1alpha1.OIDAuthSpecApplyConfiguration `json:"oidc,omitempty"`
 }
 
 // ClusterAuthSpecApplyConfiguration constructs a declarative configuration of the ClusterAuthSpec type for use with
@@ -54,7 +54,7 @@ func ClusterAuthSpec() *ClusterAuthSpecApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *ClusterAuthSpecApplyConfiguration) WithType(value authv1alpha1.AuthType) *ClusterAuthSpecApplyConfiguration {
+func (b *ClusterAuthSpecApplyConfiguration) WithType(value corev1alpha1.ClusterAuthType) *ClusterAuthSpecApplyConfiguration {
 	b.Type = &value
 	return b
 }
@@ -62,7 +62,7 @@ func (b *ClusterAuthSpecApplyConfiguration) WithType(value authv1alpha1.AuthType
 // WithKubeconfig sets the Kubeconfig field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kubeconfig field is set to the value of the last call.
-func (b *ClusterAuthSpecApplyConfiguration) WithKubeconfig(value *applyconfigurationauthv1alpha1.KubeconfigAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
+func (b *ClusterAuthSpecApplyConfiguration) WithKubeconfig(value *authv1alpha1.KubeconfigAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
 	b.Kubeconfig = value
 	return b
 }
@@ -70,7 +70,7 @@ func (b *ClusterAuthSpecApplyConfiguration) WithKubeconfig(value *applyconfigura
 // WithToken sets the Token field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Token field is set to the value of the last call.
-func (b *ClusterAuthSpecApplyConfiguration) WithToken(value *applyconfigurationauthv1alpha1.TokenAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
+func (b *ClusterAuthSpecApplyConfiguration) WithToken(value *authv1alpha1.TokenAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
 	b.Token = value
 	return b
 }
@@ -78,7 +78,7 @@ func (b *ClusterAuthSpecApplyConfiguration) WithToken(value *applyconfigurationa
 // WithClientCert sets the ClientCert field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ClientCert field is set to the value of the last call.
-func (b *ClusterAuthSpecApplyConfiguration) WithClientCert(value *applyconfigurationauthv1alpha1.ClientCertAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
+func (b *ClusterAuthSpecApplyConfiguration) WithClientCert(value *authv1alpha1.ClientCertAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
 	b.ClientCert = value
 	return b
 }
@@ -86,7 +86,7 @@ func (b *ClusterAuthSpecApplyConfiguration) WithClientCert(value *applyconfigura
 // WithExecPlugin sets the ExecPlugin field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ExecPlugin field is set to the value of the last call.
-func (b *ClusterAuthSpecApplyConfiguration) WithExecPlugin(value *applyconfigurationauthv1alpha1.ExecPluginAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
+func (b *ClusterAuthSpecApplyConfiguration) WithExecPlugin(value *authv1alpha1.ExecPluginAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
 	b.ExecPlugin = value
 	return b
 }
@@ -94,7 +94,7 @@ func (b *ClusterAuthSpecApplyConfiguration) WithExecPlugin(value *applyconfigura
 // WithOIDC sets the OIDC field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the OIDC field is set to the value of the last call.
-func (b *ClusterAuthSpecApplyConfiguration) WithOIDC(value *applyconfigurationauthv1alpha1.OIDAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
+func (b *ClusterAuthSpecApplyConfiguration) WithOIDC(value *authv1alpha1.OIDAuthSpecApplyConfiguration) *ClusterAuthSpecApplyConfiguration {
 	b.OIDC = value
 	return b
 }

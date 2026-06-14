@@ -1118,11 +1118,11 @@ func schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication mode used to connect to the target cluster. The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"dockerConfig\"` is the authentication method using a docker config.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
+							Description: "Type is the authentication mode used to connect to the target cluster. The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.\n\nPossible enum values:\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"token\"` is the authentication method using a token.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"basic", "clientCert", "dockerConfig", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
+							Enum:        []interface{}{"clientCert", "execPlugin", "kubeconfig", "oidc", "token"},
 						},
 					},
 					"kubeconfig": {

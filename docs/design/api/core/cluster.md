@@ -60,7 +60,7 @@ spec:
     
     # Authentication method — discriminated union. See "Authentication Methods" below.
     auth:
-      # type: kubeconfig | token | clientCert | execPlugin | workloadIdentity | oidc
+      # type: kubeconfig | token | clientCert | execPlugin | oidc
       type: execPlugin
       
       # type: execPlugin — for cloud-provider auth (EKS, GKE, AKS).
