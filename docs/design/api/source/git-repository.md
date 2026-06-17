@@ -69,7 +69,7 @@ spec:
   # Optional — omit for public repos.
   # Discriminated union on auth.type. See "Authentication Methods" below.
   auth:
-    # type: basic | sshKey | token | githubApp | oidc | workloadIdentity
+    # type: none | basic | sshKey | token | githubApp | oidc | cloudIdentity
     type: sshKey
     
     # type: sshKey — SSH private key in a Secret.
@@ -139,8 +139,10 @@ spec:
     #     caPublicCertRef: { name: corporate-ca, key: ca.crt }
     #     insecureSkipVerify: false
 
-    # type: workloadIdentity — controller uses cloud-native identity for cloud-hosted Git
+    # type: cloudIdentity — controller uses cloud-native identity for cloud-hosted Git
     # (e.g., AWS CodeCommit via IRSA). No static credentials stored.
+    # cloudIdentity:
+    #   provider: aws | azure | gcp
   
   # Polling interval for ref resolution and content fetching.
   # Lower = faster updates, higher git load. Webhooks can supplement.

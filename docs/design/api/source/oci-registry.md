@@ -50,7 +50,7 @@ spec:
   # Authentication — most OCI registries require auth.
   # Discriminated union on auth.type. See "Authentication Methods" below.
   auth:
-    # type: dockerConfig | basic | token | oidc | workloadIdentity
+    # type: none | dockerConfig | basic | token | oidc | cloudIdentity
     type: dockerConfig
     
     # type: dockerConfig — standard kubelet-style image pull secret.
@@ -72,8 +72,10 @@ spec:
     #   secretRef: { name: ghcr-token, key: token }
 
     # --------------------------------
-    # type: workloadIdentity — controller pod has cloud-native identity
+    # type: cloudIdentity — controller pod has cloud-native identity
     # (IRSA for ECR, Workload Identity for GAR, managed identity for ACR).
+    # cloudIdentity:
+    #   provider: aws | azure | gcp
 
     # --------------------------------
     # type: oidc

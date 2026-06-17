@@ -54,6 +54,9 @@ func validNewOCIRegistry(namespace string) *source.OCIRegistry {
 		Spec: source.OCIRegistrySpec{
 			URL:                "oci://ghcr.io/example/charts",
 			DefaultContentType: source.ContentTypeHelm,
+			Auth: source.OCIRegistryAuthSpec{
+				Type: source.OCIRegistryAuthTypeNone,
+			},
 		},
 	}
 }
@@ -77,6 +80,7 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage)
 	ns := test.TestNamespace()
+	// todo: add test for invalid auth type
 	test.TestCreate(
 		validNewOCIRegistry(ns),
 		ociMissingURL(ns),

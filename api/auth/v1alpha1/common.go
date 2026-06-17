@@ -36,8 +36,8 @@ const (
 	// AuthTypeClientCert is the authentication method using a client certificate.
 	AuthTypeClientCert AuthType = "clientCert"
 
-	// AuthTypeWorkloadIdentity is the authentication method using a workload identity.
-	AuthTypeWorkloadIdentity AuthType = "workloadIdentity"
+	// AuthTypeCloudIdentity is the authentication method using a cloud identity.
+	AuthTypeCloudIdentity AuthType = "cloudIdentity"
 
 	// AuthTypeDockerConfig is the authentication method using a docker config.
 	AuthTypeDockerConfig AuthType = "dockerConfig"

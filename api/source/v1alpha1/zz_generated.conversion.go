@@ -346,12 +346,13 @@ func Convert_source_GitRepository_To_v1alpha1_GitRepository(in *source.GitReposi
 }
 
 func autoConvert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(in *GitRepositoryAuthSpec, out *source.GitRepositoryAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = source.GitRepositoryAuthType(in.Type)
 	out.SSHKey = (*authv1alpha1.SSHKeyAuthSpec)(unsafe.Pointer(in.SSHKey))
 	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.GithubApp = (*authv1alpha1.GithubAppAuthSpec)(unsafe.Pointer(in.GithubApp))
 	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
 	return nil
 }
 
@@ -361,12 +362,13 @@ func Convert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(in *
 }
 
 func autoConvert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec(in *source.GitRepositoryAuthSpec, out *GitRepositoryAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = GitRepositoryAuthType(in.Type)
 	out.SSHKey = (*authv1alpha1.SSHKeyAuthSpec)(unsafe.Pointer(in.SSHKey))
 	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.GithubApp = (*authv1alpha1.GithubAppAuthSpec)(unsafe.Pointer(in.GithubApp))
 	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
 	return nil
 }
 
@@ -608,10 +610,11 @@ func Convert_source_HelmRegistry_To_v1alpha1_HelmRegistry(in *source.HelmRegistr
 }
 
 func autoConvert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(in *HelmRegistryAuthSpec, out *source.HelmRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = source.HelmRegistryAuthType(in.Type)
 	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
 	return nil
 }
 
@@ -621,10 +624,11 @@ func Convert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(in *He
 }
 
 func autoConvert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in *source.HelmRegistryAuthSpec, out *HelmRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = HelmRegistryAuthType(in.Type)
 	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
 	return nil
 }
 
@@ -848,11 +852,12 @@ func Convert_source_OCIRegistry_To_v1alpha1_OCIRegistry(in *source.OCIRegistry, 
 }
 
 func autoConvert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(in *OCIRegistryAuthSpec, out *source.OCIRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = source.OCIRegistryAuthType(in.Type)
 	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.DockerConfig = (*authv1alpha1.DockerConfigAuthSpec)(unsafe.Pointer(in.DockerConfig))
 	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
 	return nil
 }
 
@@ -862,11 +867,12 @@ func Convert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(in *OCIR
 }
 
 func autoConvert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(in *source.OCIRegistryAuthSpec, out *OCIRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = OCIRegistryAuthType(in.Type)
 	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.DockerConfig = (*authv1alpha1.DockerConfigAuthSpec)(unsafe.Pointer(in.DockerConfig))
 	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
 	return nil
 }
 

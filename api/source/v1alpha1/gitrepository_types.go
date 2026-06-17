@@ -7,6 +7,34 @@ import (
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
+// GitRepositoryAuthType is a subset of authv1.AuthType.
+// It defines only those authentication modes that are valid for the GitRepository controller.
+// +enum
+type GitRepositoryAuthType authv1.AuthType
+
+const (
+	// GitRepositoryAuthTypeNone is the authentication method using no authentication.
+	GitRepositoryAuthTypeNone = GitRepositoryAuthType(authv1.AuthTypeNone)
+
+	// GitRepositoryAuthTypeBasic is the authentication method using basic authentication.
+	GitRepositoryAuthTypeBasic = GitRepositoryAuthType(authv1.AuthTypeBasic)
+
+	// GitRepositoryAuthTypeToken is the authentication method using a token.
+	GitRepositoryAuthTypeToken = GitRepositoryAuthType(authv1.AuthTypeToken)
+
+	// GitRepositoryAuthTypeSSHKey is the authentication method using SSH key authentication.
+	GitRepositoryAuthTypeSSHKey = GitRepositoryAuthType(authv1.AuthTypeSSHKey)
+
+	// GitRepositoryAuthTypeGithubApp is the authentication method using a GitHub App.
+	GitRepositoryAuthTypeGithubApp = GitRepositoryAuthType(authv1.AuthTypeGithubApp)
+
+	// GitRepositoryAuthTypeOIDC is the authentication method using OIDC.
+	GitRepositoryAuthTypeOIDC = GitRepositoryAuthType(authv1.AuthTypeOIDC)
+
+	// GitRepositoryAuthTypeCloudIdentity is the authentication method using a cloud identity.
+	GitRepositoryAuthTypeCloudIdentity = GitRepositoryAuthType(authv1.AuthTypeCloudIdentity)
+)
+
 // GitRepositorySpec defines the desired state of the GitRepository.
 type GitRepositorySpec struct {
 	// URL is the URL of the Git repository.
@@ -54,7 +82,7 @@ type GitRepositoryRefSpec struct {
 // GitRepositoryAuthSpec defines the authentication method used to access the Git repository.
 type GitRepositoryAuthSpec struct {
 	// Type is the authentication method used to access the Git repository.
-	Type authv1.AuthType `json:"type"`
+	Type GitRepositoryAuthType `json:"type"`
 
 	// SSHKey is the SSH key used to access the Git repository.
 	SSHKey *authv1.SSHKeyAuthSpec `json:"sshKey,omitempty"`
@@ -70,6 +98,9 @@ type GitRepositoryAuthSpec struct {
 
 	// OIDC is the OIDC configuration used to access the Git repository.
 	OIDC *authv1.OIDAuthSpec `json:"oidc,omitempty"`
+
+	// CloudIdentity is the cloud identity configuration used to access the Git repository.
+	CloudIdentity *authv1.CloudIdentitySpec `json:"cloudIdentity,omitempty"`
 }
 
 // GitRepositoryWebhookSpec defines the desired state of the GitRepositoryWebhook.

@@ -7,6 +7,28 @@ import (
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
+// HelmRegistryAuthType is a subset of authv1.AuthType.
+// It defines only those authentication modes that are valid for the HelmRegistry controller.
+// +enum
+type HelmRegistryAuthType authv1.AuthType
+
+const (
+	// HelmRegistryAuthTypeNone is the authentication method using no authentication.
+	HelmRegistryAuthTypeNone = HelmRegistryAuthType(authv1.AuthTypeNone)
+
+	// HelmRegistryAuthTypeBasic is the authentication method using basic authentication.
+	HelmRegistryAuthTypeBasic = HelmRegistryAuthType(authv1.AuthTypeBasic)
+
+	// HelmRegistryAuthTypeToken is the authentication method using a token.
+	HelmRegistryAuthTypeToken = HelmRegistryAuthType(authv1.AuthTypeToken)
+
+	// HelmRegistryAuthTypeOIDC is the authentication method using OIDC.
+	HelmRegistryAuthTypeOIDC = HelmRegistryAuthType(authv1.AuthTypeOIDC)
+
+	// HelmRegistryAuthTypeCloudIdentity is the authentication method using a cloud identity.
+	HelmRegistryAuthTypeCloudIdentity = HelmRegistryAuthType(authv1.AuthTypeCloudIdentity)
+)
+
 // HelmRegistrySpec defines the desired state of HelmRegistry
 type HelmRegistrySpec struct {
 	// URL is the URL of the Helm registry.
@@ -28,7 +50,7 @@ type HelmRegistrySpec struct {
 // HelmRegistryAuthSpec defines the authentication method used to access the Helm registry.
 type HelmRegistryAuthSpec struct {
 	// Type is the authentication method used to access the Helm registry.
-	Type authv1.AuthType `json:"type"`
+	Type HelmRegistryAuthType `json:"type"`
 
 	// Basic is the basic authentication used to access the Helm registry.
 	Basic *authv1.BasicAuthSpec `json:"basic,omitempty"`
@@ -38,6 +60,9 @@ type HelmRegistryAuthSpec struct {
 
 	// OIDC is the OIDC configuration used to access the Helm registry.
 	OIDC *authv1.OIDAuthSpec `json:"oidc,omitempty"`
+
+	// CloudIdentity is the cloud identity configuration used to access the Helm registry.
+	CloudIdentity *authv1.CloudIdentitySpec `json:"cloudIdentity,omitempty"`
 }
 
 // HelmRegistryWebhookSpec defines the desired state of HelmRegistryWebhook.

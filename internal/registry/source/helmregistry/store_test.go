@@ -53,6 +53,9 @@ func validNewHelmRegistry(namespace string) *source.HelmRegistry {
 		},
 		Spec: source.HelmRegistrySpec{
 			URL: "https://charts.example.com",
+			Auth: source.HelmRegistryAuthSpec{
+				Type: source.HelmRegistryAuthTypeNone,
+			},
 		},
 	}
 }
@@ -69,6 +72,7 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage)
 	ns := test.TestNamespace()
+	// todo: add test for invalid auth type
 	test.TestCreate(
 		validNewHelmRegistry(ns),
 		helmMissingURL(ns),

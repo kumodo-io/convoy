@@ -55,6 +55,9 @@ func validNewGitRepository(namespace string) *source.GitRepository {
 		Spec: source.GitRepositorySpec{
 			URL: "https://github.com/example/charts",
 			Ref: source.GitRepositoryRefSpec{Branch: ptr.To("main")},
+			Auth: source.GitRepositoryAuthSpec{
+				Type: source.GitRepositoryAuthTypeNone,
+			},
 		},
 	}
 }
@@ -85,6 +88,7 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage)
 	ns := test.TestNamespace()
+	// todo: add test for invalid auth type
 	test.TestCreate(
 		validNewGitRepository(ns),
 		gitMissingURL(ns),
