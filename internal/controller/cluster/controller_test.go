@@ -27,7 +27,6 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 
-	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
@@ -46,14 +45,11 @@ func (f fakeProber) Probe(context.Context, *corev1alpha1.Cluster) (ProbeResult, 
 	return f.result, f.err
 }
 
-func agentlessCluster() *corev1alpha1.Cluster {
+func clusterWithInClusterConnectionMode() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns", Generation: 1},
 		Spec: corev1alpha1.ClusterSpec{
-			ConnectionMode: corev1alpha1.ClusterConnectionModeAgentless,
-			Agentless: &corev1alpha1.ClusterAgentlessModeSpec{
-				Auth: corev1alpha1.ClusterAuthSpec{Type: authv1alpha1.AuthTypeWorkloadIdentity},
-			},
+			ConnectionMode: corev1alpha1.ClusterConnectionModeInCluster,
 		},
 	}
 }
@@ -87,7 +83,7 @@ func statusUpdate(actions []clienttesting.Action) *corev1alpha1.Cluster {
 }
 
 func TestSyncHandler_ReachableWritesStatus(t *testing.T) {
-	c, client, _ := newTestController(t, agentlessCluster(),
+	c, client, _ := newTestController(t, clusterWithInClusterConnectionMode(),
 		fakeProber{result: ProbeResult{Version: sampleKubeVersion, APIVersions: []string{"v1"}}})
 
 	if err := c.syncHandler(context.Background(), "ns/c1"); err != nil {
@@ -104,7 +100,7 @@ func TestSyncHandler_ReachableWritesStatus(t *testing.T) {
 }
 
 func TestSyncHandler_UnsupportedDoesNotRequeue(t *testing.T) {
-	c, client, _ := newTestController(t, agentlessCluster(),
+	c, client, _ := newTestController(t, clusterWithInClusterConnectionMode(),
 		fakeProber{err: errors.Join(ErrUnsupported, errors.New("auth not supported"))})
 
 	// ErrUnsupported is terminal: status is written but syncHandler must not
@@ -124,7 +120,7 @@ func TestSyncHandler_UnsupportedDoesNotRequeue(t *testing.T) {
 }
 
 func TestSyncHandler_ProbeErrorRequeues(t *testing.T) {
-	c, _, _ := newTestController(t, agentlessCluster(),
+	c, _, _ := newTestController(t, clusterWithInClusterConnectionMode(),
 		fakeProber{err: errors.New("connection refused")})
 
 	if err := c.syncHandler(context.Background(), "ns/c1"); err == nil {
@@ -134,7 +130,7 @@ func TestSyncHandler_ProbeErrorRequeues(t *testing.T) {
 
 func TestSyncHandler_NoOpWhenStatusUnchanged(t *testing.T) {
 	prober := fakeProber{result: ProbeResult{Version: sampleKubeVersion, APIVersions: []string{"v1"}}}
-	c, client, store := newTestController(t, agentlessCluster(), prober)
+	c, client, store := newTestController(t, clusterWithInClusterConnectionMode(), prober)
 
 	// First sync writes status.
 	if err := c.syncHandler(context.Background(), "ns/c1"); err != nil {
@@ -147,7 +143,7 @@ func TestSyncHandler_NoOpWhenStatusUnchanged(t *testing.T) {
 
 	// Reflect the written status back into the informer store and re-sync; the
 	// computed status is identical, so no second write should occur.
-	settled := agentlessCluster()
+	settled := clusterWithInClusterConnectionMode()
 	settled.Status = first.Status
 	if err := store.Update(settled); err != nil {
 		t.Fatalf("updating informer store: %v", err)

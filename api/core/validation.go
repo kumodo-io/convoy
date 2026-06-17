@@ -17,6 +17,9 @@ limitations under the License.
 package core
 
 import (
+	"fmt"
+	"slices"
+
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -43,21 +46,40 @@ func ValidateClusterStatusUpdate(cluster, old *Cluster) field.ErrorList {
 func validateClusterSpec(spec *ClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	switch spec.ConnectionMode {
-	case ClusterConnectionModeAgentless:
-		if spec.Agentless == nil {
-			allErrs = append(allErrs, field.Required(fldPath.Child("agentless"), `must be set when connectionMode is "agentless"`))
-		}
-	case ClusterConnectionModeAgent:
-		// Agent (pull) mode carries no control-plane-side configuration today;
-		// it is documented but not yet implemented.
-	case "":
-		allErrs = append(allErrs, field.Required(fldPath.Child("connectionMode"), ""))
-	default:
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("connectionMode"), spec.ConnectionMode, []string{
+	type clusterConnectionModeConfig struct {
+		name      string
+		ownerType ClusterConnectionMode
+		present   bool
+	}
+
+	configs := []clusterConnectionModeConfig{
+		{"agentless", ClusterConnectionModeAgentless, spec.Agentless != nil},
+		{"agent", ClusterConnectionModeAgent, spec.Agent != nil},
+	}
+
+	if spec.ConnectionMode == "" {
+		return append(allErrs, field.Required(fldPath.Child("connectionMode"), ""))
+	}
+
+	known := spec.ConnectionMode == ClusterConnectionModeInCluster || slices.ContainsFunc(configs, func(c clusterConnectionModeConfig) bool {
+		return c.ownerType == spec.ConnectionMode
+	})
+
+	if !known {
+		return append(allErrs, field.NotSupported(fldPath.Child("connectionMode"), spec.ConnectionMode, []string{
+			string(ClusterConnectionModeInCluster),
 			string(ClusterConnectionModeAgentless),
 			string(ClusterConnectionModeAgent),
 		}))
+	}
+
+	for _, c := range configs {
+		switch {
+		case c.ownerType == spec.ConnectionMode && !c.present:
+			allErrs = append(allErrs, field.Required(fldPath.Child(c.name), fmt.Sprintf(`must be set when connectionMode is "%q"`, spec.ConnectionMode)))
+		case c.ownerType != spec.ConnectionMode && c.present:
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child(c.name), fmt.Sprintf(`must not be set when connectionMode is "%q"`, spec.ConnectionMode)))
+		}
 	}
 
 	return allErrs

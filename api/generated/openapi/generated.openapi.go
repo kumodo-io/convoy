@@ -54,6 +54,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec":                   schema_convoy_api_auth_v1alpha1_TLSSpec(ref),
 		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":             schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
 		v1alpha1.Cluster{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_Cluster(ref),
+		v1alpha1.ClusterAgentModeSpec{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ClusterAgentModeSpec(ref),
 		v1alpha1.ClusterAgentStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
 		v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
 		v1alpha1.ClusterAuthSpec{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
@@ -1017,6 +1018,17 @@ func schema_convoy_api_core_v1alpha1_Cluster(ref common.ReferenceCallback) commo
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ClusterAgentModeSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ClusterAgentModeSpec defines the configuration of the agent connection mode. todo: implement me",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1329,11 +1341,17 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 				Properties: map[string]spec.Schema{
 					"connectionMode": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ConnectionMode is the connection mode between the control plane and the target cluster. Possible values are: - agentless - agent\n\nPossible enum values:\n - `\"agent\"` defines the connection mode when the agent is running on the target cluster, pulls the workload manifests and applies them locally.\n - `\"agentless\"` defines the connection mode when the control plane pushes the workload manifests to the cluster connecting to the target cluster's API server.",
+							Description: "ConnectionMode is the connection mode between the control plane and the target cluster. Possible values are: - agentless - agent\n\nPossible enum values:\n - `\"agent\"` defines the connection mode when the agent is running on the target cluster, pulls the workload manifests and applies them locally.\n - `\"agentless\"` defines the connection mode when the control plane pushes the workload manifests to the cluster connecting to the target cluster's API server.\n - `\"inCluster\"` defines the connection mode when the control plane is running in the same cluster as the target cluster.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"agent", "agentless"},
+							Enum:        []interface{}{"agent", "agentless", "inCluster"},
+						},
+					},
+					"agent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Agent is the configuration of the agent connection mode.",
+							Ref:         ref(v1alpha1.ClusterAgentModeSpec{}.OpenAPIModelName()),
 						},
 					},
 					"agentless": {
@@ -1377,7 +1395,7 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName(), v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName()},
+			v1alpha1.ClusterAgentModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName(), v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName()},
 	}
 }
 

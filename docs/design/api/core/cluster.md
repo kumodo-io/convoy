@@ -41,6 +41,7 @@ metadata:
 
 spec:
   # Discriminated connection mode.
+  # - inCluster: this is used to self-management only
   # - agentless: control plane pushes manifests via the cluster's kube-apiserver
   # - agent:     an in-cluster agent pulls desired state and applies locally
   connectionMode: agentless
