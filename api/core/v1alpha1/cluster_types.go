@@ -13,6 +13,10 @@ import (
 type ClusterConnectionMode string
 
 const (
+	// ClusterConnectionModeInCluster defines the connection mode when
+	// the control plane is running in the same cluster as the target cluster.
+	ClusterConnectionModeInCluster ClusterConnectionMode = "inCluster"
+
 	// ClusterConnectionModeAgentless defines the connection mode when the
 	// control plane pushes the workload manifests to the cluster connecting
 	// to the target cluster's API server.
@@ -77,6 +81,9 @@ type ClusterSpec struct {
 	// - agent
 	ConnectionMode ClusterConnectionMode `json:"connectionMode"`
 
+	// Agent is the configuration of the agent connection mode.
+	Agent *ClusterAgentModeSpec `json:"agent,omitempty"`
+
 	// Agentless is the configuration of the agentless connection mode.
 	Agentless *ClusterAgentlessModeSpec `json:"agentless,omitempty"`
 
@@ -90,6 +97,10 @@ type ClusterSpec struct {
 	// DeletionPolicy is the deletion policy of the cluster.
 	DeletionPolicy ClusterDeletionPolicySpec `json:"deletionPolicy,omitempty"`
 }
+
+// ClusterAgentModeSpec defines the configuration of the agent connection mode.
+// todo: implement me
+type ClusterAgentModeSpec struct{}
 
 // ClusterAgentlessModeSpec defines the configuration of the agentless connection mode.
 type ClusterAgentlessModeSpec struct {

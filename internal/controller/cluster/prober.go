@@ -24,7 +24,6 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 
-	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
@@ -70,11 +69,8 @@ func NewInClusterProber(cfg *rest.Config) Prober {
 }
 
 func (p *inClusterProber) Probe(ctx context.Context, cluster *corev1alpha1.Cluster) (ProbeResult, error) {
-	if cluster.Spec.ConnectionMode != corev1alpha1.ClusterConnectionModeAgentless {
-		return ProbeResult{}, errors.Join(ErrUnsupported, fmt.Errorf("connection mode %q is not supported yet (only %q)", cluster.Spec.ConnectionMode, corev1alpha1.ClusterConnectionModeAgentless))
-	}
-	if cluster.Spec.Agentless == nil || cluster.Spec.Agentless.Auth.Type != authv1alpha1.AuthTypeWorkloadIdentity {
-		return ProbeResult{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type is not supported yet (only %q)", authv1alpha1.AuthTypeWorkloadIdentity))
+	if cluster.Spec.ConnectionMode != corev1alpha1.ClusterConnectionModeInCluster {
+		return ProbeResult{}, errors.Join(ErrUnsupported, fmt.Errorf("connection mode %q is not supported yet (only %q)", cluster.Spec.ConnectionMode, corev1alpha1.ClusterConnectionModeInCluster))
 	}
 
 	dc, err := discovery.NewDiscoveryClientForConfig(p.cfg)

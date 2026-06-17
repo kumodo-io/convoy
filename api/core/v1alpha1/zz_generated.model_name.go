@@ -27,6 +27,11 @@ func (in Cluster) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ClusterAgentModeSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ClusterAgentModeSpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ClusterAgentStatus) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ClusterAgentStatus"
 }

@@ -12,6 +12,7 @@ import (
 type ClusterConnectionMode string
 
 const (
+	ClusterConnectionModeInCluster ClusterConnectionMode = "inCluster"
 	ClusterConnectionModeAgentless ClusterConnectionMode = "agentless"
 	ClusterConnectionModeAgent     ClusterConnectionMode = "agent"
 )
@@ -40,11 +41,14 @@ const (
 
 type ClusterSpec struct {
 	ConnectionMode ClusterConnectionMode
+	Agent          *ClusterAgentModeSpec
 	Agentless      *ClusterAgentlessModeSpec
 	Metadata       map[string]string
 	Capabilities   ClusterCapabilitiesSpec
 	DeletionPolicy ClusterDeletionPolicySpec
 }
+
+type ClusterAgentModeSpec struct{}
 
 type ClusterAgentlessModeSpec struct {
 	Server               string

@@ -74,7 +74,7 @@ func (o *Options) Run(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
 	clusterInformer := factory.Core().V1alpha1().Clusters()
 
-	// Workload-identity probing: the target is reached via the controller's
+	// In-cluster probing: the target is reached via the controller's
 	// own in-cluster identity (the same config used to talk to the API).
 	prober := clustercontroller.NewInClusterProber(cfg)
 	controller := clustercontroller.NewController(client, clusterInformer, prober)

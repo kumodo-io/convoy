@@ -1,0 +1,11 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Cluster
+metadata:
+  name: dev-local
+  namespace: default
+spec:
+  connectionMode: inCluster
+  deletionPolicy:
+    releases: block
+    workloads: prune
+    onUnreachable: block
