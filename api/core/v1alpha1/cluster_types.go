@@ -73,6 +73,28 @@ const (
 	OnUnreachableDeletionPolicyReleasesOnly OnUnreachableDeletionPolicy = "releasesOnly"
 )
 
+// ClusterAuthType is a subset of the auth.AuthType enum.
+// It defines only those authentication modes that are valid for the Cluster controller.
+// +enum
+type ClusterAuthType authv1.AuthType
+
+const (
+	// ClusterAuthTypeKubeconfig is the authentication method using a kubeconfig file.
+	ClusterAuthTypeKubeconfig = ClusterAuthType(authv1.AuthTypeKubeconfig)
+
+	// ClusterAuthTypeToken is the authentication method using a token.
+	ClusterAuthTypeToken = ClusterAuthType(authv1.AuthTypeToken)
+
+	// ClusterAuthTypeClientCert is the authentication method using a client certificate.
+	ClusterAuthTypeClientCert = ClusterAuthType(authv1.AuthTypeClientCert)
+
+	// ClusterAuthTypeExecPlugin is the authentication method using an exec plugin.
+	ClusterAuthTypeExecPlugin = ClusterAuthType(authv1.AuthTypeExecPlugin)
+
+	// ClusterAuthTypeOIDC is the authentication method using OIDC.
+	ClusterAuthTypeOIDC = ClusterAuthType(authv1.AuthTypeOIDC)
+)
+
 // ClusterSpec defines the desired state of the Cluster.
 type ClusterSpec struct {
 	// ConnectionMode is the connection mode between the control plane and the target cluster.
@@ -123,7 +145,7 @@ type ClusterAuthSpec struct {
 	// Type is the authentication mode used to connect to the target cluster.
 	// The workload identity authentication mode does not require specific
 	// configuration as it uses the identity of the controller's pod.
-	Type authv1.AuthType `json:"type"`
+	Type ClusterAuthType `json:"type"`
 
 	// Kubeconfig is the authentication mode using a kubeconfig file.
 	Kubeconfig *authv1.KubeconfigAuthSpec `json:"kubeconfig,omitempty"`

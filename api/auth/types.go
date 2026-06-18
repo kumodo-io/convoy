@@ -9,16 +9,16 @@ import (
 type AuthType string
 
 const (
-	AuthTypeNone             AuthType = "none"
-	AuthTypeBasic            AuthType = "basic"
-	AuthTypeToken            AuthType = "token"
-	AuthTypeSSHKey           AuthType = "sshKey"
-	AuthTypeGithubApp        AuthType = "githubApp"
-	AuthTypeOIDC             AuthType = "oidc"
-	AuthTypeKubeconfig       AuthType = "kubeconfig"
-	AuthTypeExecPlugin       AuthType = "execPlugin"
-	AuthTypeClientCert       AuthType = "clientCert"
-	AuthTypeWorkloadIdentity AuthType = "workloadIdentity"
+	AuthTypeNone          AuthType = "none"
+	AuthTypeBasic         AuthType = "basic"
+	AuthTypeToken         AuthType = "token"
+	AuthTypeSSHKey        AuthType = "sshKey"
+	AuthTypeGithubApp     AuthType = "githubApp"
+	AuthTypeOIDC          AuthType = "oidc"
+	AuthTypeKubeconfig    AuthType = "kubeconfig"
+	AuthTypeExecPlugin    AuthType = "execPlugin"
+	AuthTypeClientCert    AuthType = "clientCert"
+	AuthTypeCloudIdentity AuthType = "cloudIdentity"
 )
 
 type TLSSpec struct {
@@ -118,4 +118,18 @@ type OIDCAuthPrivateKeyJWTSpec struct {
 type OIDCTLSSpec struct {
 	CAPublicCertRef    corev1.ConfigMapKeySelector
 	InsecureSkipVerify bool
+}
+
+// ---------- CloudIdentity types ----------
+
+type CloudProvider string
+
+const (
+	CloudProviderAWS   CloudProvider = "aws"
+	CloudProviderAzure CloudProvider = "azure"
+	CloudProviderGCP   CloudProvider = "gcp"
+)
+
+type CloudIdentitySpec struct {
+	Provider CloudProvider
 }

@@ -623,7 +623,7 @@ func Convert_core_ClusterAgentlessModeSpec_To_v1alpha1_ClusterAgentlessModeSpec(
 }
 
 func autoConvert_v1alpha1_ClusterAuthSpec_To_core_ClusterAuthSpec(in *ClusterAuthSpec, out *core.ClusterAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = core.ClusterAuthType(in.Type)
 	out.Kubeconfig = (*authv1alpha1.KubeconfigAuthSpec)(unsafe.Pointer(in.Kubeconfig))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.ClientCert = (*authv1alpha1.ClientCertAuthSpec)(unsafe.Pointer(in.ClientCert))
@@ -638,7 +638,7 @@ func Convert_v1alpha1_ClusterAuthSpec_To_core_ClusterAuthSpec(in *ClusterAuthSpe
 }
 
 func autoConvert_core_ClusterAuthSpec_To_v1alpha1_ClusterAuthSpec(in *core.ClusterAuthSpec, out *ClusterAuthSpec, s conversion.Scope) error {
-	out.Type = authv1alpha1.AuthType(in.Type)
+	out.Type = ClusterAuthType(in.Type)
 	out.Kubeconfig = (*authv1alpha1.KubeconfigAuthSpec)(unsafe.Pointer(in.Kubeconfig))
 	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
 	out.ClientCert = (*authv1alpha1.ClientCertAuthSpec)(unsafe.Pointer(in.ClientCert))

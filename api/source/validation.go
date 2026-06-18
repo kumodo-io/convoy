@@ -17,9 +17,43 @@ limitations under the License.
 package source
 
 import (
+	"fmt"
+	"slices"
+
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
+
+const (
+	basicAuthType         = "basic"
+	tokenAuthType         = "token"
+	sshKeyAuthType        = "sshKey"
+	githubAppAuthType     = "githubApp"
+	oidcAuthType          = "oidc"
+	dockerConfigAuthType  = "dockerConfig"
+	cloudIdentityAuthType = "cloudIdentity"
+)
+
+type sourceAuthConfig struct {
+	name      string
+	ownerType authv1.AuthType
+	present   bool
+}
+
+func validateAuthConfig(configs []sourceAuthConfig, fldPath *field.Path, ownerType authv1.AuthType) field.ErrorList {
+	allErrs := field.ErrorList{}
+	for _, c := range configs {
+		switch {
+		case c.ownerType == ownerType && !c.present:
+			allErrs = append(allErrs, field.Required(fldPath.Child("auth", c.name), fmt.Sprintf(`must be set when auth type is "%q"`, ownerType)))
+		case c.ownerType != ownerType && c.present:
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("auth", c.name), fmt.Sprintf(`must not be set when auth type is "%q"`, ownerType)))
+		}
+	}
+	return allErrs
+}
 
 // ---------- GitRepository ----------
 
@@ -47,6 +81,37 @@ func validateGitRepositorySpec(spec *GitRepositorySpec, fldPath *field.Path) fie
 	if spec.URL == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("url"), ""))
 	}
+
+	configs := []sourceAuthConfig{
+		{basicAuthType, authv1.AuthType(GitRepositoryAuthTypeBasic), spec.Auth.Basic != nil},
+		{tokenAuthType, authv1.AuthType(GitRepositoryAuthTypeToken), spec.Auth.Token != nil},
+		{sshKeyAuthType, authv1.AuthType(GitRepositoryAuthTypeSSHKey), spec.Auth.SSHKey != nil},
+		{githubAppAuthType, authv1.AuthType(GitRepositoryAuthTypeGithubApp), spec.Auth.GithubApp != nil},
+		{oidcAuthType, authv1.AuthType(GitRepositoryAuthTypeOIDC), spec.Auth.OIDC != nil},
+		{cloudIdentityAuthType, authv1.AuthType(GitRepositoryAuthTypeCloudIdentity), spec.Auth.CloudIdentity != nil},
+	}
+
+	if spec.Auth.Type == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("auth", "type"), ""))
+	}
+
+	known := spec.Auth.Type == GitRepositoryAuthTypeNone || slices.ContainsFunc(configs, func(c sourceAuthConfig) bool {
+		return c.ownerType == authv1.AuthType(spec.Auth.Type)
+	})
+
+	if !known {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("auth", "type"), spec.Auth.Type, []string{
+			string(GitRepositoryAuthTypeNone),
+			string(GitRepositoryAuthTypeBasic),
+			string(GitRepositoryAuthTypeToken),
+			string(GitRepositoryAuthTypeSSHKey),
+			string(GitRepositoryAuthTypeGithubApp),
+			string(GitRepositoryAuthTypeOIDC),
+			string(GitRepositoryAuthTypeCloudIdentity),
+		}))
+	}
+
+	allErrs = append(allErrs, validateAuthConfig(configs, fldPath, authv1.AuthType(spec.Auth.Type))...)
 
 	set := 0
 	for _, ref := range []*string{spec.Ref.Branch, spec.Ref.Tag, spec.Ref.Commit, spec.Ref.Semver} {
@@ -84,6 +149,34 @@ func ValidateHelmRegistryStatusUpdate(reg, old *HelmRegistry) field.ErrorList {
 
 func validateHelmRegistrySpec(spec *HelmRegistrySpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	configs := []sourceAuthConfig{
+		{basicAuthType, authv1.AuthType(HelmRegistryAuthTypeBasic), spec.Auth.Basic != nil},
+		{tokenAuthType, authv1.AuthType(HelmRegistryAuthTypeToken), spec.Auth.Token != nil},
+		{oidcAuthType, authv1.AuthType(HelmRegistryAuthTypeOIDC), spec.Auth.OIDC != nil},
+		{cloudIdentityAuthType, authv1.AuthType(HelmRegistryAuthTypeCloudIdentity), spec.Auth.CloudIdentity != nil},
+	}
+
+	if spec.Auth.Type == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("auth", "type"), ""))
+	}
+
+	known := spec.Auth.Type == HelmRegistryAuthTypeNone || slices.ContainsFunc(configs, func(c sourceAuthConfig) bool {
+		return c.ownerType == authv1.AuthType(spec.Auth.Type)
+	})
+
+	if !known {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("auth", "type"), spec.Auth.Type, []string{
+			string(HelmRegistryAuthTypeNone),
+			string(HelmRegistryAuthTypeBasic),
+			string(HelmRegistryAuthTypeToken),
+			string(HelmRegistryAuthTypeOIDC),
+			string(HelmRegistryAuthTypeCloudIdentity),
+		}))
+	}
+
+	allErrs = append(allErrs, validateAuthConfig(configs, fldPath, authv1.AuthType(spec.Auth.Type))...)
+
 	if spec.URL == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("url"), ""))
 	}
@@ -113,11 +206,41 @@ func ValidateOCIRegistryStatusUpdate(reg, old *OCIRegistry) field.ErrorList {
 
 func validateOCIRegistrySpec(spec *OCIRegistrySpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	configs := []sourceAuthConfig{
+		{basicAuthType, authv1.AuthType(OCIRegistryAuthTypeBasic), spec.Auth.Basic != nil},
+		{tokenAuthType, authv1.AuthType(OCIRegistryAuthTypeToken), spec.Auth.Token != nil},
+		{oidcAuthType, authv1.AuthType(OCIRegistryAuthTypeOIDC), spec.Auth.OIDC != nil},
+		{dockerConfigAuthType, authv1.AuthType(OCIRegistryAuthTypeDockerConfig), spec.Auth.DockerConfig != nil},
+		{cloudIdentityAuthType, authv1.AuthType(OCIRegistryAuthTypeCloudIdentity), spec.Auth.CloudIdentity != nil},
+	}
+
+	if spec.Auth.Type == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("auth", "type"), ""))
+	}
+
+	known := spec.Auth.Type == OCIRegistryAuthTypeNone || slices.ContainsFunc(configs, func(c sourceAuthConfig) bool {
+		return c.ownerType == authv1.AuthType(spec.Auth.Type)
+	})
+
+	if !known {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("auth", "type"), spec.Auth.Type, []string{
+			string(OCIRegistryAuthTypeNone),
+			string(OCIRegistryAuthTypeBasic),
+			string(OCIRegistryAuthTypeToken),
+			string(OCIRegistryAuthTypeOIDC),
+			string(OCIRegistryAuthTypeDockerConfig),
+			string(OCIRegistryAuthTypeCloudIdentity),
+		}))
+	}
+
+	allErrs = append(allErrs, validateAuthConfig(configs, fldPath, authv1.AuthType(spec.Auth.Type))...)
+
 	if spec.URL == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("url"), ""))
 	}
 	switch spec.DefaultContentType {
-	case "", ContentTypeHelm, ContentTypeManifests, ContentTypeKustomize:
+	case ContentTypeHelm, ContentTypeManifests, ContentTypeKustomize:
 		// empty is allowed; the controller defaults it
 	default:
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("defaultContentType"), spec.DefaultContentType, []string{

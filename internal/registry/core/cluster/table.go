@@ -39,7 +39,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 	table := &metav1.Table{
 		ColumnDefinitions: []metav1.TableColumnDefinition{
 			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the Cluster"},
-			{Name: "Mode", Type: helper.StringValueString, Description: "Connection mode (agentless or agent)"},
+			{Name: "Mode", Type: helper.StringValueString, Description: "Connection mode (inCluster, agentless or agent)"},
 			{Name: "Reachable", Type: helper.StringValueString, Description: "Whether the cluster is reachable"},
 			{Name: "Version", Type: helper.StringValueString, Description: "Discovered Kubernetes version"},
 			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the Cluster was created"},

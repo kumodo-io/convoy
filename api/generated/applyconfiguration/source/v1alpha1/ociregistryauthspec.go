@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
-	applyconfigurationauthv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
+	authv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/auth/v1alpha1"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 )
 
 // OCIRegistryAuthSpecApplyConfiguration represents a declarative configuration of the OCIRegistryAuthSpec type for use
@@ -29,15 +29,17 @@ import (
 // OCIRegistryAuthSpec defines the authentication method used to access the OCI registry.
 type OCIRegistryAuthSpecApplyConfiguration struct {
 	// Type is the authentication method used to access the OCI registry.
-	Type *authv1alpha1.AuthType `json:"type,omitempty"`
+	Type *sourcev1alpha1.OCIRegistryAuthType `json:"type,omitempty"`
 	// Basic is the basic authentication used to access the OCI registry.
-	Basic *applyconfigurationauthv1alpha1.BasicAuthSpecApplyConfiguration `json:"basic,omitempty"`
+	Basic *authv1alpha1.BasicAuthSpecApplyConfiguration `json:"basic,omitempty"`
 	// Token is the token used to access the OCI registry.
-	Token *applyconfigurationauthv1alpha1.TokenAuthSpecApplyConfiguration `json:"token,omitempty"`
+	Token *authv1alpha1.TokenAuthSpecApplyConfiguration `json:"token,omitempty"`
 	// DockerConfig is the Docker config used to access the OCI registry.
-	DockerConfig *applyconfigurationauthv1alpha1.DockerConfigAuthSpecApplyConfiguration `json:"dockerConfig,omitempty"`
+	DockerConfig *authv1alpha1.DockerConfigAuthSpecApplyConfiguration `json:"dockerConfig,omitempty"`
 	// OIDC is the OIDC configuration used to access the OCI registry.
-	OIDC *applyconfigurationauthv1alpha1.OIDAuthSpecApplyConfiguration `json:"oidc,omitempty"`
+	OIDC *authv1alpha1.OIDAuthSpecApplyConfiguration `json:"oidc,omitempty"`
+	// CloudIdentity is the cloud identity configuration used to access the OCI registry.
+	CloudIdentity *authv1alpha1.CloudIdentitySpecApplyConfiguration `json:"cloudIdentity,omitempty"`
 }
 
 // OCIRegistryAuthSpecApplyConfiguration constructs a declarative configuration of the OCIRegistryAuthSpec type for use with
@@ -49,7 +51,7 @@ func OCIRegistryAuthSpec() *OCIRegistryAuthSpecApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *OCIRegistryAuthSpecApplyConfiguration) WithType(value authv1alpha1.AuthType) *OCIRegistryAuthSpecApplyConfiguration {
+func (b *OCIRegistryAuthSpecApplyConfiguration) WithType(value sourcev1alpha1.OCIRegistryAuthType) *OCIRegistryAuthSpecApplyConfiguration {
 	b.Type = &value
 	return b
 }
@@ -57,7 +59,7 @@ func (b *OCIRegistryAuthSpecApplyConfiguration) WithType(value authv1alpha1.Auth
 // WithBasic sets the Basic field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Basic field is set to the value of the last call.
-func (b *OCIRegistryAuthSpecApplyConfiguration) WithBasic(value *applyconfigurationauthv1alpha1.BasicAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
+func (b *OCIRegistryAuthSpecApplyConfiguration) WithBasic(value *authv1alpha1.BasicAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
 	b.Basic = value
 	return b
 }
@@ -65,7 +67,7 @@ func (b *OCIRegistryAuthSpecApplyConfiguration) WithBasic(value *applyconfigurat
 // WithToken sets the Token field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Token field is set to the value of the last call.
-func (b *OCIRegistryAuthSpecApplyConfiguration) WithToken(value *applyconfigurationauthv1alpha1.TokenAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
+func (b *OCIRegistryAuthSpecApplyConfiguration) WithToken(value *authv1alpha1.TokenAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
 	b.Token = value
 	return b
 }
@@ -73,7 +75,7 @@ func (b *OCIRegistryAuthSpecApplyConfiguration) WithToken(value *applyconfigurat
 // WithDockerConfig sets the DockerConfig field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DockerConfig field is set to the value of the last call.
-func (b *OCIRegistryAuthSpecApplyConfiguration) WithDockerConfig(value *applyconfigurationauthv1alpha1.DockerConfigAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
+func (b *OCIRegistryAuthSpecApplyConfiguration) WithDockerConfig(value *authv1alpha1.DockerConfigAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
 	b.DockerConfig = value
 	return b
 }
@@ -81,7 +83,15 @@ func (b *OCIRegistryAuthSpecApplyConfiguration) WithDockerConfig(value *applycon
 // WithOIDC sets the OIDC field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the OIDC field is set to the value of the last call.
-func (b *OCIRegistryAuthSpecApplyConfiguration) WithOIDC(value *applyconfigurationauthv1alpha1.OIDAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
+func (b *OCIRegistryAuthSpecApplyConfiguration) WithOIDC(value *authv1alpha1.OIDAuthSpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
 	b.OIDC = value
+	return b
+}
+
+// WithCloudIdentity sets the CloudIdentity field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CloudIdentity field is set to the value of the last call.
+func (b *OCIRegistryAuthSpecApplyConfiguration) WithCloudIdentity(value *authv1alpha1.CloudIdentitySpecApplyConfiguration) *OCIRegistryAuthSpecApplyConfiguration {
+	b.CloudIdentity = value
 	return b
 }

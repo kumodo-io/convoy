@@ -42,6 +42,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &authv1alpha1.BasicAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClientCertAuthSpec"):
 		return &authv1alpha1.ClientCertAuthSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CloudIdentitySpec"):
+		return &authv1alpha1.CloudIdentitySpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DockerConfigAuthSpec"):
 		return &authv1alpha1.DockerConfigAuthSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ExecPluginAuthSpec"):

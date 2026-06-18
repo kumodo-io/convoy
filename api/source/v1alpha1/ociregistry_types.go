@@ -22,6 +22,31 @@ const (
 	ContentTypeKustomize ContentType = "kustomize"
 )
 
+// OCIRegistryAuthType is a subset of authv1.AuthType.
+// It defines only those authentication modes that are valid for the OCIRegistry controller.
+// +enum
+type OCIRegistryAuthType authv1.AuthType
+
+const (
+	// OCIRegistryAuthTypeNone is the authentication method using no authentication.
+	OCIRegistryAuthTypeNone = OCIRegistryAuthType(authv1.AuthTypeNone)
+
+	// OCIRegistryAuthTypeDockerConfig is the authentication method using a Docker config.
+	OCIRegistryAuthTypeDockerConfig = OCIRegistryAuthType(authv1.AuthTypeDockerConfig)
+
+	// OCIRegistryAuthTypeBasic is the authentication method using basic authentication.
+	OCIRegistryAuthTypeBasic = OCIRegistryAuthType(authv1.AuthTypeBasic)
+
+	// OCIRegistryAuthTypeToken is the authentication method using a token.
+	OCIRegistryAuthTypeToken = OCIRegistryAuthType(authv1.AuthTypeToken)
+
+	// OCIRegistryAuthTypeOIDC is the authentication method using OIDC.
+	OCIRegistryAuthTypeOIDC = OCIRegistryAuthType(authv1.AuthTypeOIDC)
+
+	// OCIRegistryAuthTypeCloudIdentity is the authentication method using a cloud identity.
+	OCIRegistryAuthTypeCloudIdentity = OCIRegistryAuthType(authv1.AuthTypeCloudIdentity)
+)
+
 // OCIRegistrySpec defines the desired state of OCIRegistry
 type OCIRegistrySpec struct {
 	// URL is the URL of the OCI registry.
@@ -46,7 +71,7 @@ type OCIRegistrySpec struct {
 // OCIRegistryAuthSpec defines the authentication method used to access the OCI registry.
 type OCIRegistryAuthSpec struct {
 	// Type is the authentication method used to access the OCI registry.
-	Type authv1.AuthType `json:"type"`
+	Type OCIRegistryAuthType `json:"type"`
 
 	// Basic is the basic authentication used to access the OCI registry.
 	Basic *authv1.BasicAuthSpec `json:"basic,omitempty"`
@@ -59,6 +84,9 @@ type OCIRegistryAuthSpec struct {
 
 	// OIDC is the OIDC configuration used to access the OCI registry.
 	OIDC *authv1.OIDAuthSpec `json:"oidc,omitempty"`
+
+	// CloudIdentity is the cloud identity configuration used to access the OCI registry.
+	CloudIdentity *authv1.CloudIdentitySpec `json:"cloudIdentity,omitempty"`
 }
 
 // OCIRegistryWebhookSpec defines the desired state of OCIRegistryWebhook.

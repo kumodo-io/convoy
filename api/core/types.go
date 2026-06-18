@@ -39,6 +39,16 @@ const (
 	OnUnreachableDeletionPolicyReleasesOnly OnUnreachableDeletionPolicy = "releasesOnly"
 )
 
+type ClusterAuthType authv1.AuthType
+
+const (
+	ClusterAuthTypeKubeconfig = ClusterAuthType(authv1.AuthTypeKubeconfig)
+	ClusterAuthTypeToken      = ClusterAuthType(authv1.AuthTypeToken)
+	ClusterAuthTypeClientCert = ClusterAuthType(authv1.AuthTypeClientCert)
+	ClusterAuthTypeExecPlugin = ClusterAuthType(authv1.AuthTypeExecPlugin)
+	ClusterAuthTypeOIDC       = ClusterAuthType(authv1.AuthTypeOIDC)
+)
+
 type ClusterSpec struct {
 	ConnectionMode ClusterConnectionMode
 	Agent          *ClusterAgentModeSpec
@@ -58,7 +68,7 @@ type ClusterAgentlessModeSpec struct {
 }
 
 type ClusterAuthSpec struct {
-	Type       authv1.AuthType
+	Type       ClusterAuthType
 	Kubeconfig *authv1.KubeconfigAuthSpec
 	Token      *authv1.TokenAuthSpec
 	ClientCert *authv1.ClientCertAuthSpec

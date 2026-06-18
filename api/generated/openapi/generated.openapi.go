@@ -41,6 +41,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	return map[string]common.OpenAPIDefinition{
 		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":             schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
 		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":        schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec":         schema_convoy_api_auth_v1alpha1_CloudIdentitySpec(ref),
 		"github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec":      schema_convoy_api_auth_v1alpha1_DockerConfigAuthSpec(ref),
 		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":        schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
 		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":         schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
@@ -537,6 +538,29 @@ func schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref common.ReferenceCall
 		},
 		Dependencies: []string{
 			corev1.SecretKeySelector{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_auth_v1alpha1_CloudIdentitySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CloudIdentitySpec defines the desired state of CloudIdentity",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"provider": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provider is the cloud provider.\n\nPossible enum values:\n - `\"aws\"` is the cloud provider AWS.\n - `\"azure\"` is the cloud provider Azure.\n - `\"gcp\"` is the cloud provider GCP.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"aws", "azure", "gcp"},
+						},
+					},
+				},
+				Required: []string{"provider"},
+			},
+		},
 	}
 }
 
@@ -1118,11 +1142,11 @@ func schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication mode used to connect to the target cluster. The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"dockerConfig\"` is the authentication method using a docker config.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
+							Description: "Type is the authentication mode used to connect to the target cluster. The workload identity authentication mode does not require specific configuration as it uses the identity of the controller's pod.\n\nPossible enum values:\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"token\"` is the authentication method using a token.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"basic", "clientCert", "dockerConfig", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
+							Enum:        []interface{}{"clientCert", "execPlugin", "kubeconfig", "oidc", "token"},
 						},
 					},
 					"kubeconfig": {
@@ -4106,11 +4130,11 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref common.Referenc
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication method used to access the Git repository.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"dockerConfig\"` is the authentication method using a docker config.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
+							Description: "Type is the authentication method used to access the Git repository.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"cloudIdentity\"` is the authentication method using a cloud identity.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"basic", "clientCert", "dockerConfig", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
+							Enum:        []interface{}{"basic", "cloudIdentity", "githubApp", "none", "oidc", "sshKey", "token"},
 						},
 					},
 					"sshKey": {
@@ -4143,12 +4167,18 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref common.Referenc
 							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec"),
 						},
 					},
+					"cloudIdentity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CloudIdentity is the cloud identity configuration used to access the Git repository.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec"),
+						},
+					},
 				},
 				Required: []string{"type"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
 	}
 }
 
@@ -4654,11 +4684,11 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref common.Reference
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication method used to access the Helm registry.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"dockerConfig\"` is the authentication method using a docker config.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
+							Description: "Type is the authentication method used to access the Helm registry.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"cloudIdentity\"` is the authentication method using a cloud identity.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"token\"` is the authentication method using a token.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"basic", "clientCert", "dockerConfig", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
+							Enum:        []interface{}{"basic", "cloudIdentity", "none", "oidc", "token"},
 						},
 					},
 					"basic": {
@@ -4679,12 +4709,18 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref common.Reference
 							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec"),
 						},
 					},
+					"cloudIdentity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CloudIdentity is the cloud identity configuration used to access the Helm registry.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec"),
+						},
+					},
 				},
 				Required: []string{"type"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
 	}
 }
 
@@ -5102,11 +5138,11 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref common.ReferenceC
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the authentication method used to access the OCI registry.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"clientCert\"` is the authentication method using a client certificate.\n - `\"dockerConfig\"` is the authentication method using a docker config.\n - `\"execPlugin\"` is the authentication method using an exec plugin.\n - `\"githubApp\"` is the authentication method using a GitHub App.\n - `\"kubeconfig\"` is the authentication method using a kubeconfig file.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"sshKey\"` is the authentication method using SSH key authentication.\n - `\"token\"` is the authentication method using a token.\n - `\"workloadIdentity\"` is the authentication method using a workload identity.",
+							Description: "Type is the authentication method used to access the OCI registry.\n\nPossible enum values:\n - `\"basic\"` is the authentication method using basic authentication.\n - `\"cloudIdentity\"` is the authentication method using a cloud identity.\n - `\"dockerConfig\"` is the authentication method using a Docker config.\n - `\"none\"` is the authentication method using no authentication.\n - `\"oidc\"` is the authentication method using OIDC.\n - `\"token\"` is the authentication method using a token.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"basic", "clientCert", "dockerConfig", "execPlugin", "githubApp", "kubeconfig", "none", "oidc", "sshKey", "token", "workloadIdentity"},
+							Enum:        []interface{}{"basic", "cloudIdentity", "dockerConfig", "none", "oidc", "token"},
 						},
 					},
 					"basic": {
@@ -5133,12 +5169,18 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref common.ReferenceC
 							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec"),
 						},
 					},
+					"cloudIdentity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CloudIdentity is the cloud identity configuration used to access the OCI registry.",
+							Ref:         ref("github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec"),
+						},
+					},
 				},
 				Required: []string{"type"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec", "github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec"},
 	}
 }
 

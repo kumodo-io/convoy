@@ -47,7 +47,7 @@ spec:
   # Authentication — optional, for private repos.
   # Discriminated union on auth.type. See "Authentication Methods" below.
   auth:
-    # type: basic | token | oidc | workloadIdentity
+    # type: none | basic | token | oidc | cloudIdentity
     type: basic
     
     basic:
@@ -100,8 +100,10 @@ spec:
     #     caPublicCertRef: { name: corporate-ca, key: ca.crt }
     #     insecureSkipVerify: false
 
-    # type: workloadIdentity — controller uses cloud-native identity for cloud-hosted Git
+    # type: cloudIdentity — controller uses cloud-native identity for cloud-hosted Git
     # (e.g., AWS CodeCommit via IRSA). No static credentials stored.
+    # cloudIdentity:
+    #   provider: aws | azure | gcp
   
   # How often to refresh the chart index.
   # Helm registries change less frequently than Git; longer intervals are fine.

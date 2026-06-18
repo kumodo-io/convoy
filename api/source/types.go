@@ -29,6 +29,18 @@ type LastRejectionStatus struct {
 
 // ---------- GitRepository types ----------
 
+type GitRepositoryAuthType authv1.AuthType
+
+const (
+	GitRepositoryAuthTypeNone          = GitRepositoryAuthType(authv1.AuthTypeNone)
+	GitRepositoryAuthTypeBasic         = GitRepositoryAuthType(authv1.AuthTypeBasic)
+	GitRepositoryAuthTypeToken         = GitRepositoryAuthType(authv1.AuthTypeToken)
+	GitRepositoryAuthTypeSSHKey        = GitRepositoryAuthType(authv1.AuthTypeSSHKey)
+	GitRepositoryAuthTypeGithubApp     = GitRepositoryAuthType(authv1.AuthTypeGithubApp)
+	GitRepositoryAuthTypeOIDC          = GitRepositoryAuthType(authv1.AuthTypeOIDC)
+	GitRepositoryAuthTypeCloudIdentity = GitRepositoryAuthType(authv1.AuthTypeCloudIdentity)
+)
+
 type GitRepositorySpec struct {
 	URL             string
 	Ref             GitRepositoryRefSpec
@@ -48,12 +60,13 @@ type GitRepositoryRefSpec struct {
 }
 
 type GitRepositoryAuthSpec struct {
-	Type      authv1.AuthType
-	SSHKey    *authv1.SSHKeyAuthSpec
-	Basic     *authv1.BasicAuthSpec
-	Token     *authv1.TokenAuthSpec
-	GithubApp *authv1.GithubAppAuthSpec
-	OIDC      *authv1.OIDAuthSpec
+	Type          GitRepositoryAuthType
+	SSHKey        *authv1.SSHKeyAuthSpec
+	Basic         *authv1.BasicAuthSpec
+	Token         *authv1.TokenAuthSpec
+	GithubApp     *authv1.GithubAppAuthSpec
+	OIDC          *authv1.OIDAuthSpec
+	CloudIdentity *authv1.CloudIdentitySpec
 }
 
 type GitRepositoryWebhookSpec struct {
@@ -107,6 +120,16 @@ type GitRepositoryList struct {
 
 // ---------- HelmRegistry types ----------
 
+type HelmRegistryAuthType authv1.AuthType
+
+const (
+	HelmRegistryAuthTypeNone          = HelmRegistryAuthType(authv1.AuthTypeNone)
+	HelmRegistryAuthTypeBasic         = HelmRegistryAuthType(authv1.AuthTypeBasic)
+	HelmRegistryAuthTypeToken         = HelmRegistryAuthType(authv1.AuthTypeToken)
+	HelmRegistryAuthTypeOIDC          = HelmRegistryAuthType(authv1.AuthTypeOIDC)
+	HelmRegistryAuthTypeCloudIdentity = HelmRegistryAuthType(authv1.AuthTypeCloudIdentity)
+)
+
 type HelmRegistrySpec struct {
 	URL             string
 	Auth            HelmRegistryAuthSpec
@@ -116,10 +139,11 @@ type HelmRegistrySpec struct {
 }
 
 type HelmRegistryAuthSpec struct {
-	Type  authv1.AuthType
-	Basic *authv1.BasicAuthSpec
-	Token *authv1.TokenAuthSpec
-	OIDC  *authv1.OIDAuthSpec
+	Type          HelmRegistryAuthType
+	Basic         *authv1.BasicAuthSpec
+	Token         *authv1.TokenAuthSpec
+	OIDC          *authv1.OIDAuthSpec
+	CloudIdentity *authv1.CloudIdentitySpec
 }
 
 type HelmRegistryWebhookSpec struct {
@@ -178,6 +202,17 @@ const (
 	ContentTypeKustomize ContentType = "kustomize"
 )
 
+type OCIRegistryAuthType authv1.AuthType
+
+const (
+	OCIRegistryAuthTypeNone          = OCIRegistryAuthType(authv1.AuthTypeNone)
+	OCIRegistryAuthTypeDockerConfig  = OCIRegistryAuthType(authv1.AuthTypeDockerConfig)
+	OCIRegistryAuthTypeBasic         = OCIRegistryAuthType(authv1.AuthTypeBasic)
+	OCIRegistryAuthTypeToken         = OCIRegistryAuthType(authv1.AuthTypeToken)
+	OCIRegistryAuthTypeOIDC          = OCIRegistryAuthType(authv1.AuthTypeOIDC)
+	OCIRegistryAuthTypeCloudIdentity = OCIRegistryAuthType(authv1.AuthTypeCloudIdentity)
+)
+
 type OCIRegistrySpec struct {
 	URL                string
 	Auth               OCIRegistryAuthSpec
@@ -188,11 +223,12 @@ type OCIRegistrySpec struct {
 }
 
 type OCIRegistryAuthSpec struct {
-	Type         authv1.AuthType
-	Basic        *authv1.BasicAuthSpec
-	Token        *authv1.TokenAuthSpec
-	DockerConfig *authv1.DockerConfigAuthSpec
-	OIDC         *authv1.OIDAuthSpec
+	Type          OCIRegistryAuthType
+	Basic         *authv1.BasicAuthSpec
+	Token         *authv1.TokenAuthSpec
+	DockerConfig  *authv1.DockerConfigAuthSpec
+	OIDC          *authv1.OIDAuthSpec
+	CloudIdentity *authv1.CloudIdentitySpec
 }
 
 type OCIRegistryWebhookSpec struct {

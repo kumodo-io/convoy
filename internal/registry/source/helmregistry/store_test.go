@@ -27,11 +27,17 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
 
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	"github.com/kumodo-io/convoy/api/source"
 	sourceinstall "github.com/kumodo-io/convoy/api/source/install"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/registry/registrytest"
 	helmregistrystorage "github.com/kumodo-io/convoy/internal/registry/source/helmregistry"
+)
+
+const (
+	dummyHelmRegistryName = "dummy-helmregistry"
+	dummyHelmRegistryURL  = "https://dummy.example.com/charts"
 )
 
 func newStorage(t *testing.T) (*genericregistry.Store, *helmregistrystorage.StatusREST, *etcd3testing.EtcdTestServer) {
@@ -48,20 +54,90 @@ func newStorage(t *testing.T) (*genericregistry.Store, *helmregistrystorage.Stat
 func validNewHelmRegistry(namespace string) *source.HelmRegistry {
 	return &source.HelmRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
+			Name:      dummyHelmRegistryName,
 			Namespace: namespace,
 		},
 		Spec: source.HelmRegistrySpec{
-			URL: "https://charts.example.com",
+			URL: dummyHelmRegistryURL,
+			Auth: source.HelmRegistryAuthSpec{
+				Type: source.HelmRegistryAuthTypeNone,
+			},
 		},
 	}
 }
 
-// helmMissingURL is invalid: url is required.
-func helmMissingURL(namespace string) *source.HelmRegistry {
-	r := validNewHelmRegistry(namespace)
-	r.Spec.URL = ""
-	return r
+func invalidNewHelmRegistryNoURL(namespace string) *source.HelmRegistry {
+	return &source.HelmRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyHelmRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.HelmRegistrySpec{
+			Auth: source.HelmRegistryAuthSpec{
+				Type: source.HelmRegistryAuthTypeNone,
+			},
+		},
+	}
+}
+
+func invalidNewHelmRegistryNoAuth(namespace string) *source.HelmRegistry {
+	return &source.HelmRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyHelmRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.HelmRegistrySpec{
+			URL: dummyHelmRegistryURL,
+		},
+	}
+}
+
+func invalidNewHelmRegistryUnknownAuthType(namespace string) *source.HelmRegistry {
+	return &source.HelmRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyHelmRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.HelmRegistrySpec{
+			URL: dummyHelmRegistryURL,
+			Auth: source.HelmRegistryAuthSpec{
+				Type: "unknown",
+			},
+		},
+	}
+}
+
+func invalidNewHelmRegistryMultipleAuthConfigs(namespace string) *source.HelmRegistry {
+	return &source.HelmRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyHelmRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.HelmRegistrySpec{
+			URL: dummyHelmRegistryURL,
+			Auth: source.HelmRegistryAuthSpec{
+				Type:  source.HelmRegistryAuthTypeToken,
+				Token: &authv1.TokenAuthSpec{},
+				OIDC:  &authv1.OIDAuthSpec{},
+			},
+		},
+	}
+}
+
+func invalidNewHelmRegistryMismatchAuthConfig(namespace string) *source.HelmRegistry {
+	return &source.HelmRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyHelmRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.HelmRegistrySpec{
+			URL: dummyHelmRegistryURL,
+			Auth: source.HelmRegistryAuthSpec{
+				Type:  source.HelmRegistryAuthTypeOIDC,
+				Token: &authv1.TokenAuthSpec{},
+			},
+		},
+	}
 }
 
 func TestCreate(t *testing.T) {
@@ -71,7 +147,11 @@ func TestCreate(t *testing.T) {
 	ns := test.TestNamespace()
 	test.TestCreate(
 		validNewHelmRegistry(ns),
-		helmMissingURL(ns),
+		invalidNewHelmRegistryNoURL(ns),
+		invalidNewHelmRegistryNoAuth(ns),
+		invalidNewHelmRegistryUnknownAuthType(ns),
+		invalidNewHelmRegistryMultipleAuthConfigs(ns),
+		invalidNewHelmRegistryMismatchAuthConfig(ns),
 	)
 }
 
@@ -125,7 +205,7 @@ func TestStatusUpdate(t *testing.T) {
 		t.Fatalf("unexpected error creating helmregistry: %v", err)
 	}
 
-	obj, err := statusStorage.Get(ctx, "foo", &metav1.GetOptions{})
+	obj, err := statusStorage.Get(ctx, dummyHelmRegistryName, &metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error getting helmregistry: %v", err)
 	}
@@ -151,7 +231,7 @@ func TestStatusUpdate(t *testing.T) {
 	if updated.Status.LastFetched.ChartCount != 87 {
 		t.Errorf("expected status.lastFetched.chartCount to persist, got %d", updated.Status.LastFetched.ChartCount)
 	}
-	if updated.Spec.URL != "https://charts.example.com" {
+	if updated.Spec.URL != dummyHelmRegistryURL {
 		t.Errorf("expected spec change to be ignored by /status, got url=%q", updated.Spec.URL)
 	}
 }

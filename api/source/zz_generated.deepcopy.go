@@ -90,6 +90,11 @@ func (in *GitRepositoryAuthSpec) DeepCopyInto(out *GitRepositoryAuthSpec) {
 		*out = new(v1alpha1.OIDAuthSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.CloudIdentity != nil {
+		in, out := &in.CloudIdentity, &out.CloudIdentity
+		*out = new(v1alpha1.CloudIdentitySpec)
+		**out = **in
+	}
 	return
 }
 
@@ -361,6 +366,11 @@ func (in *HelmRegistryAuthSpec) DeepCopyInto(out *HelmRegistryAuthSpec) {
 		*out = new(v1alpha1.OIDAuthSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.CloudIdentity != nil {
+		in, out := &in.CloudIdentity, &out.CloudIdentity
+		*out = new(v1alpha1.CloudIdentitySpec)
+		**out = **in
+	}
 	return
 }
 
@@ -604,6 +614,11 @@ func (in *OCIRegistryAuthSpec) DeepCopyInto(out *OCIRegistryAuthSpec) {
 		in, out := &in.OIDC, &out.OIDC
 		*out = new(v1alpha1.OIDAuthSpec)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.CloudIdentity != nil {
+		in, out := &in.CloudIdentity, &out.CloudIdentity
+		*out = new(v1alpha1.CloudIdentitySpec)
+		**out = **in
 	}
 	return
 }

@@ -27,11 +27,17 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
 
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	"github.com/kumodo-io/convoy/api/core"
 	coreinstall "github.com/kumodo-io/convoy/api/core/install"
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clusterstorage "github.com/kumodo-io/convoy/internal/registry/core/cluster"
 	"github.com/kumodo-io/convoy/internal/registry/registrytest"
+)
+
+const (
+	dummyClusterName = "dummy-cluster"
+	dummyServerURL   = "https://dummy.example.com:6443"
 )
 
 // newStorage builds Cluster REST storage backed by an in-process etcd test server.
@@ -49,32 +55,123 @@ func newStorage(t *testing.T) (*genericregistry.Store, *clusterstorage.StatusRES
 func validNewCluster(namespace string) *core.Cluster {
 	return &core.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
+			Name:      dummyClusterName,
+			Namespace: namespace,
+		},
+		Spec: core.ClusterSpec{
+			ConnectionMode: core.ClusterConnectionModeInCluster,
+		},
+	}
+}
+
+func invalidNewClusterNoConnectionMode(namespace string) *core.Cluster {
+	return &core.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyClusterName,
+			Namespace: namespace,
+		},
+		Spec: core.ClusterSpec{
+			ConnectionMode: "",
+		},
+	}
+}
+
+func invalidNewClusterNoConnectionModeConfig(namespace string) *core.Cluster {
+	return &core.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyClusterName,
+			Namespace: namespace,
+		},
+		Spec: core.ClusterSpec{
+			ConnectionMode: core.ClusterConnectionModeAgentless,
+		},
+	}
+}
+
+func invalidNewClusterNoAuthSpec(namespace string) *core.Cluster {
+	return &core.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyClusterName,
 			Namespace: namespace,
 		},
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeAgentless,
 			Agentless: &core.ClusterAgentlessModeSpec{
-				Server: "https://cluster.example.com:6443",
+				Server: dummyServerURL,
 			},
 		},
 	}
 }
 
-// clusterMissingConnectionMode is invalid: connectionMode is required.
-func clusterMissingConnectionMode(namespace string) *core.Cluster {
-	c := validNewCluster(namespace)
-	c.Spec.ConnectionMode = ""
-	c.Spec.Agentless = nil
-	return c
+func invalidNewClusterNoAuthType(namespace string) *core.Cluster {
+	return &core.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyClusterName,
+			Namespace: namespace,
+		},
+		Spec: core.ClusterSpec{
+			ConnectionMode: core.ClusterConnectionModeAgentless,
+			Agentless: &core.ClusterAgentlessModeSpec{
+				Server: dummyServerURL,
+				Auth:   core.ClusterAuthSpec{},
+			},
+		},
+	}
 }
 
-// agentlessMissingConfig is invalid: the agentless block is required when the
-// connection mode is agentless.
-func agentlessMissingConfig(namespace string) *core.Cluster {
-	c := validNewCluster(namespace)
-	c.Spec.Agentless = nil
-	return c
+func invalidNewClusterUnknownAuthType(namespace string) *core.Cluster {
+	return &core.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyClusterName,
+			Namespace: namespace,
+		},
+		Spec: core.ClusterSpec{
+			ConnectionMode: core.ClusterConnectionModeAgentless,
+			Agentless: &core.ClusterAgentlessModeSpec{
+				Server: dummyServerURL,
+				Auth: core.ClusterAuthSpec{
+					Type: "bar",
+				},
+			},
+		},
+	}
+}
+
+func invalidNewClusterNoAuthConfig(namespace string) *core.Cluster {
+	return &core.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyClusterName,
+			Namespace: namespace,
+		},
+		Spec: core.ClusterSpec{
+			ConnectionMode: core.ClusterConnectionModeAgentless,
+			Agentless: &core.ClusterAgentlessModeSpec{
+				Server: dummyServerURL,
+				Auth: core.ClusterAuthSpec{
+					Type: core.ClusterAuthTypeKubeconfig,
+				},
+			},
+		},
+	}
+}
+
+func invalidNewClusterAuthConfigMismatch(namespace string) *core.Cluster {
+	return &core.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyClusterName,
+			Namespace: namespace,
+		},
+		Spec: core.ClusterSpec{
+			ConnectionMode: core.ClusterConnectionModeAgentless,
+			Agentless: &core.ClusterAgentlessModeSpec{
+				Server: dummyServerURL,
+				Auth: core.ClusterAuthSpec{
+					Type:  core.ClusterAuthTypeKubeconfig,
+					Token: &authv1.TokenAuthSpec{},
+				},
+			},
+		},
+	}
 }
 
 func TestCreate(t *testing.T) {
@@ -84,8 +181,13 @@ func TestCreate(t *testing.T) {
 	ns := test.TestNamespace()
 	test.TestCreate(
 		validNewCluster(ns),
-		clusterMissingConnectionMode(ns),
-		agentlessMissingConfig(ns),
+		invalidNewClusterNoConnectionMode(ns),
+		invalidNewClusterNoConnectionModeConfig(ns),
+		invalidNewClusterNoAuthSpec(ns),
+		invalidNewClusterNoAuthType(ns),
+		invalidNewClusterUnknownAuthType(ns),
+		invalidNewClusterNoAuthConfig(ns),
+		invalidNewClusterAuthConfigMismatch(ns),
 	)
 }
 
@@ -147,7 +249,7 @@ func TestStatusUpdate(t *testing.T) {
 		t.Fatalf("unexpected error creating cluster: %v", err)
 	}
 
-	obj, err := statusStorage.Get(ctx, "foo", &metav1.GetOptions{})
+	obj, err := statusStorage.Get(ctx, dummyClusterName, &metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error getting cluster: %v", err)
 	}
