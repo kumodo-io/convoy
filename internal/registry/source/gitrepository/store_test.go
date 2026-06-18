@@ -26,13 +26,18 @@ import (
 	genericregistrytest "k8s.io/apiserver/pkg/registry/generic/testing"
 	"k8s.io/apiserver/pkg/registry/rest"
 	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
-	"k8s.io/utils/ptr"
 
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	"github.com/kumodo-io/convoy/api/source"
 	sourceinstall "github.com/kumodo-io/convoy/api/source/install"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/registry/registrytest"
 	gitrepositorystorage "github.com/kumodo-io/convoy/internal/registry/source/gitrepository"
+)
+
+const (
+	dummyGitRepositoryName = "dummy-gitrepository"
+	dummyGitRepositoryURL  = "https://dummy.example.com/service.git"
 )
 
 func newStorage(t *testing.T) (*genericregistry.Store, *gitrepositorystorage.StatusREST, *etcd3testing.EtcdTestServer) {
@@ -49,12 +54,12 @@ func newStorage(t *testing.T) (*genericregistry.Store, *gitrepositorystorage.Sta
 func validNewGitRepository(namespace string) *source.GitRepository {
 	return &source.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
+			Name:      dummyGitRepositoryName,
 			Namespace: namespace,
 		},
 		Spec: source.GitRepositorySpec{
-			URL: "https://github.com/example/charts",
-			Ref: source.GitRepositoryRefSpec{Branch: ptr.To("main")},
+			URL: dummyGitRepositoryURL,
+			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
 			Auth: source.GitRepositoryAuthSpec{
 				Type: source.GitRepositoryAuthTypeNone,
 			},
@@ -62,25 +67,115 @@ func validNewGitRepository(namespace string) *source.GitRepository {
 	}
 }
 
-// gitMissingURL is invalid: url is required.
-func gitMissingURL(namespace string) *source.GitRepository {
-	r := validNewGitRepository(namespace)
-	r.Spec.URL = ""
-	return r
+func invalidNewGitRepositroyNoURL(namespace string) *source.GitRepository {
+	return &source.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyGitRepositoryName,
+			Namespace: namespace,
+		},
+		Spec: source.GitRepositorySpec{
+			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
+			Auth: source.GitRepositoryAuthSpec{
+				Type: source.GitRepositoryAuthTypeNone,
+			},
+		},
+	}
 }
 
-// gitNoRef is invalid: exactly one ref must be set.
-func gitNoRef(namespace string) *source.GitRepository {
-	r := validNewGitRepository(namespace)
-	r.Spec.Ref = source.GitRepositoryRefSpec{}
-	return r
+func invalidNewGitRepositroyNoRef(namespace string) *source.GitRepository {
+	return &source.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyGitRepositoryName,
+			Namespace: namespace,
+		},
+		Spec: source.GitRepositorySpec{
+			URL: dummyGitRepositoryURL,
+			Auth: source.GitRepositoryAuthSpec{
+				Type: source.GitRepositoryAuthTypeNone,
+			},
+		},
+	}
 }
 
-// gitTwoRefs is invalid: exactly one ref must be set.
-func gitTwoRefs(namespace string) *source.GitRepository {
-	r := validNewGitRepository(namespace)
-	r.Spec.Ref = source.GitRepositoryRefSpec{Branch: ptr.To("main"), Tag: ptr.To("v1.0.0")}
-	return r
+func invalidNewGitRepositroyMultipleRefs(namespace string) *source.GitRepository {
+	return &source.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyGitRepositoryName,
+			Namespace: namespace,
+		},
+		Spec: source.GitRepositorySpec{
+			URL: dummyGitRepositoryURL,
+			Ref: source.GitRepositoryRefSpec{
+				Branch: new("main"),
+				Tag:    new("v1.0.0"),
+			},
+			Auth: source.GitRepositoryAuthSpec{
+				Type: source.GitRepositoryAuthTypeNone,
+			},
+		},
+	}
+}
+
+func invalidNewGitRepositroyNoAuth(namespace string) *source.GitRepository {
+	return &source.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyGitRepositoryName,
+			Namespace: namespace,
+		},
+		Spec: source.GitRepositorySpec{
+			URL: dummyGitRepositoryURL,
+			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
+		},
+	}
+}
+
+func invalidNewGitRepositroyUnknownAuthType(namespace string) *source.GitRepository {
+	return &source.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyGitRepositoryName,
+			Namespace: namespace,
+		},
+		Spec: source.GitRepositorySpec{
+			URL: dummyGitRepositoryURL,
+			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
+			Auth: source.GitRepositoryAuthSpec{
+				Type: "unknown",
+			},
+		},
+	}
+}
+
+func invalidNewGitRepositoryMultipleAuthConfigs(namespace string) *source.GitRepository {
+	return &source.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyGitRepositoryName,
+			Namespace: namespace,
+		},
+		Spec: source.GitRepositorySpec{
+			URL: dummyGitRepositoryURL,
+			Auth: source.GitRepositoryAuthSpec{
+				Type:   source.GitRepositoryAuthTypeToken,
+				Token:  &authv1.TokenAuthSpec{},
+				SSHKey: &authv1.SSHKeyAuthSpec{},
+			},
+		},
+	}
+}
+
+func invalidNewGitRepositoryMismatchAuthConfig(namespace string) *source.GitRepository {
+	return &source.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyGitRepositoryName,
+			Namespace: namespace,
+		},
+		Spec: source.GitRepositorySpec{
+			URL: dummyGitRepositoryURL,
+			Auth: source.GitRepositoryAuthSpec{
+				Type:  source.GitRepositoryAuthTypeSSHKey,
+				Token: &authv1.TokenAuthSpec{},
+			},
+		},
+	}
 }
 
 func TestCreate(t *testing.T) {
@@ -88,12 +183,15 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage)
 	ns := test.TestNamespace()
-	// todo: add test for invalid auth type
 	test.TestCreate(
 		validNewGitRepository(ns),
-		gitMissingURL(ns),
-		gitNoRef(ns),
-		gitTwoRefs(ns),
+		invalidNewGitRepositroyNoURL(ns),
+		invalidNewGitRepositroyNoRef(ns),
+		invalidNewGitRepositroyMultipleRefs(ns),
+		invalidNewGitRepositroyNoAuth(ns),
+		invalidNewGitRepositroyUnknownAuthType(ns),
+		invalidNewGitRepositoryMultipleAuthConfigs(ns),
+		invalidNewGitRepositoryMismatchAuthConfig(ns),
 	)
 }
 
@@ -106,7 +204,7 @@ func TestUpdate(t *testing.T) {
 		// valid update: switch tracked ref from branch to tag
 		func(obj runtime.Object) runtime.Object {
 			r := obj.(*source.GitRepository)
-			r.Spec.Ref = source.GitRepositoryRefSpec{Tag: ptr.To("v1.2.3")}
+			r.Spec.Ref = source.GitRepositoryRefSpec{Tag: new("v1.2.3")}
 			return r
 		},
 		// invalid update: clears the required url
@@ -149,7 +247,7 @@ func TestStatusUpdate(t *testing.T) {
 		t.Fatalf("unexpected error creating gitrepository: %v", err)
 	}
 
-	obj, err := statusStorage.Get(ctx, "foo", &metav1.GetOptions{})
+	obj, err := statusStorage.Get(ctx, dummyGitRepositoryName, &metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error getting gitrepository: %v", err)
 	}
@@ -177,7 +275,7 @@ func TestStatusUpdate(t *testing.T) {
 	if updated.Status.LastFetched.Revision != "abc123" {
 		t.Errorf("expected status.lastFetched.revision to persist, got %q", updated.Status.LastFetched.Revision)
 	}
-	if updated.Spec.URL != "https://github.com/example/charts" {
+	if updated.Spec.URL != dummyGitRepositoryURL {
 		t.Errorf("expected spec change to be ignored by /status, got url=%q", updated.Spec.URL)
 	}
 }
