@@ -27,11 +27,17 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	etcd3testing "k8s.io/apiserver/pkg/storage/etcd3/testing"
 
+	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	"github.com/kumodo-io/convoy/api/source"
 	sourceinstall "github.com/kumodo-io/convoy/api/source/install"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/registry/registrytest"
 	ociregistrystorage "github.com/kumodo-io/convoy/internal/registry/source/ociregistry"
+)
+
+const (
+	dummyOCIRegistryName = "dummy-ociregistry"
+	dummyOCIRegistryURL  = "oci://ghcr.io/example/charts"
 )
 
 func newStorage(t *testing.T) (*genericregistry.Store, *ociregistrystorage.StatusREST, *etcd3testing.EtcdTestServer) {
@@ -48,11 +54,11 @@ func newStorage(t *testing.T) (*genericregistry.Store, *ociregistrystorage.Statu
 func validNewOCIRegistry(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
+			Name:      dummyOCIRegistryName,
 			Namespace: namespace,
 		},
 		Spec: source.OCIRegistrySpec{
-			URL:                "oci://ghcr.io/example/charts",
+			URL:                dummyOCIRegistryURL,
 			DefaultContentType: source.ContentTypeHelm,
 			Auth: source.OCIRegistryAuthSpec{
 				Type: source.OCIRegistryAuthTypeNone,
@@ -61,18 +67,109 @@ func validNewOCIRegistry(namespace string) *source.OCIRegistry {
 	}
 }
 
-// ociMissingURL is invalid: url is required.
-func ociMissingURL(namespace string) *source.OCIRegistry {
-	r := validNewOCIRegistry(namespace)
-	r.Spec.URL = ""
-	return r
+func invalidNewOCIRegistryNoURL(namespace string) *source.OCIRegistry {
+	return &source.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyOCIRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.OCIRegistrySpec{
+			Auth: source.OCIRegistryAuthSpec{
+				Type: source.OCIRegistryAuthTypeNone,
+			},
+		},
+	}
 }
 
-// ociBadContentType is invalid: defaultContentType must be a known value.
-func ociBadContentType(namespace string) *source.OCIRegistry {
-	r := validNewOCIRegistry(namespace)
-	r.Spec.DefaultContentType = "bogus"
-	return r
+func invalidNewOCIRegistryNoAuth(namespace string) *source.OCIRegistry {
+	return &source.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyOCIRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.OCIRegistrySpec{
+			URL: dummyOCIRegistryURL,
+		},
+	}
+}
+
+func invalidNewOCIRegistryUnknownAuthType(namespace string) *source.OCIRegistry {
+	return &source.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyOCIRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.OCIRegistrySpec{
+			URL: dummyOCIRegistryURL,
+			Auth: source.OCIRegistryAuthSpec{
+				Type: "unknown",
+			},
+		},
+	}
+}
+
+func invalidNewOCIRegistryMultipleAuthConfigs(namespace string) *source.OCIRegistry {
+	return &source.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyOCIRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.OCIRegistrySpec{
+			URL: dummyOCIRegistryURL,
+			Auth: source.OCIRegistryAuthSpec{
+				Type:  source.OCIRegistryAuthTypeToken,
+				Token: &authv1.TokenAuthSpec{},
+				OIDC:  &authv1.OIDAuthSpec{},
+			},
+		},
+	}
+}
+
+func invalidNewOCIRegistryMismatchAuthConfig(namespace string) *source.OCIRegistry {
+	return &source.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyOCIRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.OCIRegistrySpec{
+			URL: dummyOCIRegistryURL,
+			Auth: source.OCIRegistryAuthSpec{
+				Type:  source.OCIRegistryAuthTypeOIDC,
+				Token: &authv1.TokenAuthSpec{},
+			},
+		},
+	}
+}
+
+func invalidNewOCIRegistryNoDefaultContentType(namespace string) *source.OCIRegistry {
+	return &source.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyOCIRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.OCIRegistrySpec{
+			URL: dummyOCIRegistryURL,
+			Auth: source.OCIRegistryAuthSpec{
+				Type: source.OCIRegistryAuthTypeNone,
+			},
+		},
+	}
+}
+
+func invalidNewOCIRegistryUnknownDefaultContentType(namespace string) *source.OCIRegistry {
+	return &source.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      dummyOCIRegistryName,
+			Namespace: namespace,
+		},
+		Spec: source.OCIRegistrySpec{
+			URL:                dummyOCIRegistryURL,
+			DefaultContentType: "unknown",
+			Auth: source.OCIRegistryAuthSpec{
+				Type: source.OCIRegistryAuthTypeNone,
+			},
+		},
+	}
 }
 
 func TestCreate(t *testing.T) {
@@ -80,11 +177,15 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage)
 	ns := test.TestNamespace()
-	// todo: add test for invalid auth type
 	test.TestCreate(
 		validNewOCIRegistry(ns),
-		ociMissingURL(ns),
-		ociBadContentType(ns),
+		invalidNewOCIRegistryNoURL(ns),
+		invalidNewOCIRegistryNoAuth(ns),
+		invalidNewOCIRegistryUnknownAuthType(ns),
+		invalidNewOCIRegistryMultipleAuthConfigs(ns),
+		invalidNewOCIRegistryMismatchAuthConfig(ns),
+		invalidNewOCIRegistryNoDefaultContentType(ns),
+		invalidNewOCIRegistryUnknownDefaultContentType(ns),
 	)
 }
 
@@ -138,7 +239,7 @@ func TestStatusUpdate(t *testing.T) {
 		t.Fatalf("unexpected error creating ociregistry: %v", err)
 	}
 
-	obj, err := statusStorage.Get(ctx, "foo", &metav1.GetOptions{})
+	obj, err := statusStorage.Get(ctx, dummyOCIRegistryName, &metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error getting ociregistry: %v", err)
 	}
@@ -164,7 +265,7 @@ func TestStatusUpdate(t *testing.T) {
 	if updated.Status.ReleaseCount != 8 {
 		t.Errorf("expected status.releaseCount to persist, got %d", updated.Status.ReleaseCount)
 	}
-	if updated.Spec.URL != "oci://ghcr.io/example/charts" {
+	if updated.Spec.URL != dummyOCIRegistryURL {
 		t.Errorf("expected spec change to be ignored by /status, got url=%q", updated.Spec.URL)
 	}
 }

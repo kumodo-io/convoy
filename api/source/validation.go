@@ -240,7 +240,7 @@ func validateOCIRegistrySpec(spec *OCIRegistrySpec, fldPath *field.Path) field.E
 		allErrs = append(allErrs, field.Required(fldPath.Child("url"), ""))
 	}
 	switch spec.DefaultContentType {
-	case "", ContentTypeHelm, ContentTypeManifests, ContentTypeKustomize:
+	case ContentTypeHelm, ContentTypeManifests, ContentTypeKustomize:
 		// empty is allowed; the controller defaults it
 	default:
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("defaultContentType"), spec.DefaultContentType, []string{
