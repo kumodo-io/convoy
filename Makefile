@@ -151,8 +151,13 @@ build:
 test:
 	go test ./...
 
+.PHONY: go-tools
+go-tools:
+	go fmt ./...
+	go vet ./...
+
 .PHONY: lint
-lint: $(TOOLS_BIN)/golangci-lint
+lint: $(TOOLS_BIN)/golangci-lint go-tools
 	$(TOOLS_BIN)/golangci-lint run ./...
 
 # Local dev cluster (kind + Tilt)
