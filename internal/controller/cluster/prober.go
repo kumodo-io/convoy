@@ -46,34 +46,37 @@ var (
 	// ErrUnsupported marks a probe rejected because the Cluster requests a
 	// connection mode or auth type this build does not implement yet. It is
 	// terminal — reconcile surfaces it as a non-Ready condition without
-	// requeuing. Probers join it with a detail error describing what was asked.
+	// requeuing. The connector joins it with a detail error.
 	ErrUnsupported = errors.New("unsupported cluster configuration")
 	// ErrProbeFailed marks a transient failure to reach the target cluster.
-	// Probers join it with the underlying connection/discovery error.
+	// The connector/discovery join it with the underlying error.
 	ErrProbeFailed = errors.New("probe failed")
 )
 
-// inClusterProber implements Prober for the workload-identity case: it connects
-// using the controller pod's own identity (the supplied in-cluster rest.Config)
-// and runs discovery against it. This is the only auth mode supported in this
-// slice; other modes resolve credentials from referenced Secrets/ConfigMaps and
-// are not implemented yet.
-type inClusterProber struct {
-	cfg *rest.Config
+// connectorProber implements Prober as the composition of the (varying)
+// connection step and the (fixed) discovery step: connect → discover.
+type connectorProber struct {
+	connect *Connector
 }
 
-// NewInClusterProber returns a Prober that probes via the controller's own
-// in-cluster identity.
-func NewInClusterProber(cfg *rest.Config) Prober {
-	return &inClusterProber{cfg: cfg}
+// NewProber returns a Prober that builds a config via the connector and probes
+// it with discovery.
+func NewProber(connect *Connector) Prober {
+	return &connectorProber{connect: connect}
 }
 
-func (p *inClusterProber) Probe(ctx context.Context, cluster *corev1alpha1.Cluster) (ProbeResult, error) {
-	if cluster.Spec.ConnectionMode != corev1alpha1.ClusterConnectionModeInCluster {
-		return ProbeResult{}, errors.Join(ErrUnsupported, fmt.Errorf("connection mode %q is not supported yet (only %q)", cluster.Spec.ConnectionMode, corev1alpha1.ClusterConnectionModeInCluster))
+func (p *connectorProber) Probe(ctx context.Context, cluster *corev1alpha1.Cluster) (ProbeResult, error) {
+	cfg, err := p.connect.Connect(ctx, cluster)
+	if err != nil {
+		return ProbeResult{}, err // already classified (ErrUnsupported / ErrProbeFailed)
 	}
+	return discover(ctx, cfg)
+}
 
-	dc, err := discovery.NewDiscoveryClientForConfig(p.cfg)
+// discover runs discovery against any config — the part that does not vary by
+// connection mode or auth type.
+func discover(_ context.Context, cfg *rest.Config) (ProbeResult, error) {
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
 		return ProbeResult{}, errors.Join(ErrProbeFailed, fmt.Errorf("building discovery client: %w", err))
 	}

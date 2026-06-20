@@ -1,21 +1,18 @@
 apiVersion: core.convoy.kumodo.io/v1alpha1
 kind: Cluster
 metadata:
-  name: prod-eu
+  name: convoy-managed
   namespace: default
 spec:
   connectionMode: agentless
   agentless:
-    server: https://example.com:6443
-    caPublicCertRef:
-      name: prod-eu-ca
-      key: ca.crt
+    server: https://convoy-managed-control-plane:6443
     auth:
-      type: token
-    connectionParameters:
-      qps: 50
-      burst: 100
-      timeout: 30s
+      type: kubeconfig
+      kubeconfig:
+        secretRef:
+          name: convoy-managed-kubeconfig
+          key: kubeconfig
   deletionPolicy:
     releases: block
     workloads: prune
