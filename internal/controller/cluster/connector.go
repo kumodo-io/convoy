@@ -1,0 +1,77 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package cluster
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"k8s.io/client-go/rest"
+
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/auth"
+)
+
+// Connector turns a Cluster into a REST config to reach its target API server.
+// Connection mode is a closed switch (only three modes exist); the per-auth-type
+// variation lives in the Registry, used only by the agentless mode.
+type Connector struct {
+	// inClusterCfg is the controller pod's own config, used for inCluster mode.
+	inClusterCfg *rest.Config
+	registry     Registry
+	secrets      auth.SecretResolver
+}
+
+// NewConnector builds a Connector. inClusterCfg is the config the manager built
+// for itself (in-cluster or --kubeconfig); registry holds the agentless
+// authenticators; secrets resolves referenced credentials.
+func NewConnector(inClusterCfg *rest.Config, registry Registry, secrets auth.SecretResolver) *Connector {
+	return &Connector{inClusterCfg: inClusterCfg, registry: registry, secrets: secrets}
+}
+
+// Connect returns a REST config for the cluster, or an error classified as
+// ErrUnsupported (terminal — mode/auth not implemented) or ErrProbeFailed
+// (transient — couldn't build the config).
+func (c *Connector) Connect(ctx context.Context, cluster *corev1alpha1.Cluster) (*rest.Config, error) {
+	switch cluster.Spec.ConnectionMode {
+	case corev1alpha1.ClusterConnectionModeInCluster:
+		return c.inClusterCfg, nil
+
+	case corev1alpha1.ClusterConnectionModeAgentless:
+		if cluster.Spec.Agentless == nil {
+			return nil, errors.Join(ErrProbeFailed, fmt.Errorf("agentless config is missing"))
+		}
+		authenticator, ok := c.registry[cluster.Spec.Agentless.Auth.Type]
+		if !ok {
+			return nil, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet", cluster.Spec.Agentless.Auth.Type))
+		}
+		cfg, err := authenticator.RESTConfig(ctx, cluster, c.secrets)
+		if err != nil {
+			return nil, errors.Join(ErrProbeFailed, err)
+		}
+		return cfg, nil
+
+	case corev1alpha1.ClusterConnectionModeAgent:
+		// Pull mode: the control plane never connects out — status would come
+		// from agent registration/heartbeat. Not implemented yet.
+		return nil, errors.Join(ErrUnsupported, fmt.Errorf("connection mode %q is not supported yet", cluster.Spec.ConnectionMode))
+
+	default:
+		return nil, errors.Join(ErrUnsupported, fmt.Errorf("unknown connection mode %q", cluster.Spec.ConnectionMode))
+	}
+}

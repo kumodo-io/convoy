@@ -21,6 +21,12 @@ rules:
   - apiGroups: ["core.convoy.kumodo.io"]
     resources: ["clusters/status"]
     verbs: ["get", "update", "patch"]
+  # Resolve credential material referenced by a Cluster's auth spec (e.g. the
+  # kubeconfig Secret for agentless connection). Cluster-wide because Cluster
+  # objects — and their referenced Secrets — may live in any namespace.
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

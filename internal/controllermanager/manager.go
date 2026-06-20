@@ -23,11 +23,14 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
+	"github.com/kumodo-io/convoy/internal/auth"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 )
 
@@ -71,13 +74,31 @@ func (o *Options) Run(ctx context.Context) error {
 		return err
 	}
 
+	// kube is used to resolve referenced Secrets/ConfigMaps (e.g. kubeconfigs)
+	// from the cluster convoy runs in.
+	kube, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
 	clusterInformer := factory.Core().V1alpha1().Clusters()
 
-	// In-cluster probing: the target is reached via the controller's
-	// own in-cluster identity (the same config used to talk to the API).
-	prober := clustercontroller.NewInClusterProber(cfg)
+	secrets := auth.NewSecretResolver(kube)
+	// Registry of agentless auth types. cfg is the controller's own config, used
+	// for the inCluster connection mode.
+	clusterAuth := clustercontroller.Registry{
+		corev1alpha1.ClusterAuthTypeKubeconfig: auth.KubeconfigAuthenticator{},
+	}
+	connector := clustercontroller.NewConnector(cfg, clusterAuth, secrets)
+	prober := clustercontroller.NewProber(connector)
 	controller := clustercontroller.NewController(client, clusterInformer, prober)
+
+	// The source/registry auth registry slots in here once the source controller
+	// exists, e.g.:
+	//   registryAuth := sourcecontroller.Registry{
+	//       sourcev1alpha1.OCIRegistryAuthTypeToken: auth.TokenAuthenticator{},
+	//   }
 
 	factory.Start(ctx.Done())
 

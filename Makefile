@@ -162,9 +162,10 @@ lint: $(TOOLS_BIN)/golangci-lint go-tools
 
 # Local dev cluster (kind + Tilt)
 
-KIND_CLUSTER     := convoy-dev
-API_SERVER_IMAGE := convoy-apiserver:dev
-CONTROLLER_IMAGE := convoy-controller-manager:dev
+KIND_CLUSTER         := convoy-dev
+KIND_CLUSTER_MANAGED := convoy-managed
+API_SERVER_IMAGE     := convoy-apiserver:dev
+CONTROLLER_IMAGE     := convoy-controller-manager:dev
 
 # Build static linux binaries matching the local arch (kind nodes are linux/$GOARCH).
 .PHONY: build-linux
@@ -179,18 +180,33 @@ image:
 
 .PHONY: kind-up
 kind-up: kind
-	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER) || $(TOOLS_BIN)/kind create cluster --config hack/kind/kind-config.yaml
+	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER) || $(TOOLS_BIN)/kind create cluster --config hack/kind/management/kind-config.yaml
 
 .PHONY: kind-down
 kind-down: kind
 	$(TOOLS_BIN)/kind delete cluster --name $(KIND_CLUSTER)
+
+.PHONY: kind-managed-up
+kind-managed-up: kind
+	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER_MANAGED) || $(TOOLS_BIN)/kind create cluster --config hack/kind/managed/kind-config.yaml
+
+.PHONY: kind-managed-down
+kind-managed-down: kind
+	$(TOOLS_BIN)/kind delete cluster --name $(KIND_CLUSTER_MANAGED)
+
+.PHONY: kind-managed-kubeconfig
+kind-managed-kubeconfig: kubectl kind-up kind-managed-up
+	$(TOOLS_BIN)/kind get kubeconfig --name $(KIND_CLUSTER_MANAGED) --internal | \
+	  $(TOOLS_BIN)/kubectl --context kind-$(KIND_CLUSTER) create secret generic $(KIND_CLUSTER_MANAGED)-kubeconfig \
+	  --from-file=kubeconfig=/dev/stdin \
+	  --dry-run=client -o yaml | $(TOOLS_BIN)/kubectl --context kind-$(KIND_CLUSTER) apply -f -
 
 # Build, load, and deploy convoy into the kind cluster (no Tilt required).
 .PHONY: kind-deploy
 kind-deploy: image kind kubectl
 	$(TOOLS_BIN)/kind load docker-image $(API_SERVER_IMAGE) --name $(KIND_CLUSTER)
 	$(TOOLS_BIN)/kind load docker-image $(CONTROLLER_IMAGE) --name $(KIND_CLUSTER)
-	$(TOOLS_BIN)/kubectl apply -k hack/kind
+	$(TOOLS_BIN)/kubectl apply -k hack/kind/management
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
 	$(TOOLS_BIN)/kubectl wait --for=condition=Available --timeout=120s \

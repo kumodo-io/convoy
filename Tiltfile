@@ -53,7 +53,7 @@ docker_build_with_restart(
     ],
 )
 
-k8s_yaml(kustomize('hack/kind'))
+k8s_yaml(kustomize('hack/kind/management'))
 
 k8s_resource('convoy-etcd', labels=['convoy'])
 k8s_resource(
