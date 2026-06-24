@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -102,7 +103,10 @@ func (o *Options) Run(ctx context.Context) error {
 
 	factory.Start(ctx.Done())
 
-	return controller.Run(ctx, o.Workers)
+	errGroup := errgroup.Group{}
+	errGroup.Go(func() error { return controller.Run(ctx, o.Workers) })
+
+	return errGroup.Wait()
 }
 
 // NewCommand builds the cobra command that starts the controller manager.

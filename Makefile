@@ -226,6 +226,7 @@ kind-test: kubectl
 # code changes.
 .PHONY: tilt-up
 tilt-up: tilt kustomize
+	$(TOOLS_BIN)/kubectl config use-context kind-$(KIND_CLUSTER)
 	$(TOOLS_BIN)/tilt up
 
 .PHONY: tilt-down

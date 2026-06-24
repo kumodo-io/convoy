@@ -6,6 +6,7 @@ require (
 	github.com/cashapp/hermit v0.52.1
 	github.com/golangci/golangci-lint/v2 v2.12.2
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/sync v0.20.0
 	google.golang.org/grpc v1.81.1
 	k8s.io/api v0.36.1
 	k8s.io/apiextensions-apiserver v0.36.1
@@ -14,8 +15,8 @@ require (
 	k8s.io/client-go v0.36.1
 	k8s.io/code-generator v0.36.1
 	k8s.io/component-base v0.36.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/kube-openapi v0.0.0-20260512204627-d58ecf2ec5d9
-	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2
 )
 
@@ -323,7 +324,6 @@ require (
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
@@ -341,9 +341,9 @@ require (
 	honnef.co/go/tools v0.7.0 // indirect
 	howett.net/plist v1.0.1 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
-	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kms v0.36.1 // indirect
 	k8s.io/streaming v0.36.1 // indirect
+	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
 	mvdan.cc/gofumpt v0.9.2 // indirect
 	mvdan.cc/sh v2.6.4+incompatible // indirect
 	mvdan.cc/unparam v0.0.0-20251027182757-5beb8c8f8f15 // indirect
