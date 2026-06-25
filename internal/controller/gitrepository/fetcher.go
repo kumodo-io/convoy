@@ -24,7 +24,7 @@ import (
 	"os"
 	"strings"
 
-	billy "github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-billy/v5/util"
 	gogit "github.com/go-git/go-git/v5"
@@ -211,7 +211,9 @@ func snapshotWorktree(fsys billy.Filesystem) (map[string][]byte, error) {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() {
+			_ = file.Close()
+		}()
 		data, err := io.ReadAll(file)
 		if err != nil {
 			return err

@@ -36,6 +36,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
+	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 )
 
 // Options configures the controller manager.
@@ -109,11 +110,19 @@ func (o *Options) Run(ctx context.Context) error {
 	gitFetcher := gitrepositorycontroller.NewGitFetcher(resolver)
 	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher, artifactStore)
 
+	// Release controller: renders the source artifact and applies it to the
+	// target cluster (reached through the same connector the cluster controller
+	// probes with).
+	releaseInformer := factory.Core().V1alpha1().Releases()
+	deployer := releasecontroller.NewDeployer(connector)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), artifactStore, deployer)
+
 	factory.Start(ctx.Done())
 
 	errGroup := errgroup.Group{}
 	errGroup.Go(func() error { return clusterController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return gitController.Run(ctx, o.Workers) })
+	errGroup.Go(func() error { return releaseController.Run(ctx, o.Workers) })
 
 	return errGroup.Wait()
 }
