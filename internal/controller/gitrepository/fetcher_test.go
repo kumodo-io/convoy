@@ -95,6 +95,9 @@ func TestGitFetcher_Branch(t *testing.T) {
 	if got.ResolvedRef != branch {
 		t.Errorf("ResolvedRef = %q, want %q", got.ResolvedRef, branch)
 	}
+	if string(got.Files["app.yaml"]) != "kind: ConfigMap\n" {
+		t.Errorf("Files[app.yaml] = %q, want the committed content", got.Files["app.yaml"])
+	}
 }
 
 func TestGitFetcher_Tag(t *testing.T) {

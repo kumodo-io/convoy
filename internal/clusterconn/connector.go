@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package clusterconn
 
 import (
 	"context"
@@ -25,6 +25,16 @@ import (
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/auth"
+)
+
+var (
+	// ErrUnsupported marks a connection rejected because the Cluster requests a
+	// connection mode or auth type this build does not implement yet. It is
+	// terminal — callers surface it without requeuing.
+	ErrUnsupported = errors.New("unsupported cluster configuration")
+	// ErrProbeFailed marks a transient failure to build a config for / reach the
+	// target cluster.
+	ErrProbeFailed = errors.New("probe failed")
 )
 
 // Connector turns a Cluster into a REST config to reach its target API server.
@@ -39,7 +49,7 @@ type Connector struct {
 
 // NewConnector builds a Connector. inClusterCfg is the config the manager built
 // for itself (in-cluster or --kubeconfig); registry holds the agentless
-// authenticators; secrets resolves referenced credentials.
+// authenticators; resolver resolves referenced credentials.
 func NewConnector(inClusterCfg *rest.Config, registry Registry, resolver auth.SecretResolver) *Connector {
 	return &Connector{inClusterCfg: inClusterCfg, registry: registry, resolver: resolver}
 }

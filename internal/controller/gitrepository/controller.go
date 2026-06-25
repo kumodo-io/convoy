@@ -33,6 +33,7 @@ import (
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/source/v1alpha1"
 	listers "github.com/kumodo-io/convoy/api/generated/listers/source/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 )
 
@@ -44,16 +45,19 @@ type Controller struct {
 	client  clientset.Interface
 	lister  listers.GitRepositoryLister
 	fetcher Fetcher
+	store   artifact.Store
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
 }
 
-// NewController wires a Controller to a GitRepository informer.
-func NewController(client clientset.Interface, informer informers.GitRepositoryInformer, fetcher Fetcher) *Controller {
+// NewController wires a Controller to a GitRepository informer. Fetched content
+// is published to store for the release controller to consume.
+func NewController(client clientset.Interface, informer informers.GitRepositoryInformer, fetcher Fetcher, store artifact.Store) *Controller {
 	c := &Controller{
 		client:  client,
 		lister:  informer.Lister(),
 		fetcher: fetcher,
+		store:   store,
 		now:     metav1.Now,
 	}
 	c.Controller = base.NewController("gitrepository", c.syncHandler)
@@ -78,6 +82,13 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 
 	result, fetchErr := c.fetcher.Fetch(ctx, repo)
+	if fetchErr == nil {
+		// Publish the fetched content for the release controller to render+apply.
+		c.store.Put(artifact.Key("GitRepository", namespace, name), artifact.Artifact{
+			Revision: result.Revision,
+			Files:    result.Files,
+		})
+	}
 	newStatus := computeStatus(repo, result, fetchErr, c.now())
 
 	if statusChanged(repo, newStatus) {

@@ -31,6 +31,7 @@ import (
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/artifact"
 )
 
 const (
@@ -66,7 +67,7 @@ func noneRepo() *sourcev1alpha1.GitRepository {
 	}
 }
 
-func newTestController(t *testing.T, repo *sourcev1alpha1.GitRepository, fetcher Fetcher) (*Controller, *fakeclient.Clientset, cache.Store) {
+func newTestController(t *testing.T, repo *sourcev1alpha1.GitRepository, fetcher Fetcher) (*Controller, *fakeclient.Clientset, cache.Store, artifact.Store) {
 	t.Helper()
 	client := fakeclient.NewSimpleClientset(repo)
 	factory := informers.NewSharedInformerFactory(client, 0)
@@ -75,10 +76,11 @@ func newTestController(t *testing.T, repo *sourcev1alpha1.GitRepository, fetcher
 	if err := store.Add(repo); err != nil {
 		t.Fatalf("seeding informer store: %v", err)
 	}
-	c := NewController(client, informer, fetcher)
+	artifactStore := artifact.NewMemoryStore()
+	c := NewController(client, informer, fetcher, artifactStore)
 	fixed := metav1.NewTime(time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
-	return c, client, store
+	return c, client, store, artifactStore
 }
 
 func statusUpdate(actions []clienttesting.Action) *sourcev1alpha1.GitRepository {
@@ -91,8 +93,13 @@ func statusUpdate(actions []clienttesting.Action) *sourcev1alpha1.GitRepository 
 }
 
 func TestSyncHandler_FetchedWritesStatus(t *testing.T) {
-	c, client, _ := newTestController(t, noneRepo(),
-		fakeFetcher{result: FetchResult{Revision: dummyGitRepositoryRevision, TreeHash: "tree456", ResolvedRef: dummyGitRepositoryBranch}})
+	c, client, _, artStore := newTestController(t, noneRepo(),
+		fakeFetcher{result: FetchResult{
+			Revision:    dummyGitRepositoryRevision,
+			TreeHash:    "tree456",
+			ResolvedRef: dummyGitRepositoryBranch,
+			Files:       map[string][]byte{"app.yaml": []byte("kind: ConfigMap")},
+		}})
 
 	if err := c.syncHandler(context.Background(), fmt.Sprintf("%s/%s", dummyGitRepositoryNamespace, dummyGitRepositoryName)); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -105,10 +112,16 @@ func TestSyncHandler_FetchedWritesStatus(t *testing.T) {
 	if got.Status.LastFetched.Revision != dummyGitRepositoryRevision {
 		t.Errorf("persisted status = %+v, want revision %s", got.Status.LastFetched, dummyGitRepositoryRevision)
 	}
+
+	// The fetched content must be published to the artifact store.
+	art, ok := artStore.Get(artifact.Key("GitRepository", dummyGitRepositoryNamespace, dummyGitRepositoryName))
+	if !ok || art.Revision != dummyGitRepositoryRevision || string(art.Files["app.yaml"]) != "kind: ConfigMap" {
+		t.Errorf("artifact store = %+v, ok=%v, want revision %s + app.yaml", art, ok, dummyGitRepositoryRevision)
+	}
 }
 
 func TestSyncHandler_UnsupportedDoesNotRequeue(t *testing.T) {
-	c, client, _ := newTestController(t, noneRepo(),
+	c, client, _, _ := newTestController(t, noneRepo(),
 		fakeFetcher{err: errors.Join(ErrUnsupported, errors.New("semver not supported"))})
 
 	if err := c.syncHandler(context.Background(), fmt.Sprintf("%s/%s", dummyGitRepositoryNamespace, dummyGitRepositoryName)); err != nil {
@@ -126,7 +139,7 @@ func TestSyncHandler_UnsupportedDoesNotRequeue(t *testing.T) {
 }
 
 func TestSyncHandler_FetchErrorRequeues(t *testing.T) {
-	c, _, _ := newTestController(t, noneRepo(),
+	c, _, _, _ := newTestController(t, noneRepo(),
 		fakeFetcher{err: errors.New("connection refused")})
 
 	if err := c.syncHandler(context.Background(), fmt.Sprintf("%s/%s", dummyGitRepositoryNamespace, dummyGitRepositoryName)); err == nil {
@@ -136,7 +149,7 @@ func TestSyncHandler_FetchErrorRequeues(t *testing.T) {
 
 func TestSyncHandler_NoOpWhenStatusUnchanged(t *testing.T) {
 	fetcher := fakeFetcher{result: FetchResult{Revision: dummyGitRepositoryRevision, TreeHash: "tree456", ResolvedRef: dummyGitRepositoryBranch}}
-	c, client, store := newTestController(t, noneRepo(), fetcher)
+	c, client, store, _ := newTestController(t, noneRepo(), fetcher)
 
 	if err := c.syncHandler(context.Background(), fmt.Sprintf("%s/%s", dummyGitRepositoryNamespace, dummyGitRepositoryName)); err != nil {
 		t.Fatalf("first syncHandler: %v", err)

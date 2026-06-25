@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 )
 
 func testCluster(generation int64, status corev1alpha1.ClusterStatus) *corev1alpha1.Cluster {
@@ -68,7 +69,7 @@ func TestComputeStatus_ProbeFailedRetainsLastKnown(t *testing.T) {
 		DiscoveredVersion: "v1.31.0",
 	})
 
-	got := computeStatus(cluster, ProbeResult{}, errors.Join(ErrProbeFailed, errors.New("connection refused")), now)
+	got := computeStatus(cluster, ProbeResult{}, errors.Join(clusterconn.ErrProbeFailed, errors.New("connection refused")), now)
 
 	if got.Reachable {
 		t.Errorf("Reachable = true, want false")
@@ -90,7 +91,7 @@ func TestComputeStatus_UnsupportedReason(t *testing.T) {
 	now := metav1.NewTime(time.Date(2026, 6, 11, 12, 0, 0, 0, time.UTC))
 	cluster := testCluster(1, corev1alpha1.ClusterStatus{})
 
-	got := computeStatus(cluster, ProbeResult{}, errors.Join(ErrUnsupported, errors.New("nope")), now)
+	got := computeStatus(cluster, ProbeResult{}, errors.Join(clusterconn.ErrUnsupported, errors.New("nope")), now)
 
 	cond := apimeta.FindStatusCondition(got.Conditions, conditionReady)
 	if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != conditionReasonUnsupported {

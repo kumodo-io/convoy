@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 )
 
 // conditionReady is the condition type summarizing whether the controller can
@@ -56,9 +57,9 @@ func computeStatus(cluster *corev1alpha1.Cluster, result ProbeResult, probeErr e
 		cond.Status = metav1.ConditionFalse
 		cond.Message = probeErr.Error()
 		switch {
-		case errors.Is(probeErr, ErrUnsupported):
+		case errors.Is(probeErr, clusterconn.ErrUnsupported):
 			cond.Reason = conditionReasonUnsupported
-		case errors.Is(probeErr, ErrProbeFailed):
+		case errors.Is(probeErr, clusterconn.ErrProbeFailed):
 			cond.Reason = conditionReasonProbeFailed
 		default:
 			cond.Reason = conditionReasonProbeFailed

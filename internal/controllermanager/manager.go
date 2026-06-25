@@ -31,9 +31,12 @@ import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
+	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
+	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 )
 
 // Options configures the controller manager.
@@ -89,24 +92,37 @@ func (o *Options) Run(ctx context.Context) error {
 	resolver := auth.NewSecretResolver(kube)
 	// Registry of agentless auth types. cfg is the controller's own config, used
 	// for the inCluster connection mode.
-	clusterAuth := clustercontroller.Registry{
+	clusterAuth := clusterconn.Registry{
 		corev1alpha1.ClusterAuthTypeKubeconfig: auth.KubeconfigAuthenticator{},
 	}
-	connector := clustercontroller.NewConnector(cfg, clusterAuth, resolver)
+	connector := clusterconn.NewConnector(cfg, clusterAuth, resolver)
 	prober := clustercontroller.NewProber(connector)
 	clusterController := clustercontroller.NewController(client, clusterInformer, prober)
 
-	// GitRepository controller: resolves public repos (auth "none") to a revision.
+	// Shared in-process artifact store: source controllers publish fetched
+	// content; the release controller consumes it.
+	artifactStore := artifact.NewMemoryStore()
+
+	// GitRepository controller: resolves public repos (auth "none") to a revision
+	// and publishes the content to the artifact store.
 	// The Git auth registry slots into the fetcher once a real git auth type lands.
 	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
 	gitFetcher := gitrepositorycontroller.NewGitFetcher(resolver)
-	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher)
+	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher, artifactStore)
+
+	// Release controller: renders the source artifact and applies it to the
+	// target cluster (reached through the same connector the cluster controller
+	// probes with).
+	releaseInformer := factory.Core().V1alpha1().Releases()
+	deployer := releasecontroller.NewDeployer(connector)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), artifactStore, deployer)
 
 	factory.Start(ctx.Done())
 
 	errGroup := errgroup.Group{}
 	errGroup.Go(func() error { return clusterController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return gitController.Run(ctx, o.Workers) })
+	errGroup.Go(func() error { return releaseController.Run(ctx, o.Workers) })
 
 	return errGroup.Wait()
 }

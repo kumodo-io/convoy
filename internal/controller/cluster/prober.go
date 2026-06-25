@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 )
 
 // ProbeResult is the observed state of a target cluster after a successful probe.
@@ -42,26 +43,16 @@ type Prober interface {
 	Probe(ctx context.Context, cluster *corev1alpha1.Cluster) (ProbeResult, error)
 }
 
-var (
-	// ErrUnsupported marks a probe rejected because the Cluster requests a
-	// connection mode or auth type this build does not implement yet. It is
-	// terminal — reconcile surfaces it as a non-Ready condition without
-	// requeuing. The connector joins it with a detail error.
-	ErrUnsupported = errors.New("unsupported cluster configuration")
-	// ErrProbeFailed marks a transient failure to reach the target cluster.
-	// The connector/discovery join it with the underlying error.
-	ErrProbeFailed = errors.New("probe failed")
-)
-
 // connectorProber implements Prober as the composition of the (varying)
-// connection step and the (fixed) discovery step: connect → discover.
+// connection step and the (fixed) discovery step: connect → discover. The
+// connect-layer error sentinels live in the clusterconn package.
 type connectorProber struct {
-	connect *Connector
+	connect *clusterconn.Connector
 }
 
 // NewProber returns a Prober that builds a config via the connector and probes
 // it with discovery.
-func NewProber(connect *Connector) Prober {
+func NewProber(connect *clusterconn.Connector) Prober {
 	return &connectorProber{connect: connect}
 }
 
@@ -78,17 +69,17 @@ func (p *connectorProber) Probe(ctx context.Context, cluster *corev1alpha1.Clust
 func discover(_ context.Context, cfg *rest.Config) (ProbeResult, error) {
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
-		return ProbeResult{}, errors.Join(ErrProbeFailed, fmt.Errorf("building discovery client: %w", err))
+		return ProbeResult{}, errors.Join(clusterconn.ErrProbeFailed, fmt.Errorf("building discovery client: %w", err))
 	}
 
 	info, err := dc.ServerVersion()
 	if err != nil {
-		return ProbeResult{}, errors.Join(ErrProbeFailed, fmt.Errorf("fetching server version: %w", err))
+		return ProbeResult{}, errors.Join(clusterconn.ErrProbeFailed, fmt.Errorf("fetching server version: %w", err))
 	}
 
 	groups, err := dc.ServerGroups()
 	if err != nil {
-		return ProbeResult{}, errors.Join(ErrProbeFailed, fmt.Errorf("fetching server groups: %w", err))
+		return ProbeResult{}, errors.Join(clusterconn.ErrProbeFailed, fmt.Errorf("fetching server groups: %w", err))
 	}
 
 	var apiVersions []string

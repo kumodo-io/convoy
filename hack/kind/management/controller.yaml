@@ -27,6 +27,12 @@ rules:
   - apiGroups: ["source.convoy.kumodo.io"]
     resources: ["gitrepositories/status"]
     verbs: ["get", "update", "patch"]
+  - apiGroups: ["core.convoy.kumodo.io"]
+    resources: ["releases"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["core.convoy.kumodo.io"]
+    resources: ["releases/status"]
+    verbs: ["get", "update", "patch"]
   # Resolve credential material referenced by a Cluster's auth spec (e.g. the
   # kubeconfig Secret for agentless connection). Cluster-wide because Cluster
   # objects — and their referenced Secrets — may live in any namespace.
@@ -42,6 +48,23 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: convoy-controller-manager
+subjects:
+  - kind: ServiceAccount
+    name: convoy-controller-manager
+    namespace: convoy-system
+---
+# Dev-only: applying rendered manifests to the in-cluster (self) target runs as
+# the controller's own ServiceAccount, so it needs broad apply rights on the host
+# cluster. Scope this down for production (or use a dedicated apply identity).
+# The managed (kubeconfig) target applies with the kubeconfig identity instead.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: convoy-controller-manager-apply
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
 subjects:
   - kind: ServiceAccount
     name: convoy-controller-manager
