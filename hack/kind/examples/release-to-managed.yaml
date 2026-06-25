@@ -1,0 +1,22 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Release
+metadata:
+  name: podinfo-managed
+  namespace: default
+spec:
+  clusterRef:
+    name: convoy-managed
+  source:
+    kind: GitRepository
+    name: podinfo
+    namespace: convoy-system
+  content:
+    type: manifests
+    manifests:
+      paths:
+        - kustomize/deployment.yaml
+        - kustomize/service.yaml
+  syncPolicy:
+    automatic: true
+    pruneOrphaned: false
+    interval: 1m
