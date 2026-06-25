@@ -34,14 +34,14 @@ type Connector struct {
 	// inClusterCfg is the controller pod's own config, used for inCluster mode.
 	inClusterCfg *rest.Config
 	registry     Registry
-	secrets      auth.SecretResolver
+	resolver     auth.SecretResolver
 }
 
 // NewConnector builds a Connector. inClusterCfg is the config the manager built
 // for itself (in-cluster or --kubeconfig); registry holds the agentless
 // authenticators; secrets resolves referenced credentials.
-func NewConnector(inClusterCfg *rest.Config, registry Registry, secrets auth.SecretResolver) *Connector {
-	return &Connector{inClusterCfg: inClusterCfg, registry: registry, secrets: secrets}
+func NewConnector(inClusterCfg *rest.Config, registry Registry, resolver auth.SecretResolver) *Connector {
+	return &Connector{inClusterCfg: inClusterCfg, registry: registry, resolver: resolver}
 }
 
 // Connect returns a REST config for the cluster, or an error classified as
@@ -60,7 +60,7 @@ func (c *Connector) Connect(ctx context.Context, cluster *corev1alpha1.Cluster) 
 		if !ok {
 			return nil, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet", cluster.Spec.Agentless.Auth.Type))
 		}
-		cfg, err := authenticator.RESTConfig(ctx, cluster, c.secrets)
+		cfg, err := authenticator.RESTConfig(ctx, cluster, c.resolver)
 		if err != nil {
 			return nil, errors.Join(ErrProbeFailed, err)
 		}

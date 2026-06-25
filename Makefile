@@ -225,7 +225,7 @@ kind-test: kubectl
 # Tilt dev loop. Builds, deploys, and live-reloads the apiserver in place on
 # code changes.
 .PHONY: tilt-up
-tilt-up: tilt kustomize
+tilt-up: tilt kustomize kubectl
 	$(TOOLS_BIN)/kubectl config use-context kind-$(KIND_CLUSTER)
 	$(TOOLS_BIN)/tilt up
 

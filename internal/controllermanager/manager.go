@@ -33,6 +33,7 @@ import (
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/auth"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
+	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
 )
 
 // Options configures the controller manager.
@@ -85,26 +86,27 @@ func (o *Options) Run(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
 	clusterInformer := factory.Core().V1alpha1().Clusters()
 
-	secrets := auth.NewSecretResolver(kube)
+	resolver := auth.NewSecretResolver(kube)
 	// Registry of agentless auth types. cfg is the controller's own config, used
 	// for the inCluster connection mode.
 	clusterAuth := clustercontroller.Registry{
 		corev1alpha1.ClusterAuthTypeKubeconfig: auth.KubeconfigAuthenticator{},
 	}
-	connector := clustercontroller.NewConnector(cfg, clusterAuth, secrets)
+	connector := clustercontroller.NewConnector(cfg, clusterAuth, resolver)
 	prober := clustercontroller.NewProber(connector)
-	controller := clustercontroller.NewController(client, clusterInformer, prober)
+	clusterController := clustercontroller.NewController(client, clusterInformer, prober)
 
-	// The source/registry auth registry slots in here once the source controller
-	// exists, e.g.:
-	//   registryAuth := sourcecontroller.Registry{
-	//       sourcev1alpha1.OCIRegistryAuthTypeToken: auth.TokenAuthenticator{},
-	//   }
+	// GitRepository controller: resolves public repos (auth "none") to a revision.
+	// The Git auth registry slots into the fetcher once a real git auth type lands.
+	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
+	gitFetcher := gitrepositorycontroller.NewGitFetcher(resolver)
+	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher)
 
 	factory.Start(ctx.Done())
 
 	errGroup := errgroup.Group{}
-	errGroup.Go(func() error { return controller.Run(ctx, o.Workers) })
+	errGroup.Go(func() error { return clusterController.Run(ctx, o.Workers) })
+	errGroup.Go(func() error { return gitController.Run(ctx, o.Workers) })
 
 	return errGroup.Wait()
 }
