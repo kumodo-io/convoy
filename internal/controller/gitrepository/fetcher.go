@@ -20,8 +20,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
+	billy "github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
+	"github.com/go-git/go-billy/v5/util"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -40,11 +45,13 @@ type FetchResult struct {
 	TreeHash string
 	// ResolvedRef is the human-readable ref that was resolved (branch/tag/commit).
 	ResolvedRef string
+	// Files is a snapshot of the checked-out worktree (repo-relative path → content).
+	Files map[string][]byte
 }
 
-// Fetcher resolves a GitRepository's tracked ref to a concrete revision. It is
-// the single seam between the reconcile loop and real network I/O, so the
-// controller can be unit-tested with a fake.
+// Fetcher resolves a GitRepository's tracked ref to a concrete revision and
+// snapshots its content. It is the single seam between the reconcile loop and
+// real network I/O, so the controller can be unit-tested with a fake.
 type Fetcher interface {
 	Fetch(ctx context.Context, repo *sourcev1alpha1.GitRepository) (FetchResult, error)
 }
@@ -111,6 +118,7 @@ func (f *gitFetcher) cloneRef(
 	authMethod transport.AuthMethod,
 	tlsOpts *authv1.TLSSpec,
 ) (FetchResult, error) {
+	worktree := memfs.New()
 	gitOpts := gogit.CloneOptions{
 		URL:           url,
 		ReferenceName: refName,
@@ -119,12 +127,9 @@ func (f *gitFetcher) cloneRef(
 		Auth:          authMethod,
 		Tags:          gogit.NoTags,
 	}
-	if tlsOpts != nil {
-		// todo: get config map containing CA bundle and pass it to CloneOptions.CABundle as []byte
-		gitOpts.InsecureSkipTLS = tlsOpts.InsecureSkipVerify
-		// gitOpts.CABundle = TBD
-	}
-	r, err := gogit.CloneContext(ctx, memory.NewStorage(), memfs.New(), new(gitOpts))
+	applyTLS(&gitOpts, tlsOpts)
+
+	r, err := gogit.CloneContext(ctx, memory.NewStorage(), worktree, new(gitOpts))
 	if err != nil {
 		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("cloning %s at %s: %w", url, refName, err))
 	}
@@ -132,40 +137,90 @@ func (f *gitFetcher) cloneRef(
 	if err != nil {
 		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("reading HEAD of %s: %w", url, err))
 	}
-	return commitResult(r, head.Hash(), resolved)
+	return result(r, head.Hash(), resolved, worktree)
 }
 
-// cloneCommit clones the repository and resolves an explicit commit SHA.
+// cloneCommit clones the repository, checks out an explicit commit SHA, and
+// snapshots the worktree at that commit.
 func (f *gitFetcher) cloneCommit(
 	ctx context.Context,
 	url, commit string,
 	authMethod transport.AuthMethod,
 	tlsOpts *authv1.TLSSpec,
 ) (FetchResult, error) {
+	worktree := memfs.New()
 	gitOpts := gogit.CloneOptions{
 		URL:  url,
 		Auth: authMethod,
 	}
-	if tlsOpts != nil {
-		// todo: get config map containing CA bundle and pass it to CloneOptions.CABundle as []byte
-		gitOpts.InsecureSkipTLS = tlsOpts.InsecureSkipVerify
-		// gitOpts.CABundle = TBD
-	}
-	r, err := gogit.CloneContext(ctx, memory.NewStorage(), memfs.New(), new(gitOpts))
+	applyTLS(&gitOpts, tlsOpts)
+
+	r, err := gogit.CloneContext(ctx, memory.NewStorage(), worktree, new(gitOpts))
 	if err != nil {
 		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("cloning %s: %w", url, err))
 	}
-	return commitResult(r, plumbing.NewHash(commit), commit)
+	wt, err := r.Worktree()
+	if err != nil {
+		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("opening worktree of %s: %w", url, err))
+	}
+	if err := wt.Checkout(&gogit.CheckoutOptions{Hash: plumbing.NewHash(commit)}); err != nil {
+		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("checking out commit %s: %w", commit, err))
+	}
+	return result(r, plumbing.NewHash(commit), commit, worktree)
 }
 
-func commitResult(r *gogit.Repository, hash plumbing.Hash, resolved string) (FetchResult, error) {
+// applyTLS folds the GitRepository's TLS settings into the clone options.
+func applyTLS(opts *gogit.CloneOptions, tlsOpts *authv1.TLSSpec) {
+	if tlsOpts == nil {
+		return
+	}
+	// todo: resolve the CA ConfigMap and pass it as opts.CABundle ([]byte).
+	opts.InsecureSkipTLS = tlsOpts.InsecureSkipVerify
+}
+
+// result reads the commit metadata and snapshots the worktree.
+func result(r *gogit.Repository, hash plumbing.Hash, resolved string, worktree billy.Filesystem) (FetchResult, error) {
 	c, err := r.CommitObject(hash)
 	if err != nil {
 		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("reading commit %s: %w", hash, err))
+	}
+	files, err := snapshotWorktree(worktree)
+	if err != nil {
+		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("snapshotting worktree: %w", err))
 	}
 	return FetchResult{
 		Revision:    c.Hash.String(),
 		TreeHash:    c.TreeHash.String(),
 		ResolvedRef: resolved,
+		Files:       files,
 	}, nil
+}
+
+// snapshotWorktree reads every file in the checked-out worktree into a map keyed
+// by repo-relative path.
+func snapshotWorktree(fsys billy.Filesystem) (map[string][]byte, error) {
+	files := make(map[string][]byte)
+	err := util.Walk(fsys, "/", func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		file, err := fsys.Open(p)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		data, err := io.ReadAll(file)
+		if err != nil {
+			return err
+		}
+		files[strings.TrimPrefix(p, "/")] = data
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
 }

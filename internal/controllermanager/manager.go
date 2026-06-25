@@ -31,6 +31,7 @@ import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
+	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
@@ -97,11 +98,16 @@ func (o *Options) Run(ctx context.Context) error {
 	prober := clustercontroller.NewProber(connector)
 	clusterController := clustercontroller.NewController(client, clusterInformer, prober)
 
-	// GitRepository controller: resolves public repos (auth "none") to a revision.
+	// Shared in-process artifact store: source controllers publish fetched
+	// content; the release controller consumes it.
+	artifactStore := artifact.NewMemoryStore()
+
+	// GitRepository controller: resolves public repos (auth "none") to a revision
+	// and publishes the content to the artifact store.
 	// The Git auth registry slots into the fetcher once a real git auth type lands.
 	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
 	gitFetcher := gitrepositorycontroller.NewGitFetcher(resolver)
-	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher)
+	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher, artifactStore)
 
 	factory.Start(ctx.Done())
 
