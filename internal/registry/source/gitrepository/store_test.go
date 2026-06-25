@@ -36,8 +36,9 @@ import (
 )
 
 const (
-	dummyGitRepositoryName = "dummy-gitrepository"
-	dummyGitRepositoryURL  = "https://dummy.example.com/service.git"
+	dummyGitRepositoryName     = "dummy-gitrepository"
+	dummyGitRepositoryURL      = "https://dummy.example.com/service.git"
+	dummyGitRepositoryRevision = "abc123"
 )
 
 func newStorage(t *testing.T) (*genericregistry.Store, *gitrepositorystorage.StatusREST, *etcd3testing.EtcdTestServer) {
@@ -253,7 +254,7 @@ func TestStatusUpdate(t *testing.T) {
 	}
 	repo := obj.(*source.GitRepository)
 
-	repo.Status.LastFetched.Revision = "abc123"
+	repo.Status.LastFetched.Revision = dummyGitRepositoryRevision
 	repo.Status.ReleaseCount = 3
 	// A spec change submitted through /status must be ignored.
 	repo.Spec.URL = "https://changed.example.com"
@@ -272,7 +273,7 @@ func TestStatusUpdate(t *testing.T) {
 	}
 
 	updated := updatedObj.(*source.GitRepository)
-	if updated.Status.LastFetched.Revision != "abc123" {
+	if updated.Status.LastFetched.Revision != dummyGitRepositoryRevision {
 		t.Errorf("expected status.lastFetched.revision to persist, got %q", updated.Status.LastFetched.Revision)
 	}
 	if updated.Spec.URL != dummyGitRepositoryURL {
