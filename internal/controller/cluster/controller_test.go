@@ -30,6 +30,7 @@ import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 )
 
 const (
@@ -101,7 +102,7 @@ func TestSyncHandler_ReachableWritesStatus(t *testing.T) {
 
 func TestSyncHandler_UnsupportedDoesNotRequeue(t *testing.T) {
 	c, client, _ := newTestController(t, clusterWithInClusterConnectionMode(),
-		fakeProber{err: errors.Join(ErrUnsupported, errors.New("auth not supported"))})
+		fakeProber{err: errors.Join(clusterconn.ErrUnsupported, errors.New("auth not supported"))})
 
 	// ErrUnsupported is terminal: status is written but syncHandler must not
 	// return an error (which would hot-loop the rate-limited queue).

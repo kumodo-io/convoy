@@ -2,7 +2,7 @@ package assert
 
 import (
 	"github.com/kumodo-io/convoy/internal/auth"
-	"github.com/kumodo-io/convoy/internal/controller/cluster"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 )
 
-var _ cluster.Authenticator = (*auth.KubeconfigAuthenticator)(nil)
+var _ clusterconn.Authenticator = (*auth.KubeconfigAuthenticator)(nil)

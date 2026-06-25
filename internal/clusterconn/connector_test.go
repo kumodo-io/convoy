@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+package clusterconn
 
 import (
 	"context"
@@ -37,6 +37,13 @@ func (f fakeAuthenticator) RESTConfig(context.Context, *corev1alpha1.Cluster, au
 	return f.cfg, f.err
 }
 
+func inClusterCluster() *corev1alpha1.Cluster {
+	return &corev1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns"},
+		Spec:       corev1alpha1.ClusterSpec{ConnectionMode: corev1alpha1.ClusterConnectionModeInCluster},
+	}
+}
+
 func agentlessCluster(authType corev1alpha1.ClusterAuthType) *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns"},
@@ -53,7 +60,7 @@ func TestConnector_InClusterReturnsOwnConfig(t *testing.T) {
 	inCfg := &rest.Config{Host: "https://in-cluster"}
 	c := NewConnector(inCfg, Registry{}, nil)
 
-	got, err := c.Connect(context.Background(), clusterWithInClusterConnectionMode())
+	got, err := c.Connect(context.Background(), inClusterCluster())
 	if err != nil {
 		t.Fatalf("Connect returned error: %v", err)
 	}

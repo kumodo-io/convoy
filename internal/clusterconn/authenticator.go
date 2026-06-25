@@ -14,7 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cluster
+// Package clusterconn turns a Cluster object into a client config for its target
+// API server. It is the shared connection layer used by the cluster controller
+// (to probe) and the release controller (to apply) — neither imports the other.
+package clusterconn
 
 import (
 	"context"
@@ -26,12 +29,11 @@ import (
 )
 
 // Authenticator builds a REST config to reach a Cluster's target API server for
-// one auth type. It is consumer-defined here (the cluster controller is the
-// consumer); the concrete implementations live in the auth package and satisfy
-// this interface structurally. Each implementation reads its own sub-spec from
-// the Cluster and produces a complete config (e.g. kubeconfig supplies server +
-// CA + credentials itself, whereas token-style auth builds from the agentless
-// server/CA plus resolved credentials).
+// one auth type. The concrete implementations live in the auth package and
+// satisfy this interface structurally. Each implementation reads its own
+// sub-spec from the Cluster and produces a complete config (e.g. kubeconfig
+// supplies server + CA + credentials itself, whereas token-style auth builds
+// from the agentless server/CA plus resolved credentials).
 type Authenticator interface {
 	RESTConfig(ctx context.Context, cluster *corev1alpha1.Cluster, secrets auth.SecretResolver) (*rest.Config, error)
 }

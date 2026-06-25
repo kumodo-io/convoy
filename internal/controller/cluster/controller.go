@@ -33,6 +33,7 @@ import (
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	listers "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 )
 
@@ -94,7 +95,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	// queue retries it. Periodic re-probes of healthy clusters come from the
 	// informer's resync.
 	if probeErr != nil {
-		if errors.Is(probeErr, ErrUnsupported) {
+		if errors.Is(probeErr, clusterconn.ErrUnsupported) {
 			return nil // terminal; don't hot-loop
 		}
 		return probeErr

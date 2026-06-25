@@ -32,6 +32,7 @@ import (
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/clusterconn"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
 )
@@ -89,10 +90,10 @@ func (o *Options) Run(ctx context.Context) error {
 	resolver := auth.NewSecretResolver(kube)
 	// Registry of agentless auth types. cfg is the controller's own config, used
 	// for the inCluster connection mode.
-	clusterAuth := clustercontroller.Registry{
+	clusterAuth := clusterconn.Registry{
 		corev1alpha1.ClusterAuthTypeKubeconfig: auth.KubeconfigAuthenticator{},
 	}
-	connector := clustercontroller.NewConnector(cfg, clusterAuth, resolver)
+	connector := clusterconn.NewConnector(cfg, clusterAuth, resolver)
 	prober := clustercontroller.NewProber(connector)
 	clusterController := clustercontroller.NewController(client, clusterInformer, prober)
 
