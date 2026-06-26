@@ -40,9 +40,6 @@ type GitRepositorySpec struct {
 	// URL is the URL of the Git repository.
 	URL string `json:"url"`
 
-	// Ref is what to track in the Git repository.
-	Ref GitRepositoryRefSpec `json:"ref"`
-
 	// Auth is the authentication method used to access the Git repository.
 	Auth GitRepositoryAuthSpec `json:"auth"`
 
@@ -62,21 +59,6 @@ type GitRepositorySpec struct {
 
 	// TLS is the TLS configuration used to verify the Git repository.
 	TLS *authv1.TLSSpec `json:"tls,omitempty"`
-}
-
-// GitRepositoryRefSpec defines the desired state of the GitRepositoryRef.
-type GitRepositoryRefSpec struct {
-	// Branch is the branch to track in the Git repository.
-	Branch *string `json:"branch,omitempty"`
-
-	// Tag is the tag to track in the Git repository.
-	Tag *string `json:"tag,omitempty"`
-
-	// Commit is the commit to track in the Git repository.
-	Commit *string `json:"commit,omitempty"`
-
-	// Semver is the tag-based semantic version expression to track in the Git repository.
-	Semver *string `json:"semver,omitempty"`
 }
 
 // GitRepositoryAuthSpec defines the authentication method used to access the Git repository.
@@ -138,9 +120,6 @@ type GitRepositoryStatus struct {
 	// ObservedGeneration is the last generation that was observed by the controller.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// LastFetched is the last time the Git repository was fetched.
-	LastFetched GitRepositoryLastFetchedStatus `json:"lastFetched,omitempty"`
-
 	// ReleaseCount is the number of Release referencing the GitRepository.
 	ReleaseCount int64 `json:"releaseCount,omitempty"`
 
@@ -153,21 +132,6 @@ type GitRepositoryStatus struct {
 	// +listType=map
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-}
-
-// GitRepositoryLastFetchedStatus reflects the last time the Git repository was fetched.
-type GitRepositoryLastFetchedStatus struct {
-	// Revision is the revision of the Git repository.
-	Revision string `json:"revision,omitempty"`
-
-	// TreeHash is the tree hash of the Git repository.
-	TreeHash string `json:"treeHash,omitempty"`
-
-	// FetchedAt is the time the Git repository was fetched.
-	FetchedAt metav1.Time `json:"fetchedAt,omitempty"`
-
-	// ResolvedRef is the resolved reference of the Git repository.
-	ResolvedRef string `json:"resolvedRef,omitempty"`
 }
 
 // +genclient

@@ -18,17 +18,23 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+)
+
 // ReleaseSourceSpecApplyConfiguration represents a declarative configuration of the ReleaseSourceSpec type for use
 // with apply.
 //
 // ReleaseSourceSpec defines the source for the release.
 type ReleaseSourceSpecApplyConfiguration struct {
-	// Kind is the kind of the source.
-	Kind *string `json:"kind,omitempty"`
-	// Name is the name of the source.
-	Name *string `json:"name,omitempty"`
-	// Namespace is the namespace of the source.
-	Namespace *string `json:"namespace,omitempty"`
+	// Type is the type of the source.
+	Type *corev1alpha1.ReleaseSourceType `json:"type,omitempty"`
+	// GitRepository is the Git repository source for the release.
+	GitRepository *ReleaseGitRepositorySpecApplyConfiguration `json:"gitRepository,omitempty"`
+	// HelmRegistry is the Helm registry source for the release.
+	HelmRegistry *ReleaseHelmRegistrySpecApplyConfiguration `json:"helmRegistry,omitempty"`
+	// OCIRegistry is the OCI registry source for the release.
+	OCIRegistry *ReleaseOCIRegistrySpecApplyConfiguration `json:"ociRegistry,omitempty"`
 }
 
 // ReleaseSourceSpecApplyConfiguration constructs a declarative configuration of the ReleaseSourceSpec type for use with
@@ -37,26 +43,34 @@ func ReleaseSourceSpec() *ReleaseSourceSpecApplyConfiguration {
 	return &ReleaseSourceSpecApplyConfiguration{}
 }
 
-// WithKind sets the Kind field in the declarative configuration to the given value
+// WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Kind field is set to the value of the last call.
-func (b *ReleaseSourceSpecApplyConfiguration) WithKind(value string) *ReleaseSourceSpecApplyConfiguration {
-	b.Kind = &value
+// If called multiple times, the Type field is set to the value of the last call.
+func (b *ReleaseSourceSpecApplyConfiguration) WithType(value corev1alpha1.ReleaseSourceType) *ReleaseSourceSpecApplyConfiguration {
+	b.Type = &value
 	return b
 }
 
-// WithName sets the Name field in the declarative configuration to the given value
+// WithGitRepository sets the GitRepository field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Name field is set to the value of the last call.
-func (b *ReleaseSourceSpecApplyConfiguration) WithName(value string) *ReleaseSourceSpecApplyConfiguration {
-	b.Name = &value
+// If called multiple times, the GitRepository field is set to the value of the last call.
+func (b *ReleaseSourceSpecApplyConfiguration) WithGitRepository(value *ReleaseGitRepositorySpecApplyConfiguration) *ReleaseSourceSpecApplyConfiguration {
+	b.GitRepository = value
 	return b
 }
 
-// WithNamespace sets the Namespace field in the declarative configuration to the given value
+// WithHelmRegistry sets the HelmRegistry field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Namespace field is set to the value of the last call.
-func (b *ReleaseSourceSpecApplyConfiguration) WithNamespace(value string) *ReleaseSourceSpecApplyConfiguration {
-	b.Namespace = &value
+// If called multiple times, the HelmRegistry field is set to the value of the last call.
+func (b *ReleaseSourceSpecApplyConfiguration) WithHelmRegistry(value *ReleaseHelmRegistrySpecApplyConfiguration) *ReleaseSourceSpecApplyConfiguration {
+	b.HelmRegistry = value
+	return b
+}
+
+// WithOCIRegistry sets the OCIRegistry field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the OCIRegistry field is set to the value of the last call.
+func (b *ReleaseSourceSpecApplyConfiguration) WithOCIRegistry(value *ReleaseOCIRegistrySpecApplyConfiguration) *ReleaseSourceSpecApplyConfiguration {
+	b.OCIRegistry = value
 	return b
 }

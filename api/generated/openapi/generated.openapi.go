@@ -78,12 +78,18 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
 		v1alpha1.ReleaseContentSpec{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
 		v1alpha1.ReleaseDeletionPolicyOverrideSpec{}.OpenAPIModelName():           schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref),
+		v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref),
+		v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref),
 		v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
+		v1alpha1.ReleaseHelmRegistryChartSpec{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleaseHelmRegistryChartSpec(ref),
+		v1alpha1.ReleaseHelmRegistrySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseHelmRegistrySpec(ref),
 		v1alpha1.ReleaseLifecycle{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
 		v1alpha1.ReleaseList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ReleaseList(ref),
 		v1alpha1.ReleaseMutation{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
 		v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
 		v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref),
+		v1alpha1.ReleaseOCIRegistryArtifactSpec{}.OpenAPIModelName():              schema_convoy_api_core_v1alpha1_ReleaseOCIRegistryArtifactSpec(ref),
+		v1alpha1.ReleaseOCIRegistrySpec{}.OpenAPIModelName():                      schema_convoy_api_core_v1alpha1_ReleaseOCIRegistrySpec(ref),
 		v1alpha1.ReleasePin{}.OpenAPIModelName():                                  schema_convoy_api_core_v1alpha1_ReleasePin(ref),
 		v1alpha1.ReleasePinRenderInputsStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref),
 		v1alpha1.ReleasePinStatus{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref),
@@ -112,9 +118,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		extensionsv1alpha1.ResourceTarget{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_ResourceTarget(ref),
 		sourcev1alpha1.GitRepository{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_GitRepository(ref),
 		sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName():                 schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
-		sourcev1alpha1.GitRepositoryLastFetchedStatus{}.OpenAPIModelName():        schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref),
 		sourcev1alpha1.GitRepositoryList{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
-		sourcev1alpha1.GitRepositoryRefSpec{}.OpenAPIModelName():                  schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref),
 		sourcev1alpha1.GitRepositorySpec{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
 		sourcev1alpha1.GitRepositoryStatus{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
 		sourcev1alpha1.GitRepositoryWebhookFilterSpec{}.OpenAPIModelName():        schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
@@ -2144,20 +2148,6 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref common.Reference
 							Format:      "",
 						},
 					},
-					"chart": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Chart is the name of the Helm chart. Ignored if the source is a Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"version": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Version is the version of the Helm chart.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"dependencyMode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DependencyMode is the dependency mode for the Helm chart.\n\nPossible enum values:\n - `\"resolve\"` is the dependency mode used to resolve dependencies at render time.\n - `\"vendored\"` is the dependency mode used for vendored dependencies.",
@@ -2348,6 +2338,84 @@ func schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref commo
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseGitRepositoryRefSpec defines the desired state of the Git repository revision.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"branch": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Branch is the branch to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"tag": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tag is the tag to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"commit": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Commit is the commit to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"semver": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Semver is the tag-based semantic version expression to track in the Git repository.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseGitRepositorySpec defines the Git repository source for the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository] object.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository] object.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ref is the reference to the target revision of the Git repository.",
+							Ref:         ref(v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2407,6 +2475,73 @@ func schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref common.ReferenceCa
 				Required: []string{"total", "healthy", "progressing", "degraded", "suspended", "unknown"},
 			},
 		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseHelmRegistryChartSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseHelmRegistryChartSpec defines the desired state of the Helm registry chart.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the Helm chart.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the version of the Helm chart.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "version"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseHelmRegistrySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseHelmRegistrySpec defines the Helm registry source for the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the [github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry] object.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the [github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry] object.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"chart": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Chart is the definition of the Helm chart to be installed.",
+							Ref:         ref(v1alpha1.ReleaseHelmRegistryChartSpec{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.ReleaseHelmRegistryChartSpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -2767,6 +2902,73 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref common.Referen
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ReleaseOCIRegistryArtifactSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseOCIRegistryArtifactSpec defines the desired state of the OCI registry artifact.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the OCI artifact.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version is the version of the OCI artifact.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "version"},
+			},
+		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseOCIRegistrySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseOCIRegistrySpec defines the OCI registry source for the release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the [github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry] object.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the [github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry] object.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"artifact": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Artifact is the definition of the OCI artifact to be installed.",
+							Ref:         ref(v1alpha1.ReleaseOCIRegistryArtifactSpec{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.ReleaseOCIRegistryArtifactSpec{}.OpenAPIModelName()},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ReleasePin(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2974,33 +3176,39 @@ func schema_convoy_api_core_v1alpha1_ReleaseSourceSpec(ref common.ReferenceCallb
 				Description: "ReleaseSourceSpec defines the source for the release.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"kind": {
+					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Kind is the kind of the source.",
+							Description: "Type is the type of the source.\n\nPossible enum values:\n - `\"gitRepository\"` is the source type used for Git repositories.\n - `\"helmRegistry\"` is the source type used for Helm registries.\n - `\"ociRegistry\"` is the source type used for OCI registries.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
+							Enum:        []interface{}{"gitRepository", "helmRegistry", "ociRegistry"},
 						},
 					},
-					"name": {
+					"gitRepository": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of the source.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "GitRepository is the Git repository source for the release.",
+							Ref:         ref(v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName()),
 						},
 					},
-					"namespace": {
+					"helmRegistry": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace of the source.",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "HelmRegistry is the Helm registry source for the release.",
+							Ref:         ref(v1alpha1.ReleaseHelmRegistrySpec{}.OpenAPIModelName()),
+						},
+					},
+					"ociRegistry": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OCIRegistry is the OCI registry source for the release.",
+							Ref:         ref(v1alpha1.ReleaseOCIRegistrySpec{}.OpenAPIModelName()),
 						},
 					},
 				},
-				Required: []string{"kind", "name"},
+				Required: []string{"type"},
 			},
 		},
+		Dependencies: []string{
+			v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName(), v1alpha1.ReleaseHelmRegistrySpec{}.OpenAPIModelName(), v1alpha1.ReleaseOCIRegistrySpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -4182,48 +4390,6 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref common.Referenc
 	}
 }
 
-func schema_convoy_api_source_v1alpha1_GitRepositoryLastFetchedStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GitRepositoryLastFetchedStatus reflects the last time the Git repository was fetched.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"revision": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Revision is the revision of the Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"treeHash": {
-						SchemaProps: spec.SchemaProps{
-							Description: "TreeHash is the tree hash of the Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"fetchedAt": {
-						SchemaProps: spec.SchemaProps{
-							Description: "FetchedAt is the time the Git repository was fetched.",
-							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
-						},
-					},
-					"resolvedRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResolvedRef is the resolved reference of the Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			metav1.Time{}.OpenAPIModelName()},
-	}
-}
-
 func schema_convoy_api_source_v1alpha1_GitRepositoryList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -4272,47 +4438,6 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryList(ref common.ReferenceCal
 	}
 }
 
-func schema_convoy_api_source_v1alpha1_GitRepositoryRefSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "GitRepositoryRefSpec defines the desired state of the GitRepositoryRef.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"branch": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Branch is the branch to track in the Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"tag": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Tag is the tag to track in the Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"commit": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Commit is the commit to track in the Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"semver": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Semver is the tag-based semantic version expression to track in the Git repository.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
 func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -4326,13 +4451,6 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-						},
-					},
-					"ref": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Ref is what to track in the Git repository.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(sourcev1alpha1.GitRepositoryRefSpec{}.OpenAPIModelName()),
 						},
 					},
 					"auth": {
@@ -4401,11 +4519,11 @@ func schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"url", "ref", "auth", "interval", "minSyncInterval"},
+				Required: []string{"url", "auth", "interval", "minSyncInterval"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName(), sourcev1alpha1.GitRepositoryRefSpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
+			"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec", sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -4421,13 +4539,6 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 							Description: "ObservedGeneration is the last generation that was observed by the controller.",
 							Type:        []string{"integer"},
 							Format:      "int64",
-						},
-					},
-					"lastFetched": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LastFetched is the last time the Git repository was fetched.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(sourcev1alpha1.GitRepositoryLastFetchedStatus{}.OpenAPIModelName()),
 						},
 					},
 					"releaseCount": {
@@ -4485,7 +4596,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			sourcev1alpha1.GitRepositoryLastFetchedStatus{}.OpenAPIModelName(), sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
 	}
 }
 

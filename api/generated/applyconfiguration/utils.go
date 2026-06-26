@@ -114,8 +114,16 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseContentSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseDeletionPolicyOverrideSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseDeletionPolicyOverrideSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositoryRefSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseGitRepositoryRefSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositorySpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseGitRepositorySpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHealthSummary"):
 		return &applyconfigurationcorev1alpha1.ReleaseHealthSummaryApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHelmRegistryChartSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseHelmRegistryChartSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHelmRegistrySpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseHelmRegistrySpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseLifecycle"):
 		return &applyconfigurationcorev1alpha1.ReleaseLifecycleApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutation"):
@@ -124,6 +132,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseMutationFromSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutationPatchSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseMutationPatchSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseOCIRegistryArtifactSpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseOCIRegistryArtifactSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseOCIRegistrySpec"):
+		return &applyconfigurationcorev1alpha1.ReleaseOCIRegistrySpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleasePin"):
 		return &applyconfigurationcorev1alpha1.ReleasePinApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleasePinRenderInputsStatus"):
@@ -180,10 +192,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationsourcev1alpha1.GitRepositoryApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryAuthSpec"):
 		return &applyconfigurationsourcev1alpha1.GitRepositoryAuthSpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryLastFetchedStatus"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryLastFetchedStatusApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryRefSpec"):
-		return &applyconfigurationsourcev1alpha1.GitRepositoryRefSpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositorySpec"):
 		return &applyconfigurationsourcev1alpha1.GitRepositorySpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepositoryStatus"):

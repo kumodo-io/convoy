@@ -9,6 +9,8 @@ import (
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
+// ---------- Cluster types ----------
+
 type ClusterConnectionMode string
 
 const (
@@ -129,6 +131,16 @@ type ClusterList struct {
 
 	Items []Cluster
 }
+
+// ---------- Release types ----------
+
+type ReleaseSourceType string
+
+const (
+	ReleaseSourceTypeGitRepository ReleaseSourceType = "gitRepository"
+	ReleaseSourceTypeHelmRegistry  ReleaseSourceType = "helmRegistry"
+	ReleaseSourceTypeOCIRegistry   ReleaseSourceType = "ociRegistry"
+)
 
 type ReleaseContentType string
 
@@ -279,9 +291,45 @@ type ReleaseSpec struct {
 }
 
 type ReleaseSourceSpec struct {
-	Kind      string
+	Type          ReleaseSourceType
+	GitRepository *ReleaseGitRepositorySpec
+	HelmRegistry  *ReleaseHelmRegistrySpec
+	OCIRegistry   *ReleaseOCIRegistrySpec
+}
+
+type ReleaseGitRepositorySpec struct {
 	Name      string
 	Namespace string
+	Ref       *ReleaseGitRepositoryRefSpec
+}
+
+type ReleaseHelmRegistrySpec struct {
+	Name      string
+	Namespace string
+	Chart     *ReleaseHelmRegistryChartSpec
+}
+
+type ReleaseOCIRegistrySpec struct {
+	Name      string
+	Namespace string
+	Artifact  *ReleaseOCIRegistryArtifactSpec
+}
+
+type ReleaseGitRepositoryRefSpec struct {
+	Branch *string
+	Tag    *string
+	Commit *string
+	Semver *string
+}
+
+type ReleaseHelmRegistryChartSpec struct {
+	Name    string
+	Version string
+}
+
+type ReleaseOCIRegistryArtifactSpec struct {
+	Name    string
+	Version string
 }
 
 type ReleaseContentSpec struct {
@@ -294,8 +342,6 @@ type ReleaseContentSpec struct {
 
 type ReleaseContentHelmSpec struct {
 	Path           string
-	Chart          string
-	Version        string
 	DependencyMode ReleaseHelmDependencyMode
 }
 

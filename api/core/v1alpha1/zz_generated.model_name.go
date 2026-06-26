@@ -142,8 +142,28 @@ func (in ReleaseDeletionPolicyOverrideSpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseGitRepositoryRefSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseGitRepositoryRefSpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseGitRepositorySpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseGitRepositorySpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseHealthSummary) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseHealthSummary"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseHelmRegistryChartSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseHelmRegistryChartSpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseHelmRegistrySpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseHelmRegistrySpec"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
@@ -169,6 +189,16 @@ func (in ReleaseMutationFromSpec) OpenAPIModelName() string {
 // OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseMutationPatchSpec) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseMutationPatchSpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseOCIRegistryArtifactSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseOCIRegistryArtifactSpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseOCIRegistrySpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseOCIRegistrySpec"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.

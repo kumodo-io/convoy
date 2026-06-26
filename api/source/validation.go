@@ -112,17 +112,6 @@ func validateGitRepositorySpec(spec *GitRepositorySpec, fldPath *field.Path) fie
 	}
 
 	allErrs = append(allErrs, validateAuthConfig(configs, fldPath, authv1.AuthType(spec.Auth.Type))...)
-
-	set := 0
-	for _, ref := range []*string{spec.Ref.Branch, spec.Ref.Tag, spec.Ref.Commit, spec.Ref.Semver} {
-		if ref != nil {
-			set++
-		}
-	}
-	if set != 1 {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("ref"), spec.Ref, "exactly one of branch, tag, commit, or semver must be set"))
-	}
-
 	return allErrs
 }
 
