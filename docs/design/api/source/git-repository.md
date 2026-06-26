@@ -1,18 +1,13 @@
 <!-- TOC -->
   * [Example](#example)
   * [Spec](#spec)
-  * [Ref](#ref)
-    * [branch](#branch)
-    * [tag](#tag)
-    * [commit](#commit)
-    * [semver](#semver)
   * [Authentication Methods](#authentication-methods)
     * [basic](#basic)
     * [sshKey](#sshkey)
     * [token](#token)
     * [githubApp](#githubapp)
     * [oidc](#oidc)
-    * [workloadIdentity](#workloadidentity)
+    * [cloudIdentity](#cloudidentity)
   * [Status](#status)
   * [Conditions](#conditions)
     * [AuthValid](#authvalid)
@@ -30,14 +25,16 @@
     * [URL Generation](#url-generation)
 <!-- TOC -->
 
-Represents a Git repository as a content source for the continuous delivery pipeline. It tracks a specified ref (branch, tag, commit, or semver constraint) at a configurable interval, fetching content for use by `Release` objects (as the source of charts, manifests, kustomizations, etc.) or as mutation content (values files, patches).
+Represents a Git repository as a **reusable, credentialed handle** to a content source for the continuous delivery pipeline: a URL plus authentication (and auxiliary options like path filters and TLS). It does **not** pin a ref — *which* revision to fetch (branch, tag, commit, or semver constraint) is specified per `Release` in `spec.source.gitRepository.ref`. One `GitRepository` is therefore shared across many `Release`s that pull different refs of the same repo without duplicating credentials.
+
+The controller's job is to verify the repository is reachable and that the configured credentials are accepted; content for a specific ref is fetched on demand when a `Release` references it.
 
 `GitRepository` is the most common source kind. Authentication supports a wide range of methods including SSH keys, HTTP basic auth, tokens, GitHub App installation, and cloud workload identity.
 
 **Subresources**
 
-- `/status` — observed reconciliation state
-- `/sync` — POST to force re-fetch from upstream. Body: `{ force?: bool, cascade?: bool }`. Subject to `minSyncInterval`.
+- `/status` — observed reachability/auth state
+- `/sync` — POST to force re-verification of reachability and auth. Subject to `minSyncInterval`.
 - `/webhooks` — GET / POST / DELETE webhook configuration (provider, secret reference, event filters, payload filters). The generated webhook URL is returned in responses and surfaced in status. See [Webhooks](#webhooks).
 
 ## Example
@@ -54,17 +51,10 @@ metadata:
 spec:
   # Repository URL. Supports https://, git://, ssh:// schemes.
   url: https://github.com/example/payments-charts
-  
-  # What to track — exactly one of {branch, tag, commit, semver} must be specified.
-  # See "Ref" below.
-  ref:
-    # Track a branch (resolves to its tip on each fetch).
-    branch: main
-    
-    # tag: v1.2.3                # exact tag
-    # commit: abc123def456...    # pinned commit (immutable resolution)
-    # semver: ">=1.2.0 <2.0.0"   # for tag-based semver tracking; resolves to highest matching tag
-  
+
+  # NOTE: no ref here. The ref to fetch (branch/tag/commit/semver) is set per
+  # Release in spec.source.gitRepository.ref, so this repo is reusable across Releases.
+
   # Authentication for private repos.
   # Optional — omit for public repos.
   # Discriminated union on auth.type. See "Authentication Methods" below.
@@ -194,17 +184,7 @@ webhook:
 
 status:
   observedGeneration: 7
-  
-  # Last successful fetch info — drives Release.status.resolvedSource.
-  lastFetched:
-    # Resolved revision (Git SHA) at fetch time.
-    revision: abc123def456789aabbccddeeff001122334455
-    # Tree hash for content-addressed dedup.
-    treeHash: sha256:7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e
-    fetchedAt: 2026-04-29T09:59:00Z
-    # Resolved ref details (e.g., for semver: which tag matched).
-    resolvedRef: main
-  
+
   # Number of Releases referencing this Source.
   releaseCount: 4
 
@@ -235,7 +215,7 @@ status:
     - type: Ready
       status: "True"
       lastTransitionTime: 2026-04-29T09:59:00Z
-      reason: FetchSucceeded
+      reason: Verified
     - type: Reachable
       status: "True"
     - type: AuthValid
@@ -248,70 +228,23 @@ status:
 
 ## Spec
 
-| Field                   | Type     | Required            | Default | Description                                                                                                                        |
-|-------------------------|----------|---------------------|---------|------------------------------------------------------------------------------------------------------------------------------------|
-| `url`                   | string   | yes                 | —       | Repository URL. Supports `https://`, `git://`, `ssh://` schemes.                                                                   |
-| `ref`                   | object   | yes                 | —       | What to track — discriminated union. Exactly one sub-field is set. See [Ref](#ref).                                                |
-| `ref.branch`            | string   | one-of              | —       | Track a branch; resolves to its tip on each fetch.                                                                                 |
-| `ref.tag`               | string   | one-of              | —       | Track a fixed tag.                                                                                                                 |
-| `ref.commit`            | string   | one-of              | —       | Pin to a specific commit SHA (immutable resolution).                                                                               |
-| `ref.semver`            | string   | one-of              | —       | Semver constraint resolved against tags; selects highest matching.                                                                 |
-| `auth`                  | object   | no                  | —       | Authentication — discriminated union on `auth.type`. Omit for public repos. See [Authentication Methods](#authentication-methods). |
-| `auth.type`             | enum     | yes (if `auth` set) | —       | One of `basic`, `sshKey`, `token`, `githubApp`, `oidc`, `workloadIdentity`.                                                        |
-| `auth.basic`            | object   | one-of              | —       | HTTP basic auth (when `type: basic`).                                                                                              |
-| `auth.sshKey`           | object   | one-of              | —       | SSH private key auth (when `type: sshKey`).                                                                                        |
-| `auth.token`            | object   | one-of              | —       | Bearer token auth (when `type: token`).                                                                                            |
-| `auth.githubApp`        | object   | one-of              | —       | GitHub App installation auth (when `type: githubApp`).                                                                             |
-| `auth.oidc`             | object   | one-of              | —       | OIDC client-credentials flow (when `type: oidc`).                                                                                  |
-| `auth.workloadIdentity` | object   | one-of              | —       | Cloud workload identity (when `type: workloadIdentity`); for cloud-hosted Git like CodeCommit.                                     |
-| `interval`              | duration | no                  | `1m`    | Polling interval for ref resolution and content fetching.                                                                          |
-| `minSyncInterval`       | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs. Rate-limits the `/sync` subresource.                                      |
-| `includePaths`          | []string | no                  | —       | Path patterns; changes outside these paths don't trigger downstream reconciliation.                                                |
-| `ignorePaths`           | []string | no                  | —       | Path patterns; changes matching these are ignored even if inside `includePaths`.                                                   |
+| Field                | Type     | Required            | Default | Description                                                                                                                                         |
+|----------------------|----------|---------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `url`                | string   | yes                 | —       | Repository URL. Supports `https://`, `git://`, `ssh://` schemes. The ref to fetch is set per `Release` (`spec.source.gitRepository.ref`), not here. |
+| `auth`               | object   | no                  | —       | Authentication — discriminated union on `auth.type`. Omit for public repos. See [Authentication Methods](#authentication-methods).                  |
+| `auth.type`          | enum     | yes (if `auth` set) | —       | One of `basic`, `sshKey`, `token`, `githubApp`, `oidc`, `cloudIdentity`.                                                                            |
+| `auth.basic`         | object   | one-of              | —       | HTTP basic auth (when `type: basic`).                                                                                                               |
+| `auth.sshKey`        | object   | one-of              | —       | SSH private key auth (when `type: sshKey`).                                                                                                         |
+| `auth.token`         | object   | one-of              | —       | Bearer token auth (when `type: token`).                                                                                                             |
+| `auth.githubApp`     | object   | one-of              | —       | GitHub App installation auth (when `type: githubApp`).                                                                                              |
+| `auth.oidc`          | object   | one-of              | —       | OIDC client-credentials flow (when `type: oidc`).                                                                                                   |
+| `auth.cloudIdentity` | object   | one-of              | —       | Cloud workload identity (when `type: cloudIdentity`); for cloud-hosted Git like CodeCommit.                                                         |
+| `interval`           | duration | no                  | `1m`    | Polling interval for ref resolution and content fetching.                                                                                           |
+| `minSyncInterval`    | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs. Rate-limits the `/sync` subresource.                                                       |
+| `includePaths`       | []string | no                  | —       | Path patterns; changes outside these paths don't trigger downstream reconciliation.                                                                 |
+| `ignorePaths`        | []string | no                  | —       | Path patterns; changes matching these are ignored even if inside `includePaths`.                                                                    |
 
-## Ref
-
-`spec.ref` is a discriminated union. Exactly one of `branch` / `tag` / `commit` / `semver` is set; it determines how the repository revision is resolved on each fetch.
-
-### branch
-
-Track a branch. Resolves to the branch tip on each fetch, so new commits are picked up automatically.
-
-```yaml
-spec:
-  ref:
-    branch: main
-```
-
-### tag
-
-Track a fixed tag. Resolves to whatever commit the tag points at; stable unless the tag is moved upstream.
-
-```yaml
-spec:
-  ref:
-    tag: v1.2.3
-```
-
-### commit
-
-Pin to a specific commit SHA. Fully immutable — the resolved revision never changes.
-
-```yaml
-spec:
-  ref:
-    commit: abc123def456789aabbccddeeff001122334455
-```
-
-### semver
-
-A semver constraint matched against the repository's tags. Resolves to the highest tag satisfying the constraint, so new releases are picked up automatically while staying within the range.
-
-```yaml
-spec:
-  ref:
-    semver: ">=1.2.0 <2.0.0"
-```
+The ref selector (`branch` / `tag` / `commit` / `semver`) that used to live here now lives on the consuming `Release` as `spec.source.gitRepository.ref` — see the [Release](../core/release.md) doc. This is what makes a single `GitRepository` reusable: staging can track `branch: main` and prod can pin `tag: v1.2.3` against the same repo + credentials.
 
 ## Authentication Methods
 
@@ -391,14 +324,16 @@ spec:
           secretRef: { name: oidc-client, key: client-secret }
 ```
 
-### workloadIdentity
+### cloudIdentity
 
 The controller pod uses its own cloud-native identity (e.g. IRSA on EKS) to authenticate to cloud-hosted Git such as AWS CodeCommit. No static credentials are stored.
 
 ```yaml
 spec:
   auth:
-    type: workloadIdentity
+    type: cloudIdentity
+    cloudIdentity:
+      provider: aws   # | gcp | azure
 ```
 
 ## Status
@@ -406,11 +341,6 @@ spec:
 | Field                     | Type        | Description                                                                                           |
 |---------------------------|-------------|-------------------------------------------------------------------------------------------------------|
 | `observedGeneration`      | integer     | Generation of `spec` last reconciled.                                                                 |
-| `lastFetched`             | object      | Last successful fetch result.                                                                         |
-| `lastFetched.revision`    | string      | Resolved Git SHA.                                                                                     |
-| `lastFetched.treeHash`    | string      | Content-addressed tree hash.                                                                          |
-| `lastFetched.fetchedAt`   | timestamp   | When the fetch completed.                                                                             |
-| `lastFetched.resolvedRef` | string      | Resolved ref details (e.g., for semver, which tag matched).                                           |
 | `releaseCount`            | integer     | Number of `Release` objects referencing this source.                                                  |
 | `webhooks`                | object      | Webhook operational state, mirrored from the `/webhooks` subresource. See [Webhooks](#webhooks).      |
 | `conditions`              | []Condition | See [Conditions](#conditions).                                                                        |
@@ -419,12 +349,12 @@ spec:
 
 `GitRepository` reports the following standard k8s conditions in `status.conditions`.
 
-| Condition           | What `True` means                                                                                                                                                                    |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Ready`             | Composite: the repository is reachable, authenticated, and content was fetched successfully. The signal most tooling should watch. Requires `Reachable: True` and `AuthValid: True`. |
-| `Reachable`         | Network-level reachability of the Git remote succeeded.                                                                                                                              |
-| `AuthValid`         | The most recent authentication attempt succeeded. See [AuthValid](#authvalid) for full semantics.                                                                                    |
-| `WebhookConfigured` | At least one webhook is configured and receiving events. See [Webhooks](#webhooks).                                                                                                  |
+| Condition           | What `True` means                                                                                                                                                                |
+|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Ready`             | Composite: the repository is reachable and authenticated, so Releases may fetch from it. The signal most tooling should watch. Requires `Reachable: True` and `AuthValid: True`. |
+| `Reachable`         | Network-level reachability of the Git remote succeeded.                                                                                                                          |
+| `AuthValid`         | The most recent authentication attempt succeeded. See [AuthValid](#authvalid) for full semantics.                                                                                |
+| `WebhookConfigured` | At least one webhook is configured and receiving events. See [Webhooks](#webhooks).                                                                                              |
 
 ### AuthValid
 
@@ -474,7 +404,7 @@ status:
   conditions:
     - type: Ready
       status: "True"
-      reason: FetchSucceeded
+      reason: Verified
     - type: Reachable
       status: "True"
     - type: AuthValid

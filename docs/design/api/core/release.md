@@ -126,7 +126,9 @@
     * [Summary Table](#summary-table-1)
 <!-- TOC -->
 
-The deployment unit. Binds one `Source` + one `Cluster` + a content interpretation, with an ordered mutation pipeline. Self-describing via resolved status snapshots. Identity (source, cluster, content type) is immutable; routine config (mutations, paths, versions) is mutable.
+The deployment unit. Binds one `Source` + one `Cluster` + a content interpretation, with an ordered mutation pipeline. Self-describing via resolved status snapshots. Identity (source **kind + name**, cluster, content type) is immutable; routine config (the **source ref/version**, mutations, paths) is mutable.
+
+`spec.source` and `spec.content` are two orthogonal axes: **source = where + which** (the endpoint object plus the coordinate to fetch), **content = how** (how to render the fetched bytes). Both are discriminated unions on `.type`, mirroring `auth`. The `Source` object (`GitRepository`/`HelmRegistry`/`OCIRegistry`) is a reusable, credentialed *endpoint* — it does not pin a version; the coordinate lives on the Release: `spec.source.gitRepository.ref` (`branch`/`tag`/`commit`/`semver`), `spec.source.helmRegistry.chart{name,version}`, or `spec.source.ociRegistry.artifact{name,version}`. So one Source is shared across Releases pulling different versions — e.g. staging on `branch: main`, prod on `tag: v1.2.3` from one `GitRepository`.
 
 **Subresources**
 
@@ -156,30 +158,49 @@ metadata:
     convoy.kumodo.io/owner: payments-team@example.com
 
 spec:
-  # Reference to a Source object. Polymorphic — kind can be GitRepository,
-  # HelmRegistry, or OCIRegistry.
-  # IMMUTABLE after creation. To re-target, create a new Release.
+  # WHERE to get the artifact + WHICH version. Discriminated union on source.type,
+  # mirroring auth/content. Each block references a reusable Source object (which
+  # holds only URL + auth) and adds the coordinate to fetch.
+  # IMMUTABLE: source.type and the referenced name. MUTABLE: the coordinate.
   source:
-    kind: GitRepository
-    name: payments-charts-repo
-    # namespace defaults to Release's namespace if omitted; cross-namespace requires explicit ref.
-  
-  # How to interpret the fetched source content.
-  # IMMUTABLE: content.type. MUTABLE: path, version, type-specific config (for routine ops).
+    # type: gitRepository | helmRegistry | ociRegistry
+    type: gitRepository
+
+    gitRepository:
+      name: payments-charts-repo
+      # namespace: payments-team   # defaults to the Release's namespace
+      # Which revision to fetch — exactly one of {branch, tag, commit, semver}.
+      ref:
+        branch: main
+        # tag: v1.2.3
+        # commit: abc123def456789aabbccddeeff001122334455
+        # semver: ">=1.2.0 <2.0.0"
+
+    # helmRegistry:
+    #   name: payments-helm-repo
+    #   chart:
+    #     name: payments-api
+    #     version: ">=1.2.0 <2.0.0"
+
+    # ociRegistry:
+    #   name: payments-oci-repo
+    #   artifact:
+    #     name: payments-api
+    #     version: ">=1.2.0 <2.0.0"
+
+  # HOW to interpret the fetched artifact (rendering). Discriminated on content.type.
+  # IMMUTABLE: content.type. MUTABLE: render options (paths, dependencyMode, ...).
+  # Must be compatible with source.type (see "Source × Content compatibility").
   content:
     # type: helm | kustomize | manifests | jsonnet | cue
     type: helm
-    
-    # type: helm — for Helm charts (in Git, OCI, or HelmRegistry sources).
+
+    # type: helm — render a Helm chart.
     helm:
-      # Path within the source. For GitRepository, the chart directory.
-      # Ignored for HelmRegistry (registry implies path).
+      # Path to the chart within a GitRepository tree. Omit for helmRegistry/
+      # ociRegistry sources (the chart/artifact is selected in spec.source).
       path: charts/payments-api
-      
-      # For HelmRegistry/OCIRegistry sources: chart name and version selector.
-      # chart: payments-api
-      # version: ">=1.2.0 <2.0.0"
-      
+
       # How to handle subchart dependencies.
       # - vendored: chart's charts/ dir is pre-populated (default, more reproducible)
       # - resolve:  run `helm dependency update` at render time (requires network)
@@ -520,16 +541,16 @@ status:
 
 ## Spec
 
-`spec` binds a source, a content interpretation, and a target cluster, plus sync/retention/deletion policy. Identity fields (`source`, `content.type`, `cluster`) are **immutable** after creation — to re-target, create a new Release. Routine fields (paths, versions, mutations, policies) are mutable.
+`spec` binds a source, a content interpretation, and a target cluster, plus sync/retention/deletion policy. Identity fields (`source.type` + the referenced source name, `content.type`, `cluster`) are **immutable** after creation — to re-target, create a new Release. Routine fields (the source coordinate — `ref`/`chart.version`/`artifact.version` — render options, mutations, policies) are mutable.
 
-| Field                    | Type   | Required | Default | Description                                                                                                                              |
-|--------------------------|--------|----------|---------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `source`                 | object | yes      | —       | Reference (`kind` + `name` [+ `namespace`]) to a `Source` object. Polymorphic; see [Source Reference](#source-reference). Immutable.     |
-| `content`                | object | yes      | —       | How to interpret fetched source content. Discriminated on `content.type`; see [Content Types](#content-types). `content.type` immutable. |
-| `cluster`                | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                    |
-| `syncPolicy`             | object | no       | —       | Reconciliation behavior: `automatic`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).       |
-| `retentionPolicy`        | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.            |
-| `deletionPolicyOverride` | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`); overrides `Cluster.spec.deletionPolicy`.                                    |
+| Field                    | Type   | Required | Default | Description                                                                                                                                                                                                         |
+|--------------------------|--------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `source`                 | object | yes      | —       | WHERE + WHICH to fetch. Discriminated on `source.type` (`gitRepository`/`helmRegistry`/`ociRegistry`); each block references a Source object and carries the coordinate. See [Source Reference](#source-reference). |
+| `content`                | object | yes      | —       | HOW to render the fetched bytes. Discriminated on `content.type`; see [Content Types](#content-types). Must be compatible with `source.type`. `content.type` immutable.                                             |
+| `cluster`                | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                                                                                               |
+| `syncPolicy`             | object | no       | —       | Reconciliation behavior: `automatic`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).                                                                                  |
+| `retentionPolicy`        | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.                                                                                       |
+| `deletionPolicyOverride` | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`); overrides `Cluster.spec.deletionPolicy`.                                                                                                               |
 
 `mutations` is a **top-level field** (not under `spec`), exposed via the `/mutations` subresource for field-level RBAC and audit. It is an ordered, atomic (`+listType=atomic`) transformation pipeline; see [Mutation Types](#mutation-types).
 
@@ -537,38 +558,66 @@ status:
 
 ## Source Reference
 
-`spec.source.kind` selects which `Source` kind the Release pulls content from. The reference is immutable.
+`spec.source` is a discriminated union on `source.type` (mirroring `auth`/`content`): exactly one of the per-type blocks is set. Each references a reusable, credentialed `Source` object (by `name` [+ `namespace`]) and carries the **coordinate** that selects which version to fetch. `source.type` and the referenced `name` are immutable; the coordinate is mutable.
 
-| `kind`          | Content pulled from                                                                                          |
-|-----------------|--------------------------------------------------------------------------------------------------------------|
-| `GitRepository` | A tracked Git ref (branch/tag/commit/semver). Most common — the source of charts, manifests, kustomizations. |
-| `HelmRegistry`  | An HTTP Helm chart repository, selected by chart name + version constraint.                                  |
-| `OCIRegistry`   | An OCI registry artifact (Helm chart, manifest bundle, or kustomize bundle).                                 |
+| `source.type`   | References      | Coordinate (mutable)                                                        |
+|-----------------|-----------------|-----------------------------------------------------------------------------|
+| `gitRepository` | `GitRepository` | `gitRepository.ref` — one of `branch`/`tag`/`commit`/`semver`. Most common. |
+| `helmRegistry`  | `HelmRegistry`  | `helmRegistry.chart.{name, version}`.                                       |
+| `ociRegistry`   | `OCIRegistry`   | `ociRegistry.artifact.{name, version}`.                                     |
+
+For `gitRepository`, `ref` is a discriminated union — exactly one of:
+
+| `ref` field | Resolution                                                                     |
+|-------------|--------------------------------------------------------------------------------|
+| `branch`    | Branch tip; re-resolves over time so new commits are picked up.                |
+| `tag`       | The commit a tag points at; stable unless the tag is moved upstream.           |
+| `commit`    | A pinned SHA — fully immutable.                                                |
+| `semver`    | Highest tag satisfying the constraint; picks up new releases within the range. |
 
 ```yaml
 spec:
   source:
-    kind: GitRepository        # | HelmRegistry | OCIRegistry
-    name: payments-charts-repo
-    # namespace: payments-team   # defaults to the Release's namespace
+    type: gitRepository          # | helmRegistry | ociRegistry
+    gitRepository:
+      name: payments-charts-repo
+      # namespace: payments-team   # defaults to the Release's namespace
+      ref:
+        branch: main               # | tag: v1.2.3 | commit: <sha> | semver: ">=1.2.0 <2.0.0"
+    # helmRegistry:
+    #   name: payments-helm-repo
+    #   chart: { name: payments-api, version: ">=1.2.0 <2.0.0" }
+    # ociRegistry:
+    #   name: payments-oci-repo
+    #   artifact: { name: payments-api, version: ">=1.2.0 <2.0.0" }
 ```
+
+### Source × Content compatibility
+
+`source.type` (where) and `content.type` (how) are orthogonal, but not every pairing is valid:
+
+| `source.type` ↓ / `content.type` → | `helm` | `manifests` | `kustomize` | `jsonnet` | `cue` |
+|------------------------------------|:------:|:-----------:|:-----------:|:---------:|:-----:|
+| `gitRepository`                    |   ✅    |      ✅      |      ✅      |     ✅     |   ✅   |
+| `helmRegistry`                     |   ✅    |      —      |      —      |     —     |   —   |
+| `ociRegistry`                      |   ✅    |      ✅      |      ✅      |     —     |   —   |
+
+Incompatible pairings are rejected by validation (e.g. `helmRegistry` requires `content.type: helm`).
 
 ## Content Types
 
-`spec.content.type` is a discriminated union describing how fetched source content is rendered into a manifest set. `content.type` is immutable; the type-specific config (paths, versions) is mutable.
+`spec.content.type` is a discriminated union describing how the fetched artifact is rendered into a manifest set. `content.type` is immutable; the render options are mutable. The "which version" coordinate is **not** here — it lives in [`spec.source`](#source-reference).
 
 ### helm
 
-Render a Helm chart. `path` is the chart directory (for `GitRepository`) or ignored for registry sources, which select via `chart` + `version`. `dependencyMode` controls subchart handling: `vendored` (chart's `charts/` is pre-populated — default, reproducible) or `resolve` (`helm dependency update` at render time — requires network).
+Render a Helm chart. `path` is the chart directory within a `gitRepository` tree; omit it for `helmRegistry`/`ociRegistry` sources, where the chart/artifact is selected in `spec.source`. `dependencyMode` controls subchart handling: `vendored` (chart's `charts/` is pre-populated — default, reproducible) or `resolve` (`helm dependency update` at render time — requires network).
 
 ```yaml
 spec:
   content:
     type: helm
     helm:
-      path: charts/payments-api
-      # chart: payments-api          # for registry sources
-      # version: ">=1.2.0 <2.0.0"
+      path: charts/payments-api      # gitRepository only; registry sources select the chart in spec.source
       dependencyMode: vendored       # | resolve
 ```
 
