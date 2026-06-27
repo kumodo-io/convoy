@@ -23,6 +23,9 @@ package v1alpha1
 //
 // ReleaseContentKustomizeSpec defines the kustomize content of the release.
 type ReleaseContentKustomizeSpecApplyConfiguration struct {
+	// TargetNamespace is the namespace to target for the kustomize bundle.
+	// Defaults to 'default' namespace if not specified.
+	TargetNamespace *string `json:"targetNamespace,omitempty"`
 	// Path is the path to the kustomize bundle within the source.
 	Path *string `json:"path,omitempty"`
 }
@@ -31,6 +34,14 @@ type ReleaseContentKustomizeSpecApplyConfiguration struct {
 // apply.
 func ReleaseContentKustomizeSpec() *ReleaseContentKustomizeSpecApplyConfiguration {
 	return &ReleaseContentKustomizeSpecApplyConfiguration{}
+}
+
+// WithTargetNamespace sets the TargetNamespace field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TargetNamespace field is set to the value of the last call.
+func (b *ReleaseContentKustomizeSpecApplyConfiguration) WithTargetNamespace(value string) *ReleaseContentKustomizeSpecApplyConfiguration {
+	b.TargetNamespace = &value
+	return b
 }
 
 // WithPath sets the Path field in the declarative configuration to the given value

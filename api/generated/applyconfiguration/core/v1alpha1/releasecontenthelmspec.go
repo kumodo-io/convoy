@@ -27,6 +27,12 @@ import (
 //
 // ReleaseContentHelmSpec defines the Helm chart content of the release.
 type ReleaseContentHelmSpecApplyConfiguration struct {
+	// ReleaseName is the name of the Helm release.
+	// Defaults to the Helm chart name if not specified.
+	ReleaseName *string `json:"releaseName,omitempty"`
+	// ReleaseNamespace is the namespace of the Helm release.
+	// Defaults to 'default' namespace if not specified.
+	ReleaseNamespace *string `json:"releaseNamespace,omitempty"`
 	// Path is the path to the Helm chart within the source.
 	// Ignored if the source is a Helm registry.
 	Path *string `json:"path,omitempty"`
@@ -38,6 +44,22 @@ type ReleaseContentHelmSpecApplyConfiguration struct {
 // apply.
 func ReleaseContentHelmSpec() *ReleaseContentHelmSpecApplyConfiguration {
 	return &ReleaseContentHelmSpecApplyConfiguration{}
+}
+
+// WithReleaseName sets the ReleaseName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ReleaseName field is set to the value of the last call.
+func (b *ReleaseContentHelmSpecApplyConfiguration) WithReleaseName(value string) *ReleaseContentHelmSpecApplyConfiguration {
+	b.ReleaseName = &value
+	return b
+}
+
+// WithReleaseNamespace sets the ReleaseNamespace field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ReleaseNamespace field is set to the value of the last call.
+func (b *ReleaseContentHelmSpecApplyConfiguration) WithReleaseNamespace(value string) *ReleaseContentHelmSpecApplyConfiguration {
+	b.ReleaseNamespace = &value
+	return b
 }
 
 // WithPath sets the Path field in the declarative configuration to the given value

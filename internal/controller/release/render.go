@@ -32,22 +32,34 @@ import (
 )
 
 // ErrUnsupported marks a Release configuration this build does not implement yet
-// (non-manifests content, non-GitRepository source). Terminal — reconcile
+// (unsupported content type, non-GitRepository source). Terminal — reconcile
 // surfaces it without requeuing.
 var ErrUnsupported = errors.New("unsupported release configuration")
 
-// render turns a source artifact into the objects to apply, per the content
-// spec. Only the "manifests" content type is supported for now.
+// render turns a source artifact into the objects to apply, dispatching on the
+// content type.
 func render(content corev1alpha1.ReleaseContentSpec, art artifact.Artifact) ([]*unstructured.Unstructured, error) {
-	if content.Type != corev1alpha1.ReleaseContentTypeManifests {
-		return nil, errors.Join(ErrUnsupported, fmt.Errorf("content type %q is not supported yet (only %q)", content.Type, corev1alpha1.ReleaseContentTypeManifests))
+	switch content.Type {
+	case corev1alpha1.ReleaseContentTypeManifests:
+		if content.Manifests == nil {
+			return nil, errors.Join(ErrUnsupported, fmt.Errorf("manifests content block is missing"))
+		}
+		return renderManifests(content.Manifests, art)
+	case corev1alpha1.ReleaseContentTypeHelm:
+		if content.Helm == nil {
+			return nil, errors.Join(ErrUnsupported, fmt.Errorf("helm content block is missing"))
+		}
+		return renderHelm(content.Helm, art)
+	default:
+		return nil, errors.Join(ErrUnsupported, fmt.Errorf("content type %q is not supported yet", content.Type))
 	}
-	if content.Manifests == nil {
-		return nil, errors.Join(ErrUnsupported, fmt.Errorf("manifests content block is missing"))
-	}
+}
 
+// renderManifests collects raw YAML/JSON manifest documents from the artifact at
+// the configured paths.
+func renderManifests(spec *corev1alpha1.ReleaseContentManifestsSpec, art artifact.Artifact) ([]*unstructured.Unstructured, error) {
 	var objs []*unstructured.Unstructured
-	for _, p := range content.Manifests.Paths {
+	for _, p := range spec.Paths {
 		names := gatherFiles(art.Files, p)
 		if len(names) == 0 {
 			return nil, fmt.Errorf("no manifest files found at path %q", p)

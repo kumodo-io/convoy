@@ -341,21 +341,26 @@ type ReleaseContentSpec struct {
 }
 
 type ReleaseContentHelmSpec struct {
-	Path           string
-	DependencyMode ReleaseHelmDependencyMode
+	ReleaseName      string
+	ReleaseNamespace string
+	Path             string
+	DependencyMode   ReleaseHelmDependencyMode
 }
 
 type ReleaseContentManifestsSpec struct {
-	Paths []string
+	TargetNamespace string
+	Paths           []string
 }
 
 type ReleaseContentKustomizeSpec struct {
-	Path string
+	TargetNamespace string
+	Path            string
 }
 
 type ReleaseContentJsonnetSpec struct {
-	Path string
-	TLA  []corev1.EnvVar
+	TargetNamespace string
+	Path            string
+	TLA             []corev1.EnvVar
 }
 
 type ReleaseClusterRefSpec struct {

@@ -27,6 +27,9 @@ import (
 //
 // ReleaseContentJsonnetSpec defines the jsonnet content of the release.
 type ReleaseContentJsonnetSpecApplyConfiguration struct {
+	// TargetNamespace is the namespace to target for the jsonnet bundle.
+	// Defaults to 'default' namespace if not specified.
+	TargetNamespace *string `json:"targetNamespace,omitempty"`
 	// Path is the path to the jsonnet file within the source.
 	Path *string `json:"path,omitempty"`
 	// TLA is the list of top-level arguments to pass to the jsonnet file.
@@ -37,6 +40,14 @@ type ReleaseContentJsonnetSpecApplyConfiguration struct {
 // apply.
 func ReleaseContentJsonnetSpec() *ReleaseContentJsonnetSpecApplyConfiguration {
 	return &ReleaseContentJsonnetSpecApplyConfiguration{}
+}
+
+// WithTargetNamespace sets the TargetNamespace field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TargetNamespace field is set to the value of the last call.
+func (b *ReleaseContentJsonnetSpecApplyConfiguration) WithTargetNamespace(value string) *ReleaseContentJsonnetSpecApplyConfiguration {
+	b.TargetNamespace = &value
+	return b
 }
 
 // WithPath sets the Path field in the declarative configuration to the given value

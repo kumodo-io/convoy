@@ -52,7 +52,7 @@ func TestRender_DirectoryPathMultiDoc(t *testing.T) {
 		t.Fatalf("got %d objects, want 3 (README + other/ excluded)", len(objs))
 	}
 	for _, o := range objs {
-		if o.GetKind() != "ConfigMap" {
+		if o.GetKind() != configMapKind {
 			t.Errorf("object kind = %q, want ConfigMap", o.GetKind())
 		}
 	}
@@ -71,6 +71,13 @@ func TestRender_SingleFilePath(t *testing.T) {
 }
 
 func TestRender_UnsupportedContentType(t *testing.T) {
+	content := corev1alpha1.ReleaseContentSpec{Type: corev1alpha1.ReleaseContentTypeKustomize}
+	if _, err := render(content, artifact.Artifact{}); !errors.Is(err, ErrUnsupported) {
+		t.Errorf("err = %v, want ErrUnsupported", err)
+	}
+}
+
+func TestRender_MissingHelmBlock(t *testing.T) {
 	content := corev1alpha1.ReleaseContentSpec{Type: corev1alpha1.ReleaseContentTypeHelm}
 	if _, err := render(content, artifact.Artifact{}); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)

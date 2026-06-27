@@ -1133,6 +1133,8 @@ func Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(in *co
 }
 
 func autoConvert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *ReleaseContentHelmSpec, out *core.ReleaseContentHelmSpec, s conversion.Scope) error {
+	out.ReleaseName = in.ReleaseName
+	out.ReleaseNamespace = in.ReleaseNamespace
 	out.Path = in.Path
 	out.DependencyMode = core.ReleaseHelmDependencyMode(in.DependencyMode)
 	return nil
@@ -1144,6 +1146,8 @@ func Convert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *
 }
 
 func autoConvert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in *core.ReleaseContentHelmSpec, out *ReleaseContentHelmSpec, s conversion.Scope) error {
+	out.ReleaseName = in.ReleaseName
+	out.ReleaseNamespace = in.ReleaseNamespace
 	out.Path = in.Path
 	out.DependencyMode = ReleaseHelmDependencyMode(in.DependencyMode)
 	return nil
@@ -1155,6 +1159,7 @@ func Convert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in *
 }
 
 func autoConvert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpec(in *ReleaseContentJsonnetSpec, out *core.ReleaseContentJsonnetSpec, s conversion.Scope) error {
+	out.TargetNamespace = in.TargetNamespace
 	out.Path = in.Path
 	out.TLA = *(*[]corev1.EnvVar)(unsafe.Pointer(&in.TLA))
 	return nil
@@ -1166,6 +1171,7 @@ func Convert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpe
 }
 
 func autoConvert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpec(in *core.ReleaseContentJsonnetSpec, out *ReleaseContentJsonnetSpec, s conversion.Scope) error {
+	out.TargetNamespace = in.TargetNamespace
 	out.Path = in.Path
 	out.TLA = *(*[]corev1.EnvVar)(unsafe.Pointer(&in.TLA))
 	return nil
@@ -1177,6 +1183,7 @@ func Convert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpe
 }
 
 func autoConvert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomizeSpec(in *ReleaseContentKustomizeSpec, out *core.ReleaseContentKustomizeSpec, s conversion.Scope) error {
+	out.TargetNamespace = in.TargetNamespace
 	out.Path = in.Path
 	return nil
 }
@@ -1187,6 +1194,7 @@ func Convert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomiz
 }
 
 func autoConvert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomizeSpec(in *core.ReleaseContentKustomizeSpec, out *ReleaseContentKustomizeSpec, s conversion.Scope) error {
+	out.TargetNamespace = in.TargetNamespace
 	out.Path = in.Path
 	return nil
 }
@@ -1197,6 +1205,7 @@ func Convert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomiz
 }
 
 func autoConvert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifestsSpec(in *ReleaseContentManifestsSpec, out *core.ReleaseContentManifestsSpec, s conversion.Scope) error {
+	out.TargetNamespace = in.TargetNamespace
 	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
 	return nil
 }
@@ -1207,6 +1216,7 @@ func Convert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifest
 }
 
 func autoConvert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifestsSpec(in *core.ReleaseContentManifestsSpec, out *ReleaseContentManifestsSpec, s conversion.Scope) error {
+	out.TargetNamespace = in.TargetNamespace
 	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
 	return nil
 }

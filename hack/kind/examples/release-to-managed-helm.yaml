@@ -1,0 +1,24 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Release
+metadata:
+  name: podinfo-managed-helm
+  namespace: default
+spec:
+  clusterRef:
+    name: convoy-managed
+  source:
+    type: gitRepository
+    gitRepository:
+      name: podinfo
+      namespace: convoy-system
+      ref:
+        tag: 6.5.0
+  content:
+    type: helm
+    helm:
+      path: charts/podinfo
+      releaseName: podinfo-managed-helm
+  syncPolicy:
+    automatic: true
+    pruneOrphaned: false
+    interval: 1m

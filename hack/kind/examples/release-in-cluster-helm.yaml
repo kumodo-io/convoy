@@ -1,0 +1,24 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Release
+metadata:
+  name: podinfo-in-cluster-helm
+  namespace: default
+spec:
+  clusterRef:
+    name: dev-local
+  source:
+    type: gitRepository
+    gitRepository:
+      name: podinfo
+      namespace: convoy-system
+      ref:
+        branch: master
+  content:
+    type: helm
+    helm:
+      path: charts/podinfo
+      releaseName: podinfo-helm
+  syncPolicy:
+    automatic: true
+    pruneOrphaned: false
+    interval: 1m

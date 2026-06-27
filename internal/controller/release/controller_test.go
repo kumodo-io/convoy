@@ -36,7 +36,8 @@ import (
 )
 
 const (
-	dummyFile = "app.yaml"
+	dummyFile     = "app.yaml"
+	configMapKind = "ConfigMap"
 )
 
 type fakeDeployer struct {
@@ -146,7 +147,7 @@ func TestSyncHandler_AppliesAndMarksReady(t *testing.T) {
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
 	}
-	if !deployer.called || len(deployer.got) != 1 || deployer.got[0].GetKind() != "ConfigMap" {
+	if !deployer.called || len(deployer.got) != 1 || deployer.got[0].GetKind() != configMapKind {
 		t.Errorf("deployer got %+v (called=%v), want one ConfigMap", deployer.got, deployer.called)
 	}
 	got := statusUpdate(client.Actions())
