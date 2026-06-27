@@ -110,14 +110,11 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 // reconcile runs the render-and-apply steps and returns the Ready outcome plus a
 // requeue error (non-nil = transient, retry).
 func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (ready bool, reason, message string, err error) {
-	if rel.Spec.Source.Type != corev1alpha1.ReleaseSourceTypeGitRepository {
-		return false, conditionReasonUnsupported, fmt.Sprintf("source type %q is not supported yet (only %q)", rel.Spec.Source.Type, corev1alpha1.ReleaseSourceTypeGitRepository), nil
-	}
-
-	// Ensure the source content is fetched and cached. A non-nil error is
-	// transient (requeue); a not-ready result with no error is a terminal config
-	// problem (e.g. unsupported auth/ref).
-	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source.GitRepository, rel.Namespace)
+	// Ensure the source content is fetched and cached. The coordinator dispatches
+	// on source type. A non-nil error is transient (requeue); a not-ready result
+	// with no error is a terminal config problem (e.g. unsupported source
+	// type/auth/ref).
+	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source, rel.Namespace)
 	if err != nil {
 		return false, conditionReasonSourceNotReady, err.Error(), err
 	}
