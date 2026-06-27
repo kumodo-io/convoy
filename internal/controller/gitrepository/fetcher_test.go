@@ -30,11 +30,10 @@ import (
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 )
 
-func repoWithRef(url string, ref sourcev1alpha1.GitRepositoryRefSpec, authType sourcev1alpha1.GitRepositoryAuthType) *sourcev1alpha1.GitRepository {
+func repoWith(url string, authType sourcev1alpha1.GitRepositoryAuthType) *sourcev1alpha1.GitRepository {
 	return &sourcev1alpha1.GitRepository{
 		Spec: sourcev1alpha1.GitRepositorySpec{
 			URL:  url,
-			Ref:  ref,
 			Auth: sourcev1alpha1.GitRepositoryAuthSpec{Type: authType},
 		},
 	}
@@ -81,8 +80,8 @@ func TestGitFetcher_Branch(t *testing.T) {
 	// depth 0: the local file transport doesn't do shallow clones.
 	f := &gitFetcher{depth: 0}
 
-	got, err := f.Fetch(context.Background(), repoWithRef(dir,
-		sourcev1alpha1.GitRepositoryRefSpec{Branch: &branch}, sourcev1alpha1.GitRepositoryAuthTypeNone))
+	got, err := f.Fetch(context.Background(), repoWith(dir, sourcev1alpha1.GitRepositoryAuthTypeNone),
+		Ref{Branch: &branch})
 	if err != nil {
 		t.Fatalf("Fetch returned error: %v", err)
 	}
@@ -104,8 +103,8 @@ func TestGitFetcher_Tag(t *testing.T) {
 	dir, _, tag, commit := initLocalRepo(t)
 	f := &gitFetcher{depth: 0}
 
-	got, err := f.Fetch(context.Background(), repoWithRef(dir,
-		sourcev1alpha1.GitRepositoryRefSpec{Tag: &tag}, sourcev1alpha1.GitRepositoryAuthTypeNone))
+	got, err := f.Fetch(context.Background(), repoWith(dir, sourcev1alpha1.GitRepositoryAuthTypeNone),
+		Ref{Tag: &tag})
 	if err != nil {
 		t.Fatalf("Fetch returned error: %v", err)
 	}
@@ -119,8 +118,8 @@ func TestGitFetcher_Tag(t *testing.T) {
 
 func TestGitFetcher_UnsupportedAuthType(t *testing.T) {
 	f := NewGitFetcher(nil)
-	_, err := f.Fetch(context.Background(), repoWithRef(dummyGitRepositoryURL,
-		sourcev1alpha1.GitRepositoryRefSpec{Branch: new("main")}, sourcev1alpha1.GitRepositoryAuthTypeToken))
+	_, err := f.Fetch(context.Background(), repoWith(dummyGitRepositoryURL, sourcev1alpha1.GitRepositoryAuthTypeToken),
+		Ref{Branch: new("main")})
 	if !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}
@@ -128,8 +127,8 @@ func TestGitFetcher_UnsupportedAuthType(t *testing.T) {
 
 func TestGitFetcher_SemverUnsupported(t *testing.T) {
 	f := NewGitFetcher(nil)
-	_, err := f.Fetch(context.Background(), repoWithRef(dummyGitRepositoryURL,
-		sourcev1alpha1.GitRepositoryRefSpec{Semver: new("^1.0.0")}, sourcev1alpha1.GitRepositoryAuthTypeNone))
+	_, err := f.Fetch(context.Background(), repoWith(dummyGitRepositoryURL, sourcev1alpha1.GitRepositoryAuthTypeNone),
+		Ref{Semver: new("^1.0.0")})
 	if !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}

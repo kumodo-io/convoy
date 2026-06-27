@@ -36,9 +36,8 @@ import (
 )
 
 const (
-	dummyGitRepositoryName     = "dummy-gitrepository"
-	dummyGitRepositoryURL      = "https://dummy.example.com/service.git"
-	dummyGitRepositoryRevision = "abc123"
+	dummyGitRepositoryName = "dummy-gitrepository"
+	dummyGitRepositoryURL  = "https://dummy.example.com/service.git"
 )
 
 func newStorage(t *testing.T) (*genericregistry.Store, *gitrepositorystorage.StatusREST, *etcd3testing.EtcdTestServer) {
@@ -60,7 +59,6 @@ func validNewGitRepository(namespace string) *source.GitRepository {
 		},
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
-			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
 			Auth: source.GitRepositoryAuthSpec{
 				Type: source.GitRepositoryAuthTypeNone,
 			},
@@ -75,41 +73,6 @@ func invalidNewGitRepositroyNoURL(namespace string) *source.GitRepository {
 			Namespace: namespace,
 		},
 		Spec: source.GitRepositorySpec{
-			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
-			Auth: source.GitRepositoryAuthSpec{
-				Type: source.GitRepositoryAuthTypeNone,
-			},
-		},
-	}
-}
-
-func invalidNewGitRepositroyNoRef(namespace string) *source.GitRepository {
-	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
-		Spec: source.GitRepositorySpec{
-			URL: dummyGitRepositoryURL,
-			Auth: source.GitRepositoryAuthSpec{
-				Type: source.GitRepositoryAuthTypeNone,
-			},
-		},
-	}
-}
-
-func invalidNewGitRepositroyMultipleRefs(namespace string) *source.GitRepository {
-	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
-		Spec: source.GitRepositorySpec{
-			URL: dummyGitRepositoryURL,
-			Ref: source.GitRepositoryRefSpec{
-				Branch: new("main"),
-				Tag:    new("v1.0.0"),
-			},
 			Auth: source.GitRepositoryAuthSpec{
 				Type: source.GitRepositoryAuthTypeNone,
 			},
@@ -125,7 +88,6 @@ func invalidNewGitRepositroyNoAuth(namespace string) *source.GitRepository {
 		},
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
-			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
 		},
 	}
 }
@@ -138,7 +100,6 @@ func invalidNewGitRepositroyUnknownAuthType(namespace string) *source.GitReposit
 		},
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
-			Ref: source.GitRepositoryRefSpec{Branch: new("main")},
 			Auth: source.GitRepositoryAuthSpec{
 				Type: "unknown",
 			},
@@ -187,8 +148,6 @@ func TestCreate(t *testing.T) {
 	test.TestCreate(
 		validNewGitRepository(ns),
 		invalidNewGitRepositroyNoURL(ns),
-		invalidNewGitRepositroyNoRef(ns),
-		invalidNewGitRepositroyMultipleRefs(ns),
 		invalidNewGitRepositroyNoAuth(ns),
 		invalidNewGitRepositroyUnknownAuthType(ns),
 		invalidNewGitRepositoryMultipleAuthConfigs(ns),
@@ -202,10 +161,10 @@ func TestUpdate(t *testing.T) {
 	test := genericregistrytest.New(t, storage)
 	test.TestUpdate(
 		validNewGitRepository(test.TestNamespace()),
-		// valid update: switch tracked ref from branch to tag
+		// valid update: adjust the path filters
 		func(obj runtime.Object) runtime.Object {
 			r := obj.(*source.GitRepository)
-			r.Spec.Ref = source.GitRepositoryRefSpec{Tag: new("v1.2.3")}
+			r.Spec.IncludePaths = []string{"deploy/"}
 			return r
 		},
 		// invalid update: clears the required url
@@ -254,7 +213,6 @@ func TestStatusUpdate(t *testing.T) {
 	}
 	repo := obj.(*source.GitRepository)
 
-	repo.Status.LastFetched.Revision = dummyGitRepositoryRevision
 	repo.Status.ReleaseCount = 3
 	// A spec change submitted through /status must be ignored.
 	repo.Spec.URL = "https://changed.example.com"
@@ -273,8 +231,8 @@ func TestStatusUpdate(t *testing.T) {
 	}
 
 	updated := updatedObj.(*source.GitRepository)
-	if updated.Status.LastFetched.Revision != dummyGitRepositoryRevision {
-		t.Errorf("expected status.lastFetched.revision to persist, got %q", updated.Status.LastFetched.Revision)
+	if updated.Status.ReleaseCount != 3 {
+		t.Errorf("expected status.releaseCount to persist, got %d", updated.Status.ReleaseCount)
 	}
 	if updated.Spec.URL != dummyGitRepositoryURL {
 		t.Errorf("expected spec change to be ignored by /status, got url=%q", updated.Spec.URL)

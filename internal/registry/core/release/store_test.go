@@ -53,8 +53,11 @@ func validNewRelease(namespace string) *core.Release {
 		},
 		Spec: core.ReleaseSpec{
 			Source: core.ReleaseSourceSpec{
-				Kind: "GitRepository",
-				Name: "payments-charts",
+				Type: core.ReleaseSourceTypeGitRepository,
+				GitRepository: &core.ReleaseGitRepositorySpec{
+					Name: "payments-charts",
+					Ref:  &core.ReleaseGitRepositoryRefSpec{Branch: new("main")},
+				},
 			},
 			Content: core.ReleaseContentSpec{
 				Type: core.ReleaseContentTypeHelm,
@@ -78,10 +81,11 @@ func releaseMissingContentType(namespace string) *core.Release {
 	return r
 }
 
-// releaseMissingSourceName is invalid: source.name is required.
-func releaseMissingSourceName(namespace string) *core.Release {
+// releaseMissingSourceBlock is invalid: the gitRepository block is required when
+// source.type is gitRepository.
+func releaseMissingSourceBlock(namespace string) *core.Release {
 	r := validNewRelease(namespace)
-	r.Spec.Source.Name = ""
+	r.Spec.Source.GitRepository = nil
 	return r
 }
 
@@ -93,7 +97,7 @@ func TestCreate(t *testing.T) {
 	test.TestCreate(
 		validNewRelease(ns),
 		releaseMissingContentType(ns),
-		releaseMissingSourceName(ns),
+		releaseMissingSourceBlock(ns),
 	)
 }
 
@@ -122,7 +126,7 @@ func TestUpdate(t *testing.T) {
 		// invalid update: mutates the immutable source
 		func(obj runtime.Object) runtime.Object {
 			r := obj.(*core.Release)
-			r.Spec.Source.Kind = "OCIRegistry"
+			r.Spec.Source.GitRepository.Name = "other-charts"
 			return r
 		},
 	)

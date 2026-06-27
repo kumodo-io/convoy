@@ -15,8 +15,11 @@ limitations under the License.
 */
 
 // Package gitrepository implements the controller that reconciles
-// source.convoy GitRepository objects: it resolves the tracked ref to a
-// revision and records it in the object's status.
+// [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository] objects:
+// it verifies the repository is reachable and authenticated and records
+// that in the object's status. Content for a specific ref is fetched on
+// demand by the release controller's fetch coordinator (the ref lives on
+// the Release, not the GitRepository).
 package gitrepository
 
 import (
@@ -33,7 +36,6 @@ import (
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/source/v1alpha1"
 	listers "github.com/kumodo-io/convoy/api/generated/listers/source/v1alpha1"
-	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 )
 
@@ -45,19 +47,17 @@ type Controller struct {
 	client  clientset.Interface
 	lister  listers.GitRepositoryLister
 	fetcher Fetcher
-	store   artifact.Store
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
 }
 
-// NewController wires a Controller to a GitRepository informer. Fetched content
-// is published to store for the release controller to consume.
-func NewController(client clientset.Interface, informer informers.GitRepositoryInformer, fetcher Fetcher, store artifact.Store) *Controller {
+// NewController wires a Controller to a GitRepository informer. It verifies
+// reachability/auth via the fetcher; it does not fetch content.
+func NewController(client clientset.Interface, informer informers.GitRepositoryInformer, fetcher Fetcher) *Controller {
 	c := &Controller{
 		client:  client,
 		lister:  informer.Lister(),
 		fetcher: fetcher,
-		store:   store,
 		now:     metav1.Now,
 	}
 	c.Controller = base.NewController("gitrepository", c.syncHandler)
@@ -65,7 +65,8 @@ func NewController(client clientset.Interface, informer informers.GitRepositoryI
 	return c
 }
 
-// syncHandler reconciles a single GitRepository: fetch the ref and write status.
+// syncHandler reconciles a single GitRepository: verify reachability/auth and
+// write status.
 func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -81,15 +82,8 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		return err
 	}
 
-	result, fetchErr := c.fetcher.Fetch(ctx, repo)
-	if fetchErr == nil {
-		// Publish the fetched content for the release controller to render+apply.
-		c.store.Put(artifact.Key("GitRepository", namespace, name), artifact.Artifact{
-			Revision: result.Revision,
-			Files:    result.Files,
-		})
-	}
-	newStatus := computeStatus(repo, result, fetchErr, c.now())
+	verifyErr := c.fetcher.Verify(ctx, repo)
+	newStatus := computeStatus(repo, verifyErr, c.now())
 
 	if statusChanged(repo, newStatus) {
 		updated := repo.DeepCopy()
@@ -97,16 +91,16 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		if _, err := c.client.SourceV1alpha1().GitRepositories(namespace).UpdateStatus(ctx, updated, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("updating status: %w", err)
 		}
-		klog.V(4).InfoS("updated gitrepository status", "gitrepository", key, "revision", newStatus.LastFetched.Revision)
+		klog.V(4).InfoS("updated gitrepository status", "gitrepository", key)
 	}
 
-	// A transient fetch failure is reported as an error so the rate-limited queue
-	// retries it. Periodic re-fetches come from the informer's resync.
-	if fetchErr != nil {
-		if errors.Is(fetchErr, ErrUnsupported) {
+	// A transient verify failure is reported as an error so the rate-limited queue
+	// retries it. Periodic re-verification comes from the informer's resync.
+	if verifyErr != nil {
+		if errors.Is(verifyErr, ErrUnsupported) {
 			return nil // terminal; don't hot-loop
 		}
-		return fetchErr
+		return verifyErr
 	}
 	return nil
 }

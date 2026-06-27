@@ -20,7 +20,7 @@ import "testing"
 
 func TestMemoryStore_PutGetOverwrite(t *testing.T) {
 	s := NewMemoryStore()
-	key := Key("GitRepository", "ns", "repo")
+	key := Key("https://github.com/example/repo.git", "abc123")
 
 	if _, ok := s.Get(key); ok {
 		t.Fatalf("Get on empty store returned ok=true")
@@ -39,7 +39,13 @@ func TestMemoryStore_PutGetOverwrite(t *testing.T) {
 }
 
 func TestKey(t *testing.T) {
-	if k := Key("GitRepository", "ns", "repo"); k != "GitRepository/ns/repo" {
-		t.Errorf("Key = %q, want GitRepository/ns/repo", k)
+	// Content-addressed: equivalent URL forms + same revision collapse to one key.
+	a := Key("https://github.com/example/repo.git", "abc123")
+	b := Key("https://github.com/example/repo/", "abc123")
+	if a != b {
+		t.Errorf("equivalent URLs produced different keys: %q vs %q", a, b)
+	}
+	if a == Key("https://github.com/example/repo", "def456") {
+		t.Errorf("different revisions must produce different keys")
 	}
 }

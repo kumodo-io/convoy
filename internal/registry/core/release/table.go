@@ -19,6 +19,7 @@ package release
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,8 +41,9 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 		ColumnDefinitions: []metav1.TableColumnDefinition{
 			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the Release"},
 			{Name: "Content", Type: helper.StringValueString, Description: "Content interpretation type"},
-			{Name: "Source", Type: helper.StringValueString, Description: "Referenced source (kind/name)"},
+			{Name: "Source", Type: helper.StringValueString, Description: "Referenced source (type/name)"},
 			{Name: "Cluster", Type: helper.StringValueString, Description: "Target cluster"},
+			{Name: "Ready", Type: helper.StringValueString, Description: "Whether the repository is ready"},
 			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the Release was created"},
 		},
 	}
@@ -51,12 +53,15 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 		if !r.CreationTimestamp.IsZero() {
 			age = duration.HumanDuration(time.Since(r.CreationTimestamp.Time))
 		}
-		source := r.Spec.Source.Name
-		if r.Spec.Source.Kind != "" {
-			source = fmt.Sprintf("%s/%s", r.Spec.Source.Kind, r.Spec.Source.Name)
+		ready := "<unknown>"
+		idx := slices.IndexFunc(r.Status.Conditions, func(c metav1.Condition) bool {
+			return c.Type == "Ready"
+		})
+		if idx >= 0 {
+			ready = string(r.Status.Conditions[idx].Status)
 		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, string(r.Spec.Content.Type), source, r.Spec.ClusterRef.Name, age},
+			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, ready, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}
@@ -75,4 +80,28 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 	}
 
 	return table, nil
+}
+
+// sourceString renders a Release source as "type/name" using the per-type block
+// that matches the discriminator.
+func sourceString(s core.ReleaseSourceSpec) string {
+	var name string
+	switch s.Type {
+	case core.ReleaseSourceTypeGitRepository:
+		if s.GitRepository != nil {
+			name = s.GitRepository.Name
+		}
+	case core.ReleaseSourceTypeHelmRegistry:
+		if s.HelmRegistry != nil {
+			name = s.HelmRegistry.Name
+		}
+	case core.ReleaseSourceTypeOCIRegistry:
+		if s.OCIRegistry != nil {
+			name = s.OCIRegistry.Name
+		}
+	}
+	if name == "" {
+		return string(s.Type)
+	}
+	return fmt.Sprintf("%s/%s", s.Type, name)
 }

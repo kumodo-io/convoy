@@ -41,7 +41,6 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 		ColumnDefinitions: []metav1.TableColumnDefinition{
 			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the GitRepository"},
 			{Name: "URL", Type: helper.StringValueString, Description: "Repository URL"},
-			{Name: "Ref", Type: helper.StringValueString, Description: "Tracked ref"},
 			{Name: "Ready", Type: helper.StringValueString, Description: "Whether the repository is ready"},
 			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the GitRepository was created"},
 		},
@@ -60,7 +59,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			ready = string(r.Status.Conditions[idx].Status)
 		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, r.Spec.URL, refString(r.Spec.Ref), ready, age},
+			Cells:  []any{r.Name, r.Spec.URL, ready, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}
@@ -79,19 +78,4 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 	}
 
 	return table, nil
-}
-
-func refString(ref source.GitRepositoryRefSpec) string {
-	switch {
-	case ref.Branch != nil:
-		return "branch:" + *ref.Branch
-	case ref.Tag != nil:
-		return "tag:" + *ref.Tag
-	case ref.Commit != nil:
-		return "commit:" + *ref.Commit
-	case ref.Semver != nil:
-		return "semver:" + *ref.Semver
-	default:
-		return ""
-	}
 }

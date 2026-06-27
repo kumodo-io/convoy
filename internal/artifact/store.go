@@ -14,14 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package artifact holds fetched source content in-process so a source
-// controller (producer) and the release controller (consumer) can hand off
-// rendered-ready files without re-fetching. The store is in-memory and lost on
-// restart; producers repopulate it on their next reconcile.
+// Package artifact holds fetched source content in-process, handed off from the
+// fetch coordinator (producer) to the release controller (consumer) without
+// re-fetching. Content is addressed by (URL, revision): identical content is
+// held once and shared, regardless of which source referenced it. The store is
+// in-memory and lost on restart; it is repopulated on the next fetch.
 package artifact
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -29,19 +31,30 @@ import (
 type Artifact struct {
 	// Revision is the resolved source revision (e.g. a git commit SHA).
 	Revision string
+
 	// Files maps a repo-relative path to its content.
 	Files map[string][]byte
 }
 
-// Store holds the latest Artifact per source key.
+// Store holds artifacts keyed by content identity.
 type Store interface {
 	Put(key string, a Artifact)
 	Get(key string) (Artifact, bool)
 }
 
-// Key builds the store key for a source object.
-func Key(kind, namespace, name string) string {
-	return fmt.Sprintf("%s/%s/%s", kind, namespace, name)
+// Key builds the content-addressed store key for a fetched revision. Content is
+// identified by (normalized URL, revision) — not by the referencing source — so
+// the same bytes are stored once and shared.
+func Key(url, revision string) string {
+	return fmt.Sprintf("%s@%s", normalizeURL(url), revision)
+}
+
+// normalizeURL canonicalizes a repo URL so equivalent forms collapse to one key.
+func normalizeURL(url string) string {
+	u := strings.TrimSpace(url)
+	u = strings.TrimSuffix(u, "/")
+	u = strings.TrimSuffix(u, ".git")
+	return strings.ToLower(u)
 }
 
 type memoryStore struct {

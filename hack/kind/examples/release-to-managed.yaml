@@ -7,9 +7,12 @@ spec:
   clusterRef:
     name: convoy-managed
   source:
-    kind: GitRepository
-    name: podinfo
-    namespace: convoy-system
+    type: gitRepository
+    gitRepository:
+      name: podinfo
+      namespace: convoy-system
+      ref:
+        tag: 6.5.0
   content:
     type: manifests
     manifests:
