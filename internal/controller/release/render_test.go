@@ -71,6 +71,13 @@ func TestRender_SingleFilePath(t *testing.T) {
 }
 
 func TestRender_UnsupportedContentType(t *testing.T) {
+	content := corev1alpha1.ReleaseContentSpec{Type: corev1alpha1.ReleaseContentTypeKustomize}
+	if _, err := render(content, artifact.Artifact{}); !errors.Is(err, ErrUnsupported) {
+		t.Errorf("err = %v, want ErrUnsupported", err)
+	}
+}
+
+func TestRender_MissingHelmBlock(t *testing.T) {
 	content := corev1alpha1.ReleaseContentSpec{Type: corev1alpha1.ReleaseContentTypeHelm}
 	if _, err := render(content, artifact.Artifact{}); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
