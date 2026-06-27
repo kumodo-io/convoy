@@ -29,8 +29,6 @@ import (
 type GitRepositoryStatusApplyConfiguration struct {
 	// ObservedGeneration is the last generation that was observed by the controller.
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
-	// LastFetched is the last time the Git repository was fetched.
-	LastFetched *GitRepositoryLastFetchedStatusApplyConfiguration `json:"lastFetched,omitempty"`
 	// ReleaseCount is the number of Release referencing the GitRepository.
 	ReleaseCount *int64 `json:"releaseCount,omitempty"`
 	// Webhooks is the list of statuses of webhooks that are configured for the GitRepository.
@@ -50,14 +48,6 @@ func GitRepositoryStatus() *GitRepositoryStatusApplyConfiguration {
 // If called multiple times, the ObservedGeneration field is set to the value of the last call.
 func (b *GitRepositoryStatusApplyConfiguration) WithObservedGeneration(value int64) *GitRepositoryStatusApplyConfiguration {
 	b.ObservedGeneration = &value
-	return b
-}
-
-// WithLastFetched sets the LastFetched field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the LastFetched field is set to the value of the last call.
-func (b *GitRepositoryStatusApplyConfiguration) WithLastFetched(value *GitRepositoryLastFetchedStatusApplyConfiguration) *GitRepositoryStatusApplyConfiguration {
-	b.LastFetched = value
 	return b
 }
 

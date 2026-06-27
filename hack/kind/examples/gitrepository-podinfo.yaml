@@ -8,8 +8,6 @@ spec:
     type: none
   interval: 1m0s
   minSyncInterval: 30s
-  ref:
-    branch: master
   tls:
     insecureSkipVerify: true
   url: https://github.com/stefanprodan/podinfo.git

@@ -18,7 +18,6 @@ package gitrepository
 
 import (
 	"errors"
-	"fmt"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
@@ -28,17 +27,17 @@ import (
 )
 
 const (
-	conditionReady             = "Ready"
-	conditionReasonFetched     = "Fetched"
-	conditionReasonUnsupported = "Unsupported"
-	conditionReasonFetchFailed = "FetchFailed"
+	conditionReady              = "Ready"
+	conditionReasonVerified     = "Verified"
+	conditionReasonUnsupported  = "Unsupported"
+	conditionReasonVerifyFailed = "VerifyFailed"
 )
 
 // computeStatus derives the desired GitRepositoryStatus from the current object
-// plus the outcome of a fetch. It is pure (no I/O, no clocks beyond the injected
-// now) so it can be exhaustively unit-tested. On a fetch error the previously
-// fetched facts are intentionally retained.
-func computeStatus(repo *sourcev1alpha1.GitRepository, result FetchResult, fetchErr error, now metav1.Time) sourcev1alpha1.GitRepositoryStatus {
+// plus the outcome of a reachability/auth verification. The GitRepository
+// controller no longer fetches content (the ref lives on the Release); it only
+// confirms the repo is reachable and authenticated. Pure, so it's unit-testable.
+func computeStatus(repo *sourcev1alpha1.GitRepository, verifyErr error, now metav1.Time) sourcev1alpha1.GitRepositoryStatus {
 	status := *repo.Status.DeepCopy()
 	status.ObservedGeneration = repo.Generation
 
@@ -48,30 +47,19 @@ func computeStatus(repo *sourcev1alpha1.GitRepository, result FetchResult, fetch
 		LastTransitionTime: now,
 	}
 
-	if fetchErr != nil {
+	if verifyErr != nil {
 		cond.Status = metav1.ConditionFalse
-		cond.Message = fetchErr.Error()
+		cond.Message = verifyErr.Error()
 		switch {
-		case errors.Is(fetchErr, ErrUnsupported):
+		case errors.Is(verifyErr, ErrUnsupported):
 			cond.Reason = conditionReasonUnsupported
-		case errors.Is(fetchErr, ErrFetchFailed):
-			cond.Reason = conditionReasonFetchFailed
 		default:
-			cond.Reason = conditionReasonFetchFailed
+			cond.Reason = conditionReasonVerifyFailed
 		}
-		// Last-known LastFetched is retained on failure.
 	} else {
-		// Only stamp FetchedAt when the resolved revision actually changes, so a
-		// steady unchanged repo produces no status writes between commits.
-		if status.LastFetched.Revision != result.Revision {
-			status.LastFetched.FetchedAt = now
-		}
-		status.LastFetched.Revision = result.Revision
-		status.LastFetched.TreeHash = result.TreeHash
-		status.LastFetched.ResolvedRef = result.ResolvedRef
 		cond.Status = metav1.ConditionTrue
-		cond.Reason = conditionReasonFetched
-		cond.Message = fmt.Sprintf("fetched revision %s", result.Revision)
+		cond.Reason = conditionReasonVerified
+		cond.Message = "repository is reachable and authenticated"
 	}
 
 	apimeta.SetStatusCondition(&status.Conditions, cond)

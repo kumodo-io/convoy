@@ -28,6 +28,7 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-billy/v5/util"
 	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/storage/memory"
@@ -49,11 +50,25 @@ type FetchResult struct {
 	Files map[string][]byte
 }
 
-// Fetcher resolves a GitRepository's tracked ref to a concrete revision and
-// snapshots its content. It is the single seam between the reconcile loop and
-// real network I/O, so the controller can be unit-tested with a fake.
+// Ref selects which revision to fetch. It mirrors the Release's source ref;
+// exactly one field is set. Kept local so the fetcher stays decoupled from the
+// core API (the coordinator maps the Release ref onto this).
+type Ref struct {
+	Branch *string
+	Tag    *string
+	Commit *string
+	Semver *string
+}
+
+// Fetcher resolves a repository ref to a concrete revision and snapshots its
+// content, and verifies a repository is reachable/authenticated. It is the seam
+// between the fetch coordinator and real network I/O, so callers can fake it.
 type Fetcher interface {
-	Fetch(ctx context.Context, repo *sourcev1alpha1.GitRepository) (FetchResult, error)
+	// Fetch clones the repository at ref and returns the resolved revision + content.
+	Fetch(ctx context.Context, repo *sourcev1alpha1.GitRepository, ref Ref) (FetchResult, error)
+	// Verify checks the repository is reachable and the credentials are accepted,
+	// without fetching content.
+	Verify(ctx context.Context, repo *sourcev1alpha1.GitRepository) error
 }
 
 var (
@@ -85,16 +100,35 @@ func NewGitFetcher(resolver auth.SecretResolver) Fetcher {
 	}
 }
 
-func (f *gitFetcher) Fetch(ctx context.Context, repo *sourcev1alpha1.GitRepository) (FetchResult, error) {
+func (f *gitFetcher) Fetch(ctx context.Context, repo *sourcev1alpha1.GitRepository, ref Ref) (FetchResult, error) {
 	if repo.Spec.Auth.Type != sourcev1alpha1.GitRepositoryAuthTypeNone {
 		return FetchResult{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", repo.Spec.Auth.Type, sourcev1alpha1.GitRepositoryAuthTypeNone))
 	}
 	// auth "none" → anonymous (nil transport auth).
-	return f.clone(ctx, repo, nil)
+	return f.clone(ctx, repo, ref, nil)
 }
 
-func (f *gitFetcher) clone(ctx context.Context, repo *sourcev1alpha1.GitRepository, authMethod transport.AuthMethod) (FetchResult, error) {
-	ref := repo.Spec.Ref
+// Verify confirms the repository is reachable and (for non-public auth, later)
+// that credentials are accepted, via an ls-remote — no content is fetched.
+func (f *gitFetcher) Verify(ctx context.Context, repo *sourcev1alpha1.GitRepository) error {
+	if repo.Spec.Auth.Type != sourcev1alpha1.GitRepositoryAuthTypeNone {
+		return errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", repo.Spec.Auth.Type, sourcev1alpha1.GitRepositoryAuthTypeNone))
+	}
+	remote := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{repo.Spec.URL},
+	})
+	listOpts := &gogit.ListOptions{}
+	if repo.Spec.TLS != nil {
+		listOpts.InsecureSkipTLS = repo.Spec.TLS.InsecureSkipVerify
+	}
+	if _, err := remote.ListContext(ctx, listOpts); err != nil {
+		return errors.Join(ErrFetchFailed, fmt.Errorf("ls-remote %s: %w", repo.Spec.URL, err))
+	}
+	return nil
+}
+
+func (f *gitFetcher) clone(ctx context.Context, repo *sourcev1alpha1.GitRepository, ref Ref, authMethod transport.AuthMethod) (FetchResult, error) {
 	switch {
 	case ref.Branch != nil:
 		return f.cloneRef(ctx, repo.Spec.URL, plumbing.NewBranchReferenceName(*ref.Branch), *ref.Branch, authMethod, repo.Spec.TLS)

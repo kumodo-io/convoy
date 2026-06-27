@@ -281,6 +281,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseGitRepositoryRefSpec)(nil), (*core.ReleaseGitRepositoryRefSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRefSpec(a.(*ReleaseGitRepositoryRefSpec), b.(*core.ReleaseGitRepositoryRefSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseGitRepositoryRefSpec)(nil), (*ReleaseGitRepositoryRefSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseGitRepositoryRefSpec_To_v1alpha1_ReleaseGitRepositoryRefSpec(a.(*core.ReleaseGitRepositoryRefSpec), b.(*ReleaseGitRepositoryRefSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseGitRepositorySpec)(nil), (*core.ReleaseGitRepositorySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseGitRepositorySpec_To_core_ReleaseGitRepositorySpec(a.(*ReleaseGitRepositorySpec), b.(*core.ReleaseGitRepositorySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseGitRepositorySpec)(nil), (*ReleaseGitRepositorySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseGitRepositorySpec_To_v1alpha1_ReleaseGitRepositorySpec(a.(*core.ReleaseGitRepositorySpec), b.(*ReleaseGitRepositorySpec), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*ReleaseHealthSummary)(nil), (*core.ReleaseHealthSummary)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(a.(*ReleaseHealthSummary), b.(*core.ReleaseHealthSummary), scope)
 	}); err != nil {
@@ -288,6 +308,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ReleaseHealthSummary)(nil), (*ReleaseHealthSummary)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(a.(*core.ReleaseHealthSummary), b.(*ReleaseHealthSummary), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseHelmRegistryChartSpec)(nil), (*core.ReleaseHelmRegistryChartSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseHelmRegistryChartSpec_To_core_ReleaseHelmRegistryChartSpec(a.(*ReleaseHelmRegistryChartSpec), b.(*core.ReleaseHelmRegistryChartSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseHelmRegistryChartSpec)(nil), (*ReleaseHelmRegistryChartSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseHelmRegistryChartSpec_To_v1alpha1_ReleaseHelmRegistryChartSpec(a.(*core.ReleaseHelmRegistryChartSpec), b.(*ReleaseHelmRegistryChartSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseHelmRegistrySpec)(nil), (*core.ReleaseHelmRegistrySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseHelmRegistrySpec_To_core_ReleaseHelmRegistrySpec(a.(*ReleaseHelmRegistrySpec), b.(*core.ReleaseHelmRegistrySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseHelmRegistrySpec)(nil), (*ReleaseHelmRegistrySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseHelmRegistrySpec_To_v1alpha1_ReleaseHelmRegistrySpec(a.(*core.ReleaseHelmRegistrySpec), b.(*ReleaseHelmRegistrySpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -338,6 +378,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ReleaseMutationPatchSpec)(nil), (*ReleaseMutationPatchSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(a.(*core.ReleaseMutationPatchSpec), b.(*ReleaseMutationPatchSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseOCIRegistryArtifactSpec)(nil), (*core.ReleaseOCIRegistryArtifactSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseOCIRegistryArtifactSpec_To_core_ReleaseOCIRegistryArtifactSpec(a.(*ReleaseOCIRegistryArtifactSpec), b.(*core.ReleaseOCIRegistryArtifactSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseOCIRegistryArtifactSpec)(nil), (*ReleaseOCIRegistryArtifactSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseOCIRegistryArtifactSpec_To_v1alpha1_ReleaseOCIRegistryArtifactSpec(a.(*core.ReleaseOCIRegistryArtifactSpec), b.(*ReleaseOCIRegistryArtifactSpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*ReleaseOCIRegistrySpec)(nil), (*core.ReleaseOCIRegistrySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseOCIRegistrySpec_To_core_ReleaseOCIRegistrySpec(a.(*ReleaseOCIRegistrySpec), b.(*core.ReleaseOCIRegistrySpec), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseOCIRegistrySpec)(nil), (*ReleaseOCIRegistrySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseOCIRegistrySpec_To_v1alpha1_ReleaseOCIRegistrySpec(a.(*core.ReleaseOCIRegistrySpec), b.(*ReleaseOCIRegistrySpec), scope)
 	}); err != nil {
 		return err
 	}
@@ -1074,8 +1134,6 @@ func Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(in *co
 
 func autoConvert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *ReleaseContentHelmSpec, out *core.ReleaseContentHelmSpec, s conversion.Scope) error {
 	out.Path = in.Path
-	out.Chart = in.Chart
-	out.Version = in.Version
 	out.DependencyMode = core.ReleaseHelmDependencyMode(in.DependencyMode)
 	return nil
 }
@@ -1087,8 +1145,6 @@ func Convert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *
 
 func autoConvert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in *core.ReleaseContentHelmSpec, out *ReleaseContentHelmSpec, s conversion.Scope) error {
 	out.Path = in.Path
-	out.Chart = in.Chart
-	out.Version = in.Version
 	out.DependencyMode = ReleaseHelmDependencyMode(in.DependencyMode)
 	return nil
 }
@@ -1208,6 +1264,56 @@ func Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionP
 	return autoConvert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in, out, s)
 }
 
+func autoConvert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRefSpec(in *ReleaseGitRepositoryRefSpec, out *core.ReleaseGitRepositoryRefSpec, s conversion.Scope) error {
+	out.Branch = (*string)(unsafe.Pointer(in.Branch))
+	out.Tag = (*string)(unsafe.Pointer(in.Tag))
+	out.Commit = (*string)(unsafe.Pointer(in.Commit))
+	out.Semver = (*string)(unsafe.Pointer(in.Semver))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRefSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRefSpec(in *ReleaseGitRepositoryRefSpec, out *core.ReleaseGitRepositoryRefSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRefSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseGitRepositoryRefSpec_To_v1alpha1_ReleaseGitRepositoryRefSpec(in *core.ReleaseGitRepositoryRefSpec, out *ReleaseGitRepositoryRefSpec, s conversion.Scope) error {
+	out.Branch = (*string)(unsafe.Pointer(in.Branch))
+	out.Tag = (*string)(unsafe.Pointer(in.Tag))
+	out.Commit = (*string)(unsafe.Pointer(in.Commit))
+	out.Semver = (*string)(unsafe.Pointer(in.Semver))
+	return nil
+}
+
+// Convert_core_ReleaseGitRepositoryRefSpec_To_v1alpha1_ReleaseGitRepositoryRefSpec is an autogenerated conversion function.
+func Convert_core_ReleaseGitRepositoryRefSpec_To_v1alpha1_ReleaseGitRepositoryRefSpec(in *core.ReleaseGitRepositoryRefSpec, out *ReleaseGitRepositoryRefSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseGitRepositoryRefSpec_To_v1alpha1_ReleaseGitRepositoryRefSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseGitRepositorySpec_To_core_ReleaseGitRepositorySpec(in *ReleaseGitRepositorySpec, out *core.ReleaseGitRepositorySpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Ref = (*core.ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseGitRepositorySpec_To_core_ReleaseGitRepositorySpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseGitRepositorySpec_To_core_ReleaseGitRepositorySpec(in *ReleaseGitRepositorySpec, out *core.ReleaseGitRepositorySpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseGitRepositorySpec_To_core_ReleaseGitRepositorySpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseGitRepositorySpec_To_v1alpha1_ReleaseGitRepositorySpec(in *core.ReleaseGitRepositorySpec, out *ReleaseGitRepositorySpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Ref = (*ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
+	return nil
+}
+
+// Convert_core_ReleaseGitRepositorySpec_To_v1alpha1_ReleaseGitRepositorySpec is an autogenerated conversion function.
+func Convert_core_ReleaseGitRepositorySpec_To_v1alpha1_ReleaseGitRepositorySpec(in *core.ReleaseGitRepositorySpec, out *ReleaseGitRepositorySpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseGitRepositorySpec_To_v1alpha1_ReleaseGitRepositorySpec(in, out, s)
+}
+
 func autoConvert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(in *ReleaseHealthSummary, out *core.ReleaseHealthSummary, s conversion.Scope) error {
 	out.Total = in.Total
 	out.Healthy = in.Healthy
@@ -1236,6 +1342,52 @@ func autoConvert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in *
 // Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary is an autogenerated conversion function.
 func Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in *core.ReleaseHealthSummary, out *ReleaseHealthSummary, s conversion.Scope) error {
 	return autoConvert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseHelmRegistryChartSpec_To_core_ReleaseHelmRegistryChartSpec(in *ReleaseHelmRegistryChartSpec, out *core.ReleaseHelmRegistryChartSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Version = in.Version
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseHelmRegistryChartSpec_To_core_ReleaseHelmRegistryChartSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseHelmRegistryChartSpec_To_core_ReleaseHelmRegistryChartSpec(in *ReleaseHelmRegistryChartSpec, out *core.ReleaseHelmRegistryChartSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseHelmRegistryChartSpec_To_core_ReleaseHelmRegistryChartSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseHelmRegistryChartSpec_To_v1alpha1_ReleaseHelmRegistryChartSpec(in *core.ReleaseHelmRegistryChartSpec, out *ReleaseHelmRegistryChartSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Version = in.Version
+	return nil
+}
+
+// Convert_core_ReleaseHelmRegistryChartSpec_To_v1alpha1_ReleaseHelmRegistryChartSpec is an autogenerated conversion function.
+func Convert_core_ReleaseHelmRegistryChartSpec_To_v1alpha1_ReleaseHelmRegistryChartSpec(in *core.ReleaseHelmRegistryChartSpec, out *ReleaseHelmRegistryChartSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseHelmRegistryChartSpec_To_v1alpha1_ReleaseHelmRegistryChartSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseHelmRegistrySpec_To_core_ReleaseHelmRegistrySpec(in *ReleaseHelmRegistrySpec, out *core.ReleaseHelmRegistrySpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Chart = (*core.ReleaseHelmRegistryChartSpec)(unsafe.Pointer(in.Chart))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseHelmRegistrySpec_To_core_ReleaseHelmRegistrySpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseHelmRegistrySpec_To_core_ReleaseHelmRegistrySpec(in *ReleaseHelmRegistrySpec, out *core.ReleaseHelmRegistrySpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseHelmRegistrySpec_To_core_ReleaseHelmRegistrySpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseHelmRegistrySpec_To_v1alpha1_ReleaseHelmRegistrySpec(in *core.ReleaseHelmRegistrySpec, out *ReleaseHelmRegistrySpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Chart = (*ReleaseHelmRegistryChartSpec)(unsafe.Pointer(in.Chart))
+	return nil
+}
+
+// Convert_core_ReleaseHelmRegistrySpec_To_v1alpha1_ReleaseHelmRegistrySpec is an autogenerated conversion function.
+func Convert_core_ReleaseHelmRegistrySpec_To_v1alpha1_ReleaseHelmRegistrySpec(in *core.ReleaseHelmRegistrySpec, out *ReleaseHelmRegistrySpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseHelmRegistrySpec_To_v1alpha1_ReleaseHelmRegistrySpec(in, out, s)
 }
 
 func autoConvert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in *ReleaseLifecycle, out *core.ReleaseLifecycle, s conversion.Scope) error {
@@ -1370,6 +1522,52 @@ func Convert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(
 	return autoConvert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(in, out, s)
 }
 
+func autoConvert_v1alpha1_ReleaseOCIRegistryArtifactSpec_To_core_ReleaseOCIRegistryArtifactSpec(in *ReleaseOCIRegistryArtifactSpec, out *core.ReleaseOCIRegistryArtifactSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Version = in.Version
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseOCIRegistryArtifactSpec_To_core_ReleaseOCIRegistryArtifactSpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseOCIRegistryArtifactSpec_To_core_ReleaseOCIRegistryArtifactSpec(in *ReleaseOCIRegistryArtifactSpec, out *core.ReleaseOCIRegistryArtifactSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseOCIRegistryArtifactSpec_To_core_ReleaseOCIRegistryArtifactSpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseOCIRegistryArtifactSpec_To_v1alpha1_ReleaseOCIRegistryArtifactSpec(in *core.ReleaseOCIRegistryArtifactSpec, out *ReleaseOCIRegistryArtifactSpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Version = in.Version
+	return nil
+}
+
+// Convert_core_ReleaseOCIRegistryArtifactSpec_To_v1alpha1_ReleaseOCIRegistryArtifactSpec is an autogenerated conversion function.
+func Convert_core_ReleaseOCIRegistryArtifactSpec_To_v1alpha1_ReleaseOCIRegistryArtifactSpec(in *core.ReleaseOCIRegistryArtifactSpec, out *ReleaseOCIRegistryArtifactSpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseOCIRegistryArtifactSpec_To_v1alpha1_ReleaseOCIRegistryArtifactSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_ReleaseOCIRegistrySpec_To_core_ReleaseOCIRegistrySpec(in *ReleaseOCIRegistrySpec, out *core.ReleaseOCIRegistrySpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Artifact = (*core.ReleaseOCIRegistryArtifactSpec)(unsafe.Pointer(in.Artifact))
+	return nil
+}
+
+// Convert_v1alpha1_ReleaseOCIRegistrySpec_To_core_ReleaseOCIRegistrySpec is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseOCIRegistrySpec_To_core_ReleaseOCIRegistrySpec(in *ReleaseOCIRegistrySpec, out *core.ReleaseOCIRegistrySpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseOCIRegistrySpec_To_core_ReleaseOCIRegistrySpec(in, out, s)
+}
+
+func autoConvert_core_ReleaseOCIRegistrySpec_To_v1alpha1_ReleaseOCIRegistrySpec(in *core.ReleaseOCIRegistrySpec, out *ReleaseOCIRegistrySpec, s conversion.Scope) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Artifact = (*ReleaseOCIRegistryArtifactSpec)(unsafe.Pointer(in.Artifact))
+	return nil
+}
+
+// Convert_core_ReleaseOCIRegistrySpec_To_v1alpha1_ReleaseOCIRegistrySpec is an autogenerated conversion function.
+func Convert_core_ReleaseOCIRegistrySpec_To_v1alpha1_ReleaseOCIRegistrySpec(in *core.ReleaseOCIRegistrySpec, out *ReleaseOCIRegistrySpec, s conversion.Scope) error {
+	return autoConvert_core_ReleaseOCIRegistrySpec_To_v1alpha1_ReleaseOCIRegistrySpec(in, out, s)
+}
+
 func autoConvert_v1alpha1_ReleasePin_To_core_ReleasePin(in *ReleasePin, out *core.ReleasePin, s conversion.Scope) error {
 	out.RenderRef = in.RenderRef
 	out.PinnedAt = in.PinnedAt
@@ -1495,9 +1693,10 @@ func Convert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(in
 }
 
 func autoConvert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(in *ReleaseSourceSpec, out *core.ReleaseSourceSpec, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
+	out.Type = core.ReleaseSourceType(in.Type)
+	out.GitRepository = (*core.ReleaseGitRepositorySpec)(unsafe.Pointer(in.GitRepository))
+	out.HelmRegistry = (*core.ReleaseHelmRegistrySpec)(unsafe.Pointer(in.HelmRegistry))
+	out.OCIRegistry = (*core.ReleaseOCIRegistrySpec)(unsafe.Pointer(in.OCIRegistry))
 	return nil
 }
 
@@ -1507,9 +1706,10 @@ func Convert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(in *ReleaseSou
 }
 
 func autoConvert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(in *core.ReleaseSourceSpec, out *ReleaseSourceSpec, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
+	out.Type = ReleaseSourceType(in.Type)
+	out.GitRepository = (*ReleaseGitRepositorySpec)(unsafe.Pointer(in.GitRepository))
+	out.HelmRegistry = (*ReleaseHelmRegistrySpec)(unsafe.Pointer(in.HelmRegistry))
+	out.OCIRegistry = (*ReleaseOCIRegistrySpec)(unsafe.Pointer(in.OCIRegistry))
 	return nil
 }
 

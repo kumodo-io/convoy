@@ -30,8 +30,6 @@ import (
 type GitRepositorySpecApplyConfiguration struct {
 	// URL is the URL of the Git repository.
 	URL *string `json:"url,omitempty"`
-	// Ref is what to track in the Git repository.
-	Ref *GitRepositoryRefSpecApplyConfiguration `json:"ref,omitempty"`
 	// Auth is the authentication method used to access the Git repository.
 	Auth *GitRepositoryAuthSpecApplyConfiguration `json:"auth,omitempty"`
 	// Interval is the poll interval for ref resolution and content fetching.
@@ -57,14 +55,6 @@ func GitRepositorySpec() *GitRepositorySpecApplyConfiguration {
 // If called multiple times, the URL field is set to the value of the last call.
 func (b *GitRepositorySpecApplyConfiguration) WithURL(value string) *GitRepositorySpecApplyConfiguration {
 	b.URL = &value
-	return b
-}
-
-// WithRef sets the Ref field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Ref field is set to the value of the last call.
-func (b *GitRepositorySpecApplyConfiguration) WithRef(value *GitRepositoryRefSpecApplyConfiguration) *GitRepositorySpecApplyConfiguration {
-	b.Ref = value
 	return b
 }
 

@@ -78,6 +78,8 @@ Rendered artifacts and deployed state are stored in S3-compatible storage, not i
 
 Controllers cache state on local filesystem after writing to S3. On restart, state is hydrated from S3.
 
+**Fetch flow and the artifact store.** Source content is **content-addressed**: the store is keyed by `(normalized repo URL, resolved revision)`, so identical content is held once and shared across Releases — regardless of which `GitRepository` referenced it. Access is gated at consume time by the referencing `GitRepository` being `Ready` (its credentials verified against that URL), so shared content is only reachable through a source that has proven access. Fetching is demand-driven: a `Release` asks a **fetch coordinator** to ensure `(source, ref)` is resolved and present, then reads the artifact by revision; the coordinator resolves the ref, fetches once (deduping concurrent requests), and writes to the store. The coordinator is an interface — in-process today, swappable for an out-of-process transport (gRPC/bus) later without touching the controllers.
+
 ### Delivery & Connection Modes
 
 `Cluster.spec.connectionMode` selects how convoy reaches a target:
@@ -277,9 +279,9 @@ convoy is implemented as a Kubernetes Aggregation API server. This gives full co
 
 All resources are backed by etcd via the generic registry, preserving standard watch/informer semantics for controllers.
 
-- `GitRepository` — defines a Git repository source. Reusable across releases.
-- `HelmRegistry` — defines a Helm chart registry source. Reusable across releases.
-- `OCIRegistry` — defines an OCI registry source. Reusable across releases.
+- `GitRepository` — a reusable, credentialed handle to a Git repo (URL + auth). The ref to fetch (`branch`/`tag`/`commit`/`semver`) is set per `Release` in `spec.source.gitRepository.ref`, so one repo serves many Releases without duplicating credentials.
+- `HelmRegistry` — defines a Helm chart registry source. Reusable across releases (the chart + version are selected on the `Release`).
+- `OCIRegistry` — defines an OCI registry source. Reusable across releases (the artifact version is selected on the `Release`).
 - `KindHealthRule` — cluster-scoped, defines CEL-based health evaluation rules for all resources of a given kind.
 - `ResourceHealthRule` — namespaced, defines CEL-based health evaluation rules for a specific resource instance identified by `(apiGroup, kind, namespace, name)`.
 - `Release` — the deployment unit. Binds one source + one `Cluster` + a content interpretation (`helm`, `kustomize`, `manifests`, `jsonnet`, `cue`) with an ordered mutation pipeline. The `mutations` field is a top-level field on `Release` (not in `spec`), separately addressable via the `/mutations` subresource for field-level RBAC and audit.

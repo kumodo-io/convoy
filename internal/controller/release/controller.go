@@ -34,41 +34,38 @@ import (
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
-	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
+	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
-// sourceKindGitRepository is the only source kind supported for now.
-const sourceKindGitRepository = "GitRepository"
-
-// Controller reconciles Release objects: render source content → apply to the
-// target cluster → record status.
+// Controller reconciles Release objects: fetch source content → render → apply
+// to the target cluster → record status.
 type Controller struct {
 	*base.Controller
 	client        clientset.Interface
 	releaseLister corelisters.ReleaseLister
 	clusterLister corelisters.ClusterLister
-	store         artifact.Store
+	coordinator   fetch.Coordinator
 	deployer      Deployer
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
 }
 
-// NewController wires a Controller to a Release informer. It reads source
-// artifacts from store and target clusters from clusterLister.
+// NewController wires a Controller to a Release informer. It fetches source
+// content via the coordinator and resolves target clusters from clusterLister.
 func NewController(
 	client clientset.Interface,
 	informer coreinformers.ReleaseInformer,
 	clusterLister corelisters.ClusterLister,
-	store artifact.Store,
+	coordinator fetch.Coordinator,
 	deployer Deployer,
 ) *Controller {
 	c := &Controller{
 		client:        client,
 		releaseLister: informer.Lister(),
 		clusterLister: clusterLister,
-		store:         store,
+		coordinator:   coordinator,
 		deployer:      deployer,
 		now:           metav1.Now,
 	}
@@ -113,15 +110,21 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 // reconcile runs the render-and-apply steps and returns the Ready outcome plus a
 // requeue error (non-nil = transient, retry).
 func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (ready bool, reason, message string, err error) {
-	if rel.Spec.Source.Kind != sourceKindGitRepository {
-		return false, conditionReasonUnsupported, fmt.Sprintf("source kind %q is not supported yet (only %q)", rel.Spec.Source.Kind, sourceKindGitRepository), nil
+	if rel.Spec.Source.Type != corev1alpha1.ReleaseSourceTypeGitRepository {
+		return false, conditionReasonUnsupported, fmt.Sprintf("source type %q is not supported yet (only %q)", rel.Spec.Source.Type, corev1alpha1.ReleaseSourceTypeGitRepository), nil
 	}
 
-	sourceNamespace := orDefault(rel.Spec.Source.Namespace, rel.Namespace)
-	art, ok := c.store.Get(artifact.Key(sourceKindGitRepository, sourceNamespace, rel.Spec.Source.Name))
-	if !ok {
-		return false, conditionReasonSourceNotReady, "waiting for source artifact", fmt.Errorf("source artifact for %s/%s not available yet", sourceNamespace, rel.Spec.Source.Name)
+	// Ensure the source content is fetched and cached. A non-nil error is
+	// transient (requeue); a not-ready result with no error is a terminal config
+	// problem (e.g. unsupported auth/ref).
+	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source.GitRepository, rel.Namespace)
+	if err != nil {
+		return false, conditionReasonSourceNotReady, err.Error(), err
 	}
+	if !res.Ready {
+		return false, conditionReasonUnsupported, res.Message, nil // terminal
+	}
+	art := res.Artifact
 
 	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
 	cluster, err := c.clusterLister.Clusters(clusterNamespace).Get(rel.Spec.ClusterRef.Name)

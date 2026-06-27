@@ -37,6 +37,7 @@ import (
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
+	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
 // Options configures the controller manager.
@@ -99,23 +100,26 @@ func (o *Options) Run(ctx context.Context) error {
 	prober := clustercontroller.NewProber(connector)
 	clusterController := clustercontroller.NewController(client, clusterInformer, prober)
 
-	// Shared in-process artifact store: source controllers publish fetched
-	// content; the release controller consumes it.
+	// Content-addressed artifact store, shared by the fetch coordinator (producer)
+	// and consumed via the coordinator's result.
 	artifactStore := artifact.NewMemoryStore()
 
-	// GitRepository controller: resolves public repos (auth "none") to a revision
-	// and publishes the content to the artifact store.
+	// GitRepository controller: verifies repos are reachable/authenticated.
 	// The Git auth registry slots into the fetcher once a real git auth type lands.
 	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
 	gitFetcher := gitrepositorycontroller.NewGitFetcher(resolver)
-	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher, artifactStore)
+	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher)
 
-	// Release controller: renders the source artifact and applies it to the
+	// Fetch coordinator: resolves a Release's (source, ref) and fetches content
+	// on demand into the artifact store.
+	coordinator := fetch.NewCoordinator(gitRepoInformer.Lister(), gitFetcher, artifactStore)
+
+	// Release controller: fetches via the coordinator, renders, and applies to the
 	// target cluster (reached through the same connector the cluster controller
 	// probes with).
 	releaseInformer := factory.Core().V1alpha1().Releases()
 	deployer := releasecontroller.NewDeployer(connector)
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), artifactStore, deployer)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, deployer)
 
 	factory.Start(ctx.Done())
 

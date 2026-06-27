@@ -34,54 +34,38 @@ func gitRepo(generation int64, status sourcev1alpha1.GitRepositoryStatus) *sourc
 	}
 }
 
-func TestComputeStatus_Fetched(t *testing.T) {
+func TestComputeStatus_Verified(t *testing.T) {
 	now := metav1.NewTime(time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC))
 	repo := gitRepo(5, sourcev1alpha1.GitRepositoryStatus{})
-	result := FetchResult{Revision: dummyGitRepositoryRevision, TreeHash: dummyGitRepositoryTreeHash, ResolvedRef: dummyGitRepositoryBranch}
 
-	got := computeStatus(repo, result, nil, now)
+	got := computeStatus(repo, nil, now)
 
 	if got.ObservedGeneration != 5 {
 		t.Errorf("ObservedGeneration = %d, want 5", got.ObservedGeneration)
 	}
-	if got.LastFetched.Revision != dummyGitRepositoryRevision || got.LastFetched.TreeHash != dummyGitRepositoryTreeHash || got.LastFetched.ResolvedRef != dummyGitRepositoryBranch {
-		t.Errorf("LastFetched = %+v, want abc123/tree456/main", got.LastFetched)
-	}
-	if !got.LastFetched.FetchedAt.Equal(&now) {
-		t.Errorf("FetchedAt = %v, want %v", got.LastFetched.FetchedAt, now)
-	}
 	cond := apimeta.FindStatusCondition(got.Conditions, conditionReady)
-	if cond == nil || cond.Status != metav1.ConditionTrue || cond.Reason != conditionReasonFetched {
-		t.Errorf("Ready condition = %+v, want True/Fetched", cond)
+	if cond == nil || cond.Status != metav1.ConditionTrue || cond.Reason != conditionReasonVerified {
+		t.Errorf("Ready condition = %+v, want True/Verified", cond)
 	}
 }
 
-func TestComputeStatus_FetchFailedRetainsLast(t *testing.T) {
+func TestComputeStatus_VerifyFailed(t *testing.T) {
 	now := metav1.NewTime(time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC))
-	earlier := metav1.NewTime(time.Date(2026, 6, 20, 11, 0, 0, 0, time.UTC))
-	repo := gitRepo(3, sourcev1alpha1.GitRepositoryStatus{
-		LastFetched: sourcev1alpha1.GitRepositoryLastFetchedStatus{Revision: "old", FetchedAt: earlier},
-	})
+	repo := gitRepo(3, sourcev1alpha1.GitRepositoryStatus{})
 
-	got := computeStatus(repo, FetchResult{}, errors.Join(ErrFetchFailed, errors.New("connection refused")), now)
+	got := computeStatus(repo, errors.Join(ErrFetchFailed, errors.New("connection refused")), now)
 
-	if got.LastFetched.Revision != "old" {
-		t.Errorf("LastFetched.Revision = %q, want retained %q", got.LastFetched.Revision, "old")
-	}
-	if !got.LastFetched.FetchedAt.Equal(&earlier) {
-		t.Errorf("FetchedAt = %v, want retained %v", got.LastFetched.FetchedAt, earlier)
-	}
 	cond := apimeta.FindStatusCondition(got.Conditions, conditionReady)
-	if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != conditionReasonFetchFailed {
-		t.Errorf("Ready condition = %+v, want False/FetchFailed", cond)
+	if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != conditionReasonVerifyFailed {
+		t.Errorf("Ready condition = %+v, want False/VerifyFailed", cond)
 	}
 }
 
 func TestComputeStatus_Unsupported(t *testing.T) {
 	now := metav1.NewTime(time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC))
 
-	got := computeStatus(gitRepo(1, sourcev1alpha1.GitRepositoryStatus{}), FetchResult{},
-		errors.Join(ErrUnsupported, errors.New("semver not supported")), now)
+	got := computeStatus(gitRepo(1, sourcev1alpha1.GitRepositoryStatus{}),
+		errors.Join(ErrUnsupported, errors.New("token auth not supported")), now)
 
 	cond := apimeta.FindStatusCondition(got.Conditions, conditionReady)
 	if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != conditionReasonUnsupported {
@@ -92,16 +76,15 @@ func TestComputeStatus_Unsupported(t *testing.T) {
 func TestStatusChanged(t *testing.T) {
 	now := metav1.NewTime(time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC))
 	repo := gitRepo(2, sourcev1alpha1.GitRepositoryStatus{})
-	result := FetchResult{Revision: dummyGitRepositoryRevision, TreeHash: dummyGitRepositoryTreeHash, ResolvedRef: dummyGitRepositoryBranch}
 
-	first := computeStatus(repo, result, nil, now)
+	first := computeStatus(repo, nil, now)
 	if !statusChanged(repo, first) {
 		t.Fatalf("statusChanged = false on first reconcile, want true")
 	}
 
 	settled := gitRepo(2, first)
-	again := computeStatus(settled, result, nil, now)
+	again := computeStatus(settled, nil, now)
 	if statusChanged(settled, again) {
-		t.Errorf("statusChanged = true for identical fetch, want false")
+		t.Errorf("statusChanged = true for identical verify, want false")
 	}
 }

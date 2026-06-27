@@ -26,7 +26,7 @@ This document gives the shape of the API and how the types fit together. Each ki
 |----------------------|--------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | `Release`            | `core`       | Namespaced     | The deployment unit. Binds one `Source` + one `Cluster` + a content interpretation, with an ordered mutation pipeline and lifecycle hooks. |
 | `Cluster`            | `core`       | Namespaced     | A target Kubernetes cluster: connection, authentication, templating metadata, and deletion policy.                                         |
-| `GitRepository`      | `source`     | Namespaced     | A Git repository tracked at a ref (branch/tag/commit/semver). The most common content source.                                              |
+| `GitRepository`      | `source`     | Namespaced     | A reusable, credentialed handle to a Git repo (URL + auth). The ref to fetch is set per `Release` (`spec.source.gitRepository.ref`), so one repo is shared across Releases. The most common content source. |
 | `HelmRegistry`       | `source`     | Namespaced     | An HTTP Helm chart repository, selected by chart name + version.                                                                           |
 | `OCIRegistry`        | `source`     | Namespaced     | An OCI registry artifact (Helm chart, manifest bundle, or kustomize bundle).                                                               |
 | `KindHealthRule`     | `extensions` | Cluster-scoped | A custom health rule applied to all resources of a given `(apiGroup, kind)`.                                                               |
@@ -67,7 +67,7 @@ flowchart TD
     MR ==>|"health → Release Healthy + /health"| REL
 ```
 
-- **Release → Source.** `Release.spec.source` is a polymorphic reference (`kind` one of `GitRepository` / `HelmRegistry` / `OCIRegistry`) to the source of the deployable content. It is **immutable** — re-targeting means creating a new Release.
+- **Release → Source.** `Release.spec.source` is a discriminated union on `source.type` (`gitRepository` / `helmRegistry` / `ociRegistry`); each block references a `Source` object and carries the coordinate to fetch (`ref`, or `chart`/`artifact` `version`). `source.type` + the referenced name are **immutable** (re-targeting means a new Release); the coordinate is **mutable**. Because the coordinate lives on the Release, a single Source object is reusable across Releases. (`source` = where + which; `content` = how to render — two orthogonal axes, both discriminated on `.type`.)
 - **Release → Cluster.** `Release.spec.cluster` references the target `Cluster`. Also **immutable**.
 - **Release → Source (mutations).** Entries in `Release.mutations[].from.sourceRef` can pull additional content (values files, patches) from a `Source` — often a *different* one than `spec.source` (e.g. a shared config repo).
 - **Health rules are not referenced by the Release.** `KindHealthRule` and `ResourceHealthRule` have **no ownership link** to any Release. They are matched at assessment time by the target resource's `(apiGroup, kind)` (and, for `ResourceHealthRule`, `namespace`/`name`), so they apply consistently to whatever Releases happen to manage matching resources.
@@ -75,8 +75,8 @@ flowchart TD
 
 ## Deployment Flow
 
-1. A **Source** (`GitRepository` / `HelmRegistry` / `OCIRegistry`) fetches upstream content on its interval (or via a `/webhooks` push) and records the resolved revision in its status.
-2. A **Release** resolves its `spec.source` + `spec.content` and runs the **mutation pipeline** (`helmValues`, `goTemplate`, `jsonPatch`, `strategicMergePatch`, …) to produce the final manifest set.
+1. A **Source** (`GitRepository` / `HelmRegistry` / `OCIRegistry`) verifies the upstream endpoint is reachable and that its credentials are accepted (on its interval, or via a `/webhooks` push). Content for a specific ref/version is fetched on demand when a `Release` references it.
+2. A **Release** resolves its `spec.source` (the endpoint + coordinate, e.g. `spec.source.gitRepository.ref`) + `spec.content` (how to render), fetches the artifact at that coordinate, and runs the **mutation pipeline** (`helmValues`, `goTemplate`, `jsonPatch`, `strategicMergePatch`, …) to produce the final manifest set.
 3. The Release applies that set to its **Cluster** via Server-Side Apply, ordered by **sync waves**, running **lifecycle hooks** at the configured phases.
 4. The controller assesses **health** of the managed resources — built-in rules first, then `KindHealthRule` / `ResourceHealthRule` overrides, then `kstatus` fallback — and aggregates the verdict into the Release's `Healthy` condition (per-resource detail via `/health`).
 5. A drift/sync loop keeps the Cluster converged on the rendered state; `/diff`, `/preview`, `/pin`, and `/history` support inspection and control.
@@ -85,7 +85,7 @@ flowchart TD
 
 | From                                    | To                                                                     | Notes                                                                                     |
 |-----------------------------------------|------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| `Release.spec.source`                   | one of `GitRepository` / `HelmRegistry` / `OCIRegistry`                | Polymorphic by `kind`. Immutable.                                                         |
+| `Release.spec.source`                   | one of `GitRepository` / `HelmRegistry` / `OCIRegistry`                | Discriminated on `source.type`. `type` + referenced name immutable; coordinate mutable.   |
 | `Release.spec.cluster`                  | `Cluster`                                                              | Immutable.                                                                                |
 | `Release.mutations[].from.sourceRef`    | a `Source` (typically `GitRepository`)                                 | Content for values files / patches; may differ from `spec.source`.                        |
 | `Release.status.resolvedSource`         | snapshot of the referenced `Source`                                    | Captured at render time; stable even if the Source changes later.                         |

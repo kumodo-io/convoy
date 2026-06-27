@@ -150,11 +150,36 @@ func ValidateReleaseUpdate(release, old *Release) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMetaUpdate(&release.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateReleaseSpec(&release.Spec, field.NewPath("spec"))...)
 
-	if release.Spec.Source != old.Spec.Source {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "source"), release.Spec.Source, "field is immutable"))
+	// source configuration validation
+	if release.Spec.Source.Type != old.Spec.Source.Type {
+		return append(allErrs, field.Invalid(field.NewPath("spec", "source", "type"), release.Spec.Source.Type, "field is immutable"))
 	}
+	// git repository configuration validation
+	if release.Spec.Source.GitRepository != nil && (release.Spec.Source.GitRepository.Name != old.Spec.Source.GitRepository.Name) {
+		return append(allErrs, field.Invalid(field.NewPath("spec", "source", "gitRepository", "name"), release.Spec.Source.GitRepository.Name, "field is immutable"))
+	}
+	if release.Spec.Source.GitRepository != nil && (release.Spec.Source.GitRepository.Namespace != old.Spec.Source.GitRepository.Namespace) {
+		return append(allErrs, field.Invalid(field.NewPath("spec", "source", "gitRepository", "namespace"), release.Spec.Source.GitRepository.Namespace, "field is immutable"))
+	}
+
+	// helm registry configuration validation
+	if release.Spec.Source.HelmRegistry != nil && (release.Spec.Source.HelmRegistry.Name != old.Spec.Source.HelmRegistry.Name) {
+		return append(allErrs, field.Invalid(field.NewPath("spec", "source", "helmRegistry", "name"), release.Spec.Source.HelmRegistry.Name, "field is immutable"))
+	}
+	if release.Spec.Source.HelmRegistry != nil && (release.Spec.Source.HelmRegistry.Namespace != old.Spec.Source.HelmRegistry.Namespace) {
+		return append(allErrs, field.Invalid(field.NewPath("spec", "source", "helmRegistry", "namespace"), release.Spec.Source.HelmRegistry.Namespace, "field is immutable"))
+	}
+
+	// oci registry configuration validation
+	if release.Spec.Source.OCIRegistry != nil && (release.Spec.Source.OCIRegistry.Name != old.Spec.Source.OCIRegistry.Name) {
+		return append(allErrs, field.Invalid(field.NewPath("spec", "source", "ociRegistry", "name"), release.Spec.Source.OCIRegistry.Name, "field is immutable"))
+	}
+	if release.Spec.Source.OCIRegistry != nil && (release.Spec.Source.OCIRegistry.Namespace != old.Spec.Source.OCIRegistry.Namespace) {
+		return append(allErrs, field.Invalid(field.NewPath("spec", "source", "ociRegistry", "namespace"), release.Spec.Source.OCIRegistry.Namespace, "field is immutable"))
+	}
+
 	if release.Spec.Content.Type != old.Spec.Content.Type {
-		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "content", "type"), release.Spec.Content.Type, "field is immutable"))
+		return append(allErrs, field.Invalid(field.NewPath("spec", "content", "type"), release.Spec.Content.Type, "field is immutable"))
 	}
 	if release.Spec.ClusterRef != old.Spec.ClusterRef {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("spec", "clusterRef"), release.Spec.ClusterRef, "field is immutable"))
@@ -171,26 +196,79 @@ func ValidateReleaseStatusUpdate(release, old *Release) field.ErrorList {
 func validateReleaseSpec(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	if spec.Source.Kind == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("source", "kind"), ""))
-	}
-	if spec.Source.Name == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("source", "name"), ""))
+	type releaseSourceConfig struct {
+		name      string
+		ownerType ReleaseSourceType
+		present   bool
 	}
 
-	switch spec.Content.Type {
-	case ReleaseContentTypeHelm, ReleaseContentTypeManifests, ReleaseContentTypeKustomize, ReleaseContentTypeJsonnet, ReleaseContentTypeCue:
-		// supported
-	case "":
-		allErrs = append(allErrs, field.Required(fldPath.Child("content", "type"), ""))
-	default:
-		allErrs = append(allErrs, field.NotSupported(fldPath.Child("content", "type"), spec.Content.Type, []string{
+	sourceConfigs := []releaseSourceConfig{
+		{"ref", ReleaseSourceTypeGitRepository, spec.Source.GitRepository != nil},
+		{"chart", ReleaseSourceTypeHelmRegistry, spec.Source.HelmRegistry != nil},
+		{"artifact", ReleaseSourceTypeOCIRegistry, spec.Source.OCIRegistry != nil},
+	}
+
+	if spec.Source.Type == "" {
+		return append(allErrs, field.Required(fldPath.Child("source", "type"), ""))
+	}
+
+	known := slices.ContainsFunc(sourceConfigs, func(c releaseSourceConfig) bool {
+		return c.ownerType == spec.Source.Type
+	})
+	if !known {
+		return append(allErrs, field.NotSupported(fldPath.Child("source", "type"), spec.Source.Type, []string{
+			string(ReleaseSourceTypeGitRepository),
+			string(ReleaseSourceTypeHelmRegistry),
+			string(ReleaseSourceTypeOCIRegistry),
+		}))
+	}
+
+	for _, c := range sourceConfigs {
+		switch {
+		case c.ownerType == spec.Source.Type && !c.present:
+			allErrs = append(allErrs, field.Required(fldPath.Child(c.name), fmt.Sprintf(`must be set when connectionMode is "%q"`, spec.Source.Type)))
+		case c.ownerType != spec.Source.Type && c.present:
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child(c.name), fmt.Sprintf(`must not be set when connectionMode is "%q"`, spec.Source.Type)))
+		}
+	}
+
+	type releaseContentConfig struct {
+		name      string
+		ownerType ReleaseContentType
+		present   bool
+	}
+
+	contentConfigs := []releaseContentConfig{
+		{"helm", ReleaseContentTypeHelm, spec.Content.Helm != nil},
+		{"manifests", ReleaseContentTypeManifests, spec.Content.Manifests != nil},
+		{"kustomize", ReleaseContentTypeKustomize, spec.Content.Kustomize != nil},
+		{"jsonnet", ReleaseContentTypeJsonnet, spec.Content.Jsonnet != nil},
+		// {"cue", ReleaseContentTypeCue, spec.Content.Cue != nil},
+	}
+
+	if spec.Content.Type == "" {
+		return append(allErrs, field.Required(fldPath.Child("content", "type"), ""))
+	}
+
+	known = slices.ContainsFunc(contentConfigs, func(c releaseContentConfig) bool {
+		return c.ownerType == spec.Content.Type
+	})
+	if !known {
+		return append(allErrs, field.NotSupported(fldPath.Child("content", "type"), spec.Content.Type, []string{
 			string(ReleaseContentTypeHelm),
 			string(ReleaseContentTypeManifests),
 			string(ReleaseContentTypeKustomize),
 			string(ReleaseContentTypeJsonnet),
-			string(ReleaseContentTypeCue),
 		}))
+	}
+
+	for _, c := range contentConfigs {
+		switch {
+		case c.ownerType == spec.Content.Type && !c.present:
+			allErrs = append(allErrs, field.Required(fldPath.Child(c.name), fmt.Sprintf(`must be set when content type is "%q"`, spec.Content.Type)))
+		case c.ownerType != spec.Content.Type && c.present:
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child(c.name), fmt.Sprintf(`must not be set when content type is "%q"`, spec.Content.Type)))
+		}
 	}
 
 	if spec.ClusterRef.Name == "" {

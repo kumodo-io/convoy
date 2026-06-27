@@ -30,11 +30,6 @@ type ReleaseContentHelmSpecApplyConfiguration struct {
 	// Path is the path to the Helm chart within the source.
 	// Ignored if the source is a Helm registry.
 	Path *string `json:"path,omitempty"`
-	// Chart is the name of the Helm chart.
-	// Ignored if the source is a Git repository.
-	Chart *string `json:"chart,omitempty"`
-	// Version is the version of the Helm chart.
-	Version *string `json:"version,omitempty"`
 	// DependencyMode is the dependency mode for the Helm chart.
 	DependencyMode *corev1alpha1.ReleaseHelmDependencyMode `json:"dependencyMode,omitempty"`
 }
@@ -50,22 +45,6 @@ func ReleaseContentHelmSpec() *ReleaseContentHelmSpecApplyConfiguration {
 // If called multiple times, the Path field is set to the value of the last call.
 func (b *ReleaseContentHelmSpecApplyConfiguration) WithPath(value string) *ReleaseContentHelmSpecApplyConfiguration {
 	b.Path = &value
-	return b
-}
-
-// WithChart sets the Chart field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Chart field is set to the value of the last call.
-func (b *ReleaseContentHelmSpecApplyConfiguration) WithChart(value string) *ReleaseContentHelmSpecApplyConfiguration {
-	b.Chart = &value
-	return b
-}
-
-// WithVersion sets the Version field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Version field is set to the value of the last call.
-func (b *ReleaseContentHelmSpecApplyConfiguration) WithVersion(value string) *ReleaseContentHelmSpecApplyConfiguration {
-	b.Version = &value
 	return b
 }
 

@@ -43,20 +43,12 @@ const (
 
 type GitRepositorySpec struct {
 	URL             string
-	Ref             GitRepositoryRefSpec
 	Auth            GitRepositoryAuthSpec
 	Interval        metav1.Duration
 	MinSyncInterval metav1.Duration
 	IncludePaths    []string
 	IgnorePaths     []string
 	TLS             *authv1.TLSSpec
-}
-
-type GitRepositoryRefSpec struct {
-	Branch *string
-	Tag    *string
-	Commit *string
-	Semver *string
 }
 
 type GitRepositoryAuthSpec struct {
@@ -84,17 +76,9 @@ type GitRepositoryWebhookFilterSpec struct {
 
 type GitRepositoryStatus struct {
 	ObservedGeneration int64
-	LastFetched        GitRepositoryLastFetchedStatus
 	ReleaseCount       int64
 	Webhooks           []WebhookStatus
 	Conditions         []metav1.Condition
-}
-
-type GitRepositoryLastFetchedStatus struct {
-	Revision    string
-	TreeHash    string
-	FetchedAt   metav1.Time
-	ResolvedRef string
 }
 
 // +genclient

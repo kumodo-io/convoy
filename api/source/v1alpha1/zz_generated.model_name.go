@@ -32,18 +32,8 @@ func (in GitRepositoryAuthSpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in GitRepositoryLastFetchedStatus) OpenAPIModelName() string {
-	return "io.kumodo.convoy.source.v1alpha1.GitRepositoryLastFetchedStatus"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in GitRepositoryList) OpenAPIModelName() string {
 	return "io.kumodo.convoy.source.v1alpha1.GitRepositoryList"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
-func (in GitRepositoryRefSpec) OpenAPIModelName() string {
-	return "io.kumodo.convoy.source.v1alpha1.GitRepositoryRefSpec"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.

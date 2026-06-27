@@ -18,6 +18,7 @@ package release
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/artifact"
+	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
 const (
@@ -49,11 +51,40 @@ func (d *fakeDeployer) Deploy(_ context.Context, _ *corev1alpha1.Cluster, object
 	return d.err
 }
 
+// fakeCoordinator stands in for the fetch coordinator: it returns a canned
+// Result/error without touching a real GitRepository or store.
+type fakeCoordinator struct {
+	result fetch.Result
+	err    error
+}
+
+func (f *fakeCoordinator) Ensure(context.Context, *corev1alpha1.ReleaseGitRepositorySpec, string) (fetch.Result, error) {
+	return f.result, f.err
+}
+
+// readyCoordinator returns a coordinator that resolves to a single-ConfigMap artifact.
+func readyCoordinator() *fakeCoordinator {
+	return &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: "abc123",
+		Artifact: artifact.Artifact{
+			Revision: "abc123",
+			Files:    map[string][]byte{dummyFile: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n")},
+		},
+	}}
+}
+
 func manifestsRelease() *corev1alpha1.Release {
 	return &corev1alpha1.Release{
 		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns", Generation: 1},
 		Spec: corev1alpha1.ReleaseSpec{
-			Source:     corev1alpha1.ReleaseSourceSpec{Kind: "GitRepository", Name: "repo"},
+			Source: corev1alpha1.ReleaseSourceSpec{
+				Type: corev1alpha1.ReleaseSourceTypeGitRepository,
+				GitRepository: &corev1alpha1.ReleaseGitRepositorySpec{
+					Name: "repo",
+					Ref:  &corev1alpha1.ReleaseGitRepositoryRefSpec{Branch: new("main")},
+				},
+			},
 			Content:    manifestsContent(dummyFile),
 			ClusterRef: corev1alpha1.ReleaseClusterRefSpec{Name: "target"},
 		},
@@ -67,7 +98,7 @@ func reachableCluster() *corev1alpha1.Cluster {
 	}
 }
 
-func newTestController(t *testing.T, rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, store artifact.Store, deployer Deployer) (*Controller, *fakeclient.Clientset) {
+func newTestController(t *testing.T, rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, coordinator fetch.Coordinator, deployer Deployer) (*Controller, *fakeclient.Clientset) {
 	t.Helper()
 	objs := []runtime.Object{rel}
 	if cluster != nil {
@@ -85,7 +116,7 @@ func newTestController(t *testing.T, rel *corev1alpha1.Release, cluster *corev1a
 			t.Fatalf("seeding cluster store: %v", err)
 		}
 	}
-	c := NewController(client, relInformer, clInformer.Lister(), store, deployer)
+	c := NewController(client, relInformer, clInformer.Lister(), coordinator, deployer)
 	fixed := metav1.NewTime(time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
 	return c, client
@@ -100,15 +131,6 @@ func statusUpdate(actions []clienttesting.Action) *corev1alpha1.Release {
 	return nil
 }
 
-func storeWithApp() artifact.Store {
-	s := artifact.NewMemoryStore()
-	s.Put(artifact.Key("GitRepository", "ns", "repo"), artifact.Artifact{
-		Revision: "abc123",
-		Files:    map[string][]byte{dummyFile: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n")},
-	})
-	return s
-}
-
 func readyReason(rel *corev1alpha1.Release) (metav1.ConditionStatus, string) {
 	c := apimeta.FindStatusCondition(rel.Status.Conditions, conditionReady)
 	if c == nil {
@@ -119,7 +141,7 @@ func readyReason(rel *corev1alpha1.Release) (metav1.ConditionStatus, string) {
 
 func TestSyncHandler_AppliesAndMarksReady(t *testing.T) {
 	deployer := &fakeDeployer{}
-	c, client := newTestController(t, manifestsRelease(), reachableCluster(), storeWithApp(), deployer)
+	c, client := newTestController(t, manifestsRelease(), reachableCluster(), readyCoordinator(), deployer)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -138,7 +160,8 @@ func TestSyncHandler_AppliesAndMarksReady(t *testing.T) {
 
 func TestSyncHandler_SourceNotReadyRequeues(t *testing.T) {
 	deployer := &fakeDeployer{}
-	c, client := newTestController(t, manifestsRelease(), reachableCluster(), artifact.NewMemoryStore(), deployer)
+	coordinator := &fakeCoordinator{err: errors.New("GitRepository not ready")}
+	c, client := newTestController(t, manifestsRelease(), reachableCluster(), coordinator, deployer)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
 		t.Fatalf("syncHandler returned nil, want error so the queue retries")
@@ -157,7 +180,7 @@ func TestSyncHandler_ClusterNotReachableRequeues(t *testing.T) {
 	cluster := reachableCluster()
 	cluster.Status.Reachable = false
 	deployer := &fakeDeployer{}
-	c, client := newTestController(t, manifestsRelease(), cluster, storeWithApp(), deployer)
+	c, client := newTestController(t, manifestsRelease(), cluster, readyCoordinator(), deployer)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
 		t.Fatalf("syncHandler returned nil, want error so the queue retries")
@@ -176,7 +199,7 @@ func TestSyncHandler_UnsupportedContentIsTerminal(t *testing.T) {
 	rel := manifestsRelease()
 	rel.Spec.Content.Type = corev1alpha1.ReleaseContentTypeHelm
 	deployer := &fakeDeployer{}
-	c, client := newTestController(t, rel, reachableCluster(), storeWithApp(), deployer)
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error for unsupported content: %v", err)

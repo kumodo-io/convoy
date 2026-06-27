@@ -7,9 +7,12 @@ spec:
   clusterRef:
     name: dev-local
   source:
-    kind: GitRepository
-    name: podinfo
-    namespace: convoy-system
+    type: gitRepository
+    gitRepository:
+      name: podinfo
+      namespace: convoy-system
+      ref:
+        branch: master
   content:
     type: manifests
     manifests:

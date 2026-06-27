@@ -7,6 +7,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ReleaseSourceType defines the type of the source.
+// +enum
+type ReleaseSourceType string
+
+const (
+	// ReleaseSourceTypeGitRepository is the source type used for Git repositories.
+	ReleaseSourceTypeGitRepository ReleaseSourceType = "gitRepository"
+
+	// ReleaseSourceTypeHelmRegistry is the source type used for Helm registries.
+	ReleaseSourceTypeHelmRegistry ReleaseSourceType = "helmRegistry"
+
+	// ReleaseSourceTypeOCIRegistry is the source type used for OCI registries.
+	ReleaseSourceTypeOCIRegistry ReleaseSourceType = "ociRegistry"
+)
+
 // ReleaseContentType defines the type of content fetched from the source.
 // +enum
 type ReleaseContentType string
@@ -316,14 +331,86 @@ type ReleaseSpec struct {
 
 // ReleaseSourceSpec defines the source for the release.
 type ReleaseSourceSpec struct {
-	// Kind is the kind of the source.
-	Kind string `json:"kind"`
+	// Type is the type of the source.
+	Type ReleaseSourceType `json:"type"`
 
-	// Name is the name of the source.
+	// GitRepository is the Git repository source for the release.
+	GitRepository *ReleaseGitRepositorySpec `json:"gitRepository,omitempty"`
+
+	// HelmRegistry is the Helm registry source for the release.
+	HelmRegistry *ReleaseHelmRegistrySpec `json:"helmRegistry,omitempty"`
+
+	// OCIRegistry is the OCI registry source for the release.
+	OCIRegistry *ReleaseOCIRegistrySpec `json:"ociRegistry,omitempty"`
+}
+
+// ReleaseGitRepositorySpec defines the Git repository source for the release.
+type ReleaseGitRepositorySpec struct {
+	// Name is the name of the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository] object.
 	Name string `json:"name"`
 
-	// Namespace is the namespace of the source.
+	// Namespace is the namespace of the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository] object.
 	Namespace string `json:"namespace,omitempty"`
+
+	// Ref is the reference to the target revision of the Git repository.
+	Ref *ReleaseGitRepositoryRefSpec `json:"ref,omitempty"`
+}
+
+// ReleaseHelmRegistrySpec defines the Helm registry source for the release.
+type ReleaseHelmRegistrySpec struct {
+	// Name is the name of the [github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry] object.
+	Name string `json:"name"`
+
+	// Namespace is the namespace of the [github.com/kumodo-io/convoy/api/source/v1alpha1.HelmRegistry] object.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Chart is the definition of the Helm chart to be installed.
+	Chart *ReleaseHelmRegistryChartSpec `json:"chart,omitempty"`
+}
+
+// ReleaseOCIRegistrySpec defines the OCI registry source for the release.
+type ReleaseOCIRegistrySpec struct {
+	// Name is the name of the [github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry] object.
+	Name string `json:"name"`
+
+	// Namespace is the namespace of the [github.com/kumodo-io/convoy/api/source/v1alpha1.OCIRegistry] object.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Artifact is the definition of the OCI artifact to be installed.
+	Artifact *ReleaseOCIRegistryArtifactSpec `json:"artifact,omitempty"`
+}
+
+// ReleaseGitRepositoryRefSpec defines the desired state of the Git repository revision.
+type ReleaseGitRepositoryRefSpec struct {
+	// Branch is the branch to track in the Git repository.
+	Branch *string `json:"branch,omitempty"`
+
+	// Tag is the tag to track in the Git repository.
+	Tag *string `json:"tag,omitempty"`
+
+	// Commit is the commit to track in the Git repository.
+	Commit *string `json:"commit,omitempty"`
+
+	// Semver is the tag-based semantic version expression to track in the Git repository.
+	Semver *string `json:"semver,omitempty"`
+}
+
+// ReleaseHelmRegistryChartSpec defines the desired state of the Helm registry chart.
+type ReleaseHelmRegistryChartSpec struct {
+	// Name is the name of the Helm chart.
+	Name string `json:"name"`
+
+	// Version is the version of the Helm chart.
+	Version string `json:"version"`
+}
+
+// ReleaseOCIRegistryArtifactSpec defines the desired state of the OCI registry artifact.
+type ReleaseOCIRegistryArtifactSpec struct {
+	// Name is the name of the OCI artifact.
+	Name string `json:"name"`
+
+	// Version is the version of the OCI artifact.
+	Version string `json:"version"`
 }
 
 // ReleaseContentSpec defines the content of the release.
@@ -350,13 +437,6 @@ type ReleaseContentHelmSpec struct {
 	// Path is the path to the Helm chart within the source.
 	// Ignored if the source is a Helm registry.
 	Path string `json:"path,omitempty"`
-
-	// Chart is the name of the Helm chart.
-	// Ignored if the source is a Git repository.
-	Chart string `json:"chart,omitempty"`
-
-	// Version is the version of the Helm chart.
-	Version string `json:"version,omitempty"`
 
 	// DependencyMode is the dependency mode for the Helm chart.
 	DependencyMode ReleaseHelmDependencyMode `json:"dependencyMode"`
