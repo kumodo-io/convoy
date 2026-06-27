@@ -434,6 +434,14 @@ type ReleaseContentSpec struct {
 
 // ReleaseContentHelmSpec defines the Helm chart content of the release.
 type ReleaseContentHelmSpec struct {
+	// ReleaseName is the name of the Helm release.
+	// Defaults to the Helm chart name if not specified.
+	ReleaseName string `json:"releaseName,omitempty"`
+
+	// ReleaseNamespace is the namespace of the Helm release.
+	// Defaults to 'default' namespace if not specified.
+	ReleaseNamespace string `json:"releaseNamespace,omitempty"`
+
 	// Path is the path to the Helm chart within the source.
 	// Ignored if the source is a Helm registry.
 	Path string `json:"path,omitempty"`
@@ -444,6 +452,10 @@ type ReleaseContentHelmSpec struct {
 
 // ReleaseContentManifestsSpec defines the manifests content of the release.
 type ReleaseContentManifestsSpec struct {
+	// TargetNamespace is the namespace to target for the manifests.
+	// Defaults to 'default' namespace if not specified.
+	TargetNamespace string `json:"targetNamespace,omitempty"`
+
 	// Paths is the list of paths to the manifests within the source.
 	// +listType=atomic
 	Paths []string `json:"paths"`
@@ -451,12 +463,20 @@ type ReleaseContentManifestsSpec struct {
 
 // ReleaseContentKustomizeSpec defines the kustomize content of the release.
 type ReleaseContentKustomizeSpec struct {
+	// TargetNamespace is the namespace to target for the kustomize bundle.
+	// Defaults to 'default' namespace if not specified.
+	TargetNamespace string `json:"targetNamespace,omitempty"`
+
 	// Path is the path to the kustomize bundle within the source.
 	Path string `json:"path"`
 }
 
 // ReleaseContentJsonnetSpec defines the jsonnet content of the release.
 type ReleaseContentJsonnetSpec struct {
+	// TargetNamespace is the namespace to target for the jsonnet bundle.
+	// Defaults to 'default' namespace if not specified.
+	TargetNamespace string `json:"targetNamespace,omitempty"`
+
 	// Path is the path to the jsonnet file within the source.
 	Path string `json:"path"`
 

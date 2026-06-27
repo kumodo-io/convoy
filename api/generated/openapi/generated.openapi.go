@@ -2141,6 +2141,20 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref common.Reference
 				Description: "ReleaseContentHelmSpec defines the Helm chart content of the release.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"releaseName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReleaseName is the name of the Helm release. Defaults to the Helm chart name if not specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"releaseNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReleaseNamespace is the namespace of the Helm release. Defaults to 'default' namespace if not specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"path": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Path is the path to the Helm chart within the source. Ignored if the source is a Helm registry.",
@@ -2171,6 +2185,13 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentJsonnetSpec(ref common.Refere
 				Description: "ReleaseContentJsonnetSpec defines the jsonnet content of the release.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"targetNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TargetNamespace is the namespace to target for the jsonnet bundle. Defaults to 'default' namespace if not specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"path": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Path is the path to the jsonnet file within the source.",
@@ -2217,6 +2238,13 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref common.Refe
 				Description: "ReleaseContentKustomizeSpec defines the kustomize content of the release.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"targetNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TargetNamespace is the namespace to target for the kustomize bundle. Defaults to 'default' namespace if not specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"path": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Path is the path to the kustomize bundle within the source.",
@@ -2239,6 +2267,13 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref common.Refe
 				Description: "ReleaseContentManifestsSpec defines the manifests content of the release.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"targetNamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TargetNamespace is the namespace to target for the manifests. Defaults to 'default' namespace if not specified.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"paths": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{

@@ -23,6 +23,9 @@ package v1alpha1
 //
 // ReleaseContentManifestsSpec defines the manifests content of the release.
 type ReleaseContentManifestsSpecApplyConfiguration struct {
+	// TargetNamespace is the namespace to target for the manifests.
+	// Defaults to 'default' namespace if not specified.
+	TargetNamespace *string `json:"targetNamespace,omitempty"`
 	// Paths is the list of paths to the manifests within the source.
 	Paths []string `json:"paths,omitempty"`
 }
@@ -31,6 +34,14 @@ type ReleaseContentManifestsSpecApplyConfiguration struct {
 // apply.
 func ReleaseContentManifestsSpec() *ReleaseContentManifestsSpecApplyConfiguration {
 	return &ReleaseContentManifestsSpecApplyConfiguration{}
+}
+
+// WithTargetNamespace sets the TargetNamespace field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TargetNamespace field is set to the value of the last call.
+func (b *ReleaseContentManifestsSpecApplyConfiguration) WithTargetNamespace(value string) *ReleaseContentManifestsSpecApplyConfiguration {
+	b.TargetNamespace = &value
+	return b
 }
 
 // WithPaths adds the given value to the Paths field in the declarative configuration
