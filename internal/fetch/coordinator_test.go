@@ -76,6 +76,11 @@ func branchSrc() *corev1alpha1.ReleaseGitRepositorySpec {
 	}
 }
 
+// gitSource wraps a git source block in the discriminated ReleaseSourceSpec.
+func gitSource(s *corev1alpha1.ReleaseGitRepositorySpec) corev1alpha1.ReleaseSourceSpec {
+	return corev1alpha1.ReleaseSourceSpec{Type: corev1alpha1.ReleaseSourceTypeGitRepository, GitRepository: s}
+}
+
 func TestEnsure_FetchSucceedsAndCaches(t *testing.T) {
 	fetcher := &fakeFetcher{result: gitrepository.FetchResult{
 		Revision: "abc123",
@@ -84,7 +89,7 @@ func TestEnsure_FetchSucceedsAndCaches(t *testing.T) {
 	store := artifact.NewMemoryStore()
 	c := NewCoordinator(listerWith(repo()), fetcher, store)
 
-	res, err := c.Ensure(context.Background(), branchSrc(), repoNamespace)
+	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err != nil {
 		t.Fatalf("Ensure returned error: %v", err)
 	}
@@ -106,7 +111,7 @@ func TestEnsure_CommitServedFromStore(t *testing.T) {
 		Name: repoName,
 		Ref:  &corev1alpha1.ReleaseGitRepositoryRefSpec{Commit: new("deadbeef")},
 	}
-	res, err := c.Ensure(context.Background(), src, repoNamespace)
+	res, err := c.Ensure(context.Background(), gitSource(src), repoNamespace)
 	if err != nil {
 		t.Fatalf("Ensure returned error: %v", err)
 	}
@@ -121,7 +126,7 @@ func TestEnsure_CommitServedFromStore(t *testing.T) {
 func TestEnsure_RepoNotFoundIsTransient(t *testing.T) {
 	c := NewCoordinator(listerWith(), &fakeFetcher{}, artifact.NewMemoryStore())
 
-	res, err := c.Ensure(context.Background(), branchSrc(), repoNamespace)
+	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err == nil {
 		t.Fatalf("Ensure returned nil error, want transient error for missing repo")
 	}
@@ -133,7 +138,19 @@ func TestEnsure_RepoNotFoundIsTransient(t *testing.T) {
 func TestEnsure_NilSourceIsTerminal(t *testing.T) {
 	c := NewCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
 
-	res, err := c.Ensure(context.Background(), nil, repoNamespace)
+	res, err := c.Ensure(context.Background(), gitSource(nil), repoNamespace)
+	if err != nil {
+		t.Fatalf("Ensure returned error %v, want nil (terminal)", err)
+	}
+	if res.Ready {
+		t.Errorf("Result.Ready = true, want false")
+	}
+}
+
+func TestEnsure_UnsupportedSourceTypeIsTerminal(t *testing.T) {
+	c := NewCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
+
+	res, err := c.Ensure(context.Background(), corev1alpha1.ReleaseSourceSpec{Type: corev1alpha1.ReleaseSourceTypeHelmRegistry}, repoNamespace)
 	if err != nil {
 		t.Fatalf("Ensure returned error %v, want nil (terminal)", err)
 	}
@@ -145,7 +162,7 @@ func TestEnsure_NilSourceIsTerminal(t *testing.T) {
 func TestEnsure_NilRefIsTerminal(t *testing.T) {
 	c := NewCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
 
-	res, err := c.Ensure(context.Background(), &corev1alpha1.ReleaseGitRepositorySpec{Name: repoName}, repoNamespace)
+	res, err := c.Ensure(context.Background(), gitSource(&corev1alpha1.ReleaseGitRepositorySpec{Name: repoName}), repoNamespace)
 	if err != nil {
 		t.Fatalf("Ensure returned error %v, want nil (terminal)", err)
 	}
@@ -158,7 +175,7 @@ func TestEnsure_UnsupportedFetchIsTerminal(t *testing.T) {
 	fetcher := &fakeFetcher{err: errors.Join(gitrepository.ErrUnsupported, errors.New("token auth"))}
 	c := NewCoordinator(listerWith(repo()), fetcher, artifact.NewMemoryStore())
 
-	res, err := c.Ensure(context.Background(), branchSrc(), repoNamespace)
+	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err != nil {
 		t.Fatalf("Ensure returned error %v, want nil (terminal)", err)
 	}
@@ -171,7 +188,7 @@ func TestEnsure_FetchErrorIsTransient(t *testing.T) {
 	fetcher := &fakeFetcher{err: errors.New("connection refused")}
 	c := NewCoordinator(listerWith(repo()), fetcher, artifact.NewMemoryStore())
 
-	res, err := c.Ensure(context.Background(), branchSrc(), repoNamespace)
+	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err == nil {
 		t.Fatalf("Ensure returned nil error, want transient error")
 	}

@@ -58,7 +58,7 @@ type fakeCoordinator struct {
 	err    error
 }
 
-func (f *fakeCoordinator) Ensure(context.Context, *corev1alpha1.ReleaseGitRepositorySpec, string) (fetch.Result, error) {
+func (f *fakeCoordinator) Ensure(context.Context, corev1alpha1.ReleaseSourceSpec, string) (fetch.Result, error) {
 	return f.result, f.err
 }
 

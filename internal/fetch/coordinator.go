@@ -52,11 +52,12 @@ type Result struct {
 
 // Coordinator ensures source content is fetched and available.
 type Coordinator interface {
-	// Ensure makes the content for the given GitRepository source + ref available.
-	// A non-nil error means a transient failure (caller should requeue). A nil
-	// error with Ready=false means a terminal configuration problem (do not
-	// requeue). Ready=true carries the resolved revision and artifact.
-	Ensure(ctx context.Context, src *corev1alpha1.ReleaseGitRepositorySpec, namespace string) (Result, error)
+	// Ensure makes the content for the given source available, dispatching on
+	// src.Type to the matching fetch path. A non-nil error means a transient
+	// failure (caller should requeue). A nil error with Ready=false means a
+	// terminal configuration problem (do not requeue), e.g. an unsupported
+	// source type. Ready=true carries the resolved revision and artifact.
+	Ensure(ctx context.Context, src corev1alpha1.ReleaseSourceSpec, namespace string) (Result, error)
 }
 
 // coordinator is the in-process, synchronous implementation.
@@ -71,7 +72,16 @@ func NewCoordinator(repos sourcelisters.GitRepositoryLister, fetcher gitreposito
 	return &coordinator{repos: repos, fetcher: fetcher, store: store}
 }
 
-func (c *coordinator) Ensure(ctx context.Context, src *corev1alpha1.ReleaseGitRepositorySpec, namespace string) (Result, error) {
+func (c *coordinator) Ensure(ctx context.Context, src corev1alpha1.ReleaseSourceSpec, namespace string) (Result, error) {
+	switch src.Type {
+	case corev1alpha1.ReleaseSourceTypeGitRepository:
+		return c.ensureGitRepository(ctx, src.GitRepository, namespace)
+	default:
+		return Result{Message: fmt.Sprintf("source type %q is not supported yet", src.Type)}, nil // terminal
+	}
+}
+
+func (c *coordinator) ensureGitRepository(ctx context.Context, src *corev1alpha1.ReleaseGitRepositorySpec, namespace string) (Result, error) {
 	if src == nil {
 		return Result{Message: "gitRepository source is not set"}, nil // terminal
 	}
