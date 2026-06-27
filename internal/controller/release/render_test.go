@@ -52,7 +52,7 @@ func TestRender_DirectoryPathMultiDoc(t *testing.T) {
 		t.Fatalf("got %d objects, want 3 (README + other/ excluded)", len(objs))
 	}
 	for _, o := range objs {
-		if o.GetKind() != "ConfigMap" {
+		if o.GetKind() != configMapKind {
 			t.Errorf("object kind = %q, want ConfigMap", o.GetKind())
 		}
 	}

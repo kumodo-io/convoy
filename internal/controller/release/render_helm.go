@@ -82,7 +82,7 @@ func renderHelm(spec *corev1alpha1.ReleaseContentHelmSpec, art artifact.Artifact
 		namespace = metav1.NamespaceDefault
 	}
 
-	values, err := chartutil.ToRenderValues(chrt, map[string]interface{}{}, chartutil.ReleaseOptions{
+	values, err := chartutil.ToRenderValues(chrt, map[string]any{}, chartutil.ReleaseOptions{
 		Name:      name,
 		Namespace: namespace,
 		IsInstall: true,

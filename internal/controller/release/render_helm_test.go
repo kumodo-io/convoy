@@ -24,6 +24,10 @@ import (
 	"github.com/kumodo-io/convoy/internal/artifact"
 )
 
+const (
+	dummyChartPath = "charts/demo"
+)
+
 // demoChart returns an artifact holding a minimal chart under charts/demo. The
 // ConfigMap template uses .Release.Name/.Release.Namespace/.Values; a partial and
 // a NOTES.txt are included to verify they're excluded from the output.
@@ -38,7 +42,7 @@ func demoChart() artifact.Artifact {
 }
 
 func TestRenderHelm_RendersChartWithDefaults(t *testing.T) {
-	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: "charts/demo"}, demoChart())
+	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath}, demoChart())
 	if err != nil {
 		t.Fatalf("renderHelm returned error: %v", err)
 	}
@@ -46,7 +50,7 @@ func TestRenderHelm_RendersChartWithDefaults(t *testing.T) {
 		t.Fatalf("got %d objects, want 1 (partial + NOTES excluded)", len(objs))
 	}
 	cm := objs[0]
-	if cm.GetKind() != "ConfigMap" {
+	if cm.GetKind() != configMapKind {
 		t.Errorf("kind = %q, want ConfigMap", cm.GetKind())
 	}
 	// releaseName defaults to the chart name, releaseNamespace to "default".
@@ -56,7 +60,7 @@ func TestRenderHelm_RendersChartWithDefaults(t *testing.T) {
 	if cm.GetNamespace() != "default" {
 		t.Errorf("namespace = %q, want default", cm.GetNamespace())
 	}
-	greeting, _, _ := unstructuredString(cm.Object, "data", "greeting")
+	greeting, _ := unstructuredString(cm.Object, "data", "greeting")
 	if greeting != "hello" {
 		t.Errorf("data.greeting = %q, want hello (chart default value)", greeting)
 	}
@@ -64,7 +68,7 @@ func TestRenderHelm_RendersChartWithDefaults(t *testing.T) {
 
 func TestRenderHelm_HonorsReleaseNameAndNamespace(t *testing.T) {
 	spec := &corev1alpha1.ReleaseContentHelmSpec{
-		Path:             "charts/demo",
+		Path:             dummyChartPath,
 		ReleaseName:      "myapp",
 		ReleaseNamespace: "prod",
 	}
@@ -85,7 +89,7 @@ func TestRenderHelm_HonorsReleaseNameAndNamespace(t *testing.T) {
 
 func TestRenderHelm_ResolveDependencyModeUnsupported(t *testing.T) {
 	spec := &corev1alpha1.ReleaseContentHelmSpec{
-		Path:           "charts/demo",
+		Path:           dummyChartPath,
 		DependencyMode: corev1alpha1.ReleaseHelmDependencyModeResolve,
 	}
 	if _, err := renderHelm(spec, demoChart()); !errors.Is(err, ErrUnsupported) {
@@ -106,22 +110,22 @@ func TestRenderHelm_MissingChartAtPath(t *testing.T) {
 
 // unstructuredString is a tiny nested-string getter to avoid pulling in the
 // unstructured helpers package just for the tests.
-func unstructuredString(obj map[string]interface{}, fields ...string) (string, bool, error) {
+func unstructuredString(obj map[string]any, fields ...string) (string, bool) {
 	cur := obj
 	for i, f := range fields {
 		v, ok := cur[f]
 		if !ok {
-			return "", false, nil
+			return "", false
 		}
 		if i == len(fields)-1 {
 			s, ok := v.(string)
-			return s, ok, nil
+			return s, ok
 		}
-		next, ok := v.(map[string]interface{})
+		next, ok := v.(map[string]any)
 		if !ok {
-			return "", false, nil
+			return "", false
 		}
 		cur = next
 	}
-	return "", false, nil
+	return "", false
 }
