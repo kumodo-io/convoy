@@ -96,9 +96,6 @@ type HelmRegistryStatus struct {
 	// ObservedGeneration is the last generation that was observed by the controller.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	// LastFetched is the last time the Helm registry was fetched.
-	LastFetched HelmRegistryLastFetchedStatus `json:"lastFetched,omitempty"`
-
 	// ReleaseCount is the number of Release referencing the HelmRegistry.
 	ReleaseCount int64 `json:"releaseCount,omitempty"`
 
@@ -111,14 +108,6 @@ type HelmRegistryStatus struct {
 	// +listType=map
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
-}
-
-type HelmRegistryLastFetchedStatus struct {
-	// FetchedAt is the time the Helm registry was fetched.
-	FetchedAt metav1.Time `json:"fetchedAt,omitempty"`
-
-	// ChartCount is the number of charts in the Helm registry.
-	ChartCount int64 `json:"chartCount,omitempty"`
 }
 
 // +genclient

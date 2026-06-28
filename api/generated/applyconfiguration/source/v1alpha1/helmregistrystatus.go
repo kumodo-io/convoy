@@ -29,8 +29,6 @@ import (
 type HelmRegistryStatusApplyConfiguration struct {
 	// ObservedGeneration is the last generation that was observed by the controller.
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
-	// LastFetched is the last time the Helm registry was fetched.
-	LastFetched *HelmRegistryLastFetchedStatusApplyConfiguration `json:"lastFetched,omitempty"`
 	// ReleaseCount is the number of Release referencing the HelmRegistry.
 	ReleaseCount *int64 `json:"releaseCount,omitempty"`
 	// Webhooks is the list of statuses of webhooks that are configured for the HelmRegistry.
@@ -50,14 +48,6 @@ func HelmRegistryStatus() *HelmRegistryStatusApplyConfiguration {
 // If called multiple times, the ObservedGeneration field is set to the value of the last call.
 func (b *HelmRegistryStatusApplyConfiguration) WithObservedGeneration(value int64) *HelmRegistryStatusApplyConfiguration {
 	b.ObservedGeneration = &value
-	return b
-}
-
-// WithLastFetched sets the LastFetched field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the LastFetched field is set to the value of the last call.
-func (b *HelmRegistryStatusApplyConfiguration) WithLastFetched(value *HelmRegistryLastFetchedStatusApplyConfiguration) *HelmRegistryStatusApplyConfiguration {
-	b.LastFetched = value
 	return b
 }
 

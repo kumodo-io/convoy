@@ -19,6 +19,7 @@ package helmregistry
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +41,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 		ColumnDefinitions: []metav1.TableColumnDefinition{
 			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the HelmRegistry"},
 			{Name: "URL", Type: helper.StringValueString, Description: "Helm repository URL"},
-			{Name: "Charts", Type: "integer", Description: "Number of charts in the last fetched index"},
+			{Name: "Ready", Type: helper.StringValueString, Description: "Whether the repository is ready"},
 			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the HelmRegistry was created"},
 		},
 	}
@@ -50,8 +51,15 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 		if !r.CreationTimestamp.IsZero() {
 			age = duration.HumanDuration(time.Since(r.CreationTimestamp.Time))
 		}
+		ready := "<unknown>"
+		idx := slices.IndexFunc(r.Status.Conditions, func(c metav1.Condition) bool {
+			return c.Type == "Ready"
+		})
+		if idx >= 0 {
+			ready = string(r.Status.Conditions[idx].Status)
+		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, r.Spec.URL, r.Status.LastFetched.ChartCount, age},
+			Cells:  []any{r.Name, r.Spec.URL, ready, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}

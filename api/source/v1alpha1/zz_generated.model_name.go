@@ -67,11 +67,6 @@ func (in HelmRegistryAuthSpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in HelmRegistryLastFetchedStatus) OpenAPIModelName() string {
-	return "io.kumodo.convoy.source.v1alpha1.HelmRegistryLastFetchedStatus"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in HelmRegistryList) OpenAPIModelName() string {
 	return "io.kumodo.convoy.source.v1alpha1.HelmRegistryList"
 }

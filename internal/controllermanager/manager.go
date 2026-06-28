@@ -36,6 +36,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
+	helmregistrycontroller "github.com/kumodo-io/convoy/internal/controller/helmregistry"
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 	"github.com/kumodo-io/convoy/internal/fetch"
 )
@@ -110,9 +111,20 @@ func (o *Options) Run(ctx context.Context) error {
 	gitFetcher := gitrepositorycontroller.NewGitFetcher(resolver)
 	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher)
 
-	// Fetch coordinator: resolves a Release's (source, ref) and fetches content
-	// on demand into the artifact store.
-	coordinator := fetch.NewCoordinator(gitRepoInformer.Lister(), gitFetcher, artifactStore)
+	// HelmRegistry controller: verifies HTTP Helm repos are reachable.
+	helmRegInformer := factory.Source().V1alpha1().HelmRegistries()
+	helmFetcher := helmregistrycontroller.NewHelmFetcher(resolver)
+	helmController := helmregistrycontroller.NewController(client, helmRegInformer, helmFetcher)
+
+	// Fetch coordinator: resolves a Release's source coordinate and fetches
+	// content on demand into the artifact store.
+	coordinator := fetch.NewCoordinator(fetch.Deps{
+		Store:          artifactStore,
+		GitRepos:       gitRepoInformer.Lister(),
+		GitFetcher:     gitFetcher,
+		HelmRegistries: helmRegInformer.Lister(),
+		HelmFetcher:    helmFetcher,
+	})
 
 	// Release controller: fetches via the coordinator, renders, and applies to the
 	// target cluster (reached through the same connector the cluster controller
@@ -126,6 +138,7 @@ func (o *Options) Run(ctx context.Context) error {
 	errGroup := errgroup.Group{}
 	errGroup.Go(func() error { return clusterController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return gitController.Run(ctx, o.Workers) })
+	errGroup.Go(func() error { return helmController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return releaseController.Run(ctx, o.Workers) })
 
 	return errGroup.Wait()

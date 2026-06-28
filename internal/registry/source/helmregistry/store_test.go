@@ -211,7 +211,6 @@ func TestStatusUpdate(t *testing.T) {
 	}
 	reg := obj.(*source.HelmRegistry)
 
-	reg.Status.LastFetched.ChartCount = 87
 	reg.Spec.URL = "https://changed.example.com"
 
 	updatedObj, _, err := statusStorage.Update(
@@ -228,9 +227,6 @@ func TestStatusUpdate(t *testing.T) {
 	}
 
 	updated := updatedObj.(*source.HelmRegistry)
-	if updated.Status.LastFetched.ChartCount != 87 {
-		t.Errorf("expected status.lastFetched.chartCount to persist, got %d", updated.Status.LastFetched.ChartCount)
-	}
 	if updated.Spec.URL != dummyHelmRegistryURL {
 		t.Errorf("expected spec change to be ignored by /status, got url=%q", updated.Spec.URL)
 	}

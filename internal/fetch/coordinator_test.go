@@ -29,6 +29,7 @@ import (
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/controller/gitrepository"
+	"github.com/kumodo-io/convoy/internal/controller/helmregistry"
 )
 
 const (
@@ -81,13 +82,18 @@ func gitSource(s *corev1alpha1.ReleaseGitRepositorySpec) corev1alpha1.ReleaseSou
 	return corev1alpha1.ReleaseSourceSpec{Type: corev1alpha1.ReleaseSourceTypeGitRepository, GitRepository: s}
 }
 
+// gitCoordinator builds a coordinator wired with only the git dependencies.
+func gitCoordinator(lister sourcelisters.GitRepositoryLister, fetcher gitrepository.Fetcher, store artifact.Store) Coordinator {
+	return NewCoordinator(Deps{Store: store, GitRepos: lister, GitFetcher: fetcher})
+}
+
 func TestEnsure_FetchSucceedsAndCaches(t *testing.T) {
 	fetcher := &fakeFetcher{result: gitrepository.FetchResult{
 		Revision: "abc123",
 		Files:    map[string][]byte{"app.yaml": []byte("kind: ConfigMap")},
 	}}
 	store := artifact.NewMemoryStore()
-	c := NewCoordinator(listerWith(repo()), fetcher, store)
+	c := gitCoordinator(listerWith(repo()), fetcher, store)
 
 	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err != nil {
@@ -105,7 +111,7 @@ func TestEnsure_CommitServedFromStore(t *testing.T) {
 	fetcher := &fakeFetcher{}
 	store := artifact.NewMemoryStore()
 	store.Put(artifact.Key(repoURL, "deadbeef"), artifact.Artifact{Revision: "deadbeef"})
-	c := NewCoordinator(listerWith(repo()), fetcher, store)
+	c := gitCoordinator(listerWith(repo()), fetcher, store)
 
 	src := &corev1alpha1.ReleaseGitRepositorySpec{
 		Name: repoName,
@@ -124,7 +130,7 @@ func TestEnsure_CommitServedFromStore(t *testing.T) {
 }
 
 func TestEnsure_RepoNotFoundIsTransient(t *testing.T) {
-	c := NewCoordinator(listerWith(), &fakeFetcher{}, artifact.NewMemoryStore())
+	c := gitCoordinator(listerWith(), &fakeFetcher{}, artifact.NewMemoryStore())
 
 	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err == nil {
@@ -136,7 +142,7 @@ func TestEnsure_RepoNotFoundIsTransient(t *testing.T) {
 }
 
 func TestEnsure_NilSourceIsTerminal(t *testing.T) {
-	c := NewCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
+	c := gitCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
 
 	res, err := c.Ensure(context.Background(), gitSource(nil), repoNamespace)
 	if err != nil {
@@ -148,7 +154,7 @@ func TestEnsure_NilSourceIsTerminal(t *testing.T) {
 }
 
 func TestEnsure_UnsupportedSourceTypeIsTerminal(t *testing.T) {
-	c := NewCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
+	c := gitCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
 
 	res, err := c.Ensure(context.Background(), corev1alpha1.ReleaseSourceSpec{Type: corev1alpha1.ReleaseSourceTypeHelmRegistry}, repoNamespace)
 	if err != nil {
@@ -160,7 +166,7 @@ func TestEnsure_UnsupportedSourceTypeIsTerminal(t *testing.T) {
 }
 
 func TestEnsure_NilRefIsTerminal(t *testing.T) {
-	c := NewCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
+	c := gitCoordinator(listerWith(repo()), &fakeFetcher{}, artifact.NewMemoryStore())
 
 	res, err := c.Ensure(context.Background(), gitSource(&corev1alpha1.ReleaseGitRepositorySpec{Name: repoName}), repoNamespace)
 	if err != nil {
@@ -173,7 +179,7 @@ func TestEnsure_NilRefIsTerminal(t *testing.T) {
 
 func TestEnsure_UnsupportedFetchIsTerminal(t *testing.T) {
 	fetcher := &fakeFetcher{err: errors.Join(gitrepository.ErrUnsupported, errors.New("token auth"))}
-	c := NewCoordinator(listerWith(repo()), fetcher, artifact.NewMemoryStore())
+	c := gitCoordinator(listerWith(repo()), fetcher, artifact.NewMemoryStore())
 
 	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err != nil {
@@ -186,11 +192,118 @@ func TestEnsure_UnsupportedFetchIsTerminal(t *testing.T) {
 
 func TestEnsure_FetchErrorIsTransient(t *testing.T) {
 	fetcher := &fakeFetcher{err: errors.New("connection refused")}
-	c := NewCoordinator(listerWith(repo()), fetcher, artifact.NewMemoryStore())
+	c := gitCoordinator(listerWith(repo()), fetcher, artifact.NewMemoryStore())
 
 	res, err := c.Ensure(context.Background(), gitSource(branchSrc()), repoNamespace)
 	if err == nil {
 		t.Fatalf("Ensure returned nil error, want transient error")
+	}
+	if res.Ready {
+		t.Errorf("Result.Ready = true, want false")
+	}
+}
+
+// --- HelmRegistry source ---
+
+const (
+	helmRegName = "charts"
+	helmRegURL  = "https://charts.example.com"
+
+	revision     = "podinfo-6.5.0"
+	chartName    = "podinfo"
+	chartVersion = "6.5.0"
+)
+
+type fakeHelmFetcher struct {
+	result helmregistry.FetchResult
+	err    error
+	calls  int
+}
+
+func (f *fakeHelmFetcher) Fetch(context.Context, *sourcev1alpha1.HelmRegistry, helmregistry.Ref) (helmregistry.FetchResult, error) {
+	f.calls++
+	return f.result, f.err
+}
+
+func (f *fakeHelmFetcher) Verify(context.Context, *sourcev1alpha1.HelmRegistry) error { return nil }
+
+func helmListerWith(regs ...*sourcev1alpha1.HelmRegistry) sourcelisters.HelmRegistryLister {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	for _, r := range regs {
+		_ = indexer.Add(r)
+	}
+	return sourcelisters.NewHelmRegistryLister(indexer)
+}
+
+func helmReg() *sourcev1alpha1.HelmRegistry {
+	return &sourcev1alpha1.HelmRegistry{
+		ObjectMeta: metav1.ObjectMeta{Name: helmRegName, Namespace: repoNamespace},
+		Spec: sourcev1alpha1.HelmRegistrySpec{
+			URL:  helmRegURL,
+			Auth: sourcev1alpha1.HelmRegistryAuthSpec{Type: sourcev1alpha1.HelmRegistryAuthTypeNone},
+		},
+	}
+}
+
+func helmSource(chart, version string) corev1alpha1.ReleaseSourceSpec {
+	return corev1alpha1.ReleaseSourceSpec{
+		Type: corev1alpha1.ReleaseSourceTypeHelmRegistry,
+		HelmRegistry: &corev1alpha1.ReleaseHelmRegistrySpec{
+			Name:  helmRegName,
+			Chart: &corev1alpha1.ReleaseHelmRegistryChartSpec{Name: chart, Version: version},
+		},
+	}
+}
+
+func helmCoordinator(lister sourcelisters.HelmRegistryLister, fetcher helmregistry.Fetcher, store artifact.Store) Coordinator {
+	return NewCoordinator(Deps{Store: store, HelmRegistries: lister, HelmFetcher: fetcher})
+}
+
+func TestEnsure_HelmFetchSucceedsAndCaches(t *testing.T) {
+	fetcher := &fakeHelmFetcher{result: helmregistry.FetchResult{
+		Revision: revision,
+		Files:    map[string][]byte{"Chart.yaml": []byte("name: podinfo")},
+	}}
+	store := artifact.NewMemoryStore()
+	c := helmCoordinator(helmListerWith(helmReg()), fetcher, store)
+
+	res, err := c.Ensure(context.Background(), helmSource(chartName, chartVersion), repoNamespace)
+	if err != nil {
+		t.Fatalf("Ensure returned error: %v", err)
+	}
+	if !res.Ready || res.Revision != revision {
+		t.Fatalf("Result = %+v, want Ready with revision podinfo-6.5.0", res)
+	}
+	if _, ok := store.Get(artifact.Key(helmRegURL, revision)); !ok {
+		t.Errorf("artifact not stored under (url, revision) key")
+	}
+}
+
+func TestEnsure_HelmServedFromStore(t *testing.T) {
+	fetcher := &fakeHelmFetcher{}
+	store := artifact.NewMemoryStore()
+	store.Put(artifact.Key(helmRegURL, revision), artifact.Artifact{Revision: revision})
+	c := helmCoordinator(helmListerWith(helmReg()), fetcher, store)
+
+	res, err := c.Ensure(context.Background(), helmSource(chartName, chartVersion), repoNamespace)
+	if err != nil {
+		t.Fatalf("Ensure returned error: %v", err)
+	}
+	if !res.Ready || res.Revision != revision {
+		t.Fatalf("Result = %+v, want Ready from cache", res)
+	}
+	if fetcher.calls != 0 {
+		t.Errorf("fetcher was called %d times, want 0 (version is immutable, cache hit)", fetcher.calls)
+	}
+}
+
+func TestEnsure_HelmMissingCoordinateIsTerminal(t *testing.T) {
+	c := helmCoordinator(helmListerWith(helmReg()), &fakeHelmFetcher{}, artifact.NewMemoryStore())
+
+	// chart name set but version empty → terminal config error, no requeue.
+	res, err := c.Ensure(context.Background(), helmSource(chartName, ""), repoNamespace)
+	if err != nil {
+		t.Fatalf("Ensure returned error %v, want nil (terminal)", err)
 	}
 	if res.Ready {
 		t.Errorf("Result.Ready = true, want false")

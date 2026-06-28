@@ -144,15 +144,9 @@ type HelmRegistryWebhookFilterSpec struct {
 
 type HelmRegistryStatus struct {
 	ObservedGeneration int64
-	LastFetched        HelmRegistryLastFetchedStatus
 	ReleaseCount       int64
 	Webhooks           []WebhookStatus
 	Conditions         []metav1.Condition
-}
-
-type HelmRegistryLastFetchedStatus struct {
-	FetchedAt  metav1.Time
-	ChartCount int64
 }
 
 // +genclient
