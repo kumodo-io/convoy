@@ -204,8 +204,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryAuthSpec"):
 		return &applyconfigurationsourcev1alpha1.HelmRegistryAuthSpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryLastFetchedStatus"):
-		return &applyconfigurationsourcev1alpha1.HelmRegistryLastFetchedStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistrySpec"):
 		return &applyconfigurationsourcev1alpha1.HelmRegistrySpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("HelmRegistryStatus"):

@@ -125,7 +125,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		sourcev1alpha1.GitRepositoryWebhookSpec{}.OpenAPIModelName():              schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
 		sourcev1alpha1.HelmRegistry{}.OpenAPIModelName():                          schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
 		sourcev1alpha1.HelmRegistryAuthSpec{}.OpenAPIModelName():                  schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
-		sourcev1alpha1.HelmRegistryLastFetchedStatus{}.OpenAPIModelName():         schema_convoy_api_source_v1alpha1_HelmRegistryLastFetchedStatus(ref),
 		sourcev1alpha1.HelmRegistryList{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
 		sourcev1alpha1.HelmRegistrySpec{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
 		sourcev1alpha1.HelmRegistryStatus{}.OpenAPIModelName():                    schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
@@ -4870,33 +4869,6 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref common.Reference
 	}
 }
 
-func schema_convoy_api_source_v1alpha1_HelmRegistryLastFetchedStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"fetchedAt": {
-						SchemaProps: spec.SchemaProps{
-							Description: "FetchedAt is the time the Helm registry was fetched.",
-							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
-						},
-					},
-					"chartCount": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ChartCount is the number of charts in the Helm registry.",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			metav1.Time{}.OpenAPIModelName()},
-	}
-}
-
 func schema_convoy_api_source_v1alpha1_HelmRegistryList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5008,13 +4980,6 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 							Format:      "int64",
 						},
 					},
-					"lastFetched": {
-						SchemaProps: spec.SchemaProps{
-							Description: "LastFetched is the last time the Helm registry was fetched.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(sourcev1alpha1.HelmRegistryLastFetchedStatus{}.OpenAPIModelName()),
-						},
-					},
 					"releaseCount": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ReleaseCount is the number of Release referencing the HelmRegistry.",
@@ -5070,7 +5035,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			sourcev1alpha1.HelmRegistryLastFetchedStatus{}.OpenAPIModelName(), sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
 	}
 }
 

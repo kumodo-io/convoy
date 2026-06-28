@@ -1,0 +1,13 @@
+apiVersion: source.convoy.kumodo.io/v1alpha1
+kind: HelmRegistry
+metadata:
+  name: podinfo
+  namespace: convoy-system
+spec:
+  auth:
+    type: none
+  interval: 1m0s
+  minSyncInterval: 30s
+  tls:
+    insecureSkipVerify: true
+  url: https://stefanprodan.github.io/podinfo

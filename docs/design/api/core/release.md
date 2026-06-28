@@ -197,6 +197,12 @@ spec:
 
     # type: helm — render a Helm chart.
     helm:
+      # Defaults to chart name if not set
+      releaseName: payments-api-dev
+      
+      # Defaults to the 'default' namespace if not set
+      releaseNamespace: payments-team
+      
       # Path to the chart within a GitRepository tree. Omit for helmRegistry/
       # ociRegistry sources (the chart/artifact is selected in spec.source).
       path: charts/payments-api
