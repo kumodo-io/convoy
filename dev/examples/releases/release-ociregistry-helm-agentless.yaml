@@ -1,0 +1,26 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Release
+metadata:
+  name: podinfo-ocireg-agentless
+  namespace: default
+spec:
+  clusterRef:
+    name: convoy-managed
+  source:
+    type: ociRegistry
+    ociRegistry:
+      name: podinfo
+      namespace: convoy-system
+      artifact:
+        name: podinfo
+        version: "6.10.2"
+  content:
+    type: helm
+    helm:
+      releaseName: podinfo-from-ocireg
+      releaseNamespace: default
+      dependencyMode: vendored
+  syncPolicy:
+    automatic: true
+    pruneOrphaned: false
+    interval: 1m

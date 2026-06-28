@@ -30,6 +30,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/controller/gitrepository"
 	"github.com/kumodo-io/convoy/internal/controller/helmregistry"
+	"github.com/kumodo-io/convoy/internal/controller/ociregistry"
 )
 
 const (
@@ -302,6 +303,108 @@ func TestEnsure_HelmMissingCoordinateIsTerminal(t *testing.T) {
 
 	// chart name set but version empty → terminal config error, no requeue.
 	res, err := c.Ensure(context.Background(), helmSource(chartName, ""), repoNamespace)
+	if err != nil {
+		t.Fatalf("Ensure returned error %v, want nil (terminal)", err)
+	}
+	if res.Ready {
+		t.Errorf("Result.Ready = true, want false")
+	}
+}
+
+// --- OCIRegistry source ---
+
+const (
+	ociRegName = "oci-charts"
+	ociRegURL  = "oci://reg.example.com/charts"
+)
+
+type fakeOCIFetcher struct {
+	result ociregistry.FetchResult
+	err    error
+	calls  int
+}
+
+func (f *fakeOCIFetcher) Fetch(context.Context, *sourcev1alpha1.OCIRegistry, ociregistry.Ref) (ociregistry.FetchResult, error) {
+	f.calls++
+	return f.result, f.err
+}
+
+func (f *fakeOCIFetcher) Verify(context.Context, *sourcev1alpha1.OCIRegistry) error { return nil }
+
+func ociListerWith(regs ...*sourcev1alpha1.OCIRegistry) sourcelisters.OCIRegistryLister {
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	for _, r := range regs {
+		_ = indexer.Add(r)
+	}
+	return sourcelisters.NewOCIRegistryLister(indexer)
+}
+
+func ociReg() *sourcev1alpha1.OCIRegistry {
+	return &sourcev1alpha1.OCIRegistry{
+		ObjectMeta: metav1.ObjectMeta{Name: ociRegName, Namespace: repoNamespace},
+		Spec: sourcev1alpha1.OCIRegistrySpec{
+			URL:  ociRegURL,
+			Auth: sourcev1alpha1.OCIRegistryAuthSpec{Type: sourcev1alpha1.OCIRegistryAuthTypeNone},
+		},
+	}
+}
+
+func ociSource(name, version string) corev1alpha1.ReleaseSourceSpec {
+	return corev1alpha1.ReleaseSourceSpec{
+		Type: corev1alpha1.ReleaseSourceTypeOCIRegistry,
+		OCIRegistry: &corev1alpha1.ReleaseOCIRegistrySpec{
+			Name:     ociRegName,
+			Artifact: &corev1alpha1.ReleaseOCIRegistryArtifactSpec{Name: name, Version: version},
+		},
+	}
+}
+
+func ociCoordinator(lister sourcelisters.OCIRegistryLister, fetcher ociregistry.Fetcher, store artifact.Store) Coordinator {
+	return NewCoordinator(Deps{Store: store, OCIRegistries: lister, OCIFetcher: fetcher})
+}
+
+func TestEnsure_OCIFetchSucceedsAndCaches(t *testing.T) {
+	fetcher := &fakeOCIFetcher{result: ociregistry.FetchResult{
+		Revision: revision,
+		Files:    map[string][]byte{"Chart.yaml": []byte("name: podinfo")},
+	}}
+	store := artifact.NewMemoryStore()
+	c := ociCoordinator(ociListerWith(ociReg()), fetcher, store)
+
+	res, err := c.Ensure(context.Background(), ociSource(chartName, chartVersion), repoNamespace)
+	if err != nil {
+		t.Fatalf("Ensure returned error: %v", err)
+	}
+	if !res.Ready || res.Revision != revision {
+		t.Fatalf("Result = %+v, want Ready with revision podinfo-6.5.0", res)
+	}
+	if _, ok := store.Get(artifact.Key(ociRegURL, revision)); !ok {
+		t.Errorf("artifact not stored under (url, revision) key")
+	}
+}
+
+func TestEnsure_OCIServedFromStore(t *testing.T) {
+	fetcher := &fakeOCIFetcher{}
+	store := artifact.NewMemoryStore()
+	store.Put(artifact.Key(ociRegURL, revision), artifact.Artifact{Revision: revision})
+	c := ociCoordinator(ociListerWith(ociReg()), fetcher, store)
+
+	res, err := c.Ensure(context.Background(), ociSource(chartName, chartVersion), repoNamespace)
+	if err != nil {
+		t.Fatalf("Ensure returned error: %v", err)
+	}
+	if !res.Ready || res.Revision != revision {
+		t.Fatalf("Result = %+v, want Ready from cache", res)
+	}
+	if fetcher.calls != 0 {
+		t.Errorf("fetcher was called %d times, want 0 (version is immutable, cache hit)", fetcher.calls)
+	}
+}
+
+func TestEnsure_OCIMissingCoordinateIsTerminal(t *testing.T) {
+	c := ociCoordinator(ociListerWith(ociReg()), &fakeOCIFetcher{}, artifact.NewMemoryStore())
+
+	res, err := c.Ensure(context.Background(), ociSource(chartName, ""), repoNamespace)
 	if err != nil {
 		t.Fatalf("Ensure returned error %v, want nil (terminal)", err)
 	}

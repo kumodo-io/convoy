@@ -37,6 +37,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/controller/gitrepository"
 	"github.com/kumodo-io/convoy/internal/controller/helmregistry"
+	"github.com/kumodo-io/convoy/internal/controller/ociregistry"
 )
 
 // Result reports the outcome of an Ensure call.
@@ -69,6 +70,8 @@ type Deps struct {
 	GitFetcher     gitrepository.Fetcher
 	HelmRegistries sourcelisters.HelmRegistryLister
 	HelmFetcher    helmregistry.Fetcher
+	OCIRegistries  sourcelisters.OCIRegistryLister
+	OCIFetcher     ociregistry.Fetcher
 }
 
 // coordinator is the in-process, synchronous implementation.
@@ -78,6 +81,8 @@ type coordinator struct {
 	gitFetcher     gitrepository.Fetcher
 	helmRegistries sourcelisters.HelmRegistryLister
 	helmFetcher    helmregistry.Fetcher
+	ociRegistries  sourcelisters.OCIRegistryLister
+	ociFetcher     ociregistry.Fetcher
 }
 
 // NewCoordinator builds the in-process coordinator from its dependencies.
@@ -88,6 +93,8 @@ func NewCoordinator(deps Deps) Coordinator {
 		gitFetcher:     deps.GitFetcher,
 		helmRegistries: deps.HelmRegistries,
 		helmFetcher:    deps.HelmFetcher,
+		ociRegistries:  deps.OCIRegistries,
+		ociFetcher:     deps.OCIFetcher,
 	}
 }
 
@@ -97,6 +104,8 @@ func (c *coordinator) Ensure(ctx context.Context, src corev1alpha1.ReleaseSource
 		return c.ensureGitRepository(ctx, src.GitRepository, namespace)
 	case corev1alpha1.ReleaseSourceTypeHelmRegistry:
 		return c.ensureHelmRegistry(ctx, src.HelmRegistry, namespace)
+	case corev1alpha1.ReleaseSourceTypeOCIRegistry:
+		return c.ensureOCIRegistry(ctx, src.OCIRegistry, namespace)
 	default:
 		return Result{Message: fmt.Sprintf("source type %q is not supported yet", src.Type)}, nil // terminal
 	}
@@ -175,6 +184,47 @@ func (c *coordinator) ensureHelmRegistry(ctx context.Context, src *corev1alpha1.
 	fr, err := c.helmFetcher.Fetch(ctx, reg, helmregistry.Ref{Name: src.Chart.Name, Version: src.Chart.Version})
 	if err != nil {
 		if errors.Is(err, helmregistry.ErrUnsupported) {
+			return Result{Message: err.Error()}, nil // terminal
+		}
+		return Result{Message: err.Error()}, err // transient (fetch failed)
+	}
+
+	a := artifact.Artifact{Revision: fr.Revision, Files: fr.Files}
+	c.store.Put(artifact.Key(reg.Spec.URL, fr.Revision), a)
+	return Result{Ready: true, Revision: fr.Revision, Artifact: a}, nil
+}
+
+func (c *coordinator) ensureOCIRegistry(ctx context.Context, src *corev1alpha1.ReleaseOCIRegistrySpec, namespace string) (Result, error) {
+	if src == nil {
+		return Result{Message: "ociRegistry source is not set"}, nil // terminal
+	}
+	if src.Artifact == nil || src.Artifact.Name == "" || src.Artifact.Version == "" {
+		return Result{Message: "ociRegistry artifact name and version are required"}, nil // terminal
+	}
+	ns := src.Namespace
+	if ns == "" {
+		ns = namespace
+	}
+
+	reg, err := c.ociRegistries.OCIRegistries(ns).Get(src.Name)
+	if apierrors.IsNotFound(err) {
+		// Source may be created later — transient.
+		return Result{Message: fmt.Sprintf("OCIRegistry %s/%s not found", ns, src.Name)}, fmt.Errorf("source OCIRegistry %s/%s not found", ns, src.Name)
+	}
+	if err != nil {
+		return Result{Message: err.Error()}, err
+	}
+
+	// Artifact versions are immutable, so content is addressable up front: serve
+	// from the store if already fetched.
+	revision := src.Artifact.Name + "-" + src.Artifact.Version
+	if a, ok := c.store.Get(artifact.Key(reg.Spec.URL, revision)); ok {
+		return Result{Ready: true, Revision: a.Revision, Artifact: a}, nil
+	}
+
+	fr, err := c.ociFetcher.Fetch(ctx, reg, ociregistry.Ref{Name: src.Artifact.Name, Version: src.Artifact.Version})
+	if err != nil {
+		if errors.Is(err, ociregistry.ErrUnsupported) {
 			return Result{Message: err.Error()}, nil // terminal
 		}
 		return Result{Message: err.Error()}, err // transient (fetch failed)
