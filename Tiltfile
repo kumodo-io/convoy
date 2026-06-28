@@ -25,7 +25,7 @@ local_resource(
     ignore=['**/*_test.go'],
 )
 
-# Build the dev images from the prebuilt binaries using hack/Dockerfile.dev (the
+# Build the dev images from the prebuilt binaries using dev/Dockerfile.dev (the
 # root Dockerfile compiles from source and is for CI / kind-deploy). Each build
 # selects its target. The flags come from the Deployment's args; the restart
 # wrapper owns the ENTRYPOINT, so syncing the new binary and restarting in place
@@ -33,7 +33,7 @@ local_resource(
 docker_build_with_restart(
     'convoy-apiserver:dev',
     'bin',
-    dockerfile='hack/Dockerfile.dev',
+    dockerfile='dev/Dockerfile.dev',
     target='apiserver',
     entrypoint=['/convoy-apiserver'],
     only=['convoy-apiserver'],
@@ -44,7 +44,7 @@ docker_build_with_restart(
 docker_build_with_restart(
     'convoy-controller-manager:dev',
     'bin',
-    dockerfile='hack/Dockerfile.dev',
+    dockerfile='dev/Dockerfile.dev',
     target='controller-manager',
     entrypoint=['/convoy-controller-manager'],
     only=['convoy-controller-manager'],
@@ -53,7 +53,7 @@ docker_build_with_restart(
     ],
 )
 
-k8s_yaml(kustomize('hack/kind/management'))
+k8s_yaml(kustomize('dev/deploy'))
 
 k8s_resource('convoy-etcd', labels=['convoy'])
 k8s_resource(
