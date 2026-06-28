@@ -37,6 +37,7 @@ import (
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
 	helmregistrycontroller "github.com/kumodo-io/convoy/internal/controller/helmregistry"
+	ociregistrycontroller "github.com/kumodo-io/convoy/internal/controller/ociregistry"
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 	"github.com/kumodo-io/convoy/internal/fetch"
 )
@@ -116,6 +117,11 @@ func (o *Options) Run(ctx context.Context) error {
 	helmFetcher := helmregistrycontroller.NewHelmFetcher(resolver)
 	helmController := helmregistrycontroller.NewController(client, helmRegInformer, helmFetcher)
 
+	// OCIRegistry controller: verifies OCI registries are reachable.
+	ociRegInformer := factory.Source().V1alpha1().OCIRegistries()
+	ociFetcher := ociregistrycontroller.NewOCIFetcher(resolver)
+	ociController := ociregistrycontroller.NewController(client, ociRegInformer, ociFetcher)
+
 	// Fetch coordinator: resolves a Release's source coordinate and fetches
 	// content on demand into the artifact store.
 	coordinator := fetch.NewCoordinator(fetch.Deps{
@@ -124,6 +130,8 @@ func (o *Options) Run(ctx context.Context) error {
 		GitFetcher:     gitFetcher,
 		HelmRegistries: helmRegInformer.Lister(),
 		HelmFetcher:    helmFetcher,
+		OCIRegistries:  ociRegInformer.Lister(),
+		OCIFetcher:     ociFetcher,
 	})
 
 	// Release controller: fetches via the coordinator, renders, and applies to the
@@ -139,6 +147,7 @@ func (o *Options) Run(ctx context.Context) error {
 	errGroup.Go(func() error { return clusterController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return gitController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return helmController.Run(ctx, o.Workers) })
+	errGroup.Go(func() error { return ociController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return releaseController.Run(ctx, o.Workers) })
 
 	return errGroup.Wait()
