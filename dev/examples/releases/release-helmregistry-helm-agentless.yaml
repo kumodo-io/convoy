@@ -1,0 +1,26 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Release
+metadata:
+  name: podinfo-helmreg-agentless
+  namespace: default
+spec:
+  clusterRef:
+    name: convoy-managed
+  source:
+    type: helmRegistry
+    helmRegistry:
+      name: podinfo
+      namespace: convoy-system
+      chart:
+        name: podinfo
+        version: "6.12.0"
+  content:
+    type: helm
+    helm:
+      releaseName: podinfo-from-helmreg
+      releaseNamespace: default
+      dependencyMode: vendored
+  syncPolicy:
+    automatic: true
+    pruneOrphaned: false
+    interval: 1m

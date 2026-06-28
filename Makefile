@@ -180,7 +180,7 @@ image:
 
 .PHONY: kind-up
 kind-up: kind
-	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER) || $(TOOLS_BIN)/kind create cluster --config hack/kind/management/kind-config.yaml
+	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER) || $(TOOLS_BIN)/kind create cluster --config dev/kind/management/kind-config.yaml
 
 .PHONY: kind-down
 kind-down: kind
@@ -188,7 +188,7 @@ kind-down: kind
 
 .PHONY: kind-managed-up
 kind-managed-up: kind
-	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER_MANAGED) || $(TOOLS_BIN)/kind create cluster --config hack/kind/managed/kind-config.yaml
+	$(TOOLS_BIN)/kind get clusters | grep -qx $(KIND_CLUSTER_MANAGED) || $(TOOLS_BIN)/kind create cluster --config dev/kind/managed/kind-config.yaml
 
 .PHONY: kind-managed-down
 kind-managed-down: kind
@@ -206,7 +206,7 @@ kind-managed-kubeconfig: kubectl kind-up kind-managed-up
 kind-deploy: image kind kubectl
 	$(TOOLS_BIN)/kind load docker-image $(API_SERVER_IMAGE) --name $(KIND_CLUSTER)
 	$(TOOLS_BIN)/kind load docker-image $(CONTROLLER_IMAGE) --name $(KIND_CLUSTER)
-	$(TOOLS_BIN)/kubectl apply -k hack/kind/management
+	$(TOOLS_BIN)/kubectl apply -k dev/deploy
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
 	$(TOOLS_BIN)/kubectl wait --for=condition=Available --timeout=120s \
@@ -218,7 +218,7 @@ kind-deploy: image kind kubectl
 # Smoke-test the served API end-to-end.
 .PHONY: kind-test
 kind-test: kubectl
-	$(TOOLS_BIN)/kubectl apply -f hack/kind/examples/cluster.yaml
+	$(TOOLS_BIN)/kubectl apply -f dev/examples/clusters/cluster-auth-in-cluster.yaml
 	$(TOOLS_BIN)/kubectl get clusters -A
 	$(TOOLS_BIN)/kubectl api-resources --api-group=core.convoy.kumodo.io
 
