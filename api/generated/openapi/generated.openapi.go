@@ -107,6 +107,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ResolvedSource{}.OpenAPIModelName():                              schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
 		v1alpha1.ResourceWaveStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
 		v1alpha1.ResultingDeletionPolicy{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref),
+		v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ValuesSourceGitRepositorySpec(ref),
+		v1alpha1.ValuesSourceSpec{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref),
 		extensionsv1alpha1.HealthRule{}.OpenAPIModelName():                        schema_convoy_api_extensions_v1alpha1_HealthRule(ref),
 		extensionsv1alpha1.KindHealthRule{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
 		extensionsv1alpha1.KindHealthRuleList{}.OpenAPIModelName():                schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
@@ -2170,10 +2172,25 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref common.Reference
 							Enum:        []interface{}{"resolve", "vendored"},
 						},
 					},
+					"values": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref(v1alpha1.ValuesSourceSpec{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"dependencyMode"},
 			},
 		},
+		Dependencies: []string{
+			v1alpha1.ValuesSourceSpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -3901,6 +3918,107 @@ func schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref common.Referenc
 				Required: []string{"workloads", "releases", "onUnreachable"},
 			},
 		},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ValuesSourceGitRepositorySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ValuesSourceGitRepositorySpec defines the Git repository and the location of the values files.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository] object.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace of the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository] object.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ref is the reference to the target revision of the Git repository.",
+							Ref:         ref(v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()),
+						},
+					},
+					"paths": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Paths is the list of paths to values files in the git repository.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"name", "paths"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ValuesSourceSpec defines the source of the Helm chart values",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type defines the type of values source.\n\nPossible enum values:\n - `\"configMap\"` is the values source type to get values from ConfigMap\n - `\"gitRepository\"` is the values source type to fetch Helm chart values from the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository]\n - `\"inline\"` is the values source type to get inlined values\n - `\"secret\"` is the values source type to get values from Secret",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"configMap", "gitRepository", "inline", "secret"},
+						},
+					},
+					"gitRepository": {
+						SchemaProps: spec.SchemaProps{
+							Description: "GitRepository defines the configuration of the git repository used as values source.",
+							Ref:         ref(v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName()),
+						},
+					},
+					"configMap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigMap defines the config map and the key containing the values.",
+							Ref:         ref(corev1.ConfigMapKeySelector{}.OpenAPIModelName()),
+						},
+					},
+					"secret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secret defines the secret and the key containing the values.",
+							Ref:         ref(corev1.SecretKeySelector{}.OpenAPIModelName()),
+						},
+					},
+					"inline": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Inline contains inlined values.",
+							Ref:         ref(apiextensionsv1.JSON{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"type"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName(), corev1.ConfigMapKeySelector{}.OpenAPIModelName(), corev1.SecretKeySelector{}.OpenAPIModelName(), apiextensionsv1.JSON{}.OpenAPIModelName()},
 	}
 }
 

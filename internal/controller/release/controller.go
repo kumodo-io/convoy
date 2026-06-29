@@ -34,6 +34,7 @@ import (
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/fetch"
@@ -47,18 +48,21 @@ type Controller struct {
 	releaseLister corelisters.ReleaseLister
 	clusterLister corelisters.ClusterLister
 	coordinator   fetch.Coordinator
+	resolver      auth.SecretResolver
 	deployer      Deployer
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
 }
 
 // NewController wires a Controller to a Release informer. It fetches source
-// content via the coordinator and resolves target clusters from clusterLister.
+// content via the coordinator, resolves Helm value sources (ConfigMaps/Secrets)
+// via resolver, and resolves target clusters from clusterLister.
 func NewController(
 	client clientset.Interface,
 	informer coreinformers.ReleaseInformer,
 	clusterLister corelisters.ClusterLister,
 	coordinator fetch.Coordinator,
+	resolver auth.SecretResolver,
 	deployer Deployer,
 ) *Controller {
 	c := &Controller{
@@ -66,6 +70,7 @@ func NewController(
 		releaseLister: informer.Lister(),
 		clusterLister: clusterLister,
 		coordinator:   coordinator,
+		resolver:      resolver,
 		deployer:      deployer,
 		now:           metav1.Now,
 	}
@@ -135,7 +140,15 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		return false, conditionReasonClusterNotReady, "target cluster is not reachable", fmt.Errorf("cluster %s not reachable", cluster.Name)
 	}
 
-	objects, err := render(rel.Spec.Content, art)
+	valueLayers, err := c.resolveValueLayers(ctx, rel)
+	if err != nil {
+		if errors.Is(err, ErrUnsupported) {
+			return false, conditionReasonUnsupported, err.Error(), nil // terminal
+		}
+		return false, conditionReasonValuesNotReady, err.Error(), err
+	}
+
+	objects, err := render(rel.Spec.Content, art, valueLayers)
 	if err != nil {
 		if errors.Is(err, ErrUnsupported) {
 			return false, conditionReasonUnsupported, err.Error(), nil // terminal
@@ -151,6 +164,15 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	}
 
 	return true, conditionReasonApplied, fmt.Sprintf("applied %d object(s) from revision %s", len(objects), art.Revision), nil
+}
+
+// resolveValueLayers resolves the Helm values sources to ordered raw-YAML layers.
+// Only the helm content type carries values; everything else yields no layers.
+func (c *Controller) resolveValueLayers(ctx context.Context, rel *corev1alpha1.Release) ([][]byte, error) {
+	if rel.Spec.Content.Type != corev1alpha1.ReleaseContentTypeHelm || rel.Spec.Content.Helm == nil {
+		return nil, nil
+	}
+	return resolveValues(ctx, rel.Spec.Content.Helm.Values, rel.Namespace, c.resolver, c.coordinator)
 }
 
 func orDefault(value, fallback string) string {

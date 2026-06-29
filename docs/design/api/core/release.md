@@ -211,6 +211,34 @@ spec:
       # - vendored: chart's charts/ dir is pre-populated (default, more reproducible)
       # - resolve:  run `helm dependency update` at render time (requires network)
       dependencyMode: vendored
+
+      # The list of sources of helm chart values to be applyed
+      values:
+        - type: gitRepository
+          gitRepository:
+            name: <git-repository-name>
+            namespace: ... # optional
+            ref:
+              branch: main
+              # tag: v1.2.3
+              # commit: abc123def456789aabbccddeeff001122334455
+              # semver: ">=1.2.0 <2.0.0"
+            paths:
+              - path/to/values/file/1
+              - path/to/values/file/2
+        - type: configMap
+          configMap:
+            name: <config-map-name>
+            key: <key-containing-values>
+        - type: secret
+          secret:
+            name: <secret-name>
+            key: <key-containing-values>
+        - type: inline
+          inline:
+            key-one: string-values
+            key-two: true
+            # other values
     
     # type: kustomize — for Kustomize overlays.
     # kustomize:

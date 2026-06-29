@@ -32,12 +32,14 @@ import (
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/artifact"
+	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
 const (
 	dummyFile     = "app.yaml"
 	configMapKind = "ConfigMap"
+	dummyRevision = "abc123"
 )
 
 type fakeDeployer struct {
@@ -67,9 +69,9 @@ func (f *fakeCoordinator) Ensure(context.Context, corev1alpha1.ReleaseSourceSpec
 func readyCoordinator() *fakeCoordinator {
 	return &fakeCoordinator{result: fetch.Result{
 		Ready:    true,
-		Revision: "abc123",
+		Revision: dummyRevision,
 		Artifact: artifact.Artifact{
-			Revision: "abc123",
+			Revision: dummyRevision,
 			Files:    map[string][]byte{dummyFile: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n")},
 		},
 	}}
@@ -100,6 +102,10 @@ func reachableCluster() *corev1alpha1.Cluster {
 }
 
 func newTestController(t *testing.T, rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, coordinator fetch.Coordinator, deployer Deployer) (*Controller, *fakeclient.Clientset) {
+	return newTestControllerWithResolver(t, rel, cluster, coordinator, fakeResolver{}, deployer)
+}
+
+func newTestControllerWithResolver(t *testing.T, rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, coordinator fetch.Coordinator, resolver auth.SecretResolver, deployer Deployer) (*Controller, *fakeclient.Clientset) {
 	t.Helper()
 	objs := []runtime.Object{rel}
 	if cluster != nil {
@@ -117,7 +123,7 @@ func newTestController(t *testing.T, rel *corev1alpha1.Release, cluster *corev1a
 			t.Fatalf("seeding cluster store: %v", err)
 		}
 	}
-	c := NewController(client, relInformer, clInformer.Lister(), coordinator, deployer)
+	c := NewController(client, relInformer, clInformer.Lister(), coordinator, resolver, deployer)
 	fixed := metav1.NewTime(time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
 	return c, client

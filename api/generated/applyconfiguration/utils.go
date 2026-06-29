@@ -170,6 +170,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ResourceWaveStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResultingDeletionPolicy"):
 		return &applyconfigurationcorev1alpha1.ResultingDeletionPolicyApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ValuesSourceGitRepositorySpec"):
+		return &applyconfigurationcorev1alpha1.ValuesSourceGitRepositorySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ValuesSourceSpec"):
+		return &applyconfigurationcorev1alpha1.ValuesSourceSpecApplyConfiguration{}
 
 		// Group=extensions.convoy.kumodo.io, Version=v1alpha1
 	case extensionsv1alpha1.SchemeGroupVersion.WithKind("HealthRule"):

@@ -42,7 +42,7 @@ func demoChart() artifact.Artifact {
 }
 
 func TestRenderHelm_RendersChartWithDefaults(t *testing.T) {
-	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath}, demoChart())
+	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath}, demoChart(), nil)
 	if err != nil {
 		t.Fatalf("renderHelm returned error: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestRenderHelm_RendersChartWithDefaults(t *testing.T) {
 	if cm.GetNamespace() != "default" {
 		t.Errorf("namespace = %q, want default", cm.GetNamespace())
 	}
-	greeting, _ := unstructuredString(cm.Object, "data", "greeting")
+	greeting := unstructuredString(cm.Object, "data", "greeting")
 	if greeting != "hello" {
 		t.Errorf("data.greeting = %q, want hello (chart default value)", greeting)
 	}
@@ -72,7 +72,7 @@ func TestRenderHelm_HonorsReleaseNameAndNamespace(t *testing.T) {
 		ReleaseName:      "myapp",
 		ReleaseNamespace: "prod",
 	}
-	objs, err := renderHelm(spec, demoChart())
+	objs, err := renderHelm(spec, demoChart(), nil)
 	if err != nil {
 		t.Fatalf("renderHelm returned error: %v", err)
 	}
@@ -92,14 +92,14 @@ func TestRenderHelm_ResolveDependencyModeUnsupported(t *testing.T) {
 		Path:           dummyChartPath,
 		DependencyMode: corev1alpha1.ReleaseHelmDependencyModeResolve,
 	}
-	if _, err := renderHelm(spec, demoChart()); !errors.Is(err, ErrUnsupported) {
+	if _, err := renderHelm(spec, demoChart(), nil); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}
 }
 
 func TestRenderHelm_MissingChartAtPath(t *testing.T) {
 	art := artifact.Artifact{Files: map[string][]byte{"charts/demo/Chart.yaml": []byte("apiVersion: v2\nname: demo\nversion: 0.1.0\n")}}
-	_, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: "charts/missing"}, art)
+	_, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: "charts/missing"}, art, nil)
 	if err == nil {
 		t.Fatalf("renderHelm returned nil, want error for missing chart")
 	}
@@ -108,24 +108,43 @@ func TestRenderHelm_MissingChartAtPath(t *testing.T) {
 	}
 }
 
+func TestRenderHelm_ValueLayersOverrideChartDefaults(t *testing.T) {
+	// chart default is greeting: hello; later layer wins over earlier and over default.
+	layers := [][]byte{
+		[]byte("greeting: hi\n"),
+		[]byte("greeting: bye\n"),
+	}
+	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath}, demoChart(), layers)
+	if err != nil {
+		t.Fatalf("renderHelm returned error: %v", err)
+	}
+	if len(objs) != 1 {
+		t.Fatalf("got %d objects, want 1", len(objs))
+	}
+	greeting := unstructuredString(objs[0].Object, "data", "greeting")
+	if greeting != "bye" {
+		t.Errorf("data.greeting = %q, want bye (later layer wins over chart default)", greeting)
+	}
+}
+
 // unstructuredString is a tiny nested-string getter to avoid pulling in the
 // unstructured helpers package just for the tests.
-func unstructuredString(obj map[string]any, fields ...string) (string, bool) {
+func unstructuredString(obj map[string]any, fields ...string) string {
 	cur := obj
 	for i, f := range fields {
 		v, ok := cur[f]
 		if !ok {
-			return "", false
+			return ""
 		}
 		if i == len(fields)-1 {
-			s, ok := v.(string)
-			return s, ok
+			s, _ := v.(string)
+			return s
 		}
 		next, ok := v.(map[string]any)
 		if !ok {
-			return "", false
+			return ""
 		}
 		cur = next
 	}
-	return "", false
+	return ""
 }
