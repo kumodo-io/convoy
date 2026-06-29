@@ -163,13 +163,13 @@ func isTestHook(obj *unstructured.Unstructured) bool {
 
 // mergeValueLayers deep-merges the ordered raw-YAML value layers into a single
 // values map. Later layers win over earlier ones.
-func mergeValueLayers(layers [][]byte) (map[string]interface{}, error) {
-	merged := map[string]interface{}{}
+func mergeValueLayers(layers [][]byte) (map[string]any, error) {
+	merged := map[string]any{}
 	for _, layer := range layers {
 		if len(layer) == 0 {
 			continue
 		}
-		m := map[string]interface{}{}
+		m := map[string]any{}
 		if err := yaml.Unmarshal(layer, &m); err != nil {
 			return nil, fmt.Errorf("parsing values: %w", err)
 		}
@@ -180,14 +180,14 @@ func mergeValueLayers(layers [][]byte) (map[string]interface{}, error) {
 
 // mergeMaps deep-merges src into dst, returning a new map. On key collisions src
 // wins, except where both sides are maps, which merge recursively.
-func mergeMaps(dst, src map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(dst))
+func mergeMaps(dst, src map[string]any) map[string]any {
+	out := make(map[string]any, len(dst))
 	for k, v := range dst {
 		out[k] = v
 	}
 	for k, v := range src {
-		if srcMap, ok := v.(map[string]interface{}); ok {
-			if dstMap, ok := out[k].(map[string]interface{}); ok {
+		if srcMap, ok := v.(map[string]any); ok {
+			if dstMap, ok := out[k].(map[string]any); ok {
 				out[k] = mergeMaps(dstMap, srcMap)
 				continue
 			}

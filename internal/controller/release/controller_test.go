@@ -39,6 +39,7 @@ import (
 const (
 	dummyFile     = "app.yaml"
 	configMapKind = "ConfigMap"
+	dummyRevision = "abc123"
 )
 
 type fakeDeployer struct {
@@ -68,9 +69,9 @@ func (f *fakeCoordinator) Ensure(context.Context, corev1alpha1.ReleaseSourceSpec
 func readyCoordinator() *fakeCoordinator {
 	return &fakeCoordinator{result: fetch.Result{
 		Ready:    true,
-		Revision: "abc123",
+		Revision: dummyRevision,
 		Artifact: artifact.Artifact{
-			Revision: "abc123",
+			Revision: dummyRevision,
 			Files:    map[string][]byte{dummyFile: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n")},
 		},
 	}}

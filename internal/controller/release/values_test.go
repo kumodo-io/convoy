@@ -30,6 +30,13 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
+const (
+	valuesKey      = "values.yaml"
+	dummyKeyValueA = "a: 1\n"
+	dummyKeyValueB = "b: 2\n"
+	dummyKeyValueC = "c: 3\n"
+)
+
 // fakeResolver serves ConfigMaps/Secrets from in-memory maps keyed by name.
 type fakeResolver struct {
 	configMaps map[string]*corev1.ConfigMap
@@ -59,23 +66,23 @@ func inlineEntry(raw string) corev1alpha1.ValuesSourceSpec {
 	}
 }
 
-func configMapEntry(name, key string, optional *bool) corev1alpha1.ValuesSourceSpec {
+func configMapEntry(name string, optional *bool) corev1alpha1.ValuesSourceSpec {
 	return corev1alpha1.ValuesSourceSpec{
 		Type: corev1alpha1.ValuesSourceTypeConfigMap,
 		ConfigMap: &corev1.ConfigMapKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{Name: name},
-			Key:                  key,
+			Key:                  valuesKey,
 			Optional:             optional,
 		},
 	}
 }
 
-func secretEntry(name, key string, optional *bool) corev1alpha1.ValuesSourceSpec {
+func secretEntry(name string, optional *bool) corev1alpha1.ValuesSourceSpec {
 	return corev1alpha1.ValuesSourceSpec{
 		Type: corev1alpha1.ValuesSourceTypeSecret,
 		Secret: &corev1.SecretKeySelector{
 			LocalObjectReference: corev1.LocalObjectReference{Name: name},
-			Key:                  key,
+			Key:                  valuesKey,
 			Optional:             optional,
 		},
 	}
@@ -84,16 +91,16 @@ func secretEntry(name, key string, optional *bool) corev1alpha1.ValuesSourceSpec
 func TestResolveValues_OrderedLayers(t *testing.T) {
 	resolver := fakeResolver{
 		configMaps: map[string]*corev1.ConfigMap{
-			"cm": {Data: map[string]string{"values.yaml": "b: 2\n"}},
+			"cm": {Data: map[string]string{"values.yaml": dummyKeyValueB}},
 		},
 		secrets: map[string]*corev1.Secret{
-			"sec": {Data: map[string][]byte{"values.yaml": []byte("c: 3\n")}},
+			"sec": {Data: map[string][]byte{"values.yaml": []byte(dummyKeyValueC)}},
 		},
 	}
 	entries := []corev1alpha1.ValuesSourceSpec{
 		inlineEntry(`{"a":1}`),
-		configMapEntry("cm", "values.yaml", nil),
-		secretEntry("sec", "values.yaml", nil),
+		configMapEntry("cm", nil),
+		secretEntry("sec", nil),
 	}
 
 	layers, err := resolveValues(context.Background(), entries, "ns", resolver, nil)
@@ -103,14 +110,14 @@ func TestResolveValues_OrderedLayers(t *testing.T) {
 	if len(layers) != 3 {
 		t.Fatalf("got %d layers, want 3", len(layers))
 	}
-	if string(layers[0]) != `{"a":1}` || string(layers[1]) != "b: 2\n" || string(layers[2]) != "c: 3\n" {
+	if string(layers[0]) != `{"a":1}` || string(layers[1]) != dummyKeyValueB || string(layers[2]) != dummyKeyValueC {
 		t.Errorf("layers out of order or wrong content: %q", layers)
 	}
 }
 
 func TestResolveValues_OptionalMissingSkipped(t *testing.T) {
 	layers, err := resolveValues(context.Background(),
-		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", "values.yaml", boolPtr(true))},
+		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", boolPtr(true))},
 		"ns", fakeResolver{}, nil)
 	if err != nil {
 		t.Fatalf("resolveValues returned error: %v", err)
@@ -122,7 +129,7 @@ func TestResolveValues_OptionalMissingSkipped(t *testing.T) {
 
 func TestResolveValues_RequiredMissingIsTransient(t *testing.T) {
 	_, err := resolveValues(context.Background(),
-		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", "values.yaml", nil)},
+		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", nil)},
 		"ns", fakeResolver{}, nil)
 	if err == nil {
 		t.Fatalf("resolveValues returned nil, want a (transient) error")
@@ -137,7 +144,7 @@ func TestResolveValues_MissingKeyIsTransient(t *testing.T) {
 		"cm": {Data: map[string]string{"other": "x"}},
 	}}
 	_, err := resolveValues(context.Background(),
-		[]corev1alpha1.ValuesSourceSpec{configMapEntry("cm", "values.yaml", nil)},
+		[]corev1alpha1.ValuesSourceSpec{configMapEntry("cm", nil)},
 		"ns", resolver, nil)
 	if err == nil {
 		t.Fatalf("resolveValues returned nil, want error for missing key")
@@ -165,8 +172,8 @@ func TestResolveValues_GitRepositoryReadsPathsInOrder(t *testing.T) {
 		Ready:    true,
 		Revision: "abc123",
 		Artifact: artifact.Artifact{Files: map[string][]byte{
-			"env/values.yaml":   []byte("a: 1\n"),
-			"env/override.yaml": []byte("b: 2\n"),
+			"env/values.yaml":   []byte(dummyKeyValueA),
+			"env/override.yaml": []byte(dummyKeyValueB),
 		}},
 	}}
 	layers, err := resolveValues(context.Background(),
@@ -175,7 +182,7 @@ func TestResolveValues_GitRepositoryReadsPathsInOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveValues returned error: %v", err)
 	}
-	if len(layers) != 2 || string(layers[0]) != "a: 1\n" || string(layers[1]) != "b: 2\n" {
+	if len(layers) != 2 || string(layers[0]) != dummyKeyValueA || string(layers[1]) != dummyKeyValueB {
 		t.Errorf("layers = %q, want [a:1, b:2] in path order", layers)
 	}
 }
