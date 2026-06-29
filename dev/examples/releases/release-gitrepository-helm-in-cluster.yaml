@@ -18,6 +18,14 @@ spec:
     helm:
       path: charts/podinfo
       releaseName: podinfo-helm
+      values:
+        - type: inline
+          inline:
+            probes:
+              readiness:
+                initialDelaySeconds: 30
+              liveness:
+                initialDelaySeconds: 30
   syncPolicy:
     automatic: true
     pruneOrphaned: false

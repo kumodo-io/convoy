@@ -38,6 +38,7 @@ type ReleaseContentHelmSpecApplyConfiguration struct {
 	Path *string `json:"path,omitempty"`
 	// DependencyMode is the dependency mode for the Helm chart.
 	DependencyMode *corev1alpha1.ReleaseHelmDependencyMode `json:"dependencyMode,omitempty"`
+	Values         []ValuesSourceSpecApplyConfiguration    `json:"values,omitempty"`
 }
 
 // ReleaseContentHelmSpecApplyConfiguration constructs a declarative configuration of the ReleaseContentHelmSpec type for use with
@@ -75,5 +76,18 @@ func (b *ReleaseContentHelmSpecApplyConfiguration) WithPath(value string) *Relea
 // If called multiple times, the DependencyMode field is set to the value of the last call.
 func (b *ReleaseContentHelmSpecApplyConfiguration) WithDependencyMode(value corev1alpha1.ReleaseHelmDependencyMode) *ReleaseContentHelmSpecApplyConfiguration {
 	b.DependencyMode = &value
+	return b
+}
+
+// WithValues adds the given value to the Values field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Values field.
+func (b *ReleaseContentHelmSpecApplyConfiguration) WithValues(values ...*ValuesSourceSpecApplyConfiguration) *ReleaseContentHelmSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithValues")
+		}
+		b.Values = append(b.Values, *values[i])
+	}
 	return b
 }

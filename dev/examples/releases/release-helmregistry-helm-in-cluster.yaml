@@ -20,6 +20,19 @@ spec:
       releaseName: podinfo-from-helmreg
       releaseNamespace: default
       dependencyMode: vendored
+      values:
+        - type: gitRepository
+          gitRepository:
+            name: podinfo-values
+            namespace: convoy-system
+            ref:
+              branch: main
+            paths:
+              - podinfo/values.yaml
+        - type: inline
+          inline:
+            image:
+              tag: 6.13.0
   syncPolicy:
     automatic: true
     pruneOrphaned: false

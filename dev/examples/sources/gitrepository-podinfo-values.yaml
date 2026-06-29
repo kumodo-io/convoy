@@ -1,0 +1,13 @@
+apiVersion: source.convoy.kumodo.io/v1alpha1
+kind: GitRepository
+metadata:
+  name: podinfo-values
+  namespace: convoy-system
+spec:
+  auth:
+    type: none
+  interval: 1m0s
+  minSyncInterval: 30s
+  tls:
+    insecureSkipVerify: true
+  url: https://github.com/BROngineer/podinfo-values.git

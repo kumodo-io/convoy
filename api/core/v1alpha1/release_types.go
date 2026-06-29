@@ -55,6 +55,25 @@ const (
 	ReleaseHelmDependencyModeVendored ReleaseHelmDependencyMode = "vendored"
 )
 
+// ValuesSourceType defines the type of the values source
+// +enum
+type ValuesSourceType string
+
+const (
+	// ValuesSourceTypeGitRepository is the values source type to fetch Helm chart
+	// values from the [github.com/kumodo-io/convoy/api/source/v1alpha1.GitRepository]
+	ValuesSourceTypeGitRepository ValuesSourceType = "gitRepository"
+
+	// ValuesSourceTypeConfigMap is the values source type to get values from ConfigMap
+	ValuesSourceTypeConfigMap ValuesSourceType = "configMap"
+
+	// ValuesSourceTypeSecret is the values source type to get values from Secret
+	ValuesSourceTypeSecret ValuesSourceType = "secret"
+
+	// ValuesSourceTypeInline is the values source type to get inlined values
+	ValuesSourceTypeInline ValuesSourceType = "inline"
+)
+
 // ReleaseWaveStrategy defines the wave strategy.
 // +enum
 type ReleaseWaveStrategy string
@@ -448,6 +467,9 @@ type ReleaseContentHelmSpec struct {
 
 	// DependencyMode is the dependency mode for the Helm chart.
 	DependencyMode ReleaseHelmDependencyMode `json:"dependencyMode"`
+
+	// Values contains a list of values sources to be applied to the Helm chart.
+	Values []ValuesSourceSpec `json:"values,omitempty"`
 }
 
 // ReleaseContentManifestsSpec defines the manifests content of the release.
@@ -484,6 +506,32 @@ type ReleaseContentJsonnetSpec struct {
 	// +listType=map
 	// +listMapKey=name
 	TLA []corev1.EnvVar `json:"tla,omitempty"`
+}
+
+// ValuesSourceSpec defines the source of the Helm chart values
+type ValuesSourceSpec struct {
+	// Type defines the type of values source.
+	Type ValuesSourceType `json:"type"`
+
+	// GitRepository defines the configuration of the git repository used as values source.
+	GitRepository *ValuesSourceGitRepositorySpec `json:"gitRepository,omitempty"`
+
+	// ConfigMap defines the config map and the key containing the values.
+	ConfigMap *corev1.ConfigMapKeySelector `json:"configMap,omitempty"`
+
+	// Secret defines the secret and the key containing the values.
+	Secret *corev1.SecretKeySelector `json:"secret,omitempty"`
+
+	// Inline contains inlined values.
+	Inline *apiextensionsv1.JSON `json:"inline,omitempty"`
+}
+
+// ValuesSourceGitRepositorySpec defines the Git repository and the location of the values files.
+type ValuesSourceGitRepositorySpec struct {
+	*ReleaseGitRepositorySpec `json:",inline"`
+
+	// Paths is the list of paths to values files in the git repository.
+	Paths []string `json:"paths"`
 }
 
 // ReleaseClusterRefSpec defines the desired state of the ReleaseClusterRef.

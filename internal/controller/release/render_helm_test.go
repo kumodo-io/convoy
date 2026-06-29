@@ -42,7 +42,7 @@ func demoChart() artifact.Artifact {
 }
 
 func TestRenderHelm_RendersChartWithDefaults(t *testing.T) {
-	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath}, demoChart())
+	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath}, demoChart(), nil)
 	if err != nil {
 		t.Fatalf("renderHelm returned error: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestRenderHelm_HonorsReleaseNameAndNamespace(t *testing.T) {
 		ReleaseName:      "myapp",
 		ReleaseNamespace: "prod",
 	}
-	objs, err := renderHelm(spec, demoChart())
+	objs, err := renderHelm(spec, demoChart(), nil)
 	if err != nil {
 		t.Fatalf("renderHelm returned error: %v", err)
 	}
@@ -92,19 +92,38 @@ func TestRenderHelm_ResolveDependencyModeUnsupported(t *testing.T) {
 		Path:           dummyChartPath,
 		DependencyMode: corev1alpha1.ReleaseHelmDependencyModeResolve,
 	}
-	if _, err := renderHelm(spec, demoChart()); !errors.Is(err, ErrUnsupported) {
+	if _, err := renderHelm(spec, demoChart(), nil); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}
 }
 
 func TestRenderHelm_MissingChartAtPath(t *testing.T) {
 	art := artifact.Artifact{Files: map[string][]byte{"charts/demo/Chart.yaml": []byte("apiVersion: v2\nname: demo\nversion: 0.1.0\n")}}
-	_, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: "charts/missing"}, art)
+	_, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: "charts/missing"}, art, nil)
 	if err == nil {
 		t.Fatalf("renderHelm returned nil, want error for missing chart")
 	}
 	if errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want a non-Unsupported error", err)
+	}
+}
+
+func TestRenderHelm_ValueLayersOverrideChartDefaults(t *testing.T) {
+	// chart default is greeting: hello; later layer wins over earlier and over default.
+	layers := [][]byte{
+		[]byte("greeting: hi\n"),
+		[]byte("greeting: bye\n"),
+	}
+	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath}, demoChart(), layers)
+	if err != nil {
+		t.Fatalf("renderHelm returned error: %v", err)
+	}
+	if len(objs) != 1 {
+		t.Fatalf("got %d objects, want 1", len(objs))
+	}
+	greeting, _ := unstructuredString(objs[0].Object, "data", "greeting")
+	if greeting != "bye" {
+		t.Errorf("data.greeting = %q, want bye (later layer wins over chart default)", greeting)
 	}
 }
 

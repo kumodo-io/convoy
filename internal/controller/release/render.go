@@ -37,8 +37,9 @@ import (
 var ErrUnsupported = errors.New("unsupported release configuration")
 
 // render turns a source artifact into the objects to apply, dispatching on the
-// content type.
-func render(content corev1alpha1.ReleaseContentSpec, art artifact.Artifact) ([]*unstructured.Unstructured, error) {
+// content type. valueLayers are the ordered, pre-resolved Helm values (used only
+// by the helm content type; ignored otherwise).
+func render(content corev1alpha1.ReleaseContentSpec, art artifact.Artifact, valueLayers [][]byte) ([]*unstructured.Unstructured, error) {
 	switch content.Type {
 	case corev1alpha1.ReleaseContentTypeManifests:
 		if content.Manifests == nil {
@@ -49,7 +50,7 @@ func render(content corev1alpha1.ReleaseContentSpec, art artifact.Artifact) ([]*
 		if content.Helm == nil {
 			return nil, errors.Join(ErrUnsupported, fmt.Errorf("helm content block is missing"))
 		}
-		return renderHelm(content.Helm, art)
+		return renderHelm(content.Helm, art, valueLayers)
 	default:
 		return nil, errors.Join(ErrUnsupported, fmt.Errorf("content type %q is not supported yet", content.Type))
 	}

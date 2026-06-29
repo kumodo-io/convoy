@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v3/pkg/engine"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"sigs.k8s.io/yaml"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
@@ -38,7 +39,7 @@ import (
 // binary. Only vendored dependencies are supported. Namespace injection onto
 // rendered objects (for resources that omit one) is left to the deployer, which
 // has the cluster's RESTMapper to tell namespaced from cluster-scoped kinds.
-func renderHelm(spec *corev1alpha1.ReleaseContentHelmSpec, art artifact.Artifact) ([]*unstructured.Unstructured, error) {
+func renderHelm(spec *corev1alpha1.ReleaseContentHelmSpec, art artifact.Artifact, valueLayers [][]byte) ([]*unstructured.Unstructured, error) {
 	switch spec.DependencyMode {
 	case "", corev1alpha1.ReleaseHelmDependencyModeVendored:
 		// supported
@@ -82,7 +83,14 @@ func renderHelm(spec *corev1alpha1.ReleaseContentHelmSpec, art artifact.Artifact
 		namespace = metav1.NamespaceDefault
 	}
 
-	values, err := chartutil.ToRenderValues(chrt, map[string]any{}, chartutil.ReleaseOptions{
+	// Merge the ordered user value layers (later wins), to be coalesced over the
+	// chart's own values.yaml by ToRenderValues.
+	userValues, err := mergeValueLayers(valueLayers)
+	if err != nil {
+		return nil, err
+	}
+
+	values, err := chartutil.ToRenderValues(chrt, userValues, chartutil.ReleaseOptions{
 		Name:      name,
 		Namespace: namespace,
 		IsInstall: true,
@@ -151,4 +159,40 @@ func chartFiles(files map[string][]byte, p string) []*loader.BufferedFile {
 // which should not be applied as part of a release.
 func isTestHook(obj *unstructured.Unstructured) bool {
 	return strings.Contains(obj.GetAnnotations()["helm.sh/hook"], "test")
+}
+
+// mergeValueLayers deep-merges the ordered raw-YAML value layers into a single
+// values map. Later layers win over earlier ones.
+func mergeValueLayers(layers [][]byte) (map[string]interface{}, error) {
+	merged := map[string]interface{}{}
+	for _, layer := range layers {
+		if len(layer) == 0 {
+			continue
+		}
+		m := map[string]interface{}{}
+		if err := yaml.Unmarshal(layer, &m); err != nil {
+			return nil, fmt.Errorf("parsing values: %w", err)
+		}
+		merged = mergeMaps(merged, m)
+	}
+	return merged, nil
+}
+
+// mergeMaps deep-merges src into dst, returning a new map. On key collisions src
+// wins, except where both sides are maps, which merge recursively.
+func mergeMaps(dst, src map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(dst))
+	for k, v := range dst {
+		out[k] = v
+	}
+	for k, v := range src {
+		if srcMap, ok := v.(map[string]interface{}); ok {
+			if dstMap, ok := out[k].(map[string]interface{}); ok {
+				out[k] = mergeMaps(dstMap, srcMap)
+				continue
+			}
+		}
+		out[k] = v
+	}
+	return out
 }

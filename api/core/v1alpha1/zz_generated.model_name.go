@@ -285,3 +285,13 @@ func (in ResourceWaveStatus) OpenAPIModelName() string {
 func (in ResultingDeletionPolicy) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ResultingDeletionPolicy"
 }
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ValuesSourceGitRepositorySpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ValuesSourceGitRepositorySpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ValuesSourceSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ValuesSourceSpec"
+}

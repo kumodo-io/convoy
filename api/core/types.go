@@ -159,6 +159,15 @@ const (
 	ReleaseHelmDependencyModeVendored ReleaseHelmDependencyMode = "vendored"
 )
 
+type ValuesSourceType string
+
+const (
+	ValuesSourceTypeGitRepository ValuesSourceType = "gitRepository"
+	ValuesSourceTypeConfigMap     ValuesSourceType = "configMap"
+	ValuesSourceTypeSecret        ValuesSourceType = "secret"
+	ValuesSourceTypeInline        ValuesSourceType = "inline"
+)
+
 type ReleaseWaveStrategy string
 
 const (
@@ -345,6 +354,7 @@ type ReleaseContentHelmSpec struct {
 	ReleaseNamespace string
 	Path             string
 	DependencyMode   ReleaseHelmDependencyMode
+	Values           []ValuesSourceSpec
 }
 
 type ReleaseContentManifestsSpec struct {
@@ -361,6 +371,19 @@ type ReleaseContentJsonnetSpec struct {
 	TargetNamespace string
 	Path            string
 	TLA             []corev1.EnvVar
+}
+
+type ValuesSourceSpec struct {
+	Type          ValuesSourceType
+	GitRepository *ValuesSourceGitRepositorySpec
+	ConfigMap     *corev1.ConfigMapKeySelector
+	Secret        *corev1.SecretKeySelector
+	Inline        *apiextensionsv1.JSON
+}
+
+type ValuesSourceGitRepositorySpec struct {
+	*ReleaseGitRepositorySpec
+	Paths []string
 }
 
 type ReleaseClusterRefSpec struct {

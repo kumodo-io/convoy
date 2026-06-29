@@ -44,7 +44,7 @@ func TestRender_DirectoryPathMultiDoc(t *testing.T) {
 		"other/skip.yaml":     []byte(cmA),
 	}}
 
-	objs, err := render(manifestsContent("manifests"), art)
+	objs, err := render(manifestsContent("manifests"), art, nil)
 	if err != nil {
 		t.Fatalf("render returned error: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestRender_DirectoryPathMultiDoc(t *testing.T) {
 func TestRender_SingleFilePath(t *testing.T) {
 	art := artifact.Artifact{Files: map[string][]byte{dummyFile: []byte(cmA)}}
 
-	objs, err := render(manifestsContent(dummyFile), art)
+	objs, err := render(manifestsContent(dummyFile), art, nil)
 	if err != nil {
 		t.Fatalf("render returned error: %v", err)
 	}
@@ -72,28 +72,28 @@ func TestRender_SingleFilePath(t *testing.T) {
 
 func TestRender_UnsupportedContentType(t *testing.T) {
 	content := corev1alpha1.ReleaseContentSpec{Type: corev1alpha1.ReleaseContentTypeKustomize}
-	if _, err := render(content, artifact.Artifact{}); !errors.Is(err, ErrUnsupported) {
+	if _, err := render(content, artifact.Artifact{}, nil); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}
 }
 
 func TestRender_MissingHelmBlock(t *testing.T) {
 	content := corev1alpha1.ReleaseContentSpec{Type: corev1alpha1.ReleaseContentTypeHelm}
-	if _, err := render(content, artifact.Artifact{}); !errors.Is(err, ErrUnsupported) {
+	if _, err := render(content, artifact.Artifact{}, nil); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}
 }
 
 func TestRender_MissingManifestsBlock(t *testing.T) {
 	content := corev1alpha1.ReleaseContentSpec{Type: corev1alpha1.ReleaseContentTypeManifests}
-	if _, err := render(content, artifact.Artifact{}); !errors.Is(err, ErrUnsupported) {
+	if _, err := render(content, artifact.Artifact{}, nil); !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}
 }
 
 func TestRender_NoFilesAtPath(t *testing.T) {
 	art := artifact.Artifact{Files: map[string][]byte{dummyFile: []byte(cmA)}}
-	_, err := render(manifestsContent("nope"), art)
+	_, err := render(manifestsContent("nope"), art, nil)
 	if err == nil {
 		t.Fatalf("render returned nil, want error for missing path")
 	}
