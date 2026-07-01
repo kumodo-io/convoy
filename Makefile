@@ -149,7 +149,7 @@ build:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -race ./...
 
 .PHONY: go-tools
 go-tools:

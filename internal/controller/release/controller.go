@@ -23,6 +23,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"sync"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +44,11 @@ import (
 	"github.com/kumodo-io/convoy/internal/inventory"
 )
 
+const (
+	CustomResourceDefinitionKind  = "CustomResourceDefinition"
+	CustomResourceDefinitionGroup = "apiextensions.k8s.io"
+)
+
 // Controller reconciles Release objects: fetch source content → render → apply
 // to the target cluster → record status.
 type Controller struct {
@@ -53,8 +60,34 @@ type Controller struct {
 	resolver      auth.SecretResolver
 	inventory     inventory.Store
 	deployer      Deployer
+	// failures tracks consecutive transient reconcile failures per Release, to
+	// drive per-Release retry backoff. In-memory; reset on a terminal outcome.
+	failures *failureCounts
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
+}
+
+// failureCounts is a concurrency-safe per-key consecutive-failure counter.
+type failureCounts struct {
+	mu sync.Mutex
+	n  map[string]int
+}
+
+func newFailureCounts() *failureCounts { return &failureCounts{n: make(map[string]int)} }
+
+// inc increments and returns the failure count for key.
+func (f *failureCounts) inc(key string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.n[key]++
+	return f.n[key]
+}
+
+// reset clears the failure streak for key.
+func (f *failureCounts) reset(key string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.n, key)
 }
 
 // NewController wires a Controller to a Release informer. It fetches source
@@ -78,6 +111,7 @@ func NewController(
 		resolver:      resolver,
 		inventory:     inv,
 		deployer:      deployer,
+		failures:      newFailureCounts(),
 		now:           metav1.Now,
 	}
 	c.Controller = base.NewController("release", c.syncHandler)
@@ -113,24 +147,66 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		klog.V(4).InfoS("updated release status", "release", key, "ready", ready, "reason", reason)
 	}
 
-	// On a terminal outcome (recErr == nil), schedule the next drift re-check at
-	// the Release's poll interval. Transient failures (recErr != nil) are left to
-	// the rate-limited retry instead. Sync is currently unconditional: manual
+	// Requeue policy. Sync is currently unconditional: manual
 	// (syncPolicy.automatic=false) gating awaits the /sync and /diff subresources,
 	// and pause/suspend will be a separate spec field or label.
-	if d := syncRequeueAfter(rel); d > 0 && recErr == nil {
-		c.EnqueueAfter(key, d)
+	switch {
+	case recErr != nil && rel.Spec.SyncPolicy.RetryBackoff.Initial.Duration > 0:
+		// Transient failure with a per-Release backoff configured: drive the retry
+		// ourselves and return nil so base's default rate limiter doesn't also
+		// schedule one (the delaying queue would otherwise pick the earlier timer).
+		n := c.failures.inc(key)
+		delay := backoffDelay(rel.Spec.SyncPolicy.RetryBackoff, n)
+		utilruntime.HandleError(fmt.Errorf("release %s: %w (retry %d in %s)", key, recErr, n, delay))
+		c.EnqueueAfter(key, delay)
+		return nil
+	case recErr != nil:
+		// Transient failure, no custom backoff: base's default rate limiter retries.
+		return recErr
+	default:
+		// Terminal (success or Unsupported): clear the failure streak and schedule
+		// the next drift re-check at the Release's poll interval.
+		c.failures.reset(key)
+		if d := syncRequeueAfter(rel); d > 0 {
+			c.EnqueueAfter(key, d)
+		}
+		return nil
 	}
-
-	// recErr != nil → transient, rate-limited retry. recErr == nil → terminal
-	// (success or an Unsupported configuration), let resync re-check.
-	return recErr
 }
 
 // syncRequeueAfter returns the per-Release drift re-check interval, or 0 when
 // none is configured (in which case only the informer resync drives re-checks).
 func syncRequeueAfter(rel *corev1alpha1.Release) time.Duration {
 	return rel.Spec.SyncPolicy.Interval.Duration
+}
+
+// defaultBackoffFactor is used when the configured factor is unset/invalid.
+const defaultBackoffFactor = 2.0
+
+// defaultMaxBackoff caps per-Release retry backoff when Max is unset, bounding
+// both the wait and float growth.
+const defaultMaxBackoff = 1000 * time.Second
+
+// backoffDelay computes the wait before the attempt-th consecutive retry
+// (1-based): Initial * Factor^(attempt-1), capped at Max (or defaultMaxBackoff).
+func backoffDelay(spec corev1alpha1.ReleaseRetryBackoffSpec, attempt int) time.Duration {
+	max := spec.Max.Duration
+	if max <= 0 {
+		max = defaultMaxBackoff
+	}
+	factor := spec.Factor
+	if factor < 1 {
+		factor = defaultBackoffFactor
+	}
+	if attempt < 1 {
+		attempt = 1
+	}
+
+	d := float64(spec.Initial.Duration) * math.Pow(factor, float64(attempt-1))
+	if math.IsInf(d, 0) || d > float64(max) {
+		return max
+	}
+	return time.Duration(d)
 }
 
 // reconcile runs the render-and-apply steps and returns the Ready outcome plus a
@@ -230,7 +306,7 @@ func protectedFilter(orphans []inventory.Ref, policy corev1alpha1.PruneSpec) []i
 }
 
 func isCRD(r inventory.Ref) bool {
-	return r.Kind == "CustomResourceDefinition" && r.Group == "apiextensions.k8s.io"
+	return r.Kind == CustomResourceDefinitionKind && r.Group == CustomResourceDefinitionGroup
 }
 
 func isNamespace(r inventory.Ref) bool {

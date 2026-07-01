@@ -186,7 +186,7 @@ func cmRef(name string) inventory.Ref {
 func TestProtectedFilter(t *testing.T) {
 	orphans := []inventory.Ref{
 		cmRef("cm"),
-		{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition", Name: "widgets.example.com"},
+		{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "widgets.example.com"},
 		{Version: "v1", Kind: "Namespace", Name: "team-a"},
 	}
 
@@ -228,7 +228,7 @@ func TestSyncHandler_CRDProtectedFromPrune(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
-	crd := inventory.Ref{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition", Name: "widgets.example.com"}
+	crd := inventory.Ref{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "widgets.example.com"}
 	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), crd})
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
@@ -289,6 +289,104 @@ func TestSyncHandler_NoPruneOnDeployFailure(t *testing.T) {
 	}
 	if deployer.pruned != nil {
 		t.Errorf("pruned despite deploy failure: %+v", deployer.pruned)
+	}
+}
+
+func TestBackoffDelay(t *testing.T) {
+	spec := corev1alpha1.ReleaseRetryBackoffSpec{
+		Initial: metav1.Duration{Duration: time.Second},
+		Max:     metav1.Duration{Duration: 30 * time.Second},
+		Factor:  2,
+	}
+	cases := []struct {
+		attempt int
+		want    time.Duration
+	}{
+		{1, time.Second},       // Initial
+		{2, 2 * time.Second},   // Initial * 2
+		{3, 4 * time.Second},   // Initial * 4
+		{10, 30 * time.Second}, // capped at Max
+	}
+	for _, c := range cases {
+		if got := backoffDelay(spec, c.attempt); got != c.want {
+			t.Errorf("backoffDelay(attempt=%d) = %v, want %v", c.attempt, got, c.want)
+		}
+	}
+
+	// Factor < 1 falls back to the default (2), so attempt 2 doubles.
+	noFactor := corev1alpha1.ReleaseRetryBackoffSpec{Initial: metav1.Duration{Duration: time.Second}}
+	if got := backoffDelay(noFactor, 2); got != 2*time.Second {
+		t.Errorf("backoffDelay with unset factor = %v, want 2s", got)
+	}
+	// A huge attempt is capped, not overflowed.
+	if got := backoffDelay(spec, 1000); got != 30*time.Second {
+		t.Errorf("backoffDelay(attempt=1000) = %v, want cap 30s", got)
+	}
+}
+
+func TestFailureCounts(t *testing.T) {
+	f := newFailureCounts()
+	if n := f.inc("ns/a"); n != 1 {
+		t.Errorf("first inc = %d, want 1", n)
+	}
+	if n := f.inc("ns/a"); n != 2 {
+		t.Errorf("second inc = %d, want 2", n)
+	}
+	f.reset("ns/a")
+	if n := f.inc("ns/a"); n != 1 {
+		t.Errorf("inc after reset = %d, want 1", n)
+	}
+}
+
+func backoffRelease() *corev1alpha1.Release {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.RetryBackoff = corev1alpha1.ReleaseRetryBackoffSpec{
+		Initial: metav1.Duration{Duration: time.Second},
+		Max:     metav1.Duration{Duration: time.Minute},
+		Factor:  2,
+	}
+	return rel
+}
+
+func TestSyncHandler_CustomBackoffHandlesRetry(t *testing.T) {
+	coordinator := &fakeCoordinator{err: errors.New("GitRepository not ready")}
+	c, _ := newTestController(t, backoffRelease(), reachableCluster(), coordinator, &fakeDeployer{})
+
+	// Transient failure with a configured backoff is handled internally → nil,
+	// and the consecutive-failure count climbs.
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned %v, want nil (custom backoff handled)", err)
+	}
+	if c.failures.n["ns/r1"] != 1 {
+		t.Errorf("failure count = %d, want 1 after one failure", c.failures.n["ns/r1"])
+	}
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("second syncHandler returned %v, want nil", err)
+	}
+	if c.failures.n["ns/r1"] != 2 {
+		t.Errorf("failure count = %d, want 2 after two failures", c.failures.n["ns/r1"])
+	}
+}
+
+func TestSyncHandler_DefaultRateLimitWhenNoBackoff(t *testing.T) {
+	coordinator := &fakeCoordinator{err: errors.New("GitRepository not ready")}
+	// manifestsRelease() has no RetryBackoff → default path returns the error.
+	c, _ := newTestController(t, manifestsRelease(), reachableCluster(), coordinator, &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
+		t.Fatalf("syncHandler returned nil, want error (default rate-limited retry)")
+	}
+}
+
+func TestSyncHandler_SuccessResetsFailures(t *testing.T) {
+	c, _ := newTestController(t, backoffRelease(), reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	c.failures.inc("ns/r1") // pretend a prior failure streak
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if c.failures.n["ns/r1"] != 0 {
+		t.Errorf("failure count = %d, want 0 (reset on success)", c.failures.n["ns/r1"])
 	}
 }
 
