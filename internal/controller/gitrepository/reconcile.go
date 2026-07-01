@@ -60,6 +60,7 @@ func computeStatus(repo *sourcev1alpha1.GitRepository, verifyErr error, now meta
 		cond.Status = metav1.ConditionTrue
 		cond.Reason = conditionReasonVerified
 		cond.Message = "repository is reachable and authenticated"
+		status.LastSuccessfulProbeAt = &now
 	}
 
 	apimeta.SetStatusCondition(&status.Conditions, cond)

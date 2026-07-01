@@ -21,6 +21,8 @@ package release
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -29,6 +31,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -134,8 +137,12 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		return err
 	}
 
-	ready, reason, message, recErr := c.reconcile(ctx, rel)
-	newStatus := computeStatus(rel, c.now(), ready, reason, message)
+	outcome, recErr := c.reconcile(ctx, rel)
+	newStatus := computeStatus(rel, c.now(), outcome.ready, outcome.reason, outcome.message)
+	newStatus.LastAttempted = &outcome.attempt
+	if outcome.ready {
+		newStatus.LastSuccessful = outcome.attempt.DeepCopy()
+	}
 
 	if statusChanged(rel, newStatus) {
 		updated := rel.DeepCopy()
@@ -144,7 +151,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		if _, err := c.client.CoreV1alpha1().Releases(namespace).UpdateStatus(ctx, updated, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("updating status: %w", err)
 		}
-		klog.V(4).InfoS("updated release status", "release", key, "ready", ready, "reason", reason)
+		klog.V(4).InfoS("updated release status", "release", key, "ready", outcome.ready, "reason", outcome.reason)
 	}
 
 	// Requeue policy. Sync is currently unconditional: manual
@@ -209,56 +216,79 @@ func backoffDelay(spec corev1alpha1.ReleaseRetryBackoffSpec, attempt int) time.D
 	return time.Duration(d)
 }
 
-// reconcile runs the render-and-apply steps and returns the Ready outcome plus a
-// requeue error (non-nil = transient, retry).
-func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (ready bool, reason, message string, err error) {
-	// Ensure the source content is fetched and cached. The coordinator dispatches
-	// on source type. A non-nil error is transient (requeue); a not-ready result
-	// with no error is a terminal config problem (e.g. unsupported source
-	// type/auth/ref).
+// reconcileOutcome is the result of a reconcile: the Ready condition inputs plus
+// the attempt record to persist in status.
+type reconcileOutcome struct {
+	ready   bool
+	reason  string
+	message string
+	attempt corev1alpha1.ReleaseAttemptedRenderStatus
+}
+
+// reconcile runs fetch → render → apply → prune, building an attempt record. It
+// always applies on the success path (drift correction). The returned error is a
+// requeue signal (non-nil = transient).
+func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (reconcileOutcome, error) {
+	now := c.now()
+	attempt := corev1alpha1.ReleaseAttemptedRenderStatus{
+		AttemptedAt:    &now,
+		ResolvedSource: resolvedSourceFrom(rel),
+	}
+	fail := func(reason, message string, stage corev1alpha1.ReleaseRenderAttemptStage, err error) (reconcileOutcome, error) {
+		attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseFailed
+		attempt.Failure = &corev1alpha1.ReleaseAttemptedRenderFailureStatus{Stage: stage, Message: message}
+		return reconcileOutcome{reason: reason, message: message, attempt: attempt}, err
+	}
+
+	// Ensure source content is fetched. A non-nil error is transient (requeue); a
+	// not-ready result with no error is a terminal config problem.
 	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source, rel.Namespace)
 	if err != nil {
-		return false, conditionReasonSourceNotReady, err.Error(), err
+		return fail(conditionReasonSourceNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSourceResolution, err)
 	}
 	if !res.Ready {
-		return false, conditionReasonUnsupported, res.Message, nil // terminal
+		return fail(conditionReasonUnsupported, res.Message, corev1alpha1.ReleaseRenderAttemptStageSourceResolution, nil)
 	}
+	attempt.ResolvedSource.Revision = res.Revision
+	attempt.ResolvedSource.URL = res.URL
 	art := res.Artifact
 
 	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
 	cluster, err := c.clusterLister.Clusters(clusterNamespace).Get(rel.Spec.ClusterRef.Name)
 	if apierrors.IsNotFound(err) {
-		return false, conditionReasonClusterNotReady, fmt.Sprintf("target cluster %s/%s not found", clusterNamespace, rel.Spec.ClusterRef.Name), fmt.Errorf("cluster not found")
+		return fail(conditionReasonClusterNotReady, fmt.Sprintf("target cluster %s/%s not found", clusterNamespace, rel.Spec.ClusterRef.Name), corev1alpha1.ReleaseRenderAttemptStageClusterResolution, fmt.Errorf("cluster not found"))
 	}
 	if err != nil {
-		return false, conditionReasonClusterNotReady, err.Error(), err
+		return fail(conditionReasonClusterNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageClusterResolution, err)
 	}
 	if !cluster.Status.Reachable {
-		return false, conditionReasonClusterNotReady, "target cluster is not reachable", fmt.Errorf("cluster %s not reachable", cluster.Name)
+		return fail(conditionReasonClusterNotReady, "target cluster is not reachable", corev1alpha1.ReleaseRenderAttemptStageClusterResolution, fmt.Errorf("cluster %s not reachable", cluster.Name))
 	}
+	attempt.ResolvedCluster = resolvedClusterFrom(cluster)
 
 	valueLayers, err := c.resolveValueLayers(ctx, rel)
 	if err != nil {
 		if errors.Is(err, ErrUnsupported) {
-			return false, conditionReasonUnsupported, err.Error(), nil // terminal
+			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
 		}
-		return false, conditionReasonValuesNotReady, err.Error(), err
+		return fail(conditionReasonValuesNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
 	}
 
 	objects, err := render(rel.Spec.Content, art, valueLayers)
 	if err != nil {
 		if errors.Is(err, ErrUnsupported) {
-			return false, conditionReasonUnsupported, err.Error(), nil // terminal
+			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
 		}
-		return false, conditionReasonDeployFailed, err.Error(), err
+		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
 	}
+	attempt.RenderRef = renderRef(objects)
 
 	applied, err := c.deployer.Deploy(ctx, cluster, objects)
 	if err != nil {
 		if errors.Is(err, ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
-			return false, conditionReasonUnsupported, err.Error(), nil // terminal
+			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
 		}
-		return false, conditionReasonDeployFailed, err.Error(), err
+		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 	}
 
 	// Steady-state prune: apply succeeded, so anything this Release managed last
@@ -266,11 +296,123 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	// so we never prune from a failed/partial render.
 	relKey := rel.Namespace + "/" + rel.Name
 	if err := c.prune(ctx, cluster, relKey, applied, rel.Spec.SyncPolicy.Prune); err != nil {
-		return false, conditionReasonPruneFailed, err.Error(), err
+		return fail(conditionReasonPruneFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 	}
 	c.inventory.Put(relKey, applied)
 
-	return true, conditionReasonApplied, fmt.Sprintf("applied %d object(s) from revision %s", len(objects), art.Revision), nil
+	attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseSucceeded
+	attempt.SyncedAt = &now
+	attempt.SyncedResources = int64(len(applied))
+	return reconcileOutcome{
+		ready:   true,
+		reason:  conditionReasonApplied,
+		message: fmt.Sprintf("applied %d object(s) from revision %s", len(applied), art.Revision),
+		attempt: attempt,
+	}, nil
+}
+
+// resolvedSourceFrom snapshots the Release's declared source coordinate for status.
+func resolvedSourceFrom(rel *corev1alpha1.Release) corev1alpha1.ResolvedSource {
+	s := rel.Spec.Source
+	rs := corev1alpha1.ResolvedSource{
+		Kind:        sourceKind(s.Type),
+		ContentType: rel.Spec.Content.Type,
+		Path:        contentPath(rel.Spec.Content),
+	}
+	switch s.Type {
+	case corev1alpha1.ReleaseSourceTypeGitRepository:
+		if s.GitRepository != nil {
+			rs.Name, rs.Namespace = s.GitRepository.Name, s.GitRepository.Namespace
+			rs.Ref = gitRefString(s.GitRepository.Ref)
+		}
+	case corev1alpha1.ReleaseSourceTypeHelmRegistry:
+		if s.HelmRegistry != nil {
+			rs.Name, rs.Namespace = s.HelmRegistry.Name, s.HelmRegistry.Namespace
+			if s.HelmRegistry.Chart != nil {
+				rs.Ref = s.HelmRegistry.Chart.Version
+			}
+		}
+	case corev1alpha1.ReleaseSourceTypeOCIRegistry:
+		if s.OCIRegistry != nil {
+			rs.Name, rs.Namespace = s.OCIRegistry.Name, s.OCIRegistry.Namespace
+			if s.OCIRegistry.Artifact != nil {
+				rs.Ref = s.OCIRegistry.Artifact.Version
+			}
+		}
+	}
+	return rs
+}
+
+// resolvedClusterFrom snapshots the target Cluster's identity for status.
+func resolvedClusterFrom(cluster *corev1alpha1.Cluster) corev1alpha1.ResolvedCluster {
+	return corev1alpha1.ResolvedCluster{
+		Name:               cluster.Name,
+		Namespace:          cluster.Namespace,
+		UID:                string(cluster.UID),
+		ObservedGeneration: cluster.Status.ObservedGeneration,
+	}
+}
+
+func sourceKind(t corev1alpha1.ReleaseSourceType) string {
+	switch t {
+	case corev1alpha1.ReleaseSourceTypeGitRepository:
+		return "GitRepository"
+	case corev1alpha1.ReleaseSourceTypeHelmRegistry:
+		return "HelmRegistry"
+	case corev1alpha1.ReleaseSourceTypeOCIRegistry:
+		return "OCIRegistry"
+	default:
+		return string(t)
+	}
+}
+
+func contentPath(content corev1alpha1.ReleaseContentSpec) string {
+	switch content.Type {
+	case corev1alpha1.ReleaseContentTypeHelm:
+		if content.Helm != nil {
+			return content.Helm.Path
+		}
+	case corev1alpha1.ReleaseContentTypeKustomize:
+		if content.Kustomize != nil {
+			return content.Kustomize.Path
+		}
+	case corev1alpha1.ReleaseContentTypeJsonnet:
+		if content.Jsonnet != nil {
+			return content.Jsonnet.Path
+		}
+	}
+	return "" // manifests carries multiple paths; not a single value
+}
+
+func gitRefString(ref *corev1alpha1.ReleaseGitRepositoryRefSpec) string {
+	switch {
+	case ref == nil:
+		return ""
+	case ref.Branch != nil:
+		return "branch:" + *ref.Branch
+	case ref.Tag != nil:
+		return "tag:" + *ref.Tag
+	case ref.Commit != nil:
+		return "commit:" + *ref.Commit
+	case ref.Semver != nil:
+		return "semver:" + *ref.Semver
+	default:
+		return ""
+	}
+}
+
+// renderRef is a content hash of the rendered objects, stable across identical
+// renders (objects arrive in deterministic order from render).
+func renderRef(objects []*unstructured.Unstructured) string {
+	h := sha256.New()
+	for _, o := range objects {
+		b, err := o.MarshalJSON()
+		if err != nil {
+			continue
+		}
+		_, _ = h.Write(b)
+	}
+	return "sha256:" + hex.EncodeToString(h.Sum(nil))
 }
 
 // prune deletes resources dropped from the render set since the last successful

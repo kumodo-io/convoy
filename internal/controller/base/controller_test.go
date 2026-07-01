@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestProcessNextItem_ForgetsOnSuccess(t *testing.T) {
@@ -52,6 +54,26 @@ func TestProcessNextItem_RetriesOnError(t *testing.T) {
 	}
 	if n := c.queue.NumRequeues("ns/a"); n != 1 {
 		t.Errorf("NumRequeues = %d after error, want 1 (rate-limited retry)", n)
+	}
+}
+
+func TestShouldEnqueueOnUpdate(t *testing.T) {
+	obj := func(gen int64, rv string) *metav1.PartialObjectMetadata {
+		return &metav1.PartialObjectMetadata{ObjectMeta: metav1.ObjectMeta{Generation: gen, ResourceVersion: rv}}
+	}
+	cases := []struct {
+		name     string
+		old, new *metav1.PartialObjectMetadata
+		want     bool
+	}{
+		{"resync (identical RV)", obj(1, "100"), obj(1, "100"), true},
+		{"spec change (generation bumped)", obj(1, "100"), obj(2, "101"), true},
+		{"status-only (gen same, RV changed)", obj(1, "100"), obj(1, "101"), false},
+	}
+	for _, c := range cases {
+		if got := shouldEnqueueOnUpdate(c.old, c.new); got != c.want {
+			t.Errorf("%s: shouldEnqueueOnUpdate = %v, want %v", c.name, got, c.want)
+		}
 	}
 }
 

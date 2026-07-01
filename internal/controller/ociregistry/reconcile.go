@@ -60,6 +60,7 @@ func computeStatus(reg *sourcev1alpha1.OCIRegistry, verifyErr error, now metav1.
 		cond.Status = metav1.ConditionTrue
 		cond.Reason = conditionReasonVerified
 		cond.Message = "registry is reachable"
+		status.LastSuccessfulProbeAt = &now
 	}
 
 	apimeta.SetStatusCondition(&status.Conditions, cond)
