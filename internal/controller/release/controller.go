@@ -39,6 +39,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/inventory"
 )
 
 // Controller reconciles Release objects: fetch source content → render → apply
@@ -50,6 +51,7 @@ type Controller struct {
 	clusterLister corelisters.ClusterLister
 	coordinator   fetch.Coordinator
 	resolver      auth.SecretResolver
+	inventory     inventory.Store
 	deployer      Deployer
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
@@ -57,13 +59,15 @@ type Controller struct {
 
 // NewController wires a Controller to a Release informer. It fetches source
 // content via the coordinator, resolves Helm value sources (ConfigMaps/Secrets)
-// via resolver, and resolves target clusters from clusterLister.
+// via resolver, tracks applied resources in inventory (for pruning), and
+// resolves target clusters from clusterLister.
 func NewController(
 	client clientset.Interface,
 	informer coreinformers.ReleaseInformer,
 	clusterLister corelisters.ClusterLister,
 	coordinator fetch.Coordinator,
 	resolver auth.SecretResolver,
+	inv inventory.Store,
 	deployer Deployer,
 ) *Controller {
 	c := &Controller{
@@ -72,6 +76,7 @@ func NewController(
 		clusterLister: clusterLister,
 		coordinator:   coordinator,
 		resolver:      resolver,
+		inventory:     inv,
 		deployer:      deployer,
 		now:           metav1.Now,
 	}
@@ -172,14 +177,64 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		return false, conditionReasonDeployFailed, err.Error(), err
 	}
 
-	if err := c.deployer.Deploy(ctx, cluster, objects); err != nil {
+	applied, err := c.deployer.Deploy(ctx, cluster, objects)
+	if err != nil {
 		if errors.Is(err, ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
 			return false, conditionReasonUnsupported, err.Error(), nil // terminal
 		}
 		return false, conditionReasonDeployFailed, err.Error(), err
 	}
 
+	// Steady-state prune: apply succeeded, so anything this Release managed last
+	// time but no longer renders is an orphan. Only reached on the success path,
+	// so we never prune from a failed/partial render.
+	relKey := rel.Namespace + "/" + rel.Name
+	if err := c.prune(ctx, cluster, relKey, applied, rel.Spec.SyncPolicy.Prune); err != nil {
+		return false, conditionReasonPruneFailed, err.Error(), err
+	}
+	c.inventory.Put(relKey, applied)
+
 	return true, conditionReasonApplied, fmt.Sprintf("applied %d object(s) from revision %s", len(objects), art.Revision), nil
+}
+
+// prune deletes resources dropped from the render set since the last successful
+// apply, honoring the prune policy. On prune failure the inventory is left
+// unchanged so the orphans are retried on the next reconcile. When pruning is
+// disabled the orphans are simply untracked (the caller advances the inventory).
+func (c *Controller) prune(ctx context.Context, cluster *corev1alpha1.Cluster, relKey string, applied []inventory.Ref, policy corev1alpha1.PruneSpec) error {
+	if !policy.Orphaned {
+		return nil
+	}
+	old, ok := c.inventory.Get(relKey)
+	if !ok {
+		return nil // nothing tracked yet (first apply / post-restart)
+	}
+	orphans := protectedFilter(inventory.Diff(old, applied), policy)
+	return c.deployer.Prune(ctx, cluster, orphans)
+}
+
+// protectedFilter drops high-blast-radius kinds (CRDs, Namespaces) from the
+// orphan set unless the policy explicitly opts into pruning them.
+func protectedFilter(orphans []inventory.Ref, policy corev1alpha1.PruneSpec) []inventory.Ref {
+	kept := orphans[:0]
+	for _, r := range orphans {
+		if isCRD(r) && !policy.IncludeCRDs {
+			continue
+		}
+		if isNamespace(r) && !policy.IncludeNamespaces {
+			continue
+		}
+		kept = append(kept, r)
+	}
+	return kept
+}
+
+func isCRD(r inventory.Ref) bool {
+	return r.Kind == "CustomResourceDefinition" && r.Group == "apiextensions.k8s.io"
+}
+
+func isNamespace(r inventory.Ref) bool {
+	return r.Kind == "Namespace" && r.Group == ""
 }
 
 // resolveValueLayers resolves the Helm values sources to ordered raw-YAML layers.
