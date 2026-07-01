@@ -131,12 +131,9 @@ webhook:
 
 status:
   observedGeneration: 2
-  
-  # Last successful index fetch.
-  lastFetched:
-    fetchedAt: 2026-04-29T09:55:00Z
-    # Number of charts available in the index (informational).
-    chartCount: 87
+
+  # Last successful registry probe.
+  lastSuccessfullProbedAt: 2026-04-29T09:55:00Z
   
   releaseCount: 12
 

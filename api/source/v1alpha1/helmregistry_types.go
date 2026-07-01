@@ -96,6 +96,9 @@ type HelmRegistryStatus struct {
 	// ObservedGeneration is the last generation that was observed by the controller.
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// LastSuccessfulProbeAt is the last time source was successfully probe.
+	LastSuccessfulProbeAt *metav1.Time `json:"lastSuccessfulProbeAt,omitempty"`
+
 	// ReleaseCount is the number of Release referencing the HelmRegistry.
 	ReleaseCount int64 `json:"releaseCount,omitempty"`
 

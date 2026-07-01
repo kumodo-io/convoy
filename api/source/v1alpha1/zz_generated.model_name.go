@@ -107,11 +107,6 @@ func (in OCIRegistryAuthSpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in OCIRegistryLastCheckedStatus) OpenAPIModelName() string {
-	return "io.kumodo.convoy.source.v1alpha1.OCIRegistryLastCheckedStatus"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in OCIRegistryList) OpenAPIModelName() string {
 	return "io.kumodo.convoy.source.v1alpha1.OCIRegistryList"
 }

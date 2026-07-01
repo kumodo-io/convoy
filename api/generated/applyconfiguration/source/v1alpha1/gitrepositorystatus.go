@@ -19,7 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 // GitRepositoryStatusApplyConfiguration represents a declarative configuration of the GitRepositoryStatus type for use
@@ -29,12 +30,14 @@ import (
 type GitRepositoryStatusApplyConfiguration struct {
 	// ObservedGeneration is the last generation that was observed by the controller.
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+	// LastSuccessfulProbeAt is the last time source was successfully probe.
+	LastSuccessfulProbeAt *v1.Time `json:"lastSuccessfulProbeAt,omitempty"`
 	// ReleaseCount is the number of Release referencing the GitRepository.
 	ReleaseCount *int64 `json:"releaseCount,omitempty"`
 	// Webhooks is the list of statuses of webhooks that are configured for the GitRepository.
 	Webhooks []WebhookStatusApplyConfiguration `json:"webhooks,omitempty"`
 	// Conditions is the list of conditions related to the GitRepository.
-	Conditions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
+	Conditions []metav1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
 
 // GitRepositoryStatusApplyConfiguration constructs a declarative configuration of the GitRepositoryStatus type for use with
@@ -48,6 +51,14 @@ func GitRepositoryStatus() *GitRepositoryStatusApplyConfiguration {
 // If called multiple times, the ObservedGeneration field is set to the value of the last call.
 func (b *GitRepositoryStatusApplyConfiguration) WithObservedGeneration(value int64) *GitRepositoryStatusApplyConfiguration {
 	b.ObservedGeneration = &value
+	return b
+}
+
+// WithLastSuccessfulProbeAt sets the LastSuccessfulProbeAt field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the LastSuccessfulProbeAt field is set to the value of the last call.
+func (b *GitRepositoryStatusApplyConfiguration) WithLastSuccessfulProbeAt(value v1.Time) *GitRepositoryStatusApplyConfiguration {
+	b.LastSuccessfulProbeAt = &value
 	return b
 }
 
@@ -75,7 +86,7 @@ func (b *GitRepositoryStatusApplyConfiguration) WithWebhooks(values ...*WebhookS
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *GitRepositoryStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *GitRepositoryStatusApplyConfiguration {
+func (b *GitRepositoryStatusApplyConfiguration) WithConditions(values ...*metav1.ConditionApplyConfiguration) *GitRepositoryStatusApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithConditions")

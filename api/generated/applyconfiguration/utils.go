@@ -224,8 +224,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryAuthSpec"):
 		return &applyconfigurationsourcev1alpha1.OCIRegistryAuthSpecApplyConfiguration{}
-	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryLastCheckedStatus"):
-		return &applyconfigurationsourcev1alpha1.OCIRegistryLastCheckedStatusApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistrySpec"):
 		return &applyconfigurationsourcev1alpha1.OCIRegistrySpecApplyConfiguration{}
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("OCIRegistryStatus"):

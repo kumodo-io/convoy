@@ -154,10 +154,9 @@ webhooks:
 
 status:
   observedGeneration: 2
-  
+
   # Last successful registry probe.
-  lastChecked:
-    checkedAt: 2026-04-29T09:55:00Z
+  lastSuccessfullProbedAt: 2026-04-29T09:55:00Z
   
   releaseCount: 8
 
