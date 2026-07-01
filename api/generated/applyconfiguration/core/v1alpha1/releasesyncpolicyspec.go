@@ -30,10 +30,8 @@ type ReleaseSyncPolicySpecApplyConfiguration struct {
 	// Automatic defines whether the release should be automatically synced.
 	// Manual syncing requires the POST /sync to trigger the sync.
 	Automatic *bool `json:"automatic,omitempty"`
-	// PruneOrphaned defines whether to prune resources that are no longer referenced by the release.
-	// This may happen in case the content configuration changes. If set to false,
-	// state of such resources will be left untouched and won't be tracked by the controller.
-	PruneOrphaned *bool `json:"pruneOrphaned,omitempty"`
+	// Prune controls steady-state garbage collection of resources dropped from the render.
+	Prune *PruneSpecApplyConfiguration `json:"prune,omitempty"`
 	// Interval is the poll interval for drift detection.
 	Interval *v1.Duration `json:"interval,omitempty"`
 	// RetryBackoff defines the backoff policy for retrying failed syncs.
@@ -56,11 +54,11 @@ func (b *ReleaseSyncPolicySpecApplyConfiguration) WithAutomatic(value bool) *Rel
 	return b
 }
 
-// WithPruneOrphaned sets the PruneOrphaned field in the declarative configuration to the given value
+// WithPrune sets the Prune field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the PruneOrphaned field is set to the value of the last call.
-func (b *ReleaseSyncPolicySpecApplyConfiguration) WithPruneOrphaned(value bool) *ReleaseSyncPolicySpecApplyConfiguration {
-	b.PruneOrphaned = &value
+// If called multiple times, the Prune field is set to the value of the last call.
+func (b *ReleaseSyncPolicySpecApplyConfiguration) WithPrune(value *PruneSpecApplyConfiguration) *ReleaseSyncPolicySpecApplyConfiguration {
+	b.Prune = value
 	return b
 }
 

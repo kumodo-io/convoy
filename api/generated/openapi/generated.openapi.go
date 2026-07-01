@@ -68,6 +68,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.LifecycleHookSpec{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref),
 		v1alpha1.LifecycleHookStatus{}.OpenAPIModelName():                         schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref),
 		v1alpha1.LifecycleStatus{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_LifecycleStatus(ref),
+		v1alpha1.PruneSpec{}.OpenAPIModelName():                                   schema_convoy_api_core_v1alpha1_PruneSpec(ref),
 		v1alpha1.Release{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_Release(ref),
 		v1alpha1.ReleaseAttemptedRenderFailureStatus{}.OpenAPIModelName():         schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
 		v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref),
@@ -1880,6 +1881,44 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_PruneSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PruneSpec defines the garbage collection policy for Release.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"orphaned": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Orphaned defines whether to delete resources this Release previously applied but no longer renders.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"includeCRDs": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IncludeCRDs defines whether to prune orphaned CustomResourceDefinitions (dangerous — cascades to all CRs).",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"includeNamespaces": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IncludeNamespaces defines whether to prune orphaned Namespaces (dangerous).",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"orphaned", "includeCRDs", "includeNamespaces"},
+			},
+		},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2174,7 +2213,8 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref common.Reference
 					},
 					"values": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Values contains a list of values sources to be applied to the Helm chart.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -3460,12 +3500,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref common.ReferenceC
 							Format:      "",
 						},
 					},
-					"pruneOrphaned": {
+					"prune": {
 						SchemaProps: spec.SchemaProps{
-							Description: "PruneOrphaned defines whether to prune resources that are no longer referenced by the release. This may happen in case the content configuration changes. If set to false, state of such resources will be left untouched and won't be tracked by the controller.",
-							Default:     false,
-							Type:        []string{"boolean"},
-							Format:      "",
+							Description: "Prune controls steady-state garbage collection of resources dropped from the render.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha1.PruneSpec{}.OpenAPIModelName()),
 						},
 					},
 					"interval": {
@@ -3489,11 +3528,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref common.ReferenceC
 						},
 					},
 				},
-				Required: []string{"automatic", "pruneOrphaned", "interval", "retryBackoff", "waveStrategy"},
+				Required: []string{"automatic", "prune", "interval", "retryBackoff", "waveStrategy"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ReleaseRetryBackoffSpec{}.OpenAPIModelName(), v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
+			v1alpha1.PruneSpec{}.OpenAPIModelName(), v1alpha1.ReleaseRetryBackoffSpec{}.OpenAPIModelName(), v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 

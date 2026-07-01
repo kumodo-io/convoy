@@ -94,6 +94,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.LifecycleHookStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("LifecycleStatus"):
 		return &applyconfigurationcorev1alpha1.LifecycleStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("PruneSpec"):
+		return &applyconfigurationcorev1alpha1.PruneSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("Release"):
 		return &applyconfigurationcorev1alpha1.ReleaseApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseAttemptedRenderFailureStatus"):

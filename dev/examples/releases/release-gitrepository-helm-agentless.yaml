@@ -20,5 +20,8 @@ spec:
       releaseName: podinfo-managed-helm
   syncPolicy:
     automatic: true
-    pruneOrphaned: false
+    prune:
+      orphaned: false
+      includeCRDs: false
+      includeNamespaces: false
     interval: 1m

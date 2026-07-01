@@ -392,11 +392,17 @@ type ReleaseClusterRefSpec struct {
 }
 
 type ReleaseSyncPolicySpec struct {
-	Automatic     bool
-	PruneOrphaned bool
-	Interval      metav1.Duration
-	RetryBackoff  ReleaseRetryBackoffSpec
-	WaveStrategy  ReleaseWaveStrategySpec
+	Automatic    bool
+	Prune        PruneSpec
+	Interval     metav1.Duration
+	RetryBackoff ReleaseRetryBackoffSpec
+	WaveStrategy ReleaseWaveStrategySpec
+}
+
+type PruneSpec struct {
+	Orphaned          bool
+	IncludeCRDs       bool
+	IncludeNamespaces bool
 }
 
 type ReleaseRetryBackoffSpec struct {

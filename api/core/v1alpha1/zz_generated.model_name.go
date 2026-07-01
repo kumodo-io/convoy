@@ -92,6 +92,11 @@ func (in LifecycleStatus) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in PruneSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.PruneSpec"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in Release) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.Release"
 }

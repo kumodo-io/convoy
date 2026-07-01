@@ -35,5 +35,8 @@ spec:
               tag: 6.13.0
   syncPolicy:
     automatic: true
-    pruneOrphaned: false
+    prune:
+      orphaned: false
+      includeCRDs: false
+      includeNamespaces: false
     interval: 1m
