@@ -549,10 +549,8 @@ type ReleaseSyncPolicySpec struct {
 	// Manual syncing requires the POST /sync to trigger the sync.
 	Automatic bool `json:"automatic"`
 
-	// PruneOrphaned defines whether to prune resources that are no longer referenced by the release.
-	// This may happen in case the content configuration changes. If set to false,
-	// state of such resources will be left untouched and won't be tracked by the controller.
-	PruneOrphaned bool `json:"pruneOrphaned"`
+	// Prune controls steady-state garbage collection of resources dropped from the render.
+	Prune PruneSpec `json:"prune"`
 
 	// Interval is the poll interval for drift detection.
 	Interval metav1.Duration `json:"interval"`
@@ -562,6 +560,18 @@ type ReleaseSyncPolicySpec struct {
 
 	// WaveStrategy defines the wave strategy.
 	WaveStrategy ReleaseWaveStrategySpec `json:"waveStrategy"`
+}
+
+// PruneSpec defines the garbage collection policy for Release.
+type PruneSpec struct {
+	// Orphaned defines whether to delete resources this Release previously applied but no longer renders.
+	Orphaned bool `json:"orphaned"`
+
+	// IncludeCRDs defines whether to prune orphaned CustomResourceDefinitions (dangerous — cascades to all CRs).
+	IncludeCRDs bool `json:"includeCRDs"`
+
+	// IncludeNamespaces defines whether to prune orphaned Namespaces (dangerous).
+	IncludeNamespaces bool `json:"includeNamespaces"`
 }
 
 // ReleaseRetryBackoffSpec defines the desired state of the backoff policy for retrying failed syncs.

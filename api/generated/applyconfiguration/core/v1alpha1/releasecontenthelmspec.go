@@ -38,7 +38,8 @@ type ReleaseContentHelmSpecApplyConfiguration struct {
 	Path *string `json:"path,omitempty"`
 	// DependencyMode is the dependency mode for the Helm chart.
 	DependencyMode *corev1alpha1.ReleaseHelmDependencyMode `json:"dependencyMode,omitempty"`
-	Values         []ValuesSourceSpecApplyConfiguration    `json:"values,omitempty"`
+	// Values contains a list of values sources to be applied to the Helm chart.
+	Values []ValuesSourceSpecApplyConfiguration `json:"values,omitempty"`
 }
 
 // ReleaseContentHelmSpecApplyConfiguration constructs a declarative configuration of the ReleaseContentHelmSpec type for use with

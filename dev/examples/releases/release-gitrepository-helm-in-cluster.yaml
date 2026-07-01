@@ -28,5 +28,8 @@ spec:
                 initialDelaySeconds: 30
   syncPolicy:
     automatic: true
-    pruneOrphaned: false
+    prune:
+      orphaned: false
+      includeCRDs: false
+      includeNamespaces: false
     interval: 1m

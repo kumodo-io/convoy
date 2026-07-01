@@ -57,8 +57,6 @@ func (f fakeResolver) Secret(_ context.Context, _, name string) (*corev1.Secret,
 	return nil, apierrors.NewNotFound(corev1.Resource("secrets"), name)
 }
 
-func boolPtr(b bool) *bool { return &b }
-
 func inlineEntry(raw string) corev1alpha1.ValuesSourceSpec {
 	return corev1alpha1.ValuesSourceSpec{
 		Type:   corev1alpha1.ValuesSourceTypeInline,
@@ -117,7 +115,7 @@ func TestResolveValues_OrderedLayers(t *testing.T) {
 
 func TestResolveValues_OptionalMissingSkipped(t *testing.T) {
 	layers, err := resolveValues(context.Background(),
-		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", boolPtr(true))},
+		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", new(true))},
 		"ns", fakeResolver{}, nil)
 	if err != nil {
 		t.Fatalf("resolveValues returned error: %v", err)

@@ -34,6 +34,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/inventory"
 )
 
 const (
@@ -43,15 +44,34 @@ const (
 )
 
 type fakeDeployer struct {
-	got    []*unstructured.Unstructured
-	called bool
-	err    error
+	got      []*unstructured.Unstructured
+	called   bool
+	err      error
+	pruned   []inventory.Ref
+	pruneErr error
 }
 
-func (d *fakeDeployer) Deploy(_ context.Context, _ *corev1alpha1.Cluster, objects []*unstructured.Unstructured) error {
+func (d *fakeDeployer) Deploy(_ context.Context, _ *corev1alpha1.Cluster, objects []*unstructured.Unstructured) ([]inventory.Ref, error) {
 	d.called = true
 	d.got = objects
-	return d.err
+	if d.err != nil {
+		return nil, d.err
+	}
+	return refsOf(objects), nil
+}
+
+func (d *fakeDeployer) Prune(_ context.Context, _ *corev1alpha1.Cluster, refs []inventory.Ref) error {
+	d.pruned = refs
+	return d.pruneErr
+}
+
+func refsOf(objs []*unstructured.Unstructured) []inventory.Ref {
+	out := make([]inventory.Ref, 0, len(objs))
+	for _, o := range objs {
+		gvk := o.GroupVersionKind()
+		out = append(out, inventory.Ref{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind, Namespace: o.GetNamespace(), Name: o.GetName()})
+	}
+	return out
 }
 
 // fakeCoordinator stands in for the fetch coordinator: it returns a canned
@@ -123,7 +143,7 @@ func newTestControllerWithResolver(t *testing.T, rel *corev1alpha1.Release, clus
 			t.Fatalf("seeding cluster store: %v", err)
 		}
 	}
-	c := NewController(client, relInformer, clInformer.Lister(), coordinator, resolver, deployer)
+	c := NewController(client, relInformer, clInformer.Lister(), coordinator, resolver, inventory.NewMemoryStore(), deployer)
 	fixed := metav1.NewTime(time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
 	return c, client
@@ -144,6 +164,230 @@ func readyReason(rel *corev1alpha1.Release) (metav1.ConditionStatus, string) {
 		return "", ""
 	}
 	return c.Status, c.Reason
+}
+
+func TestSyncRequeueAfter(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.Interval = metav1.Duration{Duration: 90 * time.Second}
+	if got := syncRequeueAfter(rel); got != 90*time.Second {
+		t.Errorf("syncRequeueAfter = %v, want 90s", got)
+	}
+
+	rel.Spec.SyncPolicy.Interval = metav1.Duration{}
+	if got := syncRequeueAfter(rel); got != 0 {
+		t.Errorf("syncRequeueAfter = %v, want 0 when interval unset", got)
+	}
+}
+
+func cmRef(name string) inventory.Ref {
+	return inventory.Ref{Version: "v1", Kind: "ConfigMap", Name: name}
+}
+
+func TestProtectedFilter(t *testing.T) {
+	orphans := []inventory.Ref{
+		cmRef("cm"),
+		{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "widgets.example.com"},
+		{Version: "v1", Kind: "Namespace", Name: "team-a"},
+	}
+
+	kept := protectedFilter(append([]inventory.Ref(nil), orphans...), corev1alpha1.PruneSpec{Orphaned: true})
+	if len(kept) != 1 || kept[0].Kind != configMapKind {
+		t.Errorf("kept = %+v, want only ConfigMap (CRD + Namespace protected by default)", kept)
+	}
+
+	all := protectedFilter(append([]inventory.Ref(nil), orphans...),
+		corev1alpha1.PruneSpec{Orphaned: true, IncludeCRDs: true, IncludeNamespaces: true})
+	if len(all) != 3 {
+		t.Errorf("kept = %+v, want all 3 when opted in", all)
+	}
+}
+
+func TestSyncHandler_PrunesOrphan(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.Prune.Orphaned = true
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	// Prior render managed cm (still rendered) + old (now orphaned).
+	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if len(deployer.pruned) != 1 || deployer.pruned[0].Name != "old" {
+		t.Errorf("pruned = %+v, want [old]", deployer.pruned)
+	}
+	if got, _ := c.inventory.Get("ns/r1"); len(got) != 1 || got[0].Name != "cm" {
+		t.Errorf("inventory = %+v, want [cm]", got)
+	}
+}
+
+func TestSyncHandler_CRDProtectedFromPrune(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.Prune.Orphaned = true // IncludeCRDs stays false
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	crd := inventory.Ref{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "widgets.example.com"}
+	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), crd})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if len(deployer.pruned) != 0 {
+		t.Errorf("pruned = %+v, want none (CRD protected)", deployer.pruned)
+	}
+}
+
+func TestSyncHandler_PruneDisabledUntracks(t *testing.T) {
+	rel := manifestsRelease() // Prune.Orphaned defaults false
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if deployer.pruned != nil {
+		t.Errorf("pruned = %+v, want no prune when disabled", deployer.pruned)
+	}
+	// Orphan is untracked: inventory advances to the current render.
+	if got, _ := c.inventory.Get("ns/r1"); len(got) != 1 || got[0].Name != "cm" {
+		t.Errorf("inventory = %+v, want [cm] (orphan untracked)", got)
+	}
+}
+
+func TestSyncHandler_PruneFailureRequeuesAndKeepsInventory(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.Prune.Orphaned = true
+	deployer := &fakeDeployer{pruneErr: errors.New("delete forbidden")}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
+		t.Fatalf("syncHandler returned nil, want error so it requeues")
+	}
+	if got, _ := c.inventory.Get("ns/r1"); len(got) != 2 {
+		t.Errorf("inventory = %+v, want unchanged (2 refs) on prune failure", got)
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonPruneFailed {
+		t.Errorf("Ready = %s/%s, want False/PruneFailed", s, r)
+	}
+}
+
+func TestSyncHandler_NoPruneOnDeployFailure(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.Prune.Orphaned = true
+	deployer := &fakeDeployer{err: errors.New("apply failed")}
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("old")})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
+		t.Fatalf("syncHandler returned nil, want error from failed deploy")
+	}
+	if deployer.pruned != nil {
+		t.Errorf("pruned despite deploy failure: %+v", deployer.pruned)
+	}
+}
+
+func TestBackoffDelay(t *testing.T) {
+	spec := corev1alpha1.ReleaseRetryBackoffSpec{
+		Initial: metav1.Duration{Duration: time.Second},
+		Max:     metav1.Duration{Duration: 30 * time.Second},
+		Factor:  2,
+	}
+	cases := []struct {
+		attempt int
+		want    time.Duration
+	}{
+		{1, time.Second},       // Initial
+		{2, 2 * time.Second},   // Initial * 2
+		{3, 4 * time.Second},   // Initial * 4
+		{10, 30 * time.Second}, // capped at Max
+	}
+	for _, c := range cases {
+		if got := backoffDelay(spec, c.attempt); got != c.want {
+			t.Errorf("backoffDelay(attempt=%d) = %v, want %v", c.attempt, got, c.want)
+		}
+	}
+
+	// Factor < 1 falls back to the default (2), so attempt 2 doubles.
+	noFactor := corev1alpha1.ReleaseRetryBackoffSpec{Initial: metav1.Duration{Duration: time.Second}}
+	if got := backoffDelay(noFactor, 2); got != 2*time.Second {
+		t.Errorf("backoffDelay with unset factor = %v, want 2s", got)
+	}
+	// A huge attempt is capped, not overflowed.
+	if got := backoffDelay(spec, 1000); got != 30*time.Second {
+		t.Errorf("backoffDelay(attempt=1000) = %v, want cap 30s", got)
+	}
+}
+
+func TestFailureCounts(t *testing.T) {
+	f := newFailureCounts()
+	if n := f.inc("ns/a"); n != 1 {
+		t.Errorf("first inc = %d, want 1", n)
+	}
+	if n := f.inc("ns/a"); n != 2 {
+		t.Errorf("second inc = %d, want 2", n)
+	}
+	f.reset("ns/a")
+	if n := f.inc("ns/a"); n != 1 {
+		t.Errorf("inc after reset = %d, want 1", n)
+	}
+}
+
+func backoffRelease() *corev1alpha1.Release {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.RetryBackoff = corev1alpha1.ReleaseRetryBackoffSpec{
+		Initial: metav1.Duration{Duration: time.Second},
+		Max:     metav1.Duration{Duration: time.Minute},
+		Factor:  2,
+	}
+	return rel
+}
+
+func TestSyncHandler_CustomBackoffHandlesRetry(t *testing.T) {
+	coordinator := &fakeCoordinator{err: errors.New("GitRepository not ready")}
+	c, _ := newTestController(t, backoffRelease(), reachableCluster(), coordinator, &fakeDeployer{})
+
+	// Transient failure with a configured backoff is handled internally → nil,
+	// and the consecutive-failure count climbs.
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned %v, want nil (custom backoff handled)", err)
+	}
+	if c.failures.n["ns/r1"] != 1 {
+		t.Errorf("failure count = %d, want 1 after one failure", c.failures.n["ns/r1"])
+	}
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("second syncHandler returned %v, want nil", err)
+	}
+	if c.failures.n["ns/r1"] != 2 {
+		t.Errorf("failure count = %d, want 2 after two failures", c.failures.n["ns/r1"])
+	}
+}
+
+func TestSyncHandler_DefaultRateLimitWhenNoBackoff(t *testing.T) {
+	coordinator := &fakeCoordinator{err: errors.New("GitRepository not ready")}
+	// manifestsRelease() has no RetryBackoff → default path returns the error.
+	c, _ := newTestController(t, manifestsRelease(), reachableCluster(), coordinator, &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
+		t.Fatalf("syncHandler returned nil, want error (default rate-limited retry)")
+	}
+}
+
+func TestSyncHandler_SuccessResetsFailures(t *testing.T) {
+	c, _ := newTestController(t, backoffRelease(), reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	c.failures.inc("ns/r1") // pretend a prior failure streak
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if c.failures.n["ns/r1"] != 0 {
+		t.Errorf("failure count = %d, want 0 (reset on success)", c.failures.n["ns/r1"])
+	}
 }
 
 func TestSyncHandler_AppliesAndMarksReady(t *testing.T) {

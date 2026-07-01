@@ -40,6 +40,7 @@ import (
 	ociregistrycontroller "github.com/kumodo-io/convoy/internal/controller/ociregistry"
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/inventory"
 )
 
 // Options configures the controller manager.
@@ -139,7 +140,7 @@ func (o *Options) Run(ctx context.Context) error {
 	// probes with).
 	releaseInformer := factory.Core().V1alpha1().Releases()
 	deployer := releasecontroller.NewDeployer(connector)
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, deployer)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventory.NewMemoryStore(), deployer)
 
 	factory.Start(ctx.Done())
 

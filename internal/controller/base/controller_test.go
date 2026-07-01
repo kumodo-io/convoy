@@ -54,3 +54,13 @@ func TestProcessNextItem_RetriesOnError(t *testing.T) {
 		t.Errorf("NumRequeues = %d after error, want 1 (rate-limited retry)", n)
 	}
 }
+
+func TestEnqueueAfter_NonPositiveEnqueuesImmediately(t *testing.T) {
+	c := NewController("test", func(context.Context, string) error { return nil })
+
+	// A non-positive delay delegates to Add, so the key is immediately queued.
+	c.EnqueueAfter("ns/a", 0)
+	if n := c.queue.Len(); n != 1 {
+		t.Errorf("queue.Len() = %d after EnqueueAfter(_, 0), want 1", n)
+	}
+}

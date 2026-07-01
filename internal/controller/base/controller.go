@@ -84,6 +84,13 @@ func (c *Controller) enqueue(obj any) {
 	c.queue.Add(key)
 }
 
+// EnqueueAfter schedules key to be reprocessed after d. It lets a ReconcileFunc
+// request its own future re-sync (e.g. a per-resource poll interval) on top of
+// informer-driven events. A non-positive d enqueues immediately.
+func (c *Controller) EnqueueAfter(key string, d time.Duration) {
+	c.queue.AddAfter(key, d)
+}
+
 // Run waits for the watched caches to sync, starts workers, and blocks until
 // ctx is cancelled.
 func (c *Controller) Run(ctx context.Context, workers int) error {

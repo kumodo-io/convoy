@@ -268,7 +268,13 @@ spec:
     
     # Remove resources from cluster that exist in cluster but not in rendered state.
     # Independent of deletion policy; this is steady-state pruning.
-    pruneOrphaned: true
+    prune:
+      # Delete resources this Release previously applied but no longer renders.
+      orphaned: true
+      # Also prune orphaned CustomResourceDefinitions (dangerous — cascades to all CRs).
+      includeCRDs: false
+      # Also prune orphaned Namespaces (dangerous)
+      includeNamespaces: false
     
     # Reconciliation interval for drift detection (compare live vs rendered).
     interval: 3m
