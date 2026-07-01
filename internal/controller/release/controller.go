@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -107,9 +108,24 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		klog.V(4).InfoS("updated release status", "release", key, "ready", ready, "reason", reason)
 	}
 
+	// On a terminal outcome (recErr == nil), schedule the next drift re-check at
+	// the Release's poll interval. Transient failures (recErr != nil) are left to
+	// the rate-limited retry instead. Sync is currently unconditional: manual
+	// (syncPolicy.automatic=false) gating awaits the /sync and /diff subresources,
+	// and pause/suspend will be a separate spec field or label.
+	if d := syncRequeueAfter(rel); d > 0 && recErr == nil {
+		c.EnqueueAfter(key, d)
+	}
+
 	// recErr != nil → transient, rate-limited retry. recErr == nil → terminal
 	// (success or an Unsupported configuration), let resync re-check.
 	return recErr
+}
+
+// syncRequeueAfter returns the per-Release drift re-check interval, or 0 when
+// none is configured (in which case only the informer resync drives re-checks).
+func syncRequeueAfter(rel *corev1alpha1.Release) time.Duration {
+	return rel.Spec.SyncPolicy.Interval.Duration
 }
 
 // reconcile runs the render-and-apply steps and returns the Ready outcome plus a

@@ -146,6 +146,19 @@ func readyReason(rel *corev1alpha1.Release) (metav1.ConditionStatus, string) {
 	return c.Status, c.Reason
 }
 
+func TestSyncRequeueAfter(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.Interval = metav1.Duration{Duration: 90 * time.Second}
+	if got := syncRequeueAfter(rel); got != 90*time.Second {
+		t.Errorf("syncRequeueAfter = %v, want 90s", got)
+	}
+
+	rel.Spec.SyncPolicy.Interval = metav1.Duration{}
+	if got := syncRequeueAfter(rel); got != 0 {
+		t.Errorf("syncRequeueAfter = %v, want 0 when interval unset", got)
+	}
+}
+
 func TestSyncHandler_AppliesAndMarksReady(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, manifestsRelease(), reachableCluster(), readyCoordinator(), deployer)
