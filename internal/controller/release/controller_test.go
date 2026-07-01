@@ -19,6 +19,7 @@ package release
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,6 +42,8 @@ const (
 	dummyFile     = "app.yaml"
 	configMapKind = "ConfigMap"
 	dummyRevision = "abc123"
+	dummyURL      = "https://example.com/repo.git"
+	dummyCluster  = "target"
 )
 
 type fakeDeployer struct {
@@ -90,6 +93,7 @@ func readyCoordinator() *fakeCoordinator {
 	return &fakeCoordinator{result: fetch.Result{
 		Ready:    true,
 		Revision: dummyRevision,
+		URL:      dummyURL,
 		Artifact: artifact.Artifact{
 			Revision: dummyRevision,
 			Files:    map[string][]byte{dummyFile: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n")},
@@ -109,14 +113,14 @@ func manifestsRelease() *corev1alpha1.Release {
 				},
 			},
 			Content:    manifestsContent(dummyFile),
-			ClusterRef: corev1alpha1.ReleaseClusterRefSpec{Name: "target"},
+			ClusterRef: corev1alpha1.ReleaseClusterRefSpec{Name: dummyCluster},
 		},
 	}
 }
 
 func reachableCluster() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "target", Namespace: "ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: dummyCluster, Namespace: "ns"},
 		Status:     corev1alpha1.ClusterStatus{Reachable: true},
 	}
 }
@@ -387,6 +391,91 @@ func TestSyncHandler_SuccessResetsFailures(t *testing.T) {
 	}
 	if c.failures.n["ns/r1"] != 0 {
 		t.Errorf("failure count = %d, want 0 (reset on success)", c.failures.n["ns/r1"])
+	}
+}
+
+func TestSyncHandler_RecordsAttemptOnSuccess(t *testing.T) {
+	c, client := newTestController(t, manifestsRelease(), reachableCluster(), readyCoordinator(), &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected a status update")
+	}
+
+	la := got.Status.LastAttempted
+	if la == nil {
+		t.Fatalf("LastAttempted is nil")
+	}
+	if la.Phase != corev1alpha1.ReleaseRenderAttemptPhaseSucceeded {
+		t.Errorf("phase = %q, want Succeeded", la.Phase)
+	}
+	if la.ResolvedSource.Revision != dummyRevision || la.ResolvedSource.URL != dummyURL {
+		t.Errorf("resolvedSource = %+v, want revision %s / url %s", la.ResolvedSource, dummyRevision, dummyURL)
+	}
+	if la.ResolvedSource.Kind != "GitRepository" || la.ResolvedSource.Ref != "branch:main" {
+		t.Errorf("resolvedSource kind/ref = %q/%q, want GitRepository/branch:main", la.ResolvedSource.Kind, la.ResolvedSource.Ref)
+	}
+	if la.ResolvedCluster.Name != dummyCluster {
+		t.Errorf("resolvedCluster.Name = %q, want target", la.ResolvedCluster.Name)
+	}
+	if la.SyncedResources != 1 {
+		t.Errorf("syncedResources = %d, want 1", la.SyncedResources)
+	}
+	if !strings.HasPrefix(la.RenderRef, "sha256:") {
+		t.Errorf("renderRef = %q, want a sha256: hash", la.RenderRef)
+	}
+	if got.Status.LastSuccessful == nil || got.Status.LastSuccessful.Phase != corev1alpha1.ReleaseRenderAttemptPhaseSucceeded {
+		t.Errorf("LastSuccessful = %+v, want a Succeeded record", got.Status.LastSuccessful)
+	}
+}
+
+func TestSyncHandler_RecordsFailureAndPreservesLastSuccessful(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Status.LastSuccessful = &corev1alpha1.ReleaseAttemptedRenderStatus{
+		Phase:          corev1alpha1.ReleaseRenderAttemptPhaseSucceeded,
+		ResolvedSource: corev1alpha1.ResolvedSource{Revision: "good"},
+	}
+	coordinator := &fakeCoordinator{err: errors.New("source down")}
+	c, client := newTestController(t, rel, reachableCluster(), coordinator, &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
+		t.Fatalf("syncHandler returned nil, want transient error")
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected a status update")
+	}
+	if la := got.Status.LastAttempted; la == nil || la.Phase != corev1alpha1.ReleaseRenderAttemptPhaseFailed ||
+		la.Failure == nil || la.Failure.Stage != corev1alpha1.ReleaseRenderAttemptStageSourceResolution {
+		t.Errorf("LastAttempted = %+v, want Failed at SourceResolution", la)
+	}
+	if ls := got.Status.LastSuccessful; ls == nil || ls.ResolvedSource.Revision != "good" {
+		t.Errorf("LastSuccessful = %+v, want preserved revision good", ls)
+	}
+}
+
+func TestSyncHandler_AppliesEvenWhenStatusUnchanged(t *testing.T) {
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, manifestsRelease(), reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("first syncHandler: %v", err)
+	}
+	if !deployer.called {
+		t.Fatalf("Deploy not called on first reconcile")
+	}
+
+	// Re-reconcile in steady state: no status change, but we must still apply to
+	// correct drift.
+	deployer.called = false
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("second syncHandler: %v", err)
+	}
+	if !deployer.called {
+		t.Errorf("Deploy not called on re-reconcile — drift correction broken")
 	}
 }
 

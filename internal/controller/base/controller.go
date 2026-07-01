@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -62,8 +63,10 @@ func NewController(name string, reconcile ReconcileFunc) *Controller {
 func (c *Controller) WatchInformer(informer cache.SharedIndexInformer) error {
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueue,
-		UpdateFunc: func(_, newObj any) {
-			c.enqueue(newObj)
+		UpdateFunc: func(oldObj, newObj any) {
+			if shouldEnqueueOnUpdate(oldObj, newObj) {
+				c.enqueue(newObj)
+			}
 		},
 		DeleteFunc: c.enqueue,
 	})
@@ -72,6 +75,31 @@ func (c *Controller) WatchInformer(informer cache.SharedIndexInformer) error {
 	}
 	c.synced = append(c.synced, informer.HasSynced)
 	return nil
+}
+
+// shouldEnqueueOnUpdate decides whether an informer update warrants a reconcile.
+// It enqueues on:
+//   - resync — the informer re-delivers a cached object as (obj, obj) with an
+//     identical ResourceVersion, driving periodic re-reconciliation; and
+//   - spec changes — a bumped metadata.generation (status writes don't bump it,
+//     thanks to the /status subresource).
+//
+// It skips status/metadata-only updates (generation unchanged, ResourceVersion
+// changed) so a controller's own status writes don't re-trigger it. If either
+// object lacks accessible metadata it errs toward enqueuing.
+func shouldEnqueueOnUpdate(oldObj, newObj any) bool {
+	oldMeta, err := meta.Accessor(oldObj)
+	if err != nil {
+		return true
+	}
+	newMeta, err := meta.Accessor(newObj)
+	if err != nil {
+		return true
+	}
+	if oldMeta.GetResourceVersion() == newMeta.GetResourceVersion() {
+		return true // resync
+	}
+	return oldMeta.GetGeneration() != newMeta.GetGeneration() // spec change
 }
 
 // enqueue extracts a namespace/name key from an object and queues it.

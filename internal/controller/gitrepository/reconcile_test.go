@@ -47,6 +47,21 @@ func TestComputeStatus_Verified(t *testing.T) {
 	if cond == nil || cond.Status != metav1.ConditionTrue || cond.Reason != conditionReasonVerified {
 		t.Errorf("Ready condition = %+v, want True/Verified", cond)
 	}
+	if got.LastSuccessfulProbeAt == nil || !got.LastSuccessfulProbeAt.Equal(&now) {
+		t.Errorf("LastSuccessfulProbeAt = %v, want %v", got.LastSuccessfulProbeAt, now)
+	}
+}
+
+func TestComputeStatus_VerifyFailedPreservesProbeTimestamp(t *testing.T) {
+	earlier := metav1.NewTime(time.Date(2026, 6, 20, 11, 0, 0, 0, time.UTC))
+	now := metav1.NewTime(time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC))
+	repo := gitRepo(3, sourcev1alpha1.GitRepositoryStatus{LastSuccessfulProbeAt: &earlier})
+
+	got := computeStatus(repo, errors.Join(ErrFetchFailed, errors.New("boom")), now)
+
+	if got.LastSuccessfulProbeAt == nil || !got.LastSuccessfulProbeAt.Equal(&earlier) {
+		t.Errorf("LastSuccessfulProbeAt = %v, want retained %v (not bumped on failure)", got.LastSuccessfulProbeAt, earlier)
+	}
 }
 
 func TestComputeStatus_VerifyFailed(t *testing.T) {

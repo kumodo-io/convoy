@@ -185,6 +185,9 @@ webhook:
 status:
   observedGeneration: 7
 
+  # Last successful registry probe.
+  lastSuccessfullProbedAt: 2026-04-29T09:55:00Z
+
   # Number of Releases referencing this Source.
   releaseCount: 4
 

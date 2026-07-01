@@ -75,10 +75,11 @@ type GitRepositoryWebhookFilterSpec struct {
 }
 
 type GitRepositoryStatus struct {
-	ObservedGeneration int64
-	ReleaseCount       int64
-	Webhooks           []WebhookStatus
-	Conditions         []metav1.Condition
+	ObservedGeneration    int64
+	LastSuccessfulProbeAt *metav1.Time
+	ReleaseCount          int64
+	Webhooks              []WebhookStatus
+	Conditions            []metav1.Condition
 }
 
 // +genclient
@@ -143,10 +144,11 @@ type HelmRegistryWebhookFilterSpec struct {
 }
 
 type HelmRegistryStatus struct {
-	ObservedGeneration int64
-	ReleaseCount       int64
-	Webhooks           []WebhookStatus
-	Conditions         []metav1.Condition
+	ObservedGeneration    int64
+	LastSuccessfulProbeAt *metav1.Time
+	ReleaseCount          int64
+	Webhooks              []WebhookStatus
+	Conditions            []metav1.Condition
 }
 
 // +genclient
@@ -223,15 +225,11 @@ type OCIRegistryWebhookFilterSpec struct {
 }
 
 type OCIRegistryStatus struct {
-	ObservedGeneration int64
-	LastChecked        OCIRegistryLastCheckedStatus
-	ReleaseCount       int64
-	Webhooks           []WebhookStatus
-	Conditions         []metav1.Condition
-}
-
-type OCIRegistryLastCheckedStatus struct {
-	CheckedAt metav1.Time
+	ObservedGeneration    int64
+	LastSuccessfulProbeAt *metav1.Time
+	ReleaseCount          int64
+	Webhooks              []WebhookStatus
+	Conditions            []metav1.Condition
 }
 
 // +genclient

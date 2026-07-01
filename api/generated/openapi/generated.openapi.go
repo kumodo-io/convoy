@@ -136,7 +136,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		sourcev1alpha1.LastRejectionStatus{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_LastRejectionStatus(ref),
 		sourcev1alpha1.OCIRegistry{}.OpenAPIModelName():                           schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
 		sourcev1alpha1.OCIRegistryAuthSpec{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref),
-		sourcev1alpha1.OCIRegistryLastCheckedStatus{}.OpenAPIModelName():          schema_convoy_api_source_v1alpha1_OCIRegistryLastCheckedStatus(ref),
 		sourcev1alpha1.OCIRegistryList{}.OpenAPIModelName():                       schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
 		sourcev1alpha1.OCIRegistrySpec{}.OpenAPIModelName():                       schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
 		sourcev1alpha1.OCIRegistryStatus{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
@@ -4732,6 +4731,12 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 							Format:      "int64",
 						},
 					},
+					"lastSuccessfulProbeAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastSuccessfulProbeAt is the last time source was successfully probe.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
 					"releaseCount": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ReleaseCount is the number of Release referencing the GitRepository.",
@@ -4787,7 +4792,7 @@ func schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -5137,6 +5142,12 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 							Format:      "int64",
 						},
 					},
+					"lastSuccessfulProbeAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastSuccessfulProbeAt is the last time source was successfully probe.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
 					"releaseCount": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ReleaseCount is the number of Release referencing the HelmRegistry.",
@@ -5192,7 +5203,7 @@ func schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -5452,27 +5463,6 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref common.ReferenceC
 	}
 }
 
-func schema_convoy_api_source_v1alpha1_OCIRegistryLastCheckedStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "OCIRegistryLastCheckedStatus reflects the last time the OCI registry was checked.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"checkedAt": {
-						SchemaProps: spec.SchemaProps{
-							Description: "CheckedAt is the time the OCI registry was last checked.",
-							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			metav1.Time{}.OpenAPIModelName()},
-	}
-}
-
 func schema_convoy_api_source_v1alpha1_OCIRegistryList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5593,11 +5583,10 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref common.ReferenceCal
 							Format:      "int64",
 						},
 					},
-					"lastChecked": {
+					"lastSuccessfulProbeAt": {
 						SchemaProps: spec.SchemaProps{
-							Description: "LastChecked is the last time the OCI registry was checked.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(sourcev1alpha1.OCIRegistryLastCheckedStatus{}.OpenAPIModelName()),
+							Description: "LastSuccessfulProbeAt is the last time source was successfully probe.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"releaseCount": {
@@ -5655,7 +5644,7 @@ func schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			sourcev1alpha1.OCIRegistryLastCheckedStatus{}.OpenAPIModelName(), sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
+			sourcev1alpha1.WebhookStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 

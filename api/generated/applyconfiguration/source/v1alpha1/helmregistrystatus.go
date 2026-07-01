@@ -19,7 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 // HelmRegistryStatusApplyConfiguration represents a declarative configuration of the HelmRegistryStatus type for use
@@ -29,12 +30,14 @@ import (
 type HelmRegistryStatusApplyConfiguration struct {
 	// ObservedGeneration is the last generation that was observed by the controller.
 	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+	// LastSuccessfulProbeAt is the last time source was successfully probe.
+	LastSuccessfulProbeAt *v1.Time `json:"lastSuccessfulProbeAt,omitempty"`
 	// ReleaseCount is the number of Release referencing the HelmRegistry.
 	ReleaseCount *int64 `json:"releaseCount,omitempty"`
 	// Webhooks is the list of statuses of webhooks that are configured for the HelmRegistry.
 	Webhooks []WebhookStatusApplyConfiguration `json:"webhooks,omitempty"`
 	// Conditions is the list of conditions related to the HelmRegistry.
-	Conditions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
+	Conditions []metav1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
 
 // HelmRegistryStatusApplyConfiguration constructs a declarative configuration of the HelmRegistryStatus type for use with
@@ -48,6 +51,14 @@ func HelmRegistryStatus() *HelmRegistryStatusApplyConfiguration {
 // If called multiple times, the ObservedGeneration field is set to the value of the last call.
 func (b *HelmRegistryStatusApplyConfiguration) WithObservedGeneration(value int64) *HelmRegistryStatusApplyConfiguration {
 	b.ObservedGeneration = &value
+	return b
+}
+
+// WithLastSuccessfulProbeAt sets the LastSuccessfulProbeAt field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the LastSuccessfulProbeAt field is set to the value of the last call.
+func (b *HelmRegistryStatusApplyConfiguration) WithLastSuccessfulProbeAt(value v1.Time) *HelmRegistryStatusApplyConfiguration {
+	b.LastSuccessfulProbeAt = &value
 	return b
 }
 
@@ -75,7 +86,7 @@ func (b *HelmRegistryStatusApplyConfiguration) WithWebhooks(values ...*WebhookSt
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *HelmRegistryStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *HelmRegistryStatusApplyConfiguration {
+func (b *HelmRegistryStatusApplyConfiguration) WithConditions(values ...*metav1.ConditionApplyConfiguration) *HelmRegistryStatusApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithConditions")

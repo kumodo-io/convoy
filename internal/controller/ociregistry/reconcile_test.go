@@ -45,15 +45,22 @@ func TestComputeStatus_Verified(t *testing.T) {
 	if cond == nil || cond.Status != metav1.ConditionTrue || cond.Reason != conditionReasonVerified {
 		t.Errorf("Ready condition = %+v, want True/Verified", cond)
 	}
+	if got.LastSuccessfulProbeAt == nil || !got.LastSuccessfulProbeAt.Equal(&now) {
+		t.Errorf("LastSuccessfulProbeAt = %v, want %v", got.LastSuccessfulProbeAt, now)
+	}
 }
 
 func TestComputeStatus_VerifyFailed(t *testing.T) {
+	earlier := metav1.NewTime(time.Date(2026, 6, 28, 11, 0, 0, 0, time.UTC))
 	now := metav1.NewTime(time.Date(2026, 6, 28, 12, 0, 0, 0, time.UTC))
-	got := computeStatus(regWithStatus(3, sourcev1alpha1.OCIRegistryStatus{}), errors.Join(ErrFetchFailed, errors.New("connection refused")), now)
+	got := computeStatus(regWithStatus(3, sourcev1alpha1.OCIRegistryStatus{LastSuccessfulProbeAt: &earlier}), errors.Join(ErrFetchFailed, errors.New("connection refused")), now)
 
 	cond := apimeta.FindStatusCondition(got.Conditions, conditionReady)
 	if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != conditionReasonVerifyFailed {
 		t.Errorf("Ready condition = %+v, want False/VerifyFailed", cond)
+	}
+	if got.LastSuccessfulProbeAt == nil || !got.LastSuccessfulProbeAt.Equal(&earlier) {
+		t.Errorf("LastSuccessfulProbeAt = %v, want retained %v (not bumped on failure)", got.LastSuccessfulProbeAt, earlier)
 	}
 }
 
