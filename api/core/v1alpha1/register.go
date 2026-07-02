@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -33,6 +35,24 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&Release{},
 		&ReleaseList{},
 	)
+
+	// Whitelist the fields a Release may be filtered on via --field-selector.
+	// Without this the apiserver rejects any non-default field label.
+	if err := scheme.AddFieldLabelConversionFunc(
+		SchemeGroupVersion.WithKind("Release"),
+		func(label, value string) (string, string, error) {
+			switch label {
+			case "metadata.name", "metadata.namespace",
+				"spec.clusterRef.name", "spec.clusterRef.namespace":
+				return label, value, nil
+			default:
+				return "", "", fmt.Errorf("field label %q not supported for Release", label)
+			}
+		},
+	); err != nil {
+		return err
+	}
+
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 
 	return nil

@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -42,6 +43,25 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
 )
+
+// releaseByClusterIndex is the informer index keying Releases by the
+// namespace/name of the cluster they target.
+const releaseByClusterIndex = "releaseByCluster"
+
+// releaseClusterIndexKeys is the index func for releaseByClusterIndex. It keys a
+// Release by "<clusterNamespace>/<clusterName>", defaulting the cluster namespace
+// to the Release's own namespace (matching how the release controller resolves it).
+func releaseClusterIndexKeys(obj any) ([]string, error) {
+	rel, ok := obj.(*corev1alpha1.Release)
+	if !ok {
+		return nil, nil
+	}
+	ns := rel.Spec.ClusterRef.Namespace
+	if ns == "" {
+		ns = rel.Namespace
+	}
+	return []string{ns + "/" + rel.Spec.ClusterRef.Name}, nil
+}
 
 // Options configures the controller manager.
 type Options struct {
@@ -139,6 +159,13 @@ func (o *Options) Run(ctx context.Context) error {
 	// target cluster (reached through the same connector the cluster controller
 	// probes with).
 	releaseInformer := factory.Core().V1alpha1().Releases()
+	// Index Releases by the cluster they target, so cluster-driven fan-out (e.g.
+	// re-enqueue/prune on cluster change) can look them up from the cache.
+	if err := releaseInformer.Informer().AddIndexers(cache.Indexers{
+		releaseByClusterIndex: releaseClusterIndexKeys,
+	}); err != nil {
+		return err
+	}
 	deployer := releasecontroller.NewDeployer(connector)
 	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventory.NewMemoryStore(), deployer)
 

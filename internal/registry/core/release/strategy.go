@@ -169,5 +169,9 @@ func MatchRelease(label labels.Selector, fld fields.Selector) storage.SelectionP
 }
 
 func selectableFields(obj *core.Release) fields.Set {
-	return generic.ObjectMetaFieldsSet(&obj.ObjectMeta, true)
+	releaseFields := fields.Set{
+		"spec.clusterRef.name":      obj.Spec.ClusterRef.Name,
+		"spec.clusterRef.namespace": obj.Spec.ClusterRef.Namespace,
+	}
+	return generic.MergeFieldsSets(generic.ObjectMetaFieldsSet(&obj.ObjectMeta, true), releaseFields)
 }
