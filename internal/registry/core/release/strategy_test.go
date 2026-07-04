@@ -26,7 +26,7 @@ import (
 func TestGetAttrs_ExposesClusterRefFields(t *testing.T) {
 	rel := &core.Release{
 		Spec: core.ReleaseSpec{
-			ClusterRef: core.ReleaseClusterRefSpec{Name: "prod-eu", Namespace: "infra"},
+			ClusterRef: core.ReleaseClusterRefSpec{Name: dummyClusterRef, Namespace: "infra"},
 		},
 	}
 
@@ -34,7 +34,7 @@ func TestGetAttrs_ExposesClusterRefFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAttrs returned error: %v", err)
 	}
-	if got := flds["spec.clusterRef.name"]; got != "prod-eu" {
+	if got := flds["spec.clusterRef.name"]; got != dummyClusterRef {
 		t.Errorf("spec.clusterRef.name = %q, want prod-eu", got)
 	}
 	if got := flds["spec.clusterRef.namespace"]; got != "infra" {
