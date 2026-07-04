@@ -34,6 +34,8 @@ import (
 	"github.com/kumodo-io/convoy/internal/registry/registrytest"
 )
 
+const dummyClusterRef = "prod-eu"
+
 func newStorage(t *testing.T) (*genericregistry.Store, *releasestorage.StatusREST, *etcd3testing.EtcdTestServer) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("releases"))
 
@@ -67,7 +69,7 @@ func validNewRelease(namespace string) *core.Release {
 				},
 			},
 			ClusterRef: core.ReleaseClusterRefSpec{
-				Name: "prod-eu",
+				Name: dummyClusterRef,
 			},
 		},
 	}

@@ -111,13 +111,13 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*ClusterDeletionPolicySpec)(nil), (*core.ClusterDeletionPolicySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec(a.(*ClusterDeletionPolicySpec), b.(*core.ClusterDeletionPolicySpec), scope)
+	if err := s.AddGeneratedConversionFunc((*ClusterDeletionPolicy)(nil), (*core.ClusterDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(a.(*ClusterDeletionPolicy), b.(*core.ClusterDeletionPolicy), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*core.ClusterDeletionPolicySpec)(nil), (*ClusterDeletionPolicySpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec(a.(*core.ClusterDeletionPolicySpec), b.(*ClusterDeletionPolicySpec), scope)
+	if err := s.AddGeneratedConversionFunc((*core.ClusterDeletionPolicy)(nil), (*ClusterDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy(a.(*core.ClusterDeletionPolicy), b.(*ClusterDeletionPolicy), scope)
 	}); err != nil {
 		return err
 	}
@@ -281,13 +281,13 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*ReleaseDeletionPolicyOverrideSpec)(nil), (*core.ReleaseDeletionPolicyOverrideSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(a.(*ReleaseDeletionPolicyOverrideSpec), b.(*core.ReleaseDeletionPolicyOverrideSpec), scope)
+	if err := s.AddGeneratedConversionFunc((*ReleaseDeletionPolicy)(nil), (*core.ReleaseDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(a.(*ReleaseDeletionPolicy), b.(*core.ReleaseDeletionPolicy), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*core.ReleaseDeletionPolicyOverrideSpec)(nil), (*ReleaseDeletionPolicyOverrideSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(a.(*core.ReleaseDeletionPolicyOverrideSpec), b.(*ReleaseDeletionPolicyOverrideSpec), scope)
+	if err := s.AddGeneratedConversionFunc((*core.ReleaseDeletionPolicy)(nil), (*ReleaseDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(a.(*core.ReleaseDeletionPolicy), b.(*ReleaseDeletionPolicy), scope)
 	}); err != nil {
 		return err
 	}
@@ -521,16 +521,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*ResolvedDeletionPolicyStatus)(nil), (*core.ResolvedDeletionPolicyStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(a.(*ResolvedDeletionPolicyStatus), b.(*core.ResolvedDeletionPolicyStatus), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.ResolvedDeletionPolicyStatus)(nil), (*ResolvedDeletionPolicyStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(a.(*core.ResolvedDeletionPolicyStatus), b.(*ResolvedDeletionPolicyStatus), scope)
-	}); err != nil {
-		return err
-	}
 	if err := s.AddGeneratedConversionFunc((*ResolvedMutation)(nil), (*core.ResolvedMutation)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(a.(*ResolvedMutation), b.(*core.ResolvedMutation), scope)
 	}); err != nil {
@@ -568,16 +558,6 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ResourceWaveStatus)(nil), (*ResourceWaveStatus)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(a.(*core.ResourceWaveStatus), b.(*ResourceWaveStatus), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*ResultingDeletionPolicy)(nil), (*core.ResultingDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(a.(*ResultingDeletionPolicy), b.(*core.ResultingDeletionPolicy), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*core.ResultingDeletionPolicy)(nil), (*ResultingDeletionPolicy)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(a.(*core.ResultingDeletionPolicy), b.(*ResultingDeletionPolicy), scope)
 	}); err != nil {
 		return err
 	}
@@ -788,28 +768,24 @@ func Convert_core_ClusterConnectionParametersSpec_To_v1alpha1_ClusterConnectionP
 	return autoConvert_core_ClusterConnectionParametersSpec_To_v1alpha1_ClusterConnectionParametersSpec(in, out, s)
 }
 
-func autoConvert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec(in *ClusterDeletionPolicySpec, out *core.ClusterDeletionPolicySpec, s conversion.Scope) error {
-	out.Releases = core.ReleasesDeletionPolicy(in.Releases)
-	out.Workloads = core.WorkloadsDeletionPolicy(in.Workloads)
-	out.OnUnreachable = core.OnUnreachableDeletionPolicy(in.OnUnreachable)
+func autoConvert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(in *ClusterDeletionPolicy, out *core.ClusterDeletionPolicy, s conversion.Scope) error {
+	out.PruneReleases = in.PruneReleases
 	return nil
 }
 
-// Convert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec is an autogenerated conversion function.
-func Convert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec(in *ClusterDeletionPolicySpec, out *core.ClusterDeletionPolicySpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec(in, out, s)
+// Convert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy is an autogenerated conversion function.
+func Convert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(in *ClusterDeletionPolicy, out *core.ClusterDeletionPolicy, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(in, out, s)
 }
 
-func autoConvert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec(in *core.ClusterDeletionPolicySpec, out *ClusterDeletionPolicySpec, s conversion.Scope) error {
-	out.Releases = ReleasesDeletionPolicy(in.Releases)
-	out.Workloads = WorkloadsDeletionPolicy(in.Workloads)
-	out.OnUnreachable = OnUnreachableDeletionPolicy(in.OnUnreachable)
+func autoConvert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy(in *core.ClusterDeletionPolicy, out *ClusterDeletionPolicy, s conversion.Scope) error {
+	out.PruneReleases = in.PruneReleases
 	return nil
 }
 
-// Convert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec is an autogenerated conversion function.
-func Convert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec(in *core.ClusterDeletionPolicySpec, out *ClusterDeletionPolicySpec, s conversion.Scope) error {
-	return autoConvert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec(in, out, s)
+// Convert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy is an autogenerated conversion function.
+func Convert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy(in *core.ClusterDeletionPolicy, out *ClusterDeletionPolicy, s conversion.Scope) error {
+	return autoConvert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy(in, out, s)
 }
 
 func autoConvert_v1alpha1_ClusterList_To_core_ClusterList(in *ClusterList, out *core.ClusterList, s conversion.Scope) error {
@@ -842,7 +818,7 @@ func autoConvert_v1alpha1_ClusterSpec_To_core_ClusterSpec(in *ClusterSpec, out *
 	if err := Convert_v1alpha1_ClusterCapabilitiesSpec_To_core_ClusterCapabilitiesSpec(&in.Capabilities, &out.Capabilities, s); err != nil {
 		return err
 	}
-	if err := Convert_v1alpha1_ClusterDeletionPolicySpec_To_core_ClusterDeletionPolicySpec(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
+	if err := Convert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
 		return err
 	}
 	return nil
@@ -861,7 +837,7 @@ func autoConvert_core_ClusterSpec_To_v1alpha1_ClusterSpec(in *core.ClusterSpec, 
 	if err := Convert_core_ClusterCapabilitiesSpec_To_v1alpha1_ClusterCapabilitiesSpec(&in.Capabilities, &out.Capabilities, s); err != nil {
 		return err
 	}
-	if err := Convert_core_ClusterDeletionPolicySpec_To_v1alpha1_ClusterDeletionPolicySpec(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
+	if err := Convert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
 		return err
 	}
 	return nil
@@ -1310,24 +1286,26 @@ func Convert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(in *core.Rel
 	return autoConvert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(in, out, s)
 }
 
-func autoConvert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(in *ReleaseDeletionPolicyOverrideSpec, out *core.ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
-	out.Workloads = core.WorkloadsDeletionPolicy(in.Workloads)
+func autoConvert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(in *ReleaseDeletionPolicy, out *core.ReleaseDeletionPolicy, s conversion.Scope) error {
+	out.KeepWorkloads = in.KeepWorkloads
+	out.BlockOnClusterUnreachable = in.BlockOnClusterUnreachable
 	return nil
 }
 
-// Convert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec is an autogenerated conversion function.
-func Convert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(in *ReleaseDeletionPolicyOverrideSpec, out *core.ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ReleaseDeletionPolicyOverrideSpec_To_core_ReleaseDeletionPolicyOverrideSpec(in, out, s)
+// Convert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy is an autogenerated conversion function.
+func Convert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(in *ReleaseDeletionPolicy, out *core.ReleaseDeletionPolicy, s conversion.Scope) error {
+	return autoConvert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(in, out, s)
 }
 
-func autoConvert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in *core.ReleaseDeletionPolicyOverrideSpec, out *ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
-	out.Workloads = WorkloadsDeletionPolicy(in.Workloads)
+func autoConvert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(in *core.ReleaseDeletionPolicy, out *ReleaseDeletionPolicy, s conversion.Scope) error {
+	out.KeepWorkloads = in.KeepWorkloads
+	out.BlockOnClusterUnreachable = in.BlockOnClusterUnreachable
 	return nil
 }
 
-// Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec is an autogenerated conversion function.
-func Convert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in *core.ReleaseDeletionPolicyOverrideSpec, out *ReleaseDeletionPolicyOverrideSpec, s conversion.Scope) error {
-	return autoConvert_core_ReleaseDeletionPolicyOverrideSpec_To_v1alpha1_ReleaseDeletionPolicyOverrideSpec(in, out, s)
+// Convert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy is an autogenerated conversion function.
+func Convert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(in *core.ReleaseDeletionPolicy, out *ReleaseDeletionPolicy, s conversion.Scope) error {
+	return autoConvert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(in, out, s)
 }
 
 func autoConvert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRefSpec(in *ReleaseGitRepositoryRefSpec, out *core.ReleaseGitRepositoryRefSpec, s conversion.Scope) error {
@@ -1800,7 +1778,9 @@ func autoConvert_v1alpha1_ReleaseSpec_To_core_ReleaseSpec(in *ReleaseSpec, out *
 	if err := Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(&in.RetentionPolicy, &out.RetentionPolicy, s); err != nil {
 		return err
 	}
-	out.DeletionPolicyOverride = (*core.ReleaseDeletionPolicyOverrideSpec)(unsafe.Pointer(in.DeletionPolicyOverride))
+	if err := Convert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1825,7 +1805,9 @@ func autoConvert_core_ReleaseSpec_To_v1alpha1_ReleaseSpec(in *core.ReleaseSpec, 
 	if err := Convert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(&in.RetentionPolicy, &out.RetentionPolicy, s); err != nil {
 		return err
 	}
-	out.DeletionPolicyOverride = (*ReleaseDeletionPolicyOverrideSpec)(unsafe.Pointer(in.DeletionPolicyOverride))
+	if err := Convert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1838,9 +1820,6 @@ func autoConvert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus,
 	out.ObservedGeneration = in.ObservedGeneration
 	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	if err := Convert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(&in.Pin, &out.Pin, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(&in.ResolvedDeletionPolicy, &out.ResolvedDeletionPolicy, s); err != nil {
 		return err
 	}
 	if err := Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
@@ -1869,9 +1848,6 @@ func autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseSt
 	out.ObservedGeneration = in.ObservedGeneration
 	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
 	if err := Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(&in.Pin, &out.Pin, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(&in.ResolvedDeletionPolicy, &out.ResolvedDeletionPolicy, s); err != nil {
 		return err
 	}
 	if err := Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
@@ -1986,34 +1962,6 @@ func autoConvert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in *core.Resol
 // Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster is an autogenerated conversion function.
 func Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in *core.ResolvedCluster, out *ResolvedCluster, s conversion.Scope) error {
 	return autoConvert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in, out, s)
-}
-
-func autoConvert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(in *ResolvedDeletionPolicyStatus, out *core.ResolvedDeletionPolicyStatus, s conversion.Scope) error {
-	out.WorkloadsPolicySource = core.WorkloadsPolicySource(in.WorkloadsPolicySource)
-	if err := Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(&in.Policy, &out.Policy, s); err != nil {
-		return err
-	}
-	out.SourceClusterGeneration = in.SourceClusterGeneration
-	return nil
-}
-
-// Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus is an autogenerated conversion function.
-func Convert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(in *ResolvedDeletionPolicyStatus, out *core.ResolvedDeletionPolicyStatus, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ResolvedDeletionPolicyStatus_To_core_ResolvedDeletionPolicyStatus(in, out, s)
-}
-
-func autoConvert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(in *core.ResolvedDeletionPolicyStatus, out *ResolvedDeletionPolicyStatus, s conversion.Scope) error {
-	out.WorkloadsPolicySource = WorkloadsPolicySource(in.WorkloadsPolicySource)
-	if err := Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(&in.Policy, &out.Policy, s); err != nil {
-		return err
-	}
-	out.SourceClusterGeneration = in.SourceClusterGeneration
-	return nil
-}
-
-// Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus is an autogenerated conversion function.
-func Convert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(in *core.ResolvedDeletionPolicyStatus, out *ResolvedDeletionPolicyStatus, s conversion.Scope) error {
-	return autoConvert_core_ResolvedDeletionPolicyStatus_To_v1alpha1_ResolvedDeletionPolicyStatus(in, out, s)
 }
 
 func autoConvert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(in *ResolvedMutation, out *core.ResolvedMutation, s conversion.Scope) error {
@@ -2138,30 +2086,6 @@ func autoConvert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in *core
 // Convert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus is an autogenerated conversion function.
 func Convert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in *core.ResourceWaveStatus, out *ResourceWaveStatus, s conversion.Scope) error {
 	return autoConvert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in, out, s)
-}
-
-func autoConvert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(in *ResultingDeletionPolicy, out *core.ResultingDeletionPolicy, s conversion.Scope) error {
-	out.Workloads = core.WorkloadsDeletionPolicy(in.Workloads)
-	out.Releases = core.ReleasesDeletionPolicy(in.Releases)
-	out.OnUnreachable = core.OnUnreachableDeletionPolicy(in.OnUnreachable)
-	return nil
-}
-
-// Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy is an autogenerated conversion function.
-func Convert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(in *ResultingDeletionPolicy, out *core.ResultingDeletionPolicy, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ResultingDeletionPolicy_To_core_ResultingDeletionPolicy(in, out, s)
-}
-
-func autoConvert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(in *core.ResultingDeletionPolicy, out *ResultingDeletionPolicy, s conversion.Scope) error {
-	out.Workloads = WorkloadsDeletionPolicy(in.Workloads)
-	out.Releases = ReleasesDeletionPolicy(in.Releases)
-	out.OnUnreachable = OnUnreachableDeletionPolicy(in.OnUnreachable)
-	return nil
-}
-
-// Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy is an autogenerated conversion function.
-func Convert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(in *core.ResultingDeletionPolicy, out *ResultingDeletionPolicy, s conversion.Scope) error {
-	return autoConvert_core_ResultingDeletionPolicy_To_v1alpha1_ResultingDeletionPolicy(in, out, s)
 }
 
 func autoConvert_v1alpha1_ValuesSourceGitRepositorySpec_To_core_ValuesSourceGitRepositorySpec(in *ValuesSourceGitRepositorySpec, out *core.ValuesSourceGitRepositorySpec, s conversion.Scope) error {

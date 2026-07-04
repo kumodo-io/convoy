@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,12 +31,19 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	listers "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 )
+
+const (
+	clusterFinalizer = "cluster.core.convoy.kumodo.io/prune-releases"
+)
+
+type ReleasesForClusterFunc func(clusterNs, clusterName string) ([]*corev1alpha1.Release, error)
 
 // Controller reconciles Cluster objects. The work-queue, workers, and retry
 // machinery live in the embedded base.Controller; this type supplies only the
@@ -46,17 +54,24 @@ type Controller struct {
 	lister listers.ClusterLister
 	prober Prober
 	// now is injectable for tests; defaults to metav1.Now.
-	now func() metav1.Time
+	now                func() metav1.Time
+	releasesForCluster func(clusterNs, clusterName string) ([]*corev1alpha1.Release, error)
 }
 
 // NewController wires a Controller to a Cluster informer. It registers event
 // handlers that enqueue changed objects; call Run to start processing.
-func NewController(client clientset.Interface, informer informers.ClusterInformer, prober Prober) *Controller {
+func NewController(
+	client clientset.Interface,
+	informer informers.ClusterInformer,
+	prober Prober,
+	releasesForCluster ReleasesForClusterFunc,
+) *Controller {
 	c := &Controller{
-		client: client,
-		lister: informer.Lister(),
-		prober: prober,
-		now:    metav1.Now,
+		client:             client,
+		lister:             informer.Lister(),
+		prober:             prober,
+		now:                metav1.Now,
+		releasesForCluster: releasesForCluster,
 	}
 	c.Controller = base.NewController("cluster", c.syncHandler)
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
@@ -75,6 +90,16 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	if apierrors.IsNotFound(err) {
 		return nil // deleted; nothing to do
 	}
+	if err != nil {
+		return err
+	}
+
+	// finalize Cluster on deletion according to deletion policy
+	if !cluster.DeletionTimestamp.IsZero() {
+		return c.finalize(ctx, cluster)
+	}
+
+	cluster, err = c.ensureFinalizer(ctx, cluster)
 	if err != nil {
 		return err
 	}
@@ -99,6 +124,57 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 			return nil // terminal; don't hot-loop
 		}
 		return probeErr
+	}
+	return nil
+}
+
+func (c *Controller) finalize(ctx context.Context, cluster *corev1alpha1.Cluster) error {
+	if !slices.Contains(cluster.Finalizers, clusterFinalizer) {
+		return nil // no-op
+	}
+
+	if cluster.Spec.DeletionPolicy.PruneReleases {
+		if err := c.pruneReleases(ctx, cluster); err != nil {
+			return fmt.Errorf("finalizing %s/%s: %w", cluster.Namespace, cluster.Name, err)
+		}
+	}
+
+	// remove finalizer
+	updated := cluster.DeepCopy()
+	updated.Finalizers = slices.DeleteFunc(cluster.Finalizers, func(finalizer string) bool {
+		return finalizer == clusterFinalizer
+	})
+	if _, err := c.client.CoreV1alpha1().Clusters(cluster.Namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("removing finalizer from %s/%s: %w", cluster.Namespace, cluster.Name, err)
+	}
+	return nil
+}
+
+func (c *Controller) ensureFinalizer(ctx context.Context, cluster *corev1alpha1.Cluster) (*corev1alpha1.Cluster, error) {
+	if slices.Contains(cluster.Finalizers, clusterFinalizer) {
+		return cluster, nil // no-op
+	}
+
+	updated := cluster.DeepCopy()
+	updated.Finalizers = append(cluster.Finalizers, clusterFinalizer)
+	return c.client.CoreV1alpha1().Clusters(cluster.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
+}
+
+func (c *Controller) pruneReleases(ctx context.Context, cluster *corev1alpha1.Cluster) error {
+	rels, err := c.releasesForCluster(cluster.Namespace, cluster.Name)
+	if err != nil {
+		return err
+	}
+	for _, rel := range rels {
+		if err := c.client.CoreV1alpha1().Releases(rel.Namespace).
+			Delete(ctx, rel.Name, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+	// Keep the Cluster finalizer until every referencing Release is gone (each
+	// runs its own workload cleanup first). Re-check next pass:
+	if len(rels) > 0 {
+		return fmt.Errorf("waiting for %d release(s) to finalize", len(rels))
 	}
 	return nil
 }

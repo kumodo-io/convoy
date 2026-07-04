@@ -60,6 +60,11 @@ func clusterWithInClusterConnectionMode() *corev1alpha1.Cluster {
 // returns the controller, the fake clientset (to inspect actions), and the
 // informer store (to mutate observed state between syncs).
 func newTestController(t *testing.T, cluster *corev1alpha1.Cluster, prober Prober) (*Controller, *fakeclient.Clientset, cache.Store) {
+	noReleases := func(string, string) ([]*corev1alpha1.Release, error) { return nil, nil }
+	return newTestControllerWithReleases(t, cluster, prober, noReleases)
+}
+
+func newTestControllerWithReleases(t *testing.T, cluster *corev1alpha1.Cluster, prober Prober, releasesForCluster ReleasesForClusterFunc) (*Controller, *fakeclient.Clientset, cache.Store) {
 	t.Helper()
 	client := fakeclient.NewSimpleClientset(cluster)
 	factory := informers.NewSharedInformerFactory(client, 0)
@@ -68,7 +73,7 @@ func newTestController(t *testing.T, cluster *corev1alpha1.Cluster, prober Probe
 	if err := store.Add(cluster); err != nil {
 		t.Fatalf("seeding informer store: %v", err)
 	}
-	c := NewController(client, clusterInformer, prober)
+	c := NewController(client, clusterInformer, prober, releasesForCluster)
 	fixed := metav1.NewTime(time.Date(2026, 6, 11, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
 	return c, client, store

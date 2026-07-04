@@ -187,9 +187,7 @@ spec:
   
   # Declarative deletion behavior. See "Deletion Policy" below.
   deletionPolicy:
-    releases: block
-    workloads: prune
-    onUnreachable: block
+    pruneReleases: true | false
 
 status:
   # Observed reality from the controller.
@@ -392,17 +390,9 @@ spec:
 
 ## Deletion Policy
 
-`spec.deletionPolicy` declaratively controls what happens when the `Cluster` (or a referencing `Release`) is deleted. Each field is an enum:
-
-| Field           | Values            | Meaning                                                                                                                                                                  |
-|-----------------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `releases`      | `block` (default) | A finalizer prevents Cluster deletion until no `Release` references it. Safest.                                                                                          |
-|                 | `orphan`          | Referencing Releases are kept but enter a "cluster missing" error state.                                                                                                 |
-|                 | `delete`          | Referencing Releases are deleted too (cascading).                                                                                                                        |
-| `workloads`     | `prune`           | Remove deployed manifests from the target cluster before Releases are removed (graceful shutdown). Only meaningful when `releases: delete` and the cluster is reachable. |
-|                 | `leave`           | Leave deployed workloads in place (handover scenario).                                                                                                                   |
-| `onUnreachable` | `block`           | Block deletion until reachability is restored or policy is changed.                                                                                                      |
-|                 | `releasesOnly`    | Skip prune and just clean up `Release` objects (the cluster is gone).                                                                                                    |
+`spec.deletionPolicy` declaratively controls what happens when the `Cluster` is deleted. The flag `spec.deletionPolicy.pruneReleases`
+defines whether to prune `Release` objects referencing the `Cluster`. It default to `false` (zero-value) and in this case the `Release`
+objects will be kept in an orphaned state. Otherwise the cascade deletion will be performed.
 
 ## Status
 

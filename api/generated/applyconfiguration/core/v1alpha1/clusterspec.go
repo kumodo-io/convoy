@@ -42,7 +42,7 @@ type ClusterSpecApplyConfiguration struct {
 	// Capabilities is the capabilities of the cluster.
 	Capabilities *ClusterCapabilitiesSpecApplyConfiguration `json:"capabilities,omitempty"`
 	// DeletionPolicy is the deletion policy of the cluster.
-	DeletionPolicy *ClusterDeletionPolicySpecApplyConfiguration `json:"deletionPolicy,omitempty"`
+	DeletionPolicy *ClusterDeletionPolicyApplyConfiguration `json:"deletionPolicy,omitempty"`
 }
 
 // ClusterSpecApplyConfiguration constructs a declarative configuration of the ClusterSpec type for use with
@@ -100,7 +100,7 @@ func (b *ClusterSpecApplyConfiguration) WithCapabilities(value *ClusterCapabilit
 // WithDeletionPolicy sets the DeletionPolicy field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DeletionPolicy field is set to the value of the last call.
-func (b *ClusterSpecApplyConfiguration) WithDeletionPolicy(value *ClusterDeletionPolicySpecApplyConfiguration) *ClusterSpecApplyConfiguration {
+func (b *ClusterSpecApplyConfiguration) WithDeletionPolicy(value *ClusterDeletionPolicyApplyConfiguration) *ClusterSpecApplyConfiguration {
 	b.DeletionPolicy = value
 	return b
 }

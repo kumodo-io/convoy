@@ -34,8 +34,6 @@ type ReleaseStatusApplyConfiguration struct {
 	Conditions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 	// Pin is the status of the release pin.
 	Pin *ReleasePinStatusApplyConfiguration `json:"pin,omitempty"`
-	// ResolvedDeletionPolicy is the resolved deletion policy of the release.
-	ResolvedDeletionPolicy *ResolvedDeletionPolicyStatusApplyConfiguration `json:"resolvedDeletionPolicy,omitempty"`
 	// ResolvedRetentionPolicy is the resolved retention policy of the release.
 	ResolvedRetentionPolicy *ResolvedRetentionPolicyStatusApplyConfiguration `json:"resolvedRetentionPolicy,omitempty"`
 	// LastSuccessful is the last successful sync attempt.
@@ -88,14 +86,6 @@ func (b *ReleaseStatusApplyConfiguration) WithConditions(values ...*v1.Condition
 // If called multiple times, the Pin field is set to the value of the last call.
 func (b *ReleaseStatusApplyConfiguration) WithPin(value *ReleasePinStatusApplyConfiguration) *ReleaseStatusApplyConfiguration {
 	b.Pin = value
-	return b
-}
-
-// WithResolvedDeletionPolicy sets the ResolvedDeletionPolicy field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the ResolvedDeletionPolicy field is set to the value of the last call.
-func (b *ReleaseStatusApplyConfiguration) WithResolvedDeletionPolicy(value *ResolvedDeletionPolicyStatusApplyConfiguration) *ReleaseStatusApplyConfiguration {
-	b.ResolvedDeletionPolicy = value
 	return b
 }
 

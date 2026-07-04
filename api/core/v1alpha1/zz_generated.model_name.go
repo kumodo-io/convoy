@@ -57,8 +57,8 @@ func (in ClusterConnectionParametersSpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ClusterDeletionPolicySpec) OpenAPIModelName() string {
-	return "io.kumodo.convoy.core.v1alpha1.ClusterDeletionPolicySpec"
+func (in ClusterDeletionPolicy) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ClusterDeletionPolicy"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
@@ -142,8 +142,8 @@ func (in ReleaseContentSpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ReleaseDeletionPolicyOverrideSpec) OpenAPIModelName() string {
-	return "io.kumodo.convoy.core.v1alpha1.ReleaseDeletionPolicyOverrideSpec"
+func (in ReleaseDeletionPolicy) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseDeletionPolicy"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
@@ -262,11 +262,6 @@ func (in ResolvedCluster) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ResolvedDeletionPolicyStatus) OpenAPIModelName() string {
-	return "io.kumodo.convoy.core.v1alpha1.ResolvedDeletionPolicyStatus"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ResolvedMutation) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ResolvedMutation"
 }
@@ -284,11 +279,6 @@ func (in ResolvedSource) OpenAPIModelName() string {
 // OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ResourceWaveStatus) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ResourceWaveStatus"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ResultingDeletionPolicy) OpenAPIModelName() string {
-	return "io.kumodo.convoy.core.v1alpha1.ResultingDeletionPolicy"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.

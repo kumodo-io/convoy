@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"sync"
 	"time"
 
@@ -50,6 +51,8 @@ import (
 const (
 	CustomResourceDefinitionKind  = "CustomResourceDefinition"
 	CustomResourceDefinitionGroup = "apiextensions.k8s.io"
+
+	releaseFinalizer = "release.core.convoy.kumodo.io/prune-workloads"
 )
 
 // Controller reconciles Release objects: fetch source content → render → apply
@@ -137,6 +140,16 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		return err
 	}
 
+	// finalize Release on deletion according to deletion policy
+	if !rel.DeletionTimestamp.IsZero() {
+		return c.finalize(ctx, rel)
+	}
+
+	rel, err = c.ensureFinalizer(ctx, rel)
+	if err != nil {
+		return err
+	}
+
 	outcome, recErr := c.reconcile(ctx, rel)
 	newStatus := computeStatus(rel, c.now(), outcome.ready, outcome.reason, outcome.message)
 	newStatus.LastAttempted = &outcome.attempt
@@ -179,6 +192,61 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		}
 		return nil
 	}
+}
+
+func (c *Controller) ensureFinalizer(ctx context.Context, rel *corev1alpha1.Release) (*corev1alpha1.Release, error) {
+	if slices.Contains(rel.Finalizers, releaseFinalizer) {
+		return rel, nil // no-op
+	}
+
+	updated := rel.DeepCopy()
+	updated.Finalizers = append(rel.Finalizers, releaseFinalizer)
+	return c.client.CoreV1alpha1().Releases(rel.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
+}
+
+func (c *Controller) finalize(ctx context.Context, rel *corev1alpha1.Release) error {
+	if !slices.Contains(rel.Finalizers, releaseFinalizer) {
+		return nil // no-op
+	}
+
+	if !rel.Spec.DeletionPolicy.KeepWorkloads {
+		if err := c.pruneAll(ctx, rel); err != nil {
+			return fmt.Errorf("finalizing %s/%s: %w", rel.Namespace, rel.Name, err)
+		}
+	}
+
+	// remove finalizer
+	updated := rel.DeepCopy()
+	updated.Finalizers = slices.DeleteFunc(rel.Finalizers, func(finalizer string) bool {
+		return finalizer == releaseFinalizer
+	})
+	if _, err := c.client.CoreV1alpha1().Releases(rel.Namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("removing finalizer from %s/%s: %w", rel.Namespace, rel.Name, err)
+	}
+	c.inventory.Delete(rel.Namespace + "/" + rel.Name)
+	return nil
+}
+
+func (c *Controller) pruneAll(ctx context.Context, rel *corev1alpha1.Release) error {
+	refs, ok := c.inventory.Get(rel.Namespace + "/" + rel.Name)
+	if !ok || len(refs) == 0 {
+		return nil // never applied, or already pruned
+	}
+	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
+	cluster, err := c.clusterLister.Clusters(clusterNamespace).Get(rel.Spec.ClusterRef.Name)
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("resolving target cluster: %w", err)
+	}
+	if !cluster.Status.Reachable {
+		if rel.Spec.DeletionPolicy.BlockOnClusterUnreachable {
+			return fmt.Errorf("cluster %s not reachable", cluster.Name) // blocks
+		}
+		return nil // best-effort: give up cleanup, allow deletion (workloads orphaned)
+	}
+	return c.deployer.Prune(ctx, cluster, refs) // reuses the E2 delete path; ignores NotFound
 }
 
 // syncRequeueAfter returns the per-Release drift re-check interval, or 0 when

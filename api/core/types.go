@@ -19,28 +19,6 @@ const (
 	ClusterConnectionModeAgent     ClusterConnectionMode = "agent"
 )
 
-type ReleasesDeletionPolicy string
-
-const (
-	ReleasesDeletionPolicyBlock  ReleasesDeletionPolicy = "block"
-	ReleasesDeletionPolicyDelete ReleasesDeletionPolicy = "delete"
-	ReleasesDeletionPolicyOrphan ReleasesDeletionPolicy = "orphan"
-)
-
-type WorkloadsDeletionPolicy string
-
-const (
-	WorkloadsDeletionPolicyPrune WorkloadsDeletionPolicy = "prune"
-	WorkloadsDeletionPolicyLeave WorkloadsDeletionPolicy = "leave"
-)
-
-type OnUnreachableDeletionPolicy string
-
-const (
-	OnUnreachableDeletionPolicyBlock        OnUnreachableDeletionPolicy = "block"
-	OnUnreachableDeletionPolicyReleasesOnly OnUnreachableDeletionPolicy = "releasesOnly"
-)
-
 type ClusterAuthType authv1.AuthType
 
 const (
@@ -57,7 +35,7 @@ type ClusterSpec struct {
 	Agentless      *ClusterAgentlessModeSpec
 	Metadata       map[string]string
 	Capabilities   ClusterCapabilitiesSpec
-	DeletionPolicy ClusterDeletionPolicySpec
+	DeletionPolicy ClusterDeletionPolicy
 }
 
 type ClusterAgentModeSpec struct{}
@@ -83,10 +61,8 @@ type ClusterCapabilitiesSpec struct {
 	APIVersions     []string
 }
 
-type ClusterDeletionPolicySpec struct {
-	Releases      ReleasesDeletionPolicy
-	Workloads     WorkloadsDeletionPolicy
-	OnUnreachable OnUnreachableDeletionPolicy
+type ClusterDeletionPolicy struct {
+	PruneReleases bool
 }
 
 type ClusterConnectionParametersSpec struct {
@@ -291,12 +267,12 @@ const (
 )
 
 type ReleaseSpec struct {
-	Source                 ReleaseSourceSpec
-	Content                ReleaseContentSpec
-	ClusterRef             ReleaseClusterRefSpec
-	SyncPolicy             ReleaseSyncPolicySpec
-	RetentionPolicy        ReleaseRetentionPolicySpec
-	DeletionPolicyOverride *ReleaseDeletionPolicyOverrideSpec
+	Source          ReleaseSourceSpec
+	Content         ReleaseContentSpec
+	ClusterRef      ReleaseClusterRefSpec
+	SyncPolicy      ReleaseSyncPolicySpec
+	RetentionPolicy ReleaseRetentionPolicySpec
+	DeletionPolicy  ReleaseDeletionPolicy
 }
 
 type ReleaseSourceSpec struct {
@@ -420,8 +396,9 @@ type ReleaseRetentionPolicySpec struct {
 	KeepHistory int
 }
 
-type ReleaseDeletionPolicyOverrideSpec struct {
-	Workloads WorkloadsDeletionPolicy
+type ReleaseDeletionPolicy struct {
+	KeepWorkloads             bool
+	BlockOnClusterUnreachable bool
 }
 
 type ReleaseMutation struct {
@@ -479,7 +456,6 @@ type ReleaseStatus struct {
 	ObservedGeneration      int64
 	Conditions              []metav1.Condition
 	Pin                     ReleasePinStatus
-	ResolvedDeletionPolicy  ResolvedDeletionPolicyStatus
 	ResolvedRetentionPolicy ResolvedRetentionPolicyStatus
 	LastSuccessful          *ReleaseAttemptedRenderStatus
 	LastAttempted           *ReleaseAttemptedRenderStatus
@@ -503,18 +479,6 @@ type ReleasePinRenderInputsStatus struct {
 	ContentType     ReleaseContentType
 	ContentPath     string
 	MutationsHash   string
-}
-
-type ResolvedDeletionPolicyStatus struct {
-	WorkloadsPolicySource   WorkloadsPolicySource
-	Policy                  ResultingDeletionPolicy
-	SourceClusterGeneration int64
-}
-
-type ResultingDeletionPolicy struct {
-	Workloads     WorkloadsDeletionPolicy
-	Releases      ReleasesDeletionPolicy
-	OnUnreachable OnUnreachableDeletionPolicy
 }
 
 type ResolvedRetentionPolicyStatus struct {

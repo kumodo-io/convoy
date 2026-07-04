@@ -35,8 +35,8 @@ type ReleaseSpecApplyConfiguration struct {
 	SyncPolicy *ReleaseSyncPolicySpecApplyConfiguration `json:"syncPolicy,omitempty"`
 	// RetentionPolicy is the retention policy for the release.
 	RetentionPolicy *ReleaseRetentionPolicySpecApplyConfiguration `json:"retentionPolicy,omitempty"`
-	// DeletionPolicyOverride is the override for the deletion policy of the cluster Release is bound to.
-	DeletionPolicyOverride *ReleaseDeletionPolicyOverrideSpecApplyConfiguration `json:"deletionPolicyOverride,omitempty"`
+	// DeletionPolicy defines the deletion policy for Release.
+	DeletionPolicy *ReleaseDeletionPolicyApplyConfiguration `json:"deletionPolicy,omitempty"`
 }
 
 // ReleaseSpecApplyConfiguration constructs a declarative configuration of the ReleaseSpec type for use with
@@ -85,10 +85,10 @@ func (b *ReleaseSpecApplyConfiguration) WithRetentionPolicy(value *ReleaseRetent
 	return b
 }
 
-// WithDeletionPolicyOverride sets the DeletionPolicyOverride field in the declarative configuration to the given value
+// WithDeletionPolicy sets the DeletionPolicy field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the DeletionPolicyOverride field is set to the value of the last call.
-func (b *ReleaseSpecApplyConfiguration) WithDeletionPolicyOverride(value *ReleaseDeletionPolicyOverrideSpecApplyConfiguration) *ReleaseSpecApplyConfiguration {
-	b.DeletionPolicyOverride = value
+// If called multiple times, the DeletionPolicy field is set to the value of the last call.
+func (b *ReleaseSpecApplyConfiguration) WithDeletionPolicy(value *ReleaseDeletionPolicyApplyConfiguration) *ReleaseSpecApplyConfiguration {
+	b.DeletionPolicy = value
 	return b
 }

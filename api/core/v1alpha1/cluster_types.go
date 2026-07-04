@@ -28,51 +28,6 @@ const (
 	ClusterConnectionModeAgent ClusterConnectionMode = "agent"
 )
 
-// ReleasesDeletionPolicy defines the deletion policy for the releases
-// in case of the cluster deletion.
-// +enum
-type ReleasesDeletionPolicy string
-
-const (
-	// ReleasesDeletionPolicyBlock blocks the cluster deletion until
-	// no Release objects reference the cluster (default, recommended).
-	ReleasesDeletionPolicyBlock ReleasesDeletionPolicy = "block"
-
-	// ReleasesDeletionPolicyDelete deletes the Release objects (cascading).
-	ReleasesDeletionPolicyDelete ReleasesDeletionPolicy = "delete"
-
-	// ReleasesDeletionPolicyOrphan leaves the Release objects in the cluster.
-	// The Release objects are orphaned and enter the "ClusterMissing" state.
-	ReleasesDeletionPolicyOrphan ReleasesDeletionPolicy = "orphan"
-)
-
-// WorkloadsDeletionPolicy defines the deletion policy for the workloads
-// in case of the cluster deletion.
-// +enum
-type WorkloadsDeletionPolicy string
-
-const (
-	// WorkloadsDeletionPolicyPrune deletes deployed manifests from the cluster.
-	WorkloadsDeletionPolicyPrune WorkloadsDeletionPolicy = "prune"
-
-	// WorkloadsDeletionPolicyLeave leaves deployed manifests in the cluster.
-	WorkloadsDeletionPolicyLeave WorkloadsDeletionPolicy = "leave"
-)
-
-// OnUnreachableDeletionPolicy defines the deletion policy for the cluster
-// in case the cluster is unreachable.
-// +enum
-type OnUnreachableDeletionPolicy string
-
-const (
-	// OnUnreachableDeletionPolicyBlock blocks the cluster deletion
-	// until reachability is restored (default).
-	OnUnreachableDeletionPolicyBlock OnUnreachableDeletionPolicy = "block"
-
-	// OnUnreachableDeletionPolicyReleasesOnly cleans up the Release objects (cluster is gone).
-	OnUnreachableDeletionPolicyReleasesOnly OnUnreachableDeletionPolicy = "releasesOnly"
-)
-
 // ClusterAuthType is a subset of the auth.AuthType enum.
 // It defines only those authentication modes that are valid for the Cluster controller.
 // +enum
@@ -117,7 +72,7 @@ type ClusterSpec struct {
 	Capabilities ClusterCapabilitiesSpec `json:"capabilities,omitempty"`
 
 	// DeletionPolicy is the deletion policy of the cluster.
-	DeletionPolicy ClusterDeletionPolicySpec `json:"deletionPolicy,omitempty"`
+	DeletionPolicy ClusterDeletionPolicy `json:"deletionPolicy,omitempty"`
 }
 
 // ClusterAgentModeSpec defines the configuration of the agent connection mode.
@@ -173,26 +128,10 @@ type ClusterCapabilitiesSpec struct {
 	APIVersions []string `json:"apiVersions,omitempty"`
 }
 
-// ClusterDeletionPolicySpec defines the deletion policy of the cluster.
-type ClusterDeletionPolicySpec struct {
-	// Releases is the deletion policy for the Release objects in case of the cluster deletion.
-	// Possible values are:
-	// - block (default, recommended)
-	// - delete
-	// - orphan
-	Releases ReleasesDeletionPolicy `json:"releases"`
-
-	// Workloads is the deletion policy for the workloads in case of the cluster deletion.
-	// Possible values are:
-	// - prune (default)
-	// - leave
-	Workloads WorkloadsDeletionPolicy `json:"workloads"`
-
-	// OnUnreachable is the deletion policy for the cluster in case the cluster is unreachable.
-	// Possible values are:
-	// - block (default)
-	// - releasesOnly
-	OnUnreachable OnUnreachableDeletionPolicy `json:"onUnreachable"`
+// ClusterDeletionPolicy defines the deletion policy of the cluster.
+type ClusterDeletionPolicy struct {
+	// PruneReleases is the deletion policy for the Release objects in case of the cluster deletion.
+	PruneReleases bool `json:"pruneReleases"`
 }
 
 // ClusterConnectionParametersSpec defines the connection parameters of the cluster.
