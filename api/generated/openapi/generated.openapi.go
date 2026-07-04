@@ -61,7 +61,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ClusterAuthSpec{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
 		v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
 		v1alpha1.ClusterConnectionParametersSpec{}.OpenAPIModelName():             schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
-		v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName():                   schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref),
+		v1alpha1.ClusterDeletionPolicy{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ClusterDeletionPolicy(ref),
 		v1alpha1.ClusterList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterList(ref),
 		v1alpha1.ClusterSpec{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
 		v1alpha1.ClusterStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
@@ -78,7 +78,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseContentKustomizeSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref),
 		v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
 		v1alpha1.ReleaseContentSpec{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
-		v1alpha1.ReleaseDeletionPolicyOverrideSpec{}.OpenAPIModelName():           schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref),
+		v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicy(ref),
 		v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref),
 		v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref),
 		v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
@@ -102,12 +102,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref),
 		v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref),
 		v1alpha1.ResolvedCluster{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ResolvedCluster(ref),
-		v1alpha1.ResolvedDeletionPolicyStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref),
 		v1alpha1.ResolvedMutation{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ResolvedMutation(ref),
 		v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref),
 		v1alpha1.ResolvedSource{}.OpenAPIModelName():                              schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
 		v1alpha1.ResourceWaveStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
-		v1alpha1.ResultingDeletionPolicy{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref),
 		v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ValuesSourceGitRepositorySpec(ref),
 		v1alpha1.ValuesSourceSpec{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref),
 		extensionsv1alpha1.HealthRule{}.OpenAPIModelName():                        schema_convoy_api_extensions_v1alpha1_HealthRule(ref),
@@ -1272,42 +1270,23 @@ func schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref common.
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_core_v1alpha1_ClusterDeletionPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ClusterDeletionPolicySpec defines the deletion policy of the cluster.",
+				Description: "ClusterDeletionPolicy defines the deletion policy of the cluster.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"releases": {
+					"pruneReleases": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Releases is the deletion policy for the Release objects in case of the cluster deletion. Possible values are: - block (default, recommended) - delete - orphan\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
-							Default:     "",
-							Type:        []string{"string"},
+							Description: "PruneReleases is the deletion policy for the Release objects in case of the cluster deletion.",
+							Default:     false,
+							Type:        []string{"boolean"},
 							Format:      "",
-							Enum:        []interface{}{"block", "delete", "orphan"},
-						},
-					},
-					"workloads": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Workloads is the deletion policy for the workloads in case of the cluster deletion. Possible values are: - prune (default) - leave\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-							Enum:        []interface{}{"leave", "prune"},
-						},
-					},
-					"onUnreachable": {
-						SchemaProps: spec.SchemaProps{
-							Description: "OnUnreachable is the deletion policy for the cluster in case the cluster is unreachable. Possible values are: - block (default) - releasesOnly\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-							Enum:        []interface{}{"block", "releasesOnly"},
 						},
 					},
 				},
-				Required: []string{"releases", "workloads", "onUnreachable"},
+				Required: []string{"pruneReleases"},
 			},
 		},
 	}
@@ -1416,7 +1395,7 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 						SchemaProps: spec.SchemaProps{
 							Description: "DeletionPolicy is the deletion policy of the cluster.",
 							Default:     map[string]interface{}{},
-							Ref:         ref(v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName()),
+							Ref:         ref(v1alpha1.ClusterDeletionPolicy{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -1424,7 +1403,7 @@ func schema_convoy_api_core_v1alpha1_ClusterSpec(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ClusterAgentModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName(), v1alpha1.ClusterDeletionPolicySpec{}.OpenAPIModelName()},
+			v1alpha1.ClusterAgentModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName(), v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName(), v1alpha1.ClusterDeletionPolicy{}.OpenAPIModelName()},
 	}
 }
 
@@ -2405,24 +2384,31 @@ func schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref common.ReferenceCall
 	}
 }
 
-func schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicyOverrideSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ReleaseDeletionPolicyOverrideSpec is used to override the deletion policy of the cluster Release is bound to.",
+				Description: "ReleaseDeletionPolicy defines a per-Release deletion behaviour: what happens when the specific Release is being deleted.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"workloads": {
+					"keepWorkloads": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Workloads is the deletion policy for workloads.\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
-							Default:     "",
-							Type:        []string{"string"},
+							Description: "KeepWorkloads flag defines whether to cleanup deployed resources on the Release object deletion.",
+							Default:     false,
+							Type:        []string{"boolean"},
 							Format:      "",
-							Enum:        []interface{}{"leave", "prune"},
+						},
+					},
+					"blockOnClusterUnreachable": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BlockOnClusterUnreachable flag defines whether to block Release object deletion in case the KeepWorkloads flag is set to false and the target Cluster is unreachable.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
 						},
 					},
 				},
-				Required: []string{"workloads"},
+				Required: []string{"keepWorkloads", "blockOnClusterUnreachable"},
 			},
 		},
 	}
@@ -3344,18 +3330,19 @@ func schema_convoy_api_core_v1alpha1_ReleaseSpec(ref common.ReferenceCallback) c
 							Ref:         ref(v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName()),
 						},
 					},
-					"deletionPolicyOverride": {
+					"deletionPolicy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "DeletionPolicyOverride is the override for the deletion policy of the cluster Release is bound to.",
-							Ref:         ref(v1alpha1.ReleaseDeletionPolicyOverrideSpec{}.OpenAPIModelName()),
+							Description: "DeletionPolicy defines the deletion policy for Release.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName()),
 						},
 					},
 				},
-				Required: []string{"source", "content", "clusterRef", "syncPolicy", "retentionPolicy"},
+				Required: []string{"source", "content", "clusterRef", "syncPolicy", "retentionPolicy", "deletionPolicy"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentSpec{}.OpenAPIModelName(), v1alpha1.ReleaseDeletionPolicyOverrideSpec{}.OpenAPIModelName(), v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName(), v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName(), v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()},
+			v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentSpec{}.OpenAPIModelName(), v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName(), v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName(), v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName(), v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -3400,13 +3387,6 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 							Description: "Pin is the status of the release pin.",
 							Default:     map[string]interface{}{},
 							Ref:         ref(v1alpha1.ReleasePinStatus{}.OpenAPIModelName()),
-						},
-					},
-					"resolvedDeletionPolicy": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ResolvedDeletionPolicy is the resolved deletion policy of the release.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(v1alpha1.ResolvedDeletionPolicyStatus{}.OpenAPIModelName()),
 						},
 					},
 					"resolvedRetentionPolicy": {
@@ -3480,7 +3460,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.LifecycleStatus{}.OpenAPIModelName(), v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName(), v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName(), v1alpha1.ReleasePinStatus{}.OpenAPIModelName(), v1alpha1.ResolvedDeletionPolicyStatus{}.OpenAPIModelName(), v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName(), v1alpha1.ResourceWaveStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
+			v1alpha1.LifecycleStatus{}.OpenAPIModelName(), v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName(), v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName(), v1alpha1.ReleasePinStatus{}.OpenAPIModelName(), v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName(), v1alpha1.ResourceWaveStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -3632,45 +3612,6 @@ func schema_convoy_api_core_v1alpha1_ResolvedCluster(ref common.ReferenceCallbac
 				Required: []string{"name", "uid", "observedGeneration", "server"},
 			},
 		},
-	}
-}
-
-func schema_convoy_api_core_v1alpha1_ResolvedDeletionPolicyStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ResolvedDeletionPolicyStatus reflects the resolved deletion policy of the Release considering the deletion policy overrides.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"workloadsPolicySource": {
-						SchemaProps: spec.SchemaProps{
-							Description: "WorkloadsPolicySource is the source of the deletion policy for workloads.\n\nPossible enum values:\n - `\"cluster\"` is used when the workloads deletion policy is defined in the Cluster.\n - `\"release\"` is used when the workloads deletion policy is defined in the Release.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-							Enum:        []interface{}{"cluster", "release"},
-						},
-					},
-					"policy": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Policy is the resolved deletion policy.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(v1alpha1.ResultingDeletionPolicy{}.OpenAPIModelName()),
-						},
-					},
-					"sourceClusterGeneration": {
-						SchemaProps: spec.SchemaProps{
-							Description: "SourceClusterGeneration is the generation of the source cluster.",
-							Type:        []string{"integer"},
-							Format:      "int64",
-						},
-					},
-				},
-				Required: []string{"workloadsPolicySource", "policy"},
-			},
-		},
-		Dependencies: []string{
-			v1alpha1.ResultingDeletionPolicy{}.OpenAPIModelName()},
 	}
 }
 
@@ -3915,47 +3856,6 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 		},
 		Dependencies: []string{
 			metav1.Time{}.OpenAPIModelName()},
-	}
-}
-
-func schema_convoy_api_core_v1alpha1_ResultingDeletionPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ResultingDeletionPolicy reflects the resolved deletion policy of the Release considering the deletion policy overrides.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"workloads": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Workloads is the resolved deletion policy for workloads.\n\nPossible enum values:\n - `\"leave\"` leaves deployed manifests in the cluster.\n - `\"prune\"` deletes deployed manifests from the cluster.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-							Enum:        []interface{}{"leave", "prune"},
-						},
-					},
-					"releases": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Releases is the resolved deletion policy for releases.\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until no Release objects reference the cluster (default, recommended).\n - `\"delete\"` deletes the Release objects (cascading).\n - `\"orphan\"` leaves the Release objects in the cluster. The Release objects are orphaned and enter the \"ClusterMissing\" state.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-							Enum:        []interface{}{"block", "delete", "orphan"},
-						},
-					},
-					"onUnreachable": {
-						SchemaProps: spec.SchemaProps{
-							Description: "OnUnreachable is the resolved deletion policy for unreachable clusters.\n\nPossible enum values:\n - `\"block\"` blocks the cluster deletion until reachability is restored (default).\n - `\"releasesOnly\"` cleans up the Release objects (cluster is gone).",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-							Enum:        []interface{}{"block", "releasesOnly"},
-						},
-					},
-				},
-				Required: []string{"workloads", "releases", "onUnreachable"},
-			},
-		},
 	}
 }
 

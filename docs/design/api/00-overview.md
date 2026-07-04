@@ -90,7 +90,6 @@ flowchart TD
 | `Release.mutations[].from.sourceRef`    | a `Source` (typically `GitRepository`)                                 | Content for values files / patches; may differ from `spec.source`.                        |
 | `Release.status.resolvedSource`         | snapshot of the referenced `Source`                                    | Captured at render time; stable even if the Source changes later.                         |
 | `Release.status.resolvedCluster`        | snapshot of the referenced `Cluster`                                   | Captured at render time (server, templating metadata).                                    |
-| `Release.status.resolvedDeletionPolicy` | `Cluster.spec.deletionPolicy` + `Release.spec.deletionPolicyOverrides` | Effective policy, combining both.                                                         |
 | `KindHealthRule` / `ResourceHealthRule` | the live resources a Release manages                                   | Matched by `(apiGroup, kind[, version, namespace, name])`; no direct link to the Release. |
 
 ## External References

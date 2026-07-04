@@ -1,6 +1,7 @@
 <!-- TOC -->
   * [Spec](#spec)
   * [Source Reference](#source-reference)
+    * [Source × Content compatibility](#source--content-compatibility)
   * [Content Types](#content-types)
     * [helm](#helm)
     * [kustomize](#kustomize)
@@ -296,13 +297,17 @@ spec:
   # Drives /history pagination depth and rollback range.
   retentionPolicy:
     keepHistory: 50
-  
-  # Per-Release deletion behavior — what happens when this specific Release is deleted.
-  # Overrides Cluster.spec.deletionPolicy (which governs cluster-cascade deletion).
-  deletionPolicyOverride:
-    # - prune: remove deployed manifests from the cluster (graceful shutdown)
-    # - leave: leave workloads running (rare; for migration to another tool)
-    workloads: prune
+
+  # Per-Release deletion behaviour - what happens when the specific Release is deleted
+  deletionPolicy:
+    # defaults to false, if set set to true, only Release object will be deleted without
+    # touching deployed resources.
+    keepWorkloads: true | false
+    # defaults to false, if set to true, Release object deletion will be blocked until
+    # cluster reachability restored. If it's set to false controller will attempt to
+    # prune deployed resources, but in case of cluster is unreachable Release object
+    # will be deleted without deployed resources cleanup.
+    blockOnClusterUnreachable: true | false
 
 # Top-level field (not part of spec). Holds the ordered transformation pipeline.
 # Exposed via the /mutations subresource for field-level RBAC and audit clarity.
@@ -435,16 +440,6 @@ status:
       contentType: helm
       contentPath: charts/payments-api
       mutationsHash: sha256:5566778899aabbccddeeff00112233445566778899aabbccddeeff0011223344
-
-  # Resolved deletion policy snapshot — combines Release.spec.deletionPolicy
-  # and Cluster.spec.deletionPolicy. Top-level (current state, not per-render).
-  resolvedDeletionPolicy:
-      workloadsPolicySource: release | cluster
-      policy:
-        releases: block
-        workloads: prune
-        onUnreachable: releasesOnly
-      sourceClusterGeneration: 3
   
   # Retention policy resolved into operational state.
   resolvedRetentionPolicy:
@@ -583,14 +578,14 @@ status:
 
 `spec` binds a source, a content interpretation, and a target cluster, plus sync/retention/deletion policy. Identity fields (`source.type` + the referenced source name, `content.type`, `cluster`) are **immutable** after creation — to re-target, create a new Release. Routine fields (the source coordinate — `ref`/`chart.version`/`artifact.version` — render options, mutations, policies) are mutable.
 
-| Field                    | Type   | Required | Default | Description                                                                                                                                                                                                         |
-|--------------------------|--------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `source`                 | object | yes      | —       | WHERE + WHICH to fetch. Discriminated on `source.type` (`gitRepository`/`helmRegistry`/`ociRegistry`); each block references a Source object and carries the coordinate. See [Source Reference](#source-reference). |
-| `content`                | object | yes      | —       | HOW to render the fetched bytes. Discriminated on `content.type`; see [Content Types](#content-types). Must be compatible with `source.type`. `content.type` immutable.                                             |
-| `cluster`                | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                                                                                               |
-| `syncPolicy`             | object | no       | —       | Reconciliation behavior: `automatic`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).                                                                                  |
-| `retentionPolicy`        | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.                                                                                       |
-| `deletionPolicyOverride` | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`); overrides `Cluster.spec.deletionPolicy`.                                                                                                               |
+| Field             | Type   | Required | Default | Description                                                                                                                                                                                                         |
+|-------------------|--------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `source`          | object | yes      | —       | WHERE + WHICH to fetch. Discriminated on `source.type` (`gitRepository`/`helmRegistry`/`ociRegistry`); each block references a Source object and carries the coordinate. See [Source Reference](#source-reference). |
+| `content`         | object | yes      | —       | HOW to render the fetched bytes. Discriminated on `content.type`; see [Content Types](#content-types). Must be compatible with `source.type`. `content.type` immutable.                                             |
+| `cluster`         | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                                                                                               |
+| `syncPolicy`      | object | no       | —       | Reconciliation behavior: `automatic`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).                                                                                  |
+| `retentionPolicy` | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.                                                                                       |
+| `deletionPolicy`  | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`).                                                                                                                                                        |
 
 `mutations` is a **top-level field** (not under `spec`), exposed via the `/mutations` subresource for field-level RBAC and audit. It is an ordered, atomic (`+listType=atomic`) transformation pipeline; see [Mutation Types](#mutation-types).
 
@@ -786,7 +781,6 @@ mutations:
 | `conditions`              | []Condition | See [Conditions](#conditions).                                                                                                                                                      |
 | `healthSummary`           | object      | Aggregate health counts (`total`/`healthy`/`progressing`/`degraded`/`suspended`/`unknown`). The per-resource detail is served by [`/health`](#health-subresource), not stored here. |
 | `pin`                     | object      | Mirror of the *fact* of being pinned (`intent: freeze \| rollback`, `renderInputs`); full detail behind `/pin`.                                                                     |
-| `resolvedDeletionPolicy`  | object      | Effective deletion policy, combining `Release.spec.deletionPolicyOverride` and `Cluster.spec.deletionPolicy`.                                                                       |
 | `resolvedRetentionPolicy` | object      | Retention resolved into operational state (`keepHistory`, `historyCount`).                                                                                                          |
 | `lastSuccessful`          | object      | Last successful render — what is actually deployed: resolved source/cluster/mutation snapshots, `renderRef`, `syncedAt`, `syncedResources`.                                         |
 | `lastAttempted`           | object      | Most recent reconciliation attempt (may be in-progress/failed): same snapshots plus `phase` (`Rendering \| Syncing \| Succeeded \| Failed`) and a `failure` block when failed.      |

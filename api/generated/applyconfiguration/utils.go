@@ -82,8 +82,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ClusterCapabilitiesSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterConnectionParametersSpec"):
 		return &applyconfigurationcorev1alpha1.ClusterConnectionParametersSpecApplyConfiguration{}
-	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterDeletionPolicySpec"):
-		return &applyconfigurationcorev1alpha1.ClusterDeletionPolicySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterDeletionPolicy"):
+		return &applyconfigurationcorev1alpha1.ClusterDeletionPolicyApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterSpec"):
 		return &applyconfigurationcorev1alpha1.ClusterSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterStatus"):
@@ -114,8 +114,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseContentManifestsSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseContentSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseContentSpecApplyConfiguration{}
-	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseDeletionPolicyOverrideSpec"):
-		return &applyconfigurationcorev1alpha1.ReleaseDeletionPolicyOverrideSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseDeletionPolicy"):
+		return &applyconfigurationcorev1alpha1.ReleaseDeletionPolicyApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositoryRefSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseGitRepositoryRefSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositorySpec"):
@@ -160,8 +160,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseWaveStrategySpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedCluster"):
 		return &applyconfigurationcorev1alpha1.ResolvedClusterApplyConfiguration{}
-	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedDeletionPolicyStatus"):
-		return &applyconfigurationcorev1alpha1.ResolvedDeletionPolicyStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedMutation"):
 		return &applyconfigurationcorev1alpha1.ResolvedMutationApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedRetentionPolicyStatus"):
@@ -170,8 +168,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ResolvedSourceApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResourceWaveStatus"):
 		return &applyconfigurationcorev1alpha1.ResourceWaveStatusApplyConfiguration{}
-	case corev1alpha1.SchemeGroupVersion.WithKind("ResultingDeletionPolicy"):
-		return &applyconfigurationcorev1alpha1.ResultingDeletionPolicyApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ValuesSourceGitRepositorySpec"):
 		return &applyconfigurationcorev1alpha1.ValuesSourceGitRepositorySpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ValuesSourceSpec"):

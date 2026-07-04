@@ -344,8 +344,8 @@ type ReleaseSpec struct {
 	// RetentionPolicy is the retention policy for the release.
 	RetentionPolicy ReleaseRetentionPolicySpec `json:"retentionPolicy"`
 
-	// DeletionPolicyOverride is the override for the deletion policy of the cluster Release is bound to.
-	DeletionPolicyOverride *ReleaseDeletionPolicyOverrideSpec `json:"deletionPolicyOverride,omitempty"`
+	// DeletionPolicy defines the deletion policy for Release.
+	DeletionPolicy ReleaseDeletionPolicy `json:"deletionPolicy"`
 }
 
 // ReleaseSourceSpec defines the source for the release.
@@ -602,11 +602,17 @@ type ReleaseRetentionPolicySpec struct {
 	KeepHistory int `json:"keepHistory"`
 }
 
-// ReleaseDeletionPolicyOverrideSpec is used to override the deletion policy of the cluster
-// Release is bound to.
-type ReleaseDeletionPolicyOverrideSpec struct {
-	// Workloads is the deletion policy for workloads.
-	Workloads WorkloadsDeletionPolicy `json:"workloads"`
+// ReleaseDeletionPolicy defines a per-Release deletion behaviour:
+// what happens when the specific Release is being deleted.
+type ReleaseDeletionPolicy struct {
+	// KeepWorkloads flag defines whether to cleanup deployed resources
+	// on the Release object deletion.
+	KeepWorkloads bool `json:"keepWorkloads"`
+
+	// BlockOnClusterUnreachable flag defines whether to block Release object
+	// deletion in case the KeepWorkloads flag is set to false and the target
+	// Cluster is unreachable.
+	BlockOnClusterUnreachable bool `json:"blockOnClusterUnreachable"`
 }
 
 // ReleaseMutation defines the desired state of the ReleaseMutation.
@@ -749,9 +755,6 @@ type ReleaseStatus struct {
 	// Pin is the status of the release pin.
 	Pin ReleasePinStatus `json:"pin,omitempty"`
 
-	// ResolvedDeletionPolicy is the resolved deletion policy of the release.
-	ResolvedDeletionPolicy ResolvedDeletionPolicyStatus `json:"resolvedDeletionPolicy,omitempty"`
-
 	// ResolvedRetentionPolicy is the resolved retention policy of the release.
 	ResolvedRetentionPolicy ResolvedRetentionPolicyStatus `json:"resolvedRetentionPolicy,omitempty"`
 
@@ -813,32 +816,6 @@ type ReleasePinRenderInputsStatus struct {
 
 	// MutationsHash is the hash of the mutations applied to the content.
 	MutationsHash string `json:"mutationsHash,omitempty"`
-}
-
-// ResolvedDeletionPolicyStatus reflects the resolved deletion policy
-// of the Release considering the deletion policy overrides.
-type ResolvedDeletionPolicyStatus struct {
-	// WorkloadsPolicySource is the source of the deletion policy for workloads.
-	WorkloadsPolicySource WorkloadsPolicySource `json:"workloadsPolicySource"`
-
-	// Policy is the resolved deletion policy.
-	Policy ResultingDeletionPolicy `json:"policy"`
-
-	// SourceClusterGeneration is the generation of the source cluster.
-	SourceClusterGeneration int64 `json:"sourceClusterGeneration,omitempty"`
-}
-
-// ResultingDeletionPolicy reflects the resolved deletion policy
-// of the Release considering the deletion policy overrides.
-type ResultingDeletionPolicy struct {
-	// Workloads is the resolved deletion policy for workloads.
-	Workloads WorkloadsDeletionPolicy `json:"workloads"`
-
-	// Releases is the resolved deletion policy for releases.
-	Releases ReleasesDeletionPolicy `json:"releases"`
-
-	// OnUnreachable is the resolved deletion policy for unreachable clusters.
-	OnUnreachable OnUnreachableDeletionPolicy `json:"onUnreachable"`
 }
 
 // ResolvedRetentionPolicyStatus reflects the resulting retention policy.
