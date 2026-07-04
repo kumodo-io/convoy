@@ -112,6 +112,10 @@ func (o *Options) Run(ctx context.Context) error {
 
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
 	clusterInformer := factory.Core().V1alpha1().Clusters()
+	// Release controller: fetches via the coordinator, renders, and applies to the
+	// target cluster (reached through the same connector the cluster controller
+	// probes with).
+	releaseInformer := factory.Core().V1alpha1().Releases()
 
 	resolver := auth.NewSecretResolver(kube)
 	// Registry of agentless auth types. cfg is the controller's own config, used
@@ -121,7 +125,21 @@ func (o *Options) Run(ctx context.Context) error {
 	}
 	connector := clusterconn.NewConnector(cfg, clusterAuth, resolver)
 	prober := clustercontroller.NewProber(connector)
-	clusterController := clustercontroller.NewController(client, clusterInformer, prober)
+	releasesForCluster := func(clusterNs, clusterName string) ([]*corev1alpha1.Release, error) {
+		objs, err := releaseInformer.Informer().GetIndexer().
+			ByIndex(releaseByClusterIndex, clusterNs+"/"+clusterName)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]*corev1alpha1.Release, 0, len(objs))
+		for _, o := range objs {
+			if rel, ok := o.(*corev1alpha1.Release); ok {
+				out = append(out, rel)
+			}
+		}
+		return out, nil
+	}
+	clusterController := clustercontroller.NewController(client, clusterInformer, prober, releasesForCluster)
 
 	// Content-addressed artifact store, shared by the fetch coordinator (producer)
 	// and consumed via the coordinator's result.
@@ -155,10 +173,6 @@ func (o *Options) Run(ctx context.Context) error {
 		OCIFetcher:     ociFetcher,
 	})
 
-	// Release controller: fetches via the coordinator, renders, and applies to the
-	// target cluster (reached through the same connector the cluster controller
-	// probes with).
-	releaseInformer := factory.Core().V1alpha1().Releases()
 	// Index Releases by the cluster they target, so cluster-driven fan-out (e.g.
 	// re-enqueue/prune on cluster change) can look them up from the cache.
 	if err := releaseInformer.Informer().AddIndexers(cache.Indexers{
