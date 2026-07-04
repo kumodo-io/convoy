@@ -52,6 +52,10 @@ type Result struct {
 	Artifact artifact.Artifact
 	// Message describes a not-ready outcome (for the consumer's status).
 	Message string
+	// UID is the UID of the source object.
+	UID string
+	// ObservedGeneration is the generation of the source object.
+	ObservedGeneration int64
 }
 
 // Coordinator ensures source content is fetched and available.
@@ -138,7 +142,14 @@ func (c *coordinator) ensureGitRepository(ctx context.Context, src *corev1alpha1
 	// store if already fetched. Branch/tag/semver must re-resolve.
 	if src.Ref.Commit != nil {
 		if a, ok := c.store.Get(artifact.Key(repo.Spec.URL, *src.Ref.Commit)); ok {
-			return Result{Ready: true, Revision: a.Revision, URL: repo.Spec.URL, Artifact: a}, nil
+			return Result{
+				Ready:              true,
+				Revision:           a.Revision,
+				URL:                repo.Spec.URL,
+				Artifact:           a,
+				UID:                string(repo.UID),
+				ObservedGeneration: repo.Generation,
+			}, nil
 		}
 	}
 
@@ -152,7 +163,14 @@ func (c *coordinator) ensureGitRepository(ctx context.Context, src *corev1alpha1
 
 	a := artifact.Artifact{Revision: fr.Revision, Files: fr.Files}
 	c.store.Put(artifact.Key(repo.Spec.URL, fr.Revision), a)
-	return Result{Ready: true, Revision: fr.Revision, URL: repo.Spec.URL, Artifact: a}, nil
+	return Result{
+		Ready:              true,
+		Revision:           fr.Revision,
+		URL:                repo.Spec.URL,
+		Artifact:           a,
+		UID:                string(repo.UID),
+		ObservedGeneration: repo.Generation,
+	}, nil
 }
 
 func (c *coordinator) ensureHelmRegistry(ctx context.Context, src *corev1alpha1.ReleaseHelmRegistrySpec, namespace string) (Result, error) {
@@ -180,7 +198,14 @@ func (c *coordinator) ensureHelmRegistry(ctx context.Context, src *corev1alpha1.
 	// the store if already fetched.
 	revision := src.Chart.Name + "-" + src.Chart.Version
 	if a, ok := c.store.Get(artifact.Key(reg.Spec.URL, revision)); ok {
-		return Result{Ready: true, Revision: a.Revision, URL: reg.Spec.URL, Artifact: a}, nil
+		return Result{
+			Ready:              true,
+			Revision:           a.Revision,
+			URL:                reg.Spec.URL,
+			Artifact:           a,
+			UID:                string(reg.UID),
+			ObservedGeneration: reg.Generation,
+		}, nil
 	}
 
 	fr, err := c.helmFetcher.Fetch(ctx, reg, helmregistry.Ref{Name: src.Chart.Name, Version: src.Chart.Version})
@@ -193,7 +218,14 @@ func (c *coordinator) ensureHelmRegistry(ctx context.Context, src *corev1alpha1.
 
 	a := artifact.Artifact{Revision: fr.Revision, Files: fr.Files}
 	c.store.Put(artifact.Key(reg.Spec.URL, fr.Revision), a)
-	return Result{Ready: true, Revision: fr.Revision, URL: reg.Spec.URL, Artifact: a}, nil
+	return Result{
+		Ready:              true,
+		Revision:           fr.Revision,
+		URL:                reg.Spec.URL,
+		Artifact:           a,
+		UID:                string(reg.UID),
+		ObservedGeneration: reg.Generation,
+	}, nil
 }
 
 func (c *coordinator) ensureOCIRegistry(ctx context.Context, src *corev1alpha1.ReleaseOCIRegistrySpec, namespace string) (Result, error) {
@@ -221,7 +253,14 @@ func (c *coordinator) ensureOCIRegistry(ctx context.Context, src *corev1alpha1.R
 	// from the store if already fetched.
 	revision := src.Artifact.Name + "-" + src.Artifact.Version
 	if a, ok := c.store.Get(artifact.Key(reg.Spec.URL, revision)); ok {
-		return Result{Ready: true, Revision: a.Revision, URL: reg.Spec.URL, Artifact: a}, nil
+		return Result{
+			Ready:              true,
+			Revision:           a.Revision,
+			URL:                reg.Spec.URL,
+			Artifact:           a,
+			UID:                string(reg.UID),
+			ObservedGeneration: reg.Generation,
+		}, nil
 	}
 
 	fr, err := c.ociFetcher.Fetch(ctx, reg, ociregistry.Ref{Name: src.Artifact.Name, Version: src.Artifact.Version})
@@ -234,7 +273,14 @@ func (c *coordinator) ensureOCIRegistry(ctx context.Context, src *corev1alpha1.R
 
 	a := artifact.Artifact{Revision: fr.Revision, Files: fr.Files}
 	c.store.Put(artifact.Key(reg.Spec.URL, fr.Revision), a)
-	return Result{Ready: true, Revision: fr.Revision, URL: reg.Spec.URL, Artifact: a}, nil
+	return Result{
+		Ready:              true,
+		Revision:           fr.Revision,
+		URL:                reg.Spec.URL,
+		Artifact:           a,
+		UID:                string(reg.UID),
+		ObservedGeneration: reg.Generation,
+	}, nil
 }
 
 func toFetcherRef(r *corev1alpha1.ReleaseGitRepositoryRefSpec) gitrepository.Ref {

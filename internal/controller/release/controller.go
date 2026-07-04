@@ -53,6 +53,8 @@ const (
 	CustomResourceDefinitionGroup = "apiextensions.k8s.io"
 
 	releaseFinalizer = "release.core.convoy.kumodo.io/prune-workloads"
+
+	DefaultLocalCluster = "https://kubernetes.default.svc"
 )
 
 // Controller reconciles Release objects: fetch source content → render → apply
@@ -319,6 +321,8 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	}
 	attempt.ResolvedSource.Revision = res.Revision
 	attempt.ResolvedSource.URL = res.URL
+	attempt.ResolvedSource.UID = res.UID
+	attempt.ResolvedSource.ObservedGeneration = res.ObservedGeneration
 	art := res.Artifact
 
 	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
@@ -413,11 +417,21 @@ func resolvedSourceFrom(rel *corev1alpha1.Release) corev1alpha1.ResolvedSource {
 
 // resolvedClusterFrom snapshots the target Cluster's identity for status.
 func resolvedClusterFrom(cluster *corev1alpha1.Cluster) corev1alpha1.ResolvedCluster {
+	var serverURL string
+	switch cluster.Spec.ConnectionMode {
+	case corev1alpha1.ClusterConnectionModeInCluster:
+		serverURL = DefaultLocalCluster
+	case corev1alpha1.ClusterConnectionModeAgentless:
+		serverURL = cluster.Spec.Agentless.Server
+	default:
+		serverURL = "notApplicable"
+	}
 	return corev1alpha1.ResolvedCluster{
 		Name:               cluster.Name,
 		Namespace:          cluster.Namespace,
 		UID:                string(cluster.UID),
 		ObservedGeneration: cluster.Status.ObservedGeneration,
+		Server:             serverURL,
 	}
 }
 
