@@ -1029,12 +1029,8 @@ func autoConvert_v1alpha1_Release_To_core_Release(in *Release, out *core.Release
 		return err
 	}
 	out.Mutations = *(*[]core.ReleaseMutation)(unsafe.Pointer(&in.Mutations))
-	if err := Convert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(&in.Lifecycle, &out.Lifecycle, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleasePin_To_core_ReleasePin(&in.Pin, &out.Pin, s); err != nil {
-		return err
-	}
+	out.Lifecycle = (*core.ReleaseLifecycle)(unsafe.Pointer(in.Lifecycle))
+	out.Pin = (*core.ReleasePin)(unsafe.Pointer(in.Pin))
 	return nil
 }
 
@@ -1052,12 +1048,8 @@ func autoConvert_core_Release_To_v1alpha1_Release(in *core.Release, out *Release
 		return err
 	}
 	out.Mutations = *(*[]ReleaseMutation)(unsafe.Pointer(&in.Mutations))
-	if err := Convert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(&in.Lifecycle, &out.Lifecycle, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleasePin_To_v1alpha1_ReleasePin(&in.Pin, &out.Pin, s); err != nil {
-		return err
-	}
+	out.Lifecycle = (*ReleaseLifecycle)(unsafe.Pointer(in.Lifecycle))
+	out.Pin = (*ReleasePin)(unsafe.Pointer(in.Pin))
 	return nil
 }
 
@@ -1819,9 +1811,7 @@ func Convert_core_ReleaseSpec_To_v1alpha1_ReleaseSpec(in *core.ReleaseSpec, out 
 func autoConvert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus, out *core.ReleaseStatus, s conversion.Scope) error {
 	out.ObservedGeneration = in.ObservedGeneration
 	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
-	if err := Convert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(&in.Pin, &out.Pin, s); err != nil {
-		return err
-	}
+	out.Pin = (*core.ReleasePinStatus)(unsafe.Pointer(in.Pin))
 	if err := Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
 		return err
 	}
@@ -1836,6 +1826,7 @@ func autoConvert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus,
 	if err := Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(&in.HealthSummary, &out.HealthSummary, s); err != nil {
 		return err
 	}
+	out.LastHandledSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledSyncAt))
 	return nil
 }
 
@@ -1847,9 +1838,7 @@ func Convert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus, out
 func autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseStatus, out *ReleaseStatus, s conversion.Scope) error {
 	out.ObservedGeneration = in.ObservedGeneration
 	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
-	if err := Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(&in.Pin, &out.Pin, s); err != nil {
-		return err
-	}
+	out.Pin = (*ReleasePinStatus)(unsafe.Pointer(in.Pin))
 	if err := Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
 		return err
 	}
@@ -1864,6 +1853,7 @@ func autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseSt
 	if err := Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(&in.HealthSummary, &out.HealthSummary, s); err != nil {
 		return err
 	}
+	out.LastHandledSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledSyncAt))
 	return nil
 }
 

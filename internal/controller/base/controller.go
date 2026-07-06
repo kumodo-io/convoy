@@ -44,18 +44,37 @@ type Controller struct {
 	queue     workqueue.TypedRateLimitingInterface[string]
 	synced    []cache.InformerSynced
 	reconcile ReconcileFunc
+	// reconcileRequestAnnotation, when non-empty, is an annotation key whose value
+	// change forces an enqueue on update (e.g. a /sync reconcile-request stamp).
+	// Empty means only resync + spec changes enqueue.
+	reconcileRequestAnnotation string
+}
+
+// Option configures a Controller.
+type Option func(*Controller)
+
+// WithReconcileRequestAnnotation makes updates that change the given annotation
+// key enqueue the object. Used so an out-of-process reconcile request (a /sync
+// subresource stamping the annotation) promptly wakes the controller, without
+// broadly enqueuing on every unrelated annotation edit.
+func WithReconcileRequestAnnotation(key string) Option {
+	return func(c *Controller) { c.reconcileRequestAnnotation = key }
 }
 
 // NewController returns a harness that calls reconcile for each queued key.
 // name is used in logs and error messages.
-func NewController(name string, reconcile ReconcileFunc) *Controller {
-	return &Controller{
+func NewController(name string, reconcile ReconcileFunc, opts ...Option) *Controller {
+	c := &Controller{
 		name: name,
 		queue: workqueue.NewTypedRateLimitingQueue(
 			workqueue.DefaultTypedControllerRateLimiter[string](),
 		),
 		reconcile: reconcile,
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 // WatchInformer enqueues add/update/delete events from the informer and records
@@ -64,7 +83,7 @@ func (c *Controller) WatchInformer(informer cache.SharedIndexInformer) error {
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueue,
 		UpdateFunc: func(oldObj, newObj any) {
-			if shouldEnqueueOnUpdate(oldObj, newObj) {
+			if c.shouldEnqueueOnUpdate(oldObj, newObj) {
 				c.enqueue(newObj)
 			}
 		},
@@ -80,14 +99,16 @@ func (c *Controller) WatchInformer(informer cache.SharedIndexInformer) error {
 // shouldEnqueueOnUpdate decides whether an informer update warrants a reconcile.
 // It enqueues on:
 //   - resync — the informer re-delivers a cached object as (obj, obj) with an
-//     identical ResourceVersion, driving periodic re-reconciliation; and
+//     identical ResourceVersion, driving periodic re-reconciliation;
 //   - spec changes — a bumped metadata.generation (status writes don't bump it,
-//     thanks to the /status subresource).
+//     thanks to the /status subresource); and
+//   - a change to the configured reconcile-request annotation, if any.
 //
-// It skips status/metadata-only updates (generation unchanged, ResourceVersion
-// changed) so a controller's own status writes don't re-trigger it. If either
-// object lacks accessible metadata it errs toward enqueuing.
-func shouldEnqueueOnUpdate(oldObj, newObj any) bool {
+// It skips other status/metadata-only updates (generation unchanged, no
+// reconcile-request change, ResourceVersion changed) so a controller's own
+// status writes don't re-trigger it. If either object lacks accessible metadata
+// it errs toward enqueuing.
+func (c *Controller) shouldEnqueueOnUpdate(oldObj, newObj any) bool {
 	oldMeta, err := meta.Accessor(oldObj)
 	if err != nil {
 		return true
@@ -99,7 +120,14 @@ func shouldEnqueueOnUpdate(oldObj, newObj any) bool {
 	if oldMeta.GetResourceVersion() == newMeta.GetResourceVersion() {
 		return true // resync
 	}
-	return oldMeta.GetGeneration() != newMeta.GetGeneration() // spec change
+	if oldMeta.GetGeneration() != newMeta.GetGeneration() {
+		return true // spec change
+	}
+	if k := c.reconcileRequestAnnotation; k != "" &&
+		oldMeta.GetAnnotations()[k] != newMeta.GetAnnotations()[k] {
+		return true // reconcile requested (e.g. /sync stamp)
+	}
+	return false
 }
 
 // enqueue extracts a namespace/name key from an object and queues it.

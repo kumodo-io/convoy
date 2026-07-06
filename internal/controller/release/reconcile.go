@@ -34,6 +34,8 @@ const (
 	conditionReasonUnsupported     = "Unsupported"
 	conditionReasonDeployFailed    = "DeployFailed"
 	conditionReasonPruneFailed     = "PruneFailed"
+	conditionReasonPinned          = "Pinned"
+	conditionReasonWaitingForSync  = "WaitingForSync"
 )
 
 // computeStatus derives the desired ReleaseStatus from the current object and a

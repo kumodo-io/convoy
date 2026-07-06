@@ -467,8 +467,16 @@ func (in *Release) DeepCopyInto(out *Release) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.Lifecycle.DeepCopyInto(&out.Lifecycle)
-	in.Pin.DeepCopyInto(&out.Pin)
+	if in.Lifecycle != nil {
+		in, out := &in.Lifecycle, &out.Lifecycle
+		*out = new(ReleaseLifecycle)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Pin != nil {
+		in, out := &in.Pin, &out.Pin
+		*out = new(ReleasePin)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1164,7 +1172,11 @@ func (in *ReleaseStatus) DeepCopyInto(out *ReleaseStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.Pin.DeepCopyInto(&out.Pin)
+	if in.Pin != nil {
+		in, out := &in.Pin, &out.Pin
+		*out = new(ReleasePinStatus)
+		(*in).DeepCopyInto(*out)
+	}
 	out.ResolvedRetentionPolicy = in.ResolvedRetentionPolicy
 	if in.LastSuccessful != nil {
 		in, out := &in.LastSuccessful, &out.LastSuccessful
@@ -1189,6 +1201,10 @@ func (in *ReleaseStatus) DeepCopyInto(out *ReleaseStatus) {
 	}
 	in.Lifecycle.DeepCopyInto(&out.Lifecycle)
 	out.HealthSummary = in.HealthSummary
+	if in.LastHandledSyncAt != nil {
+		in, out := &in.LastHandledSyncAt, &out.LastHandledSyncAt
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 

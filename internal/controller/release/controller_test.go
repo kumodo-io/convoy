@@ -32,6 +32,7 @@ import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/fetch"
@@ -39,11 +40,13 @@ import (
 )
 
 const (
-	dummyFile     = "app.yaml"
-	configMapKind = "ConfigMap"
-	dummyRevision = "abc123"
-	dummyURL      = "https://example.com/repo.git"
-	dummyCluster  = "target"
+	dummyFile      = "app.yaml"
+	configMapKind  = "ConfigMap"
+	dummyRevision  = "abc123"
+	dummyURL       = "https://example.com/repo.git"
+	dummyCluster   = "target"
+	dummyRepoName  = "repo"
+	dummyFrozenSha = "sha256:frozen"
 )
 
 type fakeDeployer struct {
@@ -108,12 +111,15 @@ func manifestsRelease() *corev1alpha1.Release {
 			Source: corev1alpha1.ReleaseSourceSpec{
 				Type: corev1alpha1.ReleaseSourceTypeGitRepository,
 				GitRepository: &corev1alpha1.ReleaseGitRepositorySpec{
-					Name: "repo",
+					Name: dummyRepoName,
 					Ref:  &corev1alpha1.ReleaseGitRepositoryRefSpec{Branch: new("main")},
 				},
 			},
 			Content:    manifestsContent(dummyFile),
 			ClusterRef: corev1alpha1.ReleaseClusterRefSpec{Name: dummyCluster},
+			// Automatic by default so these tests exercise the apply pipeline;
+			// manual-mode gating is covered by the manual-sync tests below.
+			SyncPolicy: corev1alpha1.ReleaseSyncPolicySpec{Automatic: true},
 		},
 	}
 }
@@ -415,7 +421,7 @@ func TestSyncHandler_RecordsAttemptOnSuccess(t *testing.T) {
 	if la.ResolvedSource.Revision != dummyRevision || la.ResolvedSource.URL != dummyURL {
 		t.Errorf("resolvedSource = %+v, want revision %s / url %s", la.ResolvedSource, dummyRevision, dummyURL)
 	}
-	if la.ResolvedSource.Kind != "GitRepository" || la.ResolvedSource.Ref != "branch:main" {
+	if la.ResolvedSource.Kind != sourcev1alpha1.GitRepositoryKind || la.ResolvedSource.Ref != "branch:main" {
 		t.Errorf("resolvedSource kind/ref = %q/%q, want GitRepository/branch:main", la.ResolvedSource.Kind, la.ResolvedSource.Ref)
 	}
 	if la.ResolvedCluster.Name != dummyCluster {
@@ -532,6 +538,224 @@ func TestSyncHandler_ClusterNotReachableRequeues(t *testing.T) {
 		t.Fatalf("expected status write")
 	} else if _, r := readyReason(got); r != conditionReasonClusterNotReady {
 		t.Errorf("reason = %s, want ClusterNotReady", r)
+	}
+}
+
+func TestSyncHandler_PinHoldsWhenDrifted(t *testing.T) {
+	rel := manifestsRelease()
+	// Pinned to a render that differs from what the current spec/source renders:
+	// the controller must hold (not apply) and report the pin.
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: "sha256:stale"})
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if deployer.called {
+		t.Error("Deploy called despite a pin holding a stale render")
+	}
+	if got := statusUpdate(client.Actions()); got == nil {
+		t.Fatalf("expected status write")
+	} else if s, r := readyReason(got); s != metav1.ConditionFalse || r != conditionReasonPinned {
+		t.Errorf("Ready = %s/%s, want False/Pinned", s, r)
+	}
+}
+
+func TestSyncHandler_PinAppliesCurrentRender(t *testing.T) {
+	rel := manifestsRelease()
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	// First reconcile (unpinned) discovers the current render ref.
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("first syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil || got.Status.LastAttempted == nil {
+		t.Fatalf("expected a recorded render attempt")
+	}
+	current := got.Status.LastAttempted.RenderRef
+
+	// Freezing to the *current* render is idempotent: the controller still applies.
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: current})
+	deployer.called = false
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("second syncHandler: %v", err)
+	}
+	if !deployer.called {
+		t.Errorf("Deploy not called when pinned to the current render")
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionTrue || r != conditionReasonApplied {
+		t.Errorf("Ready = %s/%s, want True/Applied", s, r)
+	}
+}
+
+func TestSyncHandler_ReflectsPinIntoStatus(t *testing.T) {
+	rel := manifestsRelease()
+	// A prior successful render that the pin freezes; pinStatus snapshots its inputs.
+	rel.Status.LastSuccessful = &corev1alpha1.ReleaseAttemptedRenderStatus{
+		RenderRef: dummyFrozenSha,
+		ResolvedSource: corev1alpha1.ResolvedSource{
+			Kind:        sourcev1alpha1.GitRepositoryKind,
+			Name:        dummyRepoName,
+			Namespace:   "ns",
+			Revision:    dummyRevision,
+			ContentType: corev1alpha1.ReleaseContentTypeManifests,
+			Path:        dummyFile,
+		},
+	}
+	// Pinned to that render; the current render will differ, so the controller holds.
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: dummyFrozenSha})
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected a status write")
+	}
+	if got.Status.Pin.Intent != corev1alpha1.ReleasePinIntentFreeze {
+		t.Errorf("status.pin.intent = %q, want freeze", got.Status.Pin.Intent)
+	}
+	ri := got.Status.Pin.RenderInputs
+	if ri == nil {
+		t.Fatalf("status.pin.renderInputs not populated")
+	}
+	if ri.SourceKind != sourcev1alpha1.GitRepositoryKind || ri.SourceName != dummyRepoName || ri.SourceRevision != dummyRevision ||
+		ri.ContentType != corev1alpha1.ReleaseContentTypeManifests || ri.ContentPath != dummyFile {
+		t.Errorf("renderInputs = %+v, want the frozen render's source/content inputs", ri)
+	}
+
+	// Unpinning clears the observed pin status.
+	rel.Pin = nil
+	client.ClearActions()
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("second syncHandler: %v", err)
+	}
+	// The render now applies (no pin); its status write carries an empty pin.
+	got = statusUpdate(client.Actions())
+	if got.Status.Pin != nil {
+		t.Errorf("status.pin = %+v, want cleared after unpin", got.Status.Pin)
+	}
+}
+
+// manualRelease returns a Release in manual sync mode (automatic=false).
+func manualRelease() *corev1alpha1.Release {
+	rel := manifestsRelease()
+	rel.Spec.SyncPolicy.Automatic = false
+	return rel
+}
+
+// TestSyncHandler_ManualModeStillObservesPin verifies manual mode gates only the
+// apply, not reconciliation: a pinned Release still gets status.pin projected (and
+// is not applied) without a pending sync.
+func TestSyncHandler_ManualModeStillObservesPin(t *testing.T) {
+	rel := manualRelease()
+	rel.Status.LastSuccessful = &corev1alpha1.ReleaseAttemptedRenderStatus{
+		RenderRef: dummyFrozenSha,
+		ResolvedSource: corev1alpha1.ResolvedSource{
+			Kind: sourcev1alpha1.GitRepositoryKind, Name: dummyRepoName, Namespace: "ns",
+			Revision: dummyRevision, ContentType: corev1alpha1.ReleaseContentTypeManifests, Path: dummyFile,
+		},
+	}
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: dummyFrozenSha})
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if deployer.called {
+		t.Error("Deploy called in manual mode without a pending sync")
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected a status write — manual mode must still observe/reconcile")
+	}
+	if got.Status.Pin.Intent != corev1alpha1.ReleasePinIntentFreeze || got.Status.Pin.RenderInputs == nil {
+		t.Errorf("status.pin = %+v, want freeze intent + renderInputs even in manual mode", got.Status.Pin)
+	}
+}
+
+func TestSyncHandler_ManualModeHoldsWithoutSyncRequest(t *testing.T) {
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, manualRelease(), reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if deployer.called {
+		t.Error("Deploy called in manual mode without a pending sync request")
+	}
+	// Never synced: an explanatory WaitingForSync condition is published.
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected a status write explaining the hold")
+	}
+	if s, r := readyReason(got); s != metav1.ConditionFalse || r != conditionReasonWaitingForSync {
+		t.Errorf("Ready = %s/%s, want False/WaitingForSync", s, r)
+	}
+	if got.Status.LastHandledSyncAt != nil {
+		t.Errorf("LastHandledSyncAt = %v, want nil (nothing handled)", got.Status.LastHandledSyncAt)
+	}
+}
+
+func TestSyncHandler_ManualModeAppliesOnSyncRequest(t *testing.T) {
+	rel := manualRelease()
+	requestedAt := metav1.NewTime(time.Date(2026, 6, 25, 11, 59, 0, 0, time.UTC))
+	rel.Annotations = map[string]string{
+		corev1alpha1.SyncRequestedAtAnnotation: requestedAt.UTC().Format(time.RFC3339Nano),
+	}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+	if !deployer.called {
+		t.Error("Deploy not called despite a pending sync request")
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected a status write")
+	}
+	if s, r := readyReason(got); s != metav1.ConditionTrue || r != conditionReasonApplied {
+		t.Errorf("Ready = %s/%s, want True/Applied", s, r)
+	}
+	if got.Status.LastHandledSyncAt == nil || !got.Status.LastHandledSyncAt.Time.Equal(requestedAt.Time) {
+		t.Errorf("LastHandledSyncAt = %v, want %v", got.Status.LastHandledSyncAt, requestedAt)
+	}
+}
+
+func TestSyncHandler_ManualModeHoldsAfterHandled(t *testing.T) {
+	rel := manualRelease()
+	requestedAt := metav1.NewTime(time.Date(2026, 6, 25, 11, 59, 0, 0, time.UTC))
+	rel.Annotations = map[string]string{
+		corev1alpha1.SyncRequestedAtAnnotation: requestedAt.UTC().Format(time.RFC3339Nano),
+	}
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	// First reconcile handles the pending request and applies.
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("first syncHandler: %v", err)
+	}
+	if !deployer.called {
+		t.Fatalf("Deploy not called on the pending request")
+	}
+	// Reflect the handled sync back onto the object the lister returns, as a real
+	// status write would; the same stamp is now no longer pending.
+	rel.Status.LastHandledSyncAt = &requestedAt
+
+	deployer.called = false
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("second syncHandler: %v", err)
+	}
+	if deployer.called {
+		t.Error("Deploy called again for an already-handled sync request")
 	}
 }
 
