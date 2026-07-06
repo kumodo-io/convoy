@@ -1,104 +1,120 @@
 # convoy Roadmap
 
-convoy is built in milestones: a proof-of-concept that validates the core delivery loop, an MVP that makes it usable for real GitOps, and feature work beyond that.
+convoy is a Kubernetes-native continuous delivery system: an aggregated API server plus a controller manager that fetch sources, render them, and apply the result to target clusters — the control-plane cluster itself or separate managed clusters.
+
+This document reflects **what is implemented today** and the **planned work**, grouped by what actually gates each item. It is not strictly ordered within a group.
 
 ---
 
-## Proof of Concept (current)
+## Implemented
 
-The PoC validates the core pipeline end-to-end on real clusters: a Git source is fetched, rendered, and applied to a target cluster — both to the control-plane cluster itself and to a separate managed cluster.
+**API server**
+- Aggregated API server — authn/authz delegated to host-cluster RBAC, APIService registration, etcd-backed generic registry
+- Resources served with a `/status` subresource: `GitRepository`, `HelmRegistry`, `OCIRegistry`, `Cluster`, `Release`, `KindHealthRule`, `ResourceHealthRule`
+- Release field selector on `spec.clusterRef.{name,namespace}`
 
-**API**
-- [x] Aggregated API server — authn/authz delegated to host-cluster RBAC, APIService registration, etcd-backed generic registry
-- [x] User-facing resources served with `/status`: `GitRepository`, `HelmRegistry`, `OCIRegistry`, `Cluster`, `Release`, `KindHealthRule`, `ResourceHealthRule`
+**Sources** (reusable, credentialed endpoints; the revision/coordinate lives on the `Release`)
+- `GitRepository` — public repos (auth `none`), branch/tag/commit/semver refs
+- `HelmRegistry` — classic HTTP repos (`index.yaml` + chart tarball), auth `none`
+- `OCIRegistry` — Helm charts pulled from OCI registries (ORAS), auth `none`
+- Fetch coordinator dispatching on source type; content-addressed in-memory artifact store
 
-**Controllers** (`convoy-controller-manager`, one process)
-- [x] **Cluster** — connects to the target and records reachability, discovered version, and API versions
-- [x] **GitRepository** — fetches public repos (auth `none`), resolves branch/tag/commit, records `LastFetched`, publishes content to the artifact store
-- [x] **Release** — renders `manifests` content from the source artifact and applies it to the target via Server-Side Apply
+**Content & rendering**
+- `manifests` — raw YAML/JSON from source paths
+- `helm` — in-process Helm SDK render (no `helm install`, no shelling), vendored dependencies
+- Helm values pipeline — ordered, deep-merged (later wins) over chart defaults, from `inline` / `configMap` / `secret` / `gitRepository` sources
 
 **Delivery & multi-cluster**
-- [x] Connection modes: `inCluster` (self) and `agentless` (control-plane push)
-- [x] Cluster auth: `kubeconfig`
-- [x] Server-Side Apply with field manager `convoy`
-- [x] In-memory artifact store (source → release handoff)
+- Connection modes: `inCluster` (self) and `agentless` (control-plane push)
+- Cluster auth: `kubeconfig`
+- Server-Side Apply with field manager `convoy` (re-applied every reconcile → periodic drift correction on owned fields)
 
-**Dev & CI**
-- [x] kind + Tilt dev harness (live-reload)
-- [x] CI workflows: lint/test on PRs, image build + push on merge/tag
+**Sync policy**
+- `interval` — per-`Release` self-requeue for drift re-checks
+- `prune` — inventory-based GC of resources dropped from the render (`orphaned` / `includeCRDs` / `includeNamespaces`); success-only, never on a partial render; CRDs/Namespaces protected by default
+- `retryBackoff` — per-`Release` failure backoff
 
----
-
-## MVP — Toward a usable CD tool
-
-The PoC *demonstrates* the loop; the MVP makes it something you could actually run. The "must" set is the GitOps spine (continuous, self-healing delivery of real charts); "should" rounds it out.
-
-### Must
-
-**Sources & content**
-- [ ] **Helm content** — render charts from a Git source (values from chart defaults, then inline values)
-- [ ] **Private source auth** — Git `token` / `basic` / `sshKey`
-
-**Continuous reconciliation**
-- [ ] **Inventory tracking** — record the set of resources applied per `Release` (prerequisite for prune + drift)
-- [ ] **Pruning / GC** — remove resources deleted from the source
-- [ ] **Drift detection + correction** — re-apply when live cluster state diverges, not only on resync
-- [ ] **Event-driven re-apply** — re-enqueue `Release`s when their source revision changes
+**Deletion policy** (finalizer-backed)
+- `Cluster.deletionPolicy.pruneReleases` — orphan (default) or cascade-delete referencing Releases
+- `Release.deletionPolicy.{keepWorkloads, blockOnClusterUnreachable}` — prune (default) or keep workloads; block-and-retry vs. best-effort when the target is unreachable
 
 **Status**
-- [ ] **Richer `Release` status** — applied revision, inventory, and clear `Applied` / `Ready` conditions
+- Sources: `LastSuccessfulProbeAt`, `Ready` condition
+- `Release`: `LastAttempted` / `LastSuccessful` render records (resolved source & cluster, phase, failure stage, `renderRef`), `ReconciledAt`, `Applied`/`Ready` conditions
+- Status writes never self-trigger reconciles (informer update filter skips status/metadata-only changes)
 
-### Should
+**Internal**
+- Applied-resource inventory (in-memory; fails safe — can only under-prune, never over-delete)
+- `releaseByCluster` informer index for cluster→release fan-out
 
-- [ ] **Health assessment** — evaluate built-in rules + `KindHealthRule` / `ResourceHealthRule` → `Healthy` condition + Release-level aggregation (the rule *types* already exist; nothing evaluates them yet)
-- [ ] **`HelmRegistry` / `OCIRegistry` sources** — Helm charts and OCI artifacts, not just Git
-- [ ] **Durable state (S3)** — artifacts + inventory + history; survives restarts and unlocks pin/rollback
-- [ ] **More cluster auth** — `token`, `clientCert`, `cloudIdentity` (cloud workload identity) for agentless mode
+**Dev & CI**
+- kind + Tilt dev harness (live-reload)
+- CI: lint/test on PRs, image build + push on merge/tag
 
 ---
 
-## Beyond MVP
+## Planned — unblocked
 
-Feature work once the core is solid. Not strictly ordered.
+Deliverable without new infrastructure.
 
-### Rendering & mutations
-- Full mutation pipeline: `helmValues`, `goTemplate`, `jsonPatch`, `strategicMergePatch`, `celTransform`
-- `/mutations` subresource — separately addressable for field-level RBAC and audit
-- Additional content types: `kustomize`, `jsonnet`, `cue`
+- **Private source auth** — Git `token` / `basic` / `sshKey`; a sane subset of `basic` / `token` / `oidc` / `cloudIdentity` for Helm/OCI registries
+- **`/preview`** — render without applying
+- **`/diff` (current render)** — desired-vs-live via SSA dry-run + live read (no storage; only diff against a *pinned/historical* render needs it)
+- **`/pin` (freeze current)** — hold the current render (rollback / pin-to-previous is storage-gated)
+- **Drift detection & self-heal (current render)** — periodic diff → re-apply; event-driven re-apply via target-cluster watches
+- **`/sync` (Release + Cluster)** — on-demand sync; also enables honoring `syncPolicy.automatic: false` (manual mode)
+- **Health assessment** — evaluate built-in rules + `KindHealthRule` / `ResourceHealthRule` → `Healthy` condition + Release-level aggregation (rule *types* exist; nothing evaluates them yet)
+- **CLI** — `kubectl` plugin and/or standalone tool (list, sync, diff, pin/unpin); valuable early for exercising subresources on real clusters
+- **Content types** — `kustomize`, `jsonnet` (`cue` later)
+- **Sync waves** — `waitForApplied` → `waitForHealthy[WithTimeout]`; hook-annotation translation (depends on health assessment)
+- **`/lifecycle`** — hooks across `PreRender`…`PostDelete`, `Job`/`Pod`, CEL `when` conditions
 
-### Operations UX (subresources)
-- `/preview` and `/diff` — see what would deploy / what differs
-- `/pin` — `freeze` and `rollback` intents (depends on durable history)
-- `/history` — past render records
+## Planned — storage-gated (history & rollback)
 
-### Ordering & lifecycle
-- Sync waves (`convoy.kumodo.io/sync-wave`) with `waitForApplied` → `waitForHealthy` / `waitForHealthyWithTimeout` strategies; ArgoCD/Helm hook-annotation translation
-- Lifecycle hooks via `/lifecycle` — all phases (`PreRender`…`PostDelete`), `Job` and `Pod` types, CEL `when` conditions
+Blocked on a durable persistence backend. Storage gates *time travel*, not self-healing.
 
-### Triggers
-- Webhook receivers for push-based source triggering (`/webhooks` subresource)
-- `/sync` subresources + internal `SourceSyncRequest` / `ReleaseSyncRequest` resources
+- **Storage-model design** — decide persisted entities (render snapshots, per-revision inventories, retention), keying, and a tiered backend (in-memory → PVC → object store); this design de-risks everything below
+- **Durable state backend** — the above, implemented; survives restarts, shareable across replicas
+- **`/pin` (rollback / previous revision)** and **`/diff` against a pinned or historical render**
+- **`/history`** + retention
 
-### Notifications
-- Notification controller subscribing to controller events (all controllers emit structured events from the start)
-- `NotificationConfig` resource — destinations (Slack, webhook, PagerDuty) and event filters
+## Planned — cross-cutting
 
-### Fleet
-- `ReleaseSet` — generate per-cluster `Release`s from a template + cluster selector; cross-Release ordering
+- **Authorization on cross-namespace references** — a `Release` referencing a `Cluster` (or `Source`) in another namespace is a privilege decision; needs an allow-list / `SubjectAccessReview` model before multi-tenant use
+- **Operability** — controller metrics; leader election / HA (relates to future work-sharding for horizontal scale)
 
-### Agent (pull) mode
-- In-cluster executor that pulls work over outbound HTTPS (NAT/firewalled/air-gapped targets)
-- Agent registration/identity, control-plane S3 proxying, mixed agentless + agent fleets
-- Full agent wire protocol: registration flow, identity verification (mTLS / bound SA tokens), reconnect semantics
+## Fleet-wide orchestration & mutations
 
-### Clients
-- `kubectl` plugin for common operations (list, sync, diff, pin/unpin, history)
-- Web dashboard — release overview, history, diff, health (read-only first)
+`mutations`, cluster-metadata templating, and fleet-wide orchestration are the **same per-target-customization substrate at different scopes** — per-target customization is what fleet fan-out drives. They were designed together to avoid rework; the design is in [`docs/design/api/core/fleet.md`](docs/design/api/core/fleet.md). Key decision: **templating is resolved at generation time**, so `Release` stays single-cluster and unchanged — the whole existing pipeline (incl. deletion finalizers and the `releaseByCluster` index) is reused per generated `Release`.
+
+Two new namespaced `core` kinds:
+
+- **`ReleaseTemplate`** — a reusable single-app definition (`source` + `content` + app-specific mutations + optional per-app policy overrides) with `{{ .Cluster.* }}` placeholders and no cluster ref; one labeled object per service.
+- **`Fleet`** — `clusterSelector` × `templateSelector` → generates one owned `Release` per pair. Carries fleet-wide **policy defaults** (sync/deletion/retention; template overrides win), **`commonMutations`** (org-wide / cluster-metadata overlays, composed template-first then fleet-last), and a **rollout strategy**.
+
+Build items:
+
+- **`ReleaseTemplate` + `Fleet` kinds** — API types, validation, generation controller (materialize per-pair Releases, deterministic naming, ownerRefs)
+- **Generation-time templating** — Go `text/template` over `{{ .Cluster.name/namespace/labels/metadata }}`, on a defined set of string fields (values paths, `content` path, inline values, mutation args, name suffix)
+- **Selector-driven membership + GC** — add/remove labeled `ReleaseTemplate`/`Cluster` re-generates; unmatch/`Fleet` delete removes generated Releases via the existing deletion policy + finalizers
+- **Full mutation pipeline** — `helmValues`, `goTemplate`, `jsonPatch`, `strategicMergePatch`, `celTransform` (the Release-level transform engine used by both template and fleet-common mutations)
+- **`/mutations` subresource** — separately addressable for field-level RBAC / audit
+- **`helm.ignoreMissingValuesFiles`** — helm-content-wide flag (Argo-style) so per-cluster override files that don't exist are skipped rather than erroring
+- **Rollout strategy** — `allAtOnce` first; staged / health-gated cluster waves after health assessment lands (cross-*cluster* ordering, distinct from the in-cluster progressive-delivery non-goal)
+
+Tenancy is same-namespace (per the design doc); cross-namespace fleets (central cluster registry / shared template library) depend on the cross-namespace grant model under *cross-cutting*.
+
+## Planned — later
+
+- **`/webhooks`** — push-based source triggering (after source auth lands)
+- **Notifications** — notification controller over controller events; `NotificationConfig` (Slack / webhook / PagerDuty) with filters
+- **Agent (pull) mode** — in-cluster executor pulling work over outbound HTTPS for NAT/firewalled/air-gapped targets; registration/identity (mTLS / bound SA tokens), mixed agentless + agent fleets
+- **Web dashboard** — release overview, history, diff, health (read-only first)
 
 ---
 
 ## Explicit non-goals
 
-- **Secret management** — values come from a secrets manager (External Secrets, Vault, …), not stored in Git/S3 unencrypted
+- **Secret management** — values come from a secrets manager (External Secrets, Vault, …), not stored in Git/object storage unencrypted
 - **Progressive delivery** — canary/blue-green is delegated to external tooling
 - **Non-Kubernetes workloads** — convoy targets Kubernetes exclusively
