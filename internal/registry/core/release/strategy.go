@@ -19,12 +19,15 @@ package release
 import (
 	"context"
 	"fmt"
+	"time"
 
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage"
@@ -32,6 +35,7 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 
 	"github.com/kumodo-io/convoy/api/core"
+	"github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
 const v1alpha1Version = "core.convoy.kumodo.io/v1alpha1"
@@ -146,6 +150,79 @@ func (StatusStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
 			fieldpath.MakePathOrDie("mutations"),
 			fieldpath.MakePathOrDie("lifecycle"),
 			fieldpath.MakePathOrDie("pin"),
+		),
+	}
+}
+
+// PinStrategy implements the behavior for the Release /pin subresource: only the
+// Pin field is mutable. A non-empty RenderRef pins (freeze); an empty RenderRef
+// unpins. The server stamps PinnedAt/PinnedBy and a reconcile-request annotation
+// (a Pin change does not bump generation, so the annotation wakes the controller).
+type PinStrategy struct {
+	Strategy
+}
+
+// NewPinStrategy returns the strategy for the /pin subresource.
+func NewPinStrategy(strategy Strategy) PinStrategy {
+	return PinStrategy{strategy}
+}
+
+// PrepareForUpdate preserves everything except Pin, fills server-managed pin
+// fields, and stamps the reconcile-request annotation.
+func (PinStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object) {
+	newRelease := obj.(*core.Release)
+	oldRelease := old.(*core.Release)
+	newRelease.Spec = oldRelease.Spec
+	newRelease.Status = oldRelease.Status
+	newRelease.Mutations = oldRelease.Mutations
+	newRelease.Lifecycle = oldRelease.Lifecycle
+	newRelease.Generation = oldRelease.Generation
+
+	if newRelease.Pin == nil || newRelease.Pin.RenderRef == "" {
+		newRelease.Pin = nil // unpin (nil or empty RenderRef both clear the pin)
+	} else {
+		newRelease.Pin.PinnedAt = metav1.Now()
+		if u, ok := genericapirequest.UserFrom(ctx); ok {
+			newRelease.Pin.PinnedBy = u.GetName()
+		}
+	}
+	// A Pin change doesn't bump generation; stamp the reconcile-request annotation
+	// so the controller reconciles promptly.
+	metav1.SetMetaDataAnnotation(&newRelease.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
+}
+
+// ValidateUpdate allows only a freeze pin to the current render. Pinning to any
+// other render (rollback) requires durable render history and is rejected here.
+func (PinStrategy) ValidateUpdate(_ context.Context, obj, old runtime.Object) field.ErrorList {
+	newRelease := obj.(*core.Release)
+	oldRelease := old.(*core.Release)
+	// PrepareForUpdate has already cleared an empty pin to nil, so a non-nil Pin
+	// here always carries a RenderRef the caller intends to freeze.
+	if newRelease.Pin == nil {
+		return nil // unpin is always allowed
+	}
+	ref := newRelease.Pin.RenderRef
+	current := ""
+	if oldRelease.Status.LastSuccessful != nil {
+		current = oldRelease.Status.LastSuccessful.RenderRef
+	}
+	if current == "" {
+		return field.ErrorList{field.Forbidden(field.NewPath("pin", "renderRef"), "cannot pin before a successful render")}
+	}
+	if ref != current {
+		return field.ErrorList{field.Invalid(field.NewPath("pin", "renderRef"), ref, "only the current render may be pinned (rollback requires render history)")}
+	}
+	return nil
+}
+
+// GetResetFields declares that the pin endpoint owns only pin.
+func (PinStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
+	return map[fieldpath.APIVersion]*fieldpath.Set{
+		v1alpha1Version: fieldpath.NewSet(
+			fieldpath.MakePathOrDie("spec"),
+			fieldpath.MakePathOrDie("status"),
+			fieldpath.MakePathOrDie("mutations"),
+			fieldpath.MakePathOrDie("lifecycle"),
 		),
 	}
 }

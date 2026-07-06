@@ -116,7 +116,7 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	releaseREST, releaseStatusREST, err := releasestorage.NewREST(Scheme, optsGetter)
+	releaseREST, releaseStatusREST, releasePinREST, releaseSyncREST, err := releasestorage.NewREST(Scheme, optsGetter)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +125,8 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 		"clusters/status": clusterStatusREST,
 		"releases":        releaseREST,
 		"releases/status": releaseStatusREST,
+		"releases/pin":    releasePinREST,
+		"releases/sync":   releaseSyncREST,
 	}
 
 	// source API group

@@ -753,7 +753,7 @@ type ReleaseStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// Pin is the status of the release pin.
-	Pin ReleasePinStatus `json:"pin,omitempty"`
+	Pin *ReleasePinStatus `json:"pin,omitempty"`
 
 	// ResolvedRetentionPolicy is the resolved retention policy of the release.
 	ResolvedRetentionPolicy ResolvedRetentionPolicyStatus `json:"resolvedRetentionPolicy,omitempty"`
@@ -781,6 +781,9 @@ type ReleaseStatus struct {
 
 	// HealthSummary reflects the health status of the release.
 	HealthSummary ReleaseHealthSummary `json:"healthSummary,omitempty"`
+
+	// LastHandledSyncAt reflects the timestamp when the last sync was handled
+	LastHandledSyncAt *metav1.Time `json:"lastHandledSyncAt,omitempty"`
 }
 
 // ReleasePinStatus reflects the observed state of the ReleasePin.
@@ -1082,8 +1085,8 @@ type Release struct {
 
 	// +listType=atomic
 	Mutations []ReleaseMutation `json:"mutations,omitempty"`
-	Lifecycle ReleaseLifecycle  `json:"lifecycle,omitempty"`
-	Pin       ReleasePin        `json:"pin,omitempty"`
+	Lifecycle *ReleaseLifecycle `json:"lifecycle,omitempty"`
+	Pin       *ReleasePin       `json:"pin,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

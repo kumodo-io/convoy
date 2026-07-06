@@ -1955,14 +1955,12 @@ func schema_convoy_api_core_v1alpha1_Release(ref common.ReferenceCallback) commo
 					},
 					"lifecycle": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref(v1alpha1.ReleaseLifecycle{}.OpenAPIModelName()),
+							Ref: ref(v1alpha1.ReleaseLifecycle{}.OpenAPIModelName()),
 						},
 					},
 					"pin": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref(v1alpha1.ReleasePin{}.OpenAPIModelName()),
+							Ref: ref(v1alpha1.ReleasePin{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -3385,7 +3383,6 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 					"pin": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Pin is the status of the release pin.",
-							Default:     map[string]interface{}{},
 							Ref:         ref(v1alpha1.ReleasePinStatus{}.OpenAPIModelName()),
 						},
 					},
@@ -3453,6 +3450,12 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 							Description: "HealthSummary reflects the health status of the release.",
 							Default:     map[string]interface{}{},
 							Ref:         ref(v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName()),
+						},
+					},
+					"lastHandledSyncAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastHandledSyncAt reflects the timestamp when the last sync was handled",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
 						},
 					},
 				},

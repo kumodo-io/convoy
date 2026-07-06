@@ -455,7 +455,7 @@ type ReleasePin struct {
 type ReleaseStatus struct {
 	ObservedGeneration      int64
 	Conditions              []metav1.Condition
-	Pin                     ReleasePinStatus
+	Pin                     *ReleasePinStatus
 	ResolvedRetentionPolicy ResolvedRetentionPolicyStatus
 	LastSuccessful          *ReleaseAttemptedRenderStatus
 	LastAttempted           *ReleaseAttemptedRenderStatus
@@ -464,6 +464,7 @@ type ReleaseStatus struct {
 	HistoryTruncated        bool
 	Lifecycle               LifecycleStatus
 	HealthSummary           ReleaseHealthSummary
+	LastHandledSyncAt       *metav1.Time
 }
 
 type ReleasePinStatus struct {
@@ -593,8 +594,8 @@ type Release struct {
 	Status ReleaseStatus
 
 	Mutations []ReleaseMutation
-	Lifecycle ReleaseLifecycle
-	Pin       ReleasePin
+	Lifecycle *ReleaseLifecycle
+	Pin       *ReleasePin
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

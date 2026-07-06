@@ -58,20 +58,31 @@ func TestProcessNextItem_RetriesOnError(t *testing.T) {
 }
 
 func TestShouldEnqueueOnUpdate(t *testing.T) {
-	obj := func(gen int64, rv string) *metav1.PartialObjectMetadata {
-		return &metav1.PartialObjectMetadata{ObjectMeta: metav1.ObjectMeta{Generation: gen, ResourceVersion: rv}}
+	const reconcileAnnotation = "convoy.kumodo.io/sync-requested-at"
+	obj := func(gen int64, rv string, annotations map[string]string) *metav1.PartialObjectMetadata {
+		return &metav1.PartialObjectMetadata{ObjectMeta: metav1.ObjectMeta{Generation: gen, ResourceVersion: rv, Annotations: annotations}}
 	}
+	stamp := map[string]string{reconcileAnnotation: "2026-07-06T00:00:00Z"}
 	cases := []struct {
-		name     string
-		old, new *metav1.PartialObjectMetadata
-		want     bool
+		name       string
+		annotation string // reconcile-request annotation the controller watches ("" = none)
+		old, new   *metav1.PartialObjectMetadata
+		want       bool
 	}{
-		{"resync (identical RV)", obj(1, "100"), obj(1, "100"), true},
-		{"spec change (generation bumped)", obj(1, "100"), obj(2, "101"), true},
-		{"status-only (gen same, RV changed)", obj(1, "100"), obj(1, "101"), false},
+		{"resync (identical RV)", "", obj(1, "100", nil), obj(1, "100", nil), true},
+		{"spec change (generation bumped)", "", obj(1, "100", nil), obj(2, "101", nil), true},
+		{"status-only (gen same, RV changed)", "", obj(1, "100", nil), obj(1, "101", nil), false},
+		{"reconcile-request stamped (watched)", reconcileAnnotation, obj(1, "100", nil), obj(1, "101", stamp), true},
+		{"unrelated annotation change (watched)", reconcileAnnotation, obj(1, "100", nil), obj(1, "101", map[string]string{"other": "x"}), false},
+		{"reconcile-request stamped (not watched)", "", obj(1, "100", nil), obj(1, "101", stamp), false},
 	}
 	for _, c := range cases {
-		if got := shouldEnqueueOnUpdate(c.old, c.new); got != c.want {
+		var opts []Option
+		if c.annotation != "" {
+			opts = append(opts, WithReconcileRequestAnnotation(c.annotation))
+		}
+		ctrl := NewController("test", func(context.Context, string) error { return nil }, opts...)
+		if got := ctrl.shouldEnqueueOnUpdate(c.old, c.new); got != c.want {
 			t.Errorf("%s: shouldEnqueueOnUpdate = %v, want %v", c.name, got, c.want)
 		}
 	}

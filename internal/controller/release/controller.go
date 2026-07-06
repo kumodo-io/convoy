@@ -23,6 +23,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -41,6 +42,7 @@ import (
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
@@ -122,7 +124,8 @@ func NewController(
 		failures:      newFailureCounts(),
 		now:           metav1.Now,
 	}
-	c.Controller = base.NewController("release", c.syncHandler)
+	c.Controller = base.NewController("release", c.syncHandler,
+		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation))
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
 }
@@ -154,9 +157,13 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 
 	outcome, recErr := c.reconcile(ctx, rel)
 	newStatus := computeStatus(rel, c.now(), outcome.ready, outcome.reason, outcome.message)
+	newStatus.Pin = pinStatus(rel)
 	newStatus.LastAttempted = &outcome.attempt
-	if outcome.ready {
+	if outcome.applied {
 		newStatus.LastSuccessful = outcome.attempt.DeepCopy()
+	}
+	if outcome.handledSyncAt != nil {
+		newStatus.LastHandledSyncAt = outcome.handledSyncAt
 	}
 
 	if statusChanged(rel, newStatus) {
@@ -169,9 +176,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		klog.V(4).InfoS("updated release status", "release", key, "ready", outcome.ready, "reason", outcome.reason)
 	}
 
-	// Requeue policy. Sync is currently unconditional: manual
-	// (syncPolicy.automatic=false) gating awaits the /sync and /diff subresources,
-	// and pause/suspend will be a separate spec field or label.
+	// Requeue policy.
 	switch {
 	case recErr != nil && rel.Spec.SyncPolicy.RetryBackoff.Initial.Duration > 0:
 		// Transient failure with a per-Release backoff configured: drive the retry
@@ -186,14 +191,38 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		// Transient failure, no custom backoff: base's default rate limiter retries.
 		return recErr
 	default:
-		// Terminal (success or Unsupported): clear the failure streak and schedule
-		// the next drift re-check at the Release's poll interval.
+		// Terminal (success or hold): clear the failure streak and schedule the next
+		// re-check at the Release's poll interval. This runs in both modes — manual
+		// mode keeps observing (drift/sync-state) on the interval, it just won't apply
+		// until a /sync arrives.
 		c.failures.reset(key)
 		if d := syncRequeueAfter(rel); d > 0 {
 			c.EnqueueAfter(key, d)
 		}
 		return nil
 	}
+}
+
+// pendingSync reports whether an unhandled /sync request is stamped on the
+// Release, returning the (second-granular) request time. A request is pending
+// when the sync-requested-at annotation parses to a time after
+// status.lastHandledSyncAt. Times are compared at second granularity because
+// metav1.Time persists at that resolution, so a sub-second residue would
+// otherwise keep a handled request perpetually pending.
+func pendingSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
+	raw := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]
+	if raw == "" {
+		return nil, false
+	}
+	t, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return nil, false // unparseable stamp: treat as no request
+	}
+	requestedAt := metav1.NewTime(t.Truncate(time.Second))
+	if h := rel.Status.LastHandledSyncAt; h != nil && !requestedAt.After(h.Time) {
+		return nil, false
+	}
+	return &requestedAt, true
 }
 
 func (c *Controller) ensureFinalizer(ctx context.Context, rel *corev1alpha1.Release) (*corev1alpha1.Release, error) {
@@ -293,13 +322,24 @@ type reconcileOutcome struct {
 	reason  string
 	message string
 	attempt corev1alpha1.ReleaseAttemptedRenderStatus
+	// applied is true only when the render was actually applied to the cluster this
+	// reconcile; it gates advancing status.lastSuccessful (a ready-but-not-applied
+	// hold, e.g. an in-sync manual Release, must not overwrite the last real apply).
+	applied bool
+	// handledSyncAt, when set, is the /sync request time this reconcile satisfied;
+	// the caller records it in status.lastHandledSyncAt.
+	handledSyncAt *metav1.Time
 }
 
-// reconcile runs fetch → render → apply → prune, building an attempt record. It
-// always applies on the success path (drift correction). The returned error is a
-// requeue signal (non-nil = transient).
+// reconcile runs fetch → render → apply → prune, building an attempt record. In
+// automatic mode it applies on the success path (drift correction); in manual
+// mode it renders and observes but applies only when a /sync is pending, so
+// status (pin, sync-state, later drift/health) stays fresh without mutating the
+// cluster. The returned error is a requeue signal (non-nil = transient).
 func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (reconcileOutcome, error) {
 	now := c.now()
+	manual := !rel.Spec.SyncPolicy.Automatic
+	requestedAt, pending := pendingSync(rel)
 	attempt := corev1alpha1.ReleaseAttemptedRenderStatus{
 		AttemptedAt:    &now,
 		ResolvedSource: resolvedSourceFrom(rel),
@@ -355,6 +395,39 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	}
 	attempt.RenderRef = renderRef(objects)
 
+	// Honor a freeze pin: hold (do not apply) when the current render differs from
+	// the pinned render — i.e. spec/source/values changed since the pin. Freezing
+	// to the current render (refs equal) applies normally (idempotent). Pinning to
+	// a *previous* render (rollback) is storage-gated and not handled here.
+	if p := rel.Pin; p != nil && p.RenderRef != "" && p.RenderRef != attempt.RenderRef {
+		return reconcileOutcome{
+			reason:  conditionReasonPinned,
+			message: fmt.Sprintf("pinned to render %s; withholding current render %s", p.RenderRef, attempt.RenderRef),
+			attempt: attempt,
+		}, nil // terminal hold; resync/unpin re-checks
+	}
+
+	// Manual-mode sync gate. In manual mode (syncPolicy.automatic=false) apply only
+	// when an explicit /sync is pending. Otherwise observe without applying: report
+	// in-sync when the current render already matches the last applied one, else
+	// WaitingForSync (out of sync, or never synced). A spec change or resync alone
+	// never auto-applies in manual mode.
+	if manual && !pending {
+		if ls := rel.Status.LastSuccessful; ls != nil && ls.RenderRef == attempt.RenderRef {
+			return reconcileOutcome{
+				ready:   true,
+				reason:  conditionReasonApplied,
+				message: "in sync; manual sync mode (apply withheld until /sync)",
+				attempt: attempt,
+			}, nil
+		}
+		return reconcileOutcome{
+			reason:  conditionReasonWaitingForSync,
+			message: "manual sync mode: changes await a /sync request",
+			attempt: attempt,
+		}, nil
+	}
+
 	applied, err := c.deployer.Deploy(ctx, cluster, objects)
 	if err != nil {
 		if errors.Is(err, ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
@@ -375,12 +448,20 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseSucceeded
 	attempt.SyncedAt = &now
 	attempt.SyncedResources = int64(len(applied))
-	return reconcileOutcome{
+	outcome := reconcileOutcome{
 		ready:   true,
+		applied: true,
 		reason:  conditionReasonApplied,
 		message: fmt.Sprintf("applied %d object(s) from revision %s", len(applied), art.Revision),
 		attempt: attempt,
-	}, nil
+	}
+	// In manual mode, record which /sync request this apply satisfied so it isn't
+	// re-applied on the next reconcile; a failed apply above returns early, leaving
+	// the request pending to retry.
+	if manual && pending {
+		outcome.handledSyncAt = requestedAt
+	}
+	return outcome, nil
 }
 
 // resolvedSourceFrom snapshots the Release's declared source coordinate for status.
@@ -438,11 +519,11 @@ func resolvedClusterFrom(cluster *corev1alpha1.Cluster) corev1alpha1.ResolvedClu
 func sourceKind(t corev1alpha1.ReleaseSourceType) string {
 	switch t {
 	case corev1alpha1.ReleaseSourceTypeGitRepository:
-		return "GitRepository"
+		return sourcev1alpha1.GitRepositoryKind
 	case corev1alpha1.ReleaseSourceTypeHelmRegistry:
-		return "HelmRegistry"
+		return sourcev1alpha1.HelmRegistryKind
 	case corev1alpha1.ReleaseSourceTypeOCIRegistry:
-		return "OCIRegistry"
+		return sourcev1alpha1.OCIRegistryKind
 	default:
 		return string(t)
 	}
@@ -481,6 +562,53 @@ func gitRefString(ref *corev1alpha1.ReleaseGitRepositoryRefSpec) string {
 	default:
 		return ""
 	}
+}
+
+// pinStatus projects the Release's pin intent (top-level .pin, set by the /pin
+// subresource) into the observed .status.pin. Intent is derived by comparing the
+// pinned render against the last successful render: a match is a freeze, anything
+// else a rollback (rollback is storage-gated and not yet producible). RenderInputs
+// snapshots the inputs of the pinned render, taken from status.lastSuccessful —
+// while a pin holds the controller never applies, so lastSuccessful is the pinned
+// render.
+func pinStatus(rel *corev1alpha1.Release) *corev1alpha1.ReleasePinStatus {
+	if rel.Pin == nil {
+		return nil // unpinned
+	}
+	ls := rel.Status.LastSuccessful
+
+	intent := corev1alpha1.ReleasePinIntentFreeze
+	if ls == nil || rel.Pin.RenderRef != ls.RenderRef {
+		intent = corev1alpha1.ReleasePinIntentRollback
+	}
+	status := new(corev1alpha1.ReleasePinStatus{Intent: intent})
+	if ls != nil {
+		rs := ls.ResolvedSource
+		status.RenderInputs = &corev1alpha1.ReleasePinRenderInputsStatus{
+			SourceKind:      rs.Kind,
+			SourceName:      rs.Name,
+			SourceNamespace: rs.Namespace,
+			SourceRevision:  rs.Revision,
+			ContentType:     rs.ContentType,
+			ContentPath:     rs.Path,
+			MutationsHash:   mutationsHash(ls.ResolvedMutations),
+		}
+	}
+	return status
+}
+
+// mutationsHash returns a stable content hash of the resolved mutations, or ""
+// when there are none.
+func mutationsHash(mutations []corev1alpha1.ResolvedMutation) string {
+	if len(mutations) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(mutations)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 // renderRef is a content hash of the rendered objects, stable across identical
