@@ -145,6 +145,11 @@ tidy:
 build:
 	go build ./...
 
+# Build the kubectl-convoy plugin into bin/ (put bin/ on PATH to use `kubectl convoy`).
+.PHONY: kubectl-convoy
+kubectl-convoy:
+	go build -o $(TOOLS_BIN)/kubectl-convoy ./cmd/kubectl-convoy
+
 # Test
 
 .PHONY: test
