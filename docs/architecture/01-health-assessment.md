@@ -22,26 +22,38 @@
 
 This document covers where health assessment runs, how agents communicate with the control plane, and how memory is bounded across the system. It complements the Health Assessment design document, which describes *what* health assessment does (rules, states, aggregation, status shape).
 
+> **Status: planned — none of this is built yet.** This document describes the **target execution architecture** for health assessment and **agent-mode** delivery. Today the delivery path is control-plane **PUSH** only: the Release controller (in `convoy-controller-manager`) fetches, renders, and applies directly to the target cluster. There is no observer, no agent-manager, no agent (PULL) mode, no content proxying, and no health evaluation — `KindHealthRule` and `ResourceHealthRule` are served by the API server, but nothing evaluates them yet. **Read the whole document as a design proposal:** the components and mechanisms below describe what *would* be built, not what exists.
+>
+> **Terminology note (this doc's "executor" vs. the current component model).** This document predates the component model in [00-overview](00-overview.md#target-evolution-planned). Rendering is always central (controller-manager); only *apply* and *observe* move by `connectionMode`. There is no single "executor" — the responsibilities the "executor" describes below map onto distinct components:
+> - **Deploy** — controller-manager (push) or the in-cluster **agent** (pull).
+> - **Observe** — the **observer** binary (push), which runs a **drift-detector loop** and a **health-assessor loop** *in parallel* (distinct responsibilities sharing a live-state reader, not one folded into the other), or the in-cluster **agent** (pull), which colocates the same two loops plus the deployer.
+>
+> So where this document says "executor," read it as: in pull mode, the **agent** (deploy + observe); in push mode, the **observer** (observe only — deploy is the controller-manager). The two observe loops are shared code between the observer and the agent.
+
 ## Component Model
 
-A single binary — the **executor** — runs in two deployment topologies determined by each `Cluster.spec.connectionMode`:
+_Status: planned. Today only the PUSH path exists (the Release controller renders and applies inline); the observer, agent-manager, and agent do not exist._
 
-**Agentless mode:** A central deployment of the executor handles many clusters. The control plane provides each clusters' kubeconfig (or workload identity), and the executor fetches and applies manifests / evaluates health for those clusters using their respective credentials.
+The design has two roles that move by `Cluster.spec.connectionMode` — **deploy** (apply desired state) and **observe** (drift detection + health assessment) — while rendering stays central in the controller-manager.
 
-**Agent mode:** The executor runs in the target cluster itself. It handles only its local cluster, using in-cluster service account credentials.
+**Push clusters (`inCluster`/`agentless`):** the control plane drives everything. The controller-manager renders, stores, and applies; a central **observer** binary reads each target cluster's live state and runs the drift + health loops for it.
 
-Both modes run the same binary with the same logic; only the configuration differs (which clusters to handle, how to authenticate to them).
+**Pull clusters (`agent`):** an **agent** binary runs inside the target cluster, using its in-cluster ServiceAccount. It pulls the centrally-rendered state (served by the agent-manager), inventories it locally, applies it, and runs the **same** drift + health loops against the local cluster — reporting results back through the agent-manager. This suits clusters the control plane cannot reach.
 
-The executor runs two parallel internal loops:
+The **observe** loops are identical code in both topologies; only their deployment and how they reach the cluster differ (central + remote credentials vs. in-cluster + ServiceAccount). Each loop is a distinct responsibility:
 
-- **Deploy loop** — fetches rendered manifests from the control plane, applies them to the target cluster
-- **Health loop** — watches managed resources, evaluates them against `HealthRule` resources, reports verdicts
+- **Drift-detector loop** — compares live managed-resource state against the desired render; on drift, requests a reconcile so the applier re-applies.
+- **Health-assessor loop** — watches managed resources and evaluates them against health rules (built-in + `KindHealthRule` + `ResourceHealthRule`), aggregating verdicts into `Release.status.health`.
 
-The two loops share in-process state (which Releases have been deployed, which resources to watch). They could be split into separate processes later, but for v1 a single process keeps deployment simple.
+Colocating the two loops lets them share an in-process live-state cache and the target-cluster connection; keeping them logically separate preserves their distinct inputs (drift needs the desired render; health needs only live state + rules) and cadence.
 
 ## Communication Direction: PULL with Sync-Check
 
-Communication is **agent-initiated** in both modes. The agent (or central executor, when handling a remote cluster) makes outbound HTTPS requests to the control plane; the control plane never opens connections to agents.
+_Status: planned (agent mode). Today's PUSH path is the reverse — the control plane connects out to agentless clusters and applies directly. The PULL protocol below applies only to the future `agent` connection mode; push-mode (`inCluster`/`agentless`) clusters are driven by the control plane connecting out (controller-manager applies, observer reads live state)._
+
+> **Scope note.** The sections from here on (protocol, content delivery, memory bounds, sharding) are the **original executor-centric proposal** and have not been re-derived against the current component split. Read the legacy term **"executor"** as: the in-cluster **agent** in pull mode; and, for the centrally-deployed multi-cluster figures (memory, sharding), the control-plane workers — **observer** (observe) and **controller-manager** (deploy) — each carrying the subset of these bounds relevant to its role. The mechanisms carry over; the per-component bounds and sharding need a dedicated re-derivation.
+
+Communication is **agent-initiated**: the in-cluster agent makes outbound HTTPS requests to the control plane; the control plane never opens connections to it.
 
 This direction was chosen because:
 
@@ -88,6 +100,8 @@ Long-lived bidirectional streams (e.g., gRPC server streaming) are a possible v1
 
 ## Content Delivery: Control Plane Proxies S3
 
+_Status: planned. Depends on both the S3 backend and agent mode, neither of which exists today._
+
 The control plane reads rendered manifests from its S3 backend and streams them to agents over the same authenticated sync channel. **Agents never access S3 directly.**
 
 ### Why Not S3-Direct
@@ -113,6 +127,8 @@ This makes manifest sets of arbitrary size flow through the system with bounded 
 
 ## YAML Stream Parsing
 
+_Status: planned (part of the agent-mode content-delivery path)._
+
 Manifest streams are parsed as multi-document YAML using a proper streaming decoder, not by splitting text on `---`. Splitting on `---` fails for:
 
 - `---` appearing inside string values (e.g., multi-line strings in ConfigMaps)
@@ -122,6 +138,8 @@ Manifest streams are parsed as multi-document YAML using a proper streaming deco
 The agent uses Go's `yaml.v3` decoder loop (or equivalent) to yield each document discretely. Documents are accumulated into a batch up to the configured size, processed, and the next batch begins.
 
 ## Memory Bounds
+
+_Status: planned. The config keys below are proposed, not implemented._
 
 Both sides of the connection have configurable bounds that make memory consumption predictable.
 
@@ -181,6 +199,8 @@ These configs are independent — the executor and control plane each manage the
 
 ## Sharding
 
+_Status: planned. Today all controllers run as a single `convoy-controller-manager` with no sharding._
+
 ### Central Executor (Agentless Clusters)
 
 Cluster-level sharding via consistent hashing on `Cluster.metadata.uid`. Each shard processes the clusters whose UIDs fall in its hash range.
@@ -215,6 +235,8 @@ The agent protocol design itself — full message formats, registration flow, id
 `Cluster.spec.agent.registrationTokenRef` already exists in the `Cluster` schema as the v1alpha1 placeholder for agent identity. Token-based registration is sufficient to ship; mTLS, OIDC service-account auth, and other identity schemes can be added through additive schema changes without breaking v1alpha1.
 
 ## Summary Table
+
+_Every row below describes the **target** execution architecture and is **not yet built** — today's delivery is control-plane PUSH via the Release controller (see the Status note at the top)._
 
 | Aspect                     | Decision                                                                          |
 |----------------------------|-----------------------------------------------------------------------------------|
