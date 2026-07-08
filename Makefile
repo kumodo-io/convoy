@@ -172,17 +172,20 @@ KIND_CLUSTER         := convoy-dev
 KIND_CLUSTER_MANAGED := convoy-managed
 API_SERVER_IMAGE     := convoy-apiserver:dev
 CONTROLLER_IMAGE     := convoy-controller-manager:dev
+OBSERVER_IMAGE       := convoy-observer:dev
 
 # Build static linux binaries matching the local arch (kind nodes are linux/$GOARCH).
 .PHONY: build-linux
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(shell go env GOARCH) go build -o bin/convoy-apiserver ./cmd/convoy-apiserver
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(shell go env GOARCH) go build -o bin/convoy-controller-manager ./cmd/convoy-controller-manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(shell go env GOARCH) go build -o bin/convoy-observer ./cmd/convoy-observer
 
 .PHONY: image
 image:
 	docker build --target apiserver -t $(API_SERVER_IMAGE) .
 	docker build --target controller-manager -t $(CONTROLLER_IMAGE) .
+	docker build --target observer -t $(OBSERVER_IMAGE) .
 
 .PHONY: kind-up
 kind-up: kind
@@ -212,6 +215,7 @@ kind-managed-kubeconfig: kubectl kind-up kind-managed-up
 kind-deploy: image kind kubectl
 	$(TOOLS_BIN)/kind load docker-image $(API_SERVER_IMAGE) --name $(KIND_CLUSTER)
 	$(TOOLS_BIN)/kind load docker-image $(CONTROLLER_IMAGE) --name $(KIND_CLUSTER)
+	$(TOOLS_BIN)/kind load docker-image $(OBSERVER_IMAGE) --name $(KIND_CLUSTER)
 	$(TOOLS_BIN)/kubectl apply -k dev/deploy
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
@@ -220,6 +224,7 @@ kind-deploy: image kind kubectl
 		apiservice/v1alpha1.source.convoy.kumodo.io \
 		apiservice/v1alpha1.extensions.convoy.kumodo.io
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-controller-manager --timeout=120s
+	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-observer --timeout=120s
 
 # Smoke-test the served API end-to-end.
 .PHONY: kind-test

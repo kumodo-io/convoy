@@ -6,3 +6,4 @@ resources:
   - apiserver.yaml
   - apiservices.yaml
   - controller.yaml
+  - observer.yaml

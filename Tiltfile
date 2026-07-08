@@ -16,8 +16,8 @@ load('ext://restart_process', 'docker_build_with_restart')
 # Safety: only ever run against the local kind dev cluster.
 allow_k8s_contexts('kind-convoy-dev')
 
-# Compile static linux binaries (both the apiserver and the controller-manager)
-# matching the kind node arch on source changes.
+# Compile static linux binaries (the apiserver, the controller-manager, and the
+# observer) matching the kind node arch on source changes.
 local_resource(
     'convoy-compile',
     cmd='make build-linux',
@@ -52,6 +52,17 @@ docker_build_with_restart(
         sync('bin/convoy-controller-manager', '/convoy-controller-manager'),
     ],
 )
+docker_build_with_restart(
+    'convoy-observer:dev',
+    'bin',
+    dockerfile='dev/Dockerfile.dev',
+    target='observer',
+    entrypoint=['/convoy-observer'],
+    only=['convoy-observer'],
+    live_update=[
+        sync('bin/convoy-observer', '/convoy-observer'),
+    ],
+)
 
 k8s_yaml(kustomize('dev/deploy'))
 
@@ -64,6 +75,12 @@ k8s_resource(
 k8s_resource(
     'convoy-controller-manager',
     # Needs the aggregated API served before it can list/watch Clusters.
+    resource_deps=['convoy-compile', 'convoy-apiserver'],
+    labels=['convoy'],
+)
+k8s_resource(
+    'convoy-observer',
+    # Needs the aggregated API served before it can list/watch Releases.
     resource_deps=['convoy-compile', 'convoy-apiserver'],
     labels=['convoy'],
 )

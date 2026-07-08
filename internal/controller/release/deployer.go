@@ -26,9 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/restmapper"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
@@ -95,23 +93,7 @@ func (d *connectorDeployer) Prune(ctx context.Context, cluster *corev1alpha1.Clu
 
 // clients connects to the target cluster and builds a dynamic client + RESTMapper.
 func (d *connectorDeployer) clients(ctx context.Context, cluster *corev1alpha1.Cluster) (dynamic.Interface, meta.RESTMapper, error) {
-	cfg, err := d.connector.Connect(ctx, cluster)
-	if err != nil {
-		return nil, nil, err // clusterconn.ErrUnsupported / ErrProbeFailed
-	}
-	dyn, err := dynamic.NewForConfig(cfg)
-	if err != nil {
-		return nil, nil, fmt.Errorf("building dynamic client: %w", err)
-	}
-	disco, err := discovery.NewDiscoveryClientForConfig(cfg)
-	if err != nil {
-		return nil, nil, fmt.Errorf("building discovery client: %w", err)
-	}
-	groups, err := restmapper.GetAPIGroupResources(disco)
-	if err != nil {
-		return nil, nil, fmt.Errorf("discovering api groups: %w", err)
-	}
-	return dyn, restmapper.NewDiscoveryRESTMapper(groups), nil
+	return d.connector.DynamicClients(ctx, cluster)
 }
 
 // resourceFor resolves obj's GVK to a namespaced-or-cluster resource client and

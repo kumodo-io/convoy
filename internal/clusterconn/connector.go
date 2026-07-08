@@ -21,7 +21,11 @@ import (
 	"errors"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/auth"
@@ -84,4 +88,27 @@ func (c *Connector) Connect(ctx context.Context, cluster *corev1alpha1.Cluster) 
 	default:
 		return nil, errors.Join(ErrUnsupported, fmt.Errorf("unknown connection mode %q", cluster.Spec.ConnectionMode))
 	}
+}
+
+// DynamicClients connects to the target cluster and builds a dynamic client and a
+// discovery-backed RESTMapper. Both the deployer (apply/prune) and the observer
+// (dry-run compare) reach target-cluster resources through this.
+func (c *Connector) DynamicClients(ctx context.Context, cluster *corev1alpha1.Cluster) (dynamic.Interface, meta.RESTMapper, error) {
+	cfg, err := c.Connect(ctx, cluster)
+	if err != nil {
+		return nil, nil, err // clusterconn.ErrUnsupported / ErrProbeFailed
+	}
+	dyn, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("building dynamic client: %w", err)
+	}
+	disco, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("building discovery client: %w", err)
+	}
+	groups, err := restmapper.GetAPIGroupResources(disco)
+	if err != nil {
+		return nil, nil, fmt.Errorf("discovering api groups: %w", err)
+	}
+	return dyn, restmapper.NewDiscoveryRESTMapper(groups), nil
 }

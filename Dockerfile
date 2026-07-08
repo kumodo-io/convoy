@@ -25,12 +25,20 @@ FROM base AS build-controller-manager
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux go build -o /controller-manager ./cmd/convoy-controller-manager
 
+FROM base AS build-observer
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -o /observer ./cmd/convoy-observer
+
 # Runtime images. debian-slim (not distroless) so Tilt's restart wrapper — which
 # needs basic coreutils (touch/chmod) — still works if these are used for the
 # live-reload dev loop. Build with `docker build --target controller-manager`.
 FROM debian:stable-slim AS controller-manager
 COPY --from=build-controller-manager /controller-manager /convoy-controller-manager
 ENTRYPOINT ["/convoy-controller-manager"]
+
+FROM debian:stable-slim AS observer
+COPY --from=build-observer /observer /convoy-observer
+ENTRYPOINT ["/convoy-observer"]
 
 # apiserver is the last stage, so a plain `docker build` (CI) builds it by default.
 FROM debian:stable-slim AS apiserver
