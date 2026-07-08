@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package release
+package render
 
 import (
 	"context"
@@ -101,7 +101,7 @@ func TestResolveValues_OrderedLayers(t *testing.T) {
 		secretEntry("sec", nil),
 	}
 
-	layers, err := resolveValues(context.Background(), entries, "ns", resolver, nil)
+	layers, err := ResolveValues(context.Background(), entries, "ns", resolver, nil)
 	if err != nil {
 		t.Fatalf("resolveValues returned error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestResolveValues_OrderedLayers(t *testing.T) {
 }
 
 func TestResolveValues_OptionalMissingSkipped(t *testing.T) {
-	layers, err := resolveValues(context.Background(),
+	layers, err := ResolveValues(context.Background(),
 		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", new(true))},
 		"ns", fakeResolver{}, nil)
 	if err != nil {
@@ -126,7 +126,7 @@ func TestResolveValues_OptionalMissingSkipped(t *testing.T) {
 }
 
 func TestResolveValues_RequiredMissingIsTransient(t *testing.T) {
-	_, err := resolveValues(context.Background(),
+	_, err := ResolveValues(context.Background(),
 		[]corev1alpha1.ValuesSourceSpec{configMapEntry("absent", nil)},
 		"ns", fakeResolver{}, nil)
 	if err == nil {
@@ -141,7 +141,7 @@ func TestResolveValues_MissingKeyIsTransient(t *testing.T) {
 	resolver := fakeResolver{configMaps: map[string]*corev1.ConfigMap{
 		"cm": {Data: map[string]string{"other": "x"}},
 	}}
-	_, err := resolveValues(context.Background(),
+	_, err := ResolveValues(context.Background(),
 		[]corev1alpha1.ValuesSourceSpec{configMapEntry("cm", nil)},
 		"ns", resolver, nil)
 	if err == nil {
@@ -174,7 +174,7 @@ func TestResolveValues_GitRepositoryReadsPathsInOrder(t *testing.T) {
 			"env/override.yaml": []byte(dummyKeyValueB),
 		}},
 	}}
-	layers, err := resolveValues(context.Background(),
+	layers, err := ResolveValues(context.Background(),
 		[]corev1alpha1.ValuesSourceSpec{gitValuesEntry("env/values.yaml", "env/override.yaml")},
 		"ns", fakeResolver{}, coord)
 	if err != nil {
@@ -187,7 +187,7 @@ func TestResolveValues_GitRepositoryReadsPathsInOrder(t *testing.T) {
 
 func TestResolveValues_GitRepositoryNotReadyIsTerminal(t *testing.T) {
 	coord := &fakeCoordinator{result: fetch.Result{Ready: false, Message: "unsupported ref"}}
-	_, err := resolveValues(context.Background(),
+	_, err := ResolveValues(context.Background(),
 		[]corev1alpha1.ValuesSourceSpec{gitValuesEntry("values.yaml")}, "ns", fakeResolver{}, coord)
 	if !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported (terminal)", err)
@@ -196,7 +196,7 @@ func TestResolveValues_GitRepositoryNotReadyIsTerminal(t *testing.T) {
 
 func TestResolveValues_GitRepositoryFetchErrorIsTransient(t *testing.T) {
 	coord := &fakeCoordinator{err: errors.New("source not found")}
-	_, err := resolveValues(context.Background(),
+	_, err := ResolveValues(context.Background(),
 		[]corev1alpha1.ValuesSourceSpec{gitValuesEntry("values.yaml")}, "ns", fakeResolver{}, coord)
 	if err == nil {
 		t.Fatalf("resolveValues returned nil, want transient error")
@@ -211,7 +211,7 @@ func TestResolveValues_GitRepositoryMissingFile(t *testing.T) {
 		Ready:    true,
 		Artifact: artifact.Artifact{Files: map[string][]byte{"other.yaml": []byte("x: 1\n")}},
 	}}
-	_, err := resolveValues(context.Background(),
+	_, err := ResolveValues(context.Background(),
 		[]corev1alpha1.ValuesSourceSpec{gitValuesEntry("values.yaml")}, "ns", fakeResolver{}, coord)
 	if err == nil {
 		t.Fatalf("resolveValues returned nil, want error for missing values file")
@@ -220,7 +220,7 @@ func TestResolveValues_GitRepositoryMissingFile(t *testing.T) {
 
 func TestResolveValues_EmptyInlineUnsupported(t *testing.T) {
 	entry := corev1alpha1.ValuesSourceSpec{Type: corev1alpha1.ValuesSourceTypeInline}
-	_, err := resolveValues(context.Background(), []corev1alpha1.ValuesSourceSpec{entry}, "ns", fakeResolver{}, nil)
+	_, err := ResolveValues(context.Background(), []corev1alpha1.ValuesSourceSpec{entry}, "ns", fakeResolver{}, nil)
 	if !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
 	}

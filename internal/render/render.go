@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package release
+package render
 
 import (
 	"bytes"
@@ -36,10 +36,10 @@ import (
 // surfaces it without requeuing.
 var ErrUnsupported = errors.New("unsupported release configuration")
 
-// render turns a source artifact into the objects to apply, dispatching on the
+// Render turns a source artifact into the objects to apply, dispatching on the
 // content type. valueLayers are the ordered, pre-resolved Helm values (used only
 // by the helm content type; ignored otherwise).
-func render(content corev1alpha1.ReleaseContentSpec, art artifact.Artifact, valueLayers [][]byte) ([]*unstructured.Unstructured, error) {
+func Render(content corev1alpha1.ReleaseContentSpec, art artifact.Artifact, valueLayers [][]byte) ([]*unstructured.Unstructured, error) {
 	switch content.Type {
 	case corev1alpha1.ReleaseContentTypeManifests:
 		if content.Manifests == nil {

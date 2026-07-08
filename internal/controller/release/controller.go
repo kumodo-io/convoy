@@ -50,6 +50,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
+	"github.com/kumodo-io/convoy/internal/render"
 )
 
 const (
@@ -453,15 +454,15 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 
 	valueLayers, err := c.resolveValueLayers(ctx, rel)
 	if err != nil {
-		if errors.Is(err, ErrUnsupported) {
+		if errors.Is(err, render.ErrUnsupported) {
 			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
 		}
 		return fail(conditionReasonValuesNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
 	}
 
-	objects, err := render(rel.Spec.Content, art, valueLayers)
+	objects, err := render.Render(rel.Spec.Content, art, valueLayers)
 	if err != nil {
-		if errors.Is(err, ErrUnsupported) {
+		if errors.Is(err, render.ErrUnsupported) {
 			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
 		}
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
@@ -503,7 +504,7 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 
 	applied, err := c.deployer.Deploy(ctx, cluster, objects)
 	if err != nil {
-		if errors.Is(err, ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
+		if errors.Is(err, render.ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
 			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
 		}
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
@@ -744,7 +745,7 @@ func (c *Controller) resolveValueLayers(ctx context.Context, rel *corev1alpha1.R
 	if rel.Spec.Content.Type != corev1alpha1.ReleaseContentTypeHelm || rel.Spec.Content.Helm == nil {
 		return nil, nil
 	}
-	return resolveValues(ctx, rel.Spec.Content.Helm.Values, rel.Namespace, c.resolver, c.coordinator)
+	return render.ResolveValues(ctx, rel.Spec.Content.Helm.Values, rel.Namespace, c.resolver, c.coordinator)
 }
 
 func orDefault(value, fallback string) string {
