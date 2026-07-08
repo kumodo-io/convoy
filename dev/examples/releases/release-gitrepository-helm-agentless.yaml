@@ -25,3 +25,6 @@ spec:
       includeCRDs: false
       includeNamespaces: false
     interval: 1m
+  deletionPolicy:
+    keepWorkloads: false
+    blockOnClusterUnreachable: false

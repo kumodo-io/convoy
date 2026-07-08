@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
+	applyconfigurationextensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/extensions/v1alpha1"
 	scheme "github.com/kumodo-io/convoy/api/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type KindHealthRuleInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*extensionsv1alpha1.KindHealthRuleList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *extensionsv1alpha1.KindHealthRule, err error)
+	Apply(ctx context.Context, kindHealthRule *applyconfigurationextensionsv1alpha1.KindHealthRuleApplyConfiguration, opts v1.ApplyOptions) (result *extensionsv1alpha1.KindHealthRule, err error)
 	KindHealthRuleExpansion
 }
 
 // kindHealthRules implements KindHealthRuleInterface
 type kindHealthRules struct {
-	*gentype.ClientWithList[*extensionsv1alpha1.KindHealthRule, *extensionsv1alpha1.KindHealthRuleList]
+	*gentype.ClientWithListAndApply[*extensionsv1alpha1.KindHealthRule, *extensionsv1alpha1.KindHealthRuleList, *applyconfigurationextensionsv1alpha1.KindHealthRuleApplyConfiguration]
 }
 
 // newKindHealthRules returns a KindHealthRules
 func newKindHealthRules(c *ExtensionsV1alpha1Client) *kindHealthRules {
 	return &kindHealthRules{
-		gentype.NewClientWithList[*extensionsv1alpha1.KindHealthRule, *extensionsv1alpha1.KindHealthRuleList](
+		gentype.NewClientWithListAndApply[*extensionsv1alpha1.KindHealthRule, *extensionsv1alpha1.KindHealthRuleList, *applyconfigurationextensionsv1alpha1.KindHealthRuleApplyConfiguration](
 			"kindhealthrules",
 			c.RESTClient(),
 			scheme.ParameterCodec,

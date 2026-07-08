@@ -35,10 +35,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	corev1alpha1ac "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
@@ -48,6 +50,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
+	"github.com/kumodo-io/convoy/internal/render"
 )
 
 const (
@@ -57,6 +60,13 @@ const (
 	releaseFinalizer = "release.core.convoy.kumodo.io/prune-workloads"
 
 	DefaultLocalCluster = "https://kubernetes.default.svc"
+
+	// statusFieldManager is the Server-Side Apply field manager the Release
+	// controller uses for its status writes. It owns only the fields this
+	// controller produces (see ownedStatusApplyConfig); other status fields
+	// (health, drift) belong to their own writers under distinct managers, so
+	// concurrent writers never clobber each other.
+	statusFieldManager = "convoy-release"
 )
 
 // Controller reconciles Release objects: fetch source content → render → apply
@@ -167,13 +177,15 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 
 	if statusChanged(rel, newStatus) {
-		updated := rel.DeepCopy()
-		updated.Status = newStatus
-		updated.Status.ReconciledAt = new(c.now())
-		if _, err := c.client.CoreV1alpha1().Releases(namespace).UpdateStatus(ctx, updated, metav1.UpdateOptions{}); err != nil {
-			return fmt.Errorf("updating status: %w", err)
+		newStatus.ReconciledAt = new(c.now())
+		ac, err := ownedStatusApplyConfig(rel, newStatus)
+		if err != nil {
+			return fmt.Errorf("building status apply: %w", err)
 		}
-		klog.V(4).InfoS("updated release status", "release", key, "ready", outcome.ready, "reason", outcome.reason)
+		if _, err := c.client.CoreV1alpha1().Releases(namespace).ApplyStatus(ctx, ac, metav1.ApplyOptions{FieldManager: statusFieldManager, Force: true}); err != nil {
+			return fmt.Errorf("applying status: %w", err)
+		}
+		klog.V(4).InfoS("applied release status", "release", key, "applied", outcome.ready, "reason", outcome.reason)
 	}
 
 	// Requeue policy.
@@ -223,6 +235,68 @@ func pendingSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
 		return nil, false
 	}
 	return &requestedAt, true
+}
+
+// ownedStatusApplyConfig builds a Server-Side Apply configuration carrying only
+// the status fields this controller owns. The top-level config is built field by
+// field — NOT round-tripped from the whole ReleaseStatus struct — because that
+// struct's sibling fields (healthSummary, lifecycle, …) lack omitempty and would
+// serialize as zero values, clobbering fields owned by other writers (the
+// observer's health, drift). Only the owned nested objects are projected through
+// JSON, where the all-omitempty apply-configuration types make it safe.
+func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseStatus) (*corev1alpha1ac.ReleaseApplyConfiguration, error) {
+	statusAC := corev1alpha1ac.ReleaseStatus().WithObservedGeneration(s.ObservedGeneration)
+
+	for i := range s.Conditions {
+		condAC := &metav1ac.ConditionApplyConfiguration{}
+		if err := jsonRoundTrip(s.Conditions[i], condAC); err != nil {
+			return nil, err
+		}
+		statusAC.WithConditions(condAC)
+	}
+
+	// Only assert pin when set. Omitting it when nil is how SSA clears a pin this
+	// manager previously owned (unpin), rather than writing an empty pin object.
+	if s.Pin != nil {
+		pinAC := &corev1alpha1ac.ReleasePinStatusApplyConfiguration{}
+		if err := jsonRoundTrip(s.Pin, pinAC); err != nil {
+			return nil, err
+		}
+		statusAC.WithPin(pinAC)
+	}
+
+	if s.LastAttempted != nil {
+		la := &corev1alpha1ac.ReleaseAttemptedRenderStatusApplyConfiguration{}
+		if err := jsonRoundTrip(s.LastAttempted, la); err != nil {
+			return nil, err
+		}
+		statusAC.WithLastAttempted(la)
+	}
+	if s.LastSuccessful != nil {
+		ls := &corev1alpha1ac.ReleaseAttemptedRenderStatusApplyConfiguration{}
+		if err := jsonRoundTrip(s.LastSuccessful, ls); err != nil {
+			return nil, err
+		}
+		statusAC.WithLastSuccessful(ls)
+	}
+	if s.ReconciledAt != nil {
+		statusAC.WithReconciledAt(*s.ReconciledAt)
+	}
+	if s.LastHandledSyncAt != nil {
+		statusAC.WithLastHandledSyncAt(*s.LastHandledSyncAt)
+	}
+
+	return corev1alpha1ac.Release(rel.Name, rel.Namespace).WithStatus(statusAC), nil
+}
+
+// jsonRoundTrip marshals src and unmarshals it into dst. Used to convert a typed
+// status struct into its apply-configuration mirror.
+func jsonRoundTrip(src, dst any) error {
+	b, err := json.Marshal(src)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, dst)
 }
 
 func (c *Controller) ensureFinalizer(ctx context.Context, rel *corev1alpha1.Release) (*corev1alpha1.Release, error) {
@@ -380,15 +454,15 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 
 	valueLayers, err := c.resolveValueLayers(ctx, rel)
 	if err != nil {
-		if errors.Is(err, ErrUnsupported) {
+		if errors.Is(err, render.ErrUnsupported) {
 			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
 		}
 		return fail(conditionReasonValuesNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
 	}
 
-	objects, err := render(rel.Spec.Content, art, valueLayers)
+	objects, err := render.Render(rel.Spec.Content, art, valueLayers)
 	if err != nil {
-		if errors.Is(err, ErrUnsupported) {
+		if errors.Is(err, render.ErrUnsupported) {
 			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
 		}
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
@@ -430,7 +504,7 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 
 	applied, err := c.deployer.Deploy(ctx, cluster, objects)
 	if err != nil {
-		if errors.Is(err, ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
+		if errors.Is(err, render.ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
 			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
 		}
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
@@ -671,7 +745,7 @@ func (c *Controller) resolveValueLayers(ctx context.Context, rel *corev1alpha1.R
 	if rel.Spec.Content.Type != corev1alpha1.ReleaseContentTypeHelm || rel.Spec.Content.Helm == nil {
 		return nil, nil
 	}
-	return resolveValues(ctx, rel.Spec.Content.Helm.Values, rel.Namespace, c.resolver, c.coordinator)
+	return render.ResolveValues(ctx, rel.Spec.Content.Helm.Values, rel.Namespace, c.resolver, c.coordinator)
 }
 
 func orDefault(value, fallback string) string {

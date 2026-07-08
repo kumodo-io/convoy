@@ -18,3 +18,7 @@ ENTRYPOINT ["/convoy-apiserver"]
 FROM debian:stable-slim AS controller-manager
 COPY convoy-controller-manager /convoy-controller-manager
 ENTRYPOINT ["/convoy-controller-manager"]
+
+FROM debian:stable-slim AS observer
+COPY convoy-observer /convoy-observer
+ENTRYPOINT ["/convoy-observer"]

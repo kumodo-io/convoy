@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
+	applyconfigurationextensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/extensions/v1alpha1"
 	scheme "github.com/kumodo-io/convoy/api/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -45,18 +46,19 @@ type ResourceHealthRuleInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*extensionsv1alpha1.ResourceHealthRuleList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *extensionsv1alpha1.ResourceHealthRule, err error)
+	Apply(ctx context.Context, resourceHealthRule *applyconfigurationextensionsv1alpha1.ResourceHealthRuleApplyConfiguration, opts v1.ApplyOptions) (result *extensionsv1alpha1.ResourceHealthRule, err error)
 	ResourceHealthRuleExpansion
 }
 
 // resourceHealthRules implements ResourceHealthRuleInterface
 type resourceHealthRules struct {
-	*gentype.ClientWithList[*extensionsv1alpha1.ResourceHealthRule, *extensionsv1alpha1.ResourceHealthRuleList]
+	*gentype.ClientWithListAndApply[*extensionsv1alpha1.ResourceHealthRule, *extensionsv1alpha1.ResourceHealthRuleList, *applyconfigurationextensionsv1alpha1.ResourceHealthRuleApplyConfiguration]
 }
 
 // newResourceHealthRules returns a ResourceHealthRules
 func newResourceHealthRules(c *ExtensionsV1alpha1Client, namespace string) *resourceHealthRules {
 	return &resourceHealthRules{
-		gentype.NewClientWithList[*extensionsv1alpha1.ResourceHealthRule, *extensionsv1alpha1.ResourceHealthRuleList](
+		gentype.NewClientWithListAndApply[*extensionsv1alpha1.ResourceHealthRule, *extensionsv1alpha1.ResourceHealthRuleList, *applyconfigurationextensionsv1alpha1.ResourceHealthRuleApplyConfiguration](
 			"resourcehealthrules",
 			c.RESTClient(),
 			scheme.ParameterCodec,

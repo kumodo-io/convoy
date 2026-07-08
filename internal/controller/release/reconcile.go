@@ -25,7 +25,12 @@ import (
 )
 
 const (
-	conditionReady = "Ready"
+	// conditionApplied reports whether the desired render is applied to the target
+	// cluster. It is the only condition the Release controller owns; the observer
+	// (or agent-manager, in agent mode) owns the separate InSync and Healthy
+	// conditions. There is intentionally no composite "Ready" condition — each
+	// signal has a single writer (see docs/architecture/00-overview.md).
+	conditionApplied = "Applied"
 
 	conditionReasonApplied         = "Applied"
 	conditionReasonSourceNotReady  = "SourceNotReady"
@@ -46,7 +51,7 @@ func computeStatus(release *corev1alpha1.Release, now metav1.Time, ready bool, r
 	status.ObservedGeneration = release.Generation
 
 	cond := metav1.Condition{
-		Type:               conditionReady,
+		Type:               conditionApplied,
 		Status:             metav1.ConditionFalse,
 		ObservedGeneration: release.Generation,
 		LastTransitionTime: now,

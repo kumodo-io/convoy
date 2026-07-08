@@ -31,6 +31,8 @@ import (
 	"github.com/kumodo-io/convoy/internal/helper"
 )
 
+const unknownState = "<unknown>"
+
 func newTableConvertor() rest.TableConvertor { return tableConvertor{} }
 
 type tableConvertor struct{}
@@ -43,25 +45,33 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			{Name: "Content", Type: helper.StringValueString, Description: "Content interpretation type"},
 			{Name: "Source", Type: helper.StringValueString, Description: "Referenced source (type/name)"},
 			{Name: "Cluster", Type: helper.StringValueString, Description: "Target cluster"},
-			{Name: "Ready", Type: helper.StringValueString, Description: "Whether the repository is ready"},
+			{Name: "Applied", Type: helper.StringValueString, Description: "Whether the release render is applied"},
+			{Name: "InSync", Type: helper.StringValueString, Description: "Whether the release is in sync"},
 			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the Release was created"},
 		},
 	}
 
 	rowFor := func(r *core.Release) metav1.TableRow {
-		age := "<unknown>"
+		age := unknownState
 		if !r.CreationTimestamp.IsZero() {
 			age = duration.HumanDuration(time.Since(r.CreationTimestamp.Time))
 		}
-		ready := "<unknown>"
-		idx := slices.IndexFunc(r.Status.Conditions, func(c metav1.Condition) bool {
-			return c.Type == "Ready"
+		applied := unknownState
+		appliedIdx := slices.IndexFunc(r.Status.Conditions, func(c metav1.Condition) bool {
+			return c.Type == "Applied"
 		})
-		if idx >= 0 {
-			ready = string(r.Status.Conditions[idx].Status)
+		if appliedIdx >= 0 {
+			applied = string(r.Status.Conditions[appliedIdx].Status)
+		}
+		inSync := unknownState
+		inSyncIdx := slices.IndexFunc(r.Status.Conditions, func(c metav1.Condition) bool {
+			return c.Type == "InSync"
+		})
+		if inSyncIdx >= 0 {
+			inSync = string(r.Status.Conditions[inSyncIdx].Status)
 		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, ready, age},
+			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, applied, inSync, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}

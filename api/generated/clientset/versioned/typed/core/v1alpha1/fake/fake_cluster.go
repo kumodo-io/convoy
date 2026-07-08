@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
-	corev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/core/v1alpha1"
+	corev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
+	typedcorev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/core/v1alpha1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeClusters implements ClusterInterface
 type fakeClusters struct {
-	*gentype.FakeClientWithList[*v1alpha1.Cluster, *v1alpha1.ClusterList]
+	*gentype.FakeClientWithListAndApply[*v1alpha1.Cluster, *v1alpha1.ClusterList, *corev1alpha1.ClusterApplyConfiguration]
 	Fake *FakeCoreV1alpha1
 }
 
-func newFakeClusters(fake *FakeCoreV1alpha1, namespace string) corev1alpha1.ClusterInterface {
+func newFakeClusters(fake *FakeCoreV1alpha1, namespace string) typedcorev1alpha1.ClusterInterface {
 	return &fakeClusters{
-		gentype.NewFakeClientWithList[*v1alpha1.Cluster, *v1alpha1.ClusterList](
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.Cluster, *v1alpha1.ClusterList, *corev1alpha1.ClusterApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("clusters"),

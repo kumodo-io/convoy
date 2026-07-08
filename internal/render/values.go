@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package release
+package render
 
 import (
 	"context"
@@ -30,13 +30,13 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
-// resolveValues turns the ordered Helm values sources into ordered raw-YAML
+// ResolveValues turns the ordered Helm values sources into ordered raw-YAML
 // layers (later layers override earlier ones at render time). A nil error with
 // fewer layers than entries means optional sources were absent. Errors are
 // transient (missing ConfigMap/Secret/source — requeue) unless joined with
 // ErrUnsupported (terminal config problem). gitRepository sources are fetched
 // through the coordinator.
-func resolveValues(ctx context.Context, entries []corev1alpha1.ValuesSourceSpec, namespace string, resolver auth.SecretResolver, coordinator fetch.Coordinator) ([][]byte, error) {
+func ResolveValues(ctx context.Context, entries []corev1alpha1.ValuesSourceSpec, namespace string, resolver auth.SecretResolver, coordinator fetch.Coordinator) ([][]byte, error) {
 	var layers [][]byte
 	for i, e := range entries {
 		switch e.Type {

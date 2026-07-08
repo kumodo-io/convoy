@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	sourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/source/v1alpha1"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/source/v1alpha1"
+	typedsourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/source/v1alpha1"
 	v1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeHelmRegistries implements HelmRegistryInterface
 type fakeHelmRegistries struct {
-	*gentype.FakeClientWithList[*v1alpha1.HelmRegistry, *v1alpha1.HelmRegistryList]
+	*gentype.FakeClientWithListAndApply[*v1alpha1.HelmRegistry, *v1alpha1.HelmRegistryList, *sourcev1alpha1.HelmRegistryApplyConfiguration]
 	Fake *FakeSourceV1alpha1
 }
 
-func newFakeHelmRegistries(fake *FakeSourceV1alpha1, namespace string) sourcev1alpha1.HelmRegistryInterface {
+func newFakeHelmRegistries(fake *FakeSourceV1alpha1, namespace string) typedsourcev1alpha1.HelmRegistryInterface {
 	return &fakeHelmRegistries{
-		gentype.NewFakeClientWithList[*v1alpha1.HelmRegistry, *v1alpha1.HelmRegistryList](
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.HelmRegistry, *v1alpha1.HelmRegistryList, *sourcev1alpha1.HelmRegistryApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("helmregistries"),

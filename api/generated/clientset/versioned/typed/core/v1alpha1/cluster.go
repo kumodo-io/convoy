@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	applyconfigurationcorev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
 	scheme "github.com/kumodo-io/convoy/api/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type ClusterInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1alpha1.ClusterList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1alpha1.Cluster, err error)
+	Apply(ctx context.Context, cluster *applyconfigurationcorev1alpha1.ClusterApplyConfiguration, opts v1.ApplyOptions) (result *corev1alpha1.Cluster, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, cluster *applyconfigurationcorev1alpha1.ClusterApplyConfiguration, opts v1.ApplyOptions) (result *corev1alpha1.Cluster, err error)
 	ClusterExpansion
 }
 
 // clusters implements ClusterInterface
 type clusters struct {
-	*gentype.ClientWithList[*corev1alpha1.Cluster, *corev1alpha1.ClusterList]
+	*gentype.ClientWithListAndApply[*corev1alpha1.Cluster, *corev1alpha1.ClusterList, *applyconfigurationcorev1alpha1.ClusterApplyConfiguration]
 }
 
 // newClusters returns a Clusters
 func newClusters(c *CoreV1alpha1Client, namespace string) *clusters {
 	return &clusters{
-		gentype.NewClientWithList[*corev1alpha1.Cluster, *corev1alpha1.ClusterList](
+		gentype.NewClientWithListAndApply[*corev1alpha1.Cluster, *corev1alpha1.ClusterList, *applyconfigurationcorev1alpha1.ClusterApplyConfiguration](
 			"clusters",
 			c.RESTClient(),
 			scheme.ParameterCodec,

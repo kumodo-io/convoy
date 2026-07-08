@@ -38,12 +38,13 @@ The core delivery path works end to end: Git, Helm, and OCI sources are fetched,
 - `Release` status records the last attempted and last successful render (`status.lastAttempted`/`lastSuccessful`), and reflects the pin in `status.pin`.
 - `/pin` (freeze-current-render) and `/sync` (annotation-based reconcile request) subresources; the `kubectl-convoy` plugin exposes `release pin`/`unpin`/`sync`.
 - Release field selector (`spec.clusterRef.{name,namespace}`) and a `releaseByCluster` informer index.
+- **`convoy-observer`** — a standalone binary running the drift-detector loop: renders the desired state, SSA-dry-run-compares it to the live cluster, writes the `InSync` condition (field manager `convoy-observe`), and fires `/sync` to auto-correct in automatic mode. (In-cluster deployment is wired but not yet exercised end-to-end.)
 
 **Planned (described below, not built yet)**
 
 - External (S3) state storage, history, and versioning — the artifact store is in-memory only today. This gates render **history**, **rollback**, and historical **diff**; it does **not** gate current-render diff/drift or freeze-pin (see [External State Storage](#external-state-storage)).
 - The mutation pipeline, sync waves, and lifecycle hooks.
-- The **observer** component (drift-detector + health-assessor loops): current-render drift detection, health-rule evaluation, and the `InSync`/`Healthy` conditions (the rule *types* are served, but nothing evaluates them). It also serves `/preview` and `/diff`.
+- The rest of the **observer**: the **health-assessor loop** (`Healthy` condition; rule *types* are served but nothing evaluates them) and the `/preview`+`/diff` serving endpoints.
 - The remaining subresources (`/webhooks`, `/mutations`, `/preview`, `/diff`, `/history`, `/lifecycle`).
 - The `agent` (pull) connection mode — delivery is control-plane **push** only today.
 - Source-fetch auth methods beyond `none` (token/basic/SSH/etc. are defined in the API but return `Unsupported`), and the `helm` `resolve` dependency mode, `kustomize`/`jsonnet`/`cue` content types.
@@ -179,7 +180,7 @@ Two further responsibilities are planned within this model:
 - **Mutation pipeline + artifact storage** — apply mutations (`helmValues`, `goTemplate`, `jsonPatch`, `strategicMergePatch`, `celTransform`) in order during render, and store the rendered artifact and deployed state to S3 (content-addressed), decoupling render failures from deploy failures and enabling render caching and history.
 - **Notification controller** — subscribes to events emitted by the other components and dispatches to destinations (Slack, webhook, PagerDuty, …) per `NotificationConfig`. Components are expected to emit structured events so this can be added without changing them.
 
-_Status: planned. Today there is no separate observer, agent-manager, or agent, no mutation pipeline, no S3 storage, and no notification controller; render and apply are combined in the controller-manager's Release controller, and a Release is (re-)applied on every reconcile (resync heartbeat + spec change), correcting drift opportunistically rather than on observed change._
+_Status: partially built. The **observer** exists as a standalone `convoy-observer` binary running the drift-detector loop (render via `internal/render` → read live → SSA dry-run compare → write `InSync`; fire `/sync` to auto-correct in automatic mode). Not yet built: the observer's health-assessor loop, its `/preview`+`/diff` serving endpoints, the agent-manager, the agent, the mutation pipeline, S3 storage, and the notification controller. `internal/render` is already extracted and shared. (The observer's in-cluster deployment is wired but not yet exercised end-to-end.)_
 
 ---
 
@@ -217,6 +218,8 @@ A deployed `Release` has three orthogonal state signals:
 These aggregate into a composite `Ready` condition. `Applied` reflects the controller's past action; `InSync` reflects present cluster state; `Healthy` reflects runtime workload state. They are independent — a Release can be `Applied: True`, `InSync: True`, and `Healthy: False` simultaneously.
 
 Each condition has a single owner in the [target model](#target-evolution-planned): `Applied` is written by whoever applied (controller-manager for push, agent-manager for pull), `InSync` by the observer's drift loop (or the agent), and `Healthy` by the observer's health loop (or the agent) — on disjoint status fields via SSA field managers.
+
+_Status: `Applied` is implemented (release controller, field manager `convoy-release`) and `InSync` is implemented (the observer's drift loop, field manager `convoy-observe`). `Healthy` is planned._
 
 _Status: a single `Ready` condition is implemented, carrying reason detail for the current outcome — `Applied`, `Pinned` (a freeze pin is withholding a newer render), `WaitingForSync` (manual mode, apply pending a `/sync`), and the failure reasons. The separate `InSync` (needs drift detection) and `Healthy` (needs health evaluation) conditions are planned._
 

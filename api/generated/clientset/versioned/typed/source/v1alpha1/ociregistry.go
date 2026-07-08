@@ -21,6 +21,7 @@ package v1alpha1
 import (
 	context "context"
 
+	applyconfigurationsourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/source/v1alpha1"
 	scheme "github.com/kumodo-io/convoy/api/generated/clientset/versioned/scheme"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type OCIRegistryInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*sourcev1alpha1.OCIRegistryList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *sourcev1alpha1.OCIRegistry, err error)
+	Apply(ctx context.Context, oCIRegistry *applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration, opts v1.ApplyOptions) (result *sourcev1alpha1.OCIRegistry, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, oCIRegistry *applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration, opts v1.ApplyOptions) (result *sourcev1alpha1.OCIRegistry, err error)
 	OCIRegistryExpansion
 }
 
 // oCIRegistries implements OCIRegistryInterface
 type oCIRegistries struct {
-	*gentype.ClientWithList[*sourcev1alpha1.OCIRegistry, *sourcev1alpha1.OCIRegistryList]
+	*gentype.ClientWithListAndApply[*sourcev1alpha1.OCIRegistry, *sourcev1alpha1.OCIRegistryList, *applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration]
 }
 
 // newOCIRegistries returns a OCIRegistries
 func newOCIRegistries(c *SourceV1alpha1Client, namespace string) *oCIRegistries {
 	return &oCIRegistries{
-		gentype.NewClientWithList[*sourcev1alpha1.OCIRegistry, *sourcev1alpha1.OCIRegistryList](
+		gentype.NewClientWithListAndApply[*sourcev1alpha1.OCIRegistry, *sourcev1alpha1.OCIRegistryList, *applyconfigurationsourcev1alpha1.OCIRegistryApplyConfiguration](
 			"ociregistries",
 			c.RESTClient(),
 			scheme.ParameterCodec,
