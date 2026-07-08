@@ -21,6 +21,7 @@ package v1alpha1
 import (
 	context "context"
 
+	applyconfigurationsourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/source/v1alpha1"
 	scheme "github.com/kumodo-io/convoy/api/generated/clientset/versioned/scheme"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type HelmRegistryInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*sourcev1alpha1.HelmRegistryList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *sourcev1alpha1.HelmRegistry, err error)
+	Apply(ctx context.Context, helmRegistry *applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration, opts v1.ApplyOptions) (result *sourcev1alpha1.HelmRegistry, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, helmRegistry *applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration, opts v1.ApplyOptions) (result *sourcev1alpha1.HelmRegistry, err error)
 	HelmRegistryExpansion
 }
 
 // helmRegistries implements HelmRegistryInterface
 type helmRegistries struct {
-	*gentype.ClientWithList[*sourcev1alpha1.HelmRegistry, *sourcev1alpha1.HelmRegistryList]
+	*gentype.ClientWithListAndApply[*sourcev1alpha1.HelmRegistry, *sourcev1alpha1.HelmRegistryList, *applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration]
 }
 
 // newHelmRegistries returns a HelmRegistries
 func newHelmRegistries(c *SourceV1alpha1Client, namespace string) *helmRegistries {
 	return &helmRegistries{
-		gentype.NewClientWithList[*sourcev1alpha1.HelmRegistry, *sourcev1alpha1.HelmRegistryList](
+		gentype.NewClientWithListAndApply[*sourcev1alpha1.HelmRegistry, *sourcev1alpha1.HelmRegistryList, *applyconfigurationsourcev1alpha1.HelmRegistryApplyConfiguration](
 			"helmregistries",
 			c.RESTClient(),
 			scheme.ParameterCodec,

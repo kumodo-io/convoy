@@ -18,6 +18,7 @@ package release
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clienttesting "k8s.io/client-go/testing"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -159,17 +161,28 @@ func newTestControllerWithResolver(t *testing.T, rel *corev1alpha1.Release, clus
 	return c, client
 }
 
+// statusUpdate returns the Release from the most recent status write. Status is
+// now written via Server-Side Apply, so the recorded action is an apply patch on
+// the status subresource; its patch body is the apply configuration JSON, which
+// mirrors the Release shape and decodes straight into one.
 func statusUpdate(actions []clienttesting.Action) *corev1alpha1.Release {
+	var found *corev1alpha1.Release
 	for _, a := range actions {
-		if a.Matches("update", "releases") && a.GetSubresource() == "status" {
-			return a.(clienttesting.UpdateAction).GetObject().(*corev1alpha1.Release)
+		p, ok := a.(clienttesting.PatchAction)
+		if !ok || !a.Matches("patch", "releases") || a.GetSubresource() != "status" || p.GetPatchType() != types.ApplyPatchType {
+			continue
 		}
+		rel := &corev1alpha1.Release{}
+		if err := json.Unmarshal(p.GetPatch(), rel); err != nil {
+			return nil
+		}
+		found = rel // keep the last one
 	}
-	return nil
+	return found
 }
 
 func readyReason(rel *corev1alpha1.Release) (metav1.ConditionStatus, string) {
-	c := apimeta.FindStatusCondition(rel.Status.Conditions, conditionReady)
+	c := apimeta.FindStatusCondition(rel.Status.Conditions, conditionApplied)
 	if c == nil {
 		return "", ""
 	}
@@ -497,10 +510,52 @@ func TestSyncHandler_AppliesAndMarksReady(t *testing.T) {
 	}
 	got := statusUpdate(client.Actions())
 	if got == nil {
-		t.Fatalf("expected an UpdateStatus action, got none")
+		t.Fatalf("expected a status apply action, got none")
 	}
 	if s, r := readyReason(got); s != metav1.ConditionTrue || r != conditionReasonApplied {
-		t.Errorf("Ready = %s/%s, want True/Applied", s, r)
+		t.Errorf("Applied = %s/%s, want True/Applied", s, r)
+	}
+}
+
+// TestSyncHandler_StatusWrittenViaSSA verifies the controller writes status with
+// Server-Side Apply under its own field manager, and sends only the fields it
+// owns (so other writers' fields — e.g. health — are never clobbered).
+func TestSyncHandler_StatusWrittenViaSSA(t *testing.T) {
+	c, client := newTestController(t, manifestsRelease(), reachableCluster(), readyCoordinator(), &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+
+	var applied clienttesting.PatchAction
+	for _, a := range client.Actions() {
+		p, ok := a.(clienttesting.PatchAction)
+		if ok && a.Matches("patch", "releases") && a.GetSubresource() == "status" && p.GetPatchType() == types.ApplyPatchType {
+			applied = p
+		}
+	}
+	if applied == nil {
+		t.Fatalf("expected a status apply (SSA) action")
+	}
+	if got := applied.GetName(); got != "r1" {
+		t.Errorf("apply target = %q, want r1", got)
+	}
+
+	// The patch body carries the owned fields and omits fields owned by other
+	// writers (healthSummary / health are the observer's).
+	var body map[string]any
+	if err := json.Unmarshal(applied.GetPatch(), &body); err != nil {
+		t.Fatalf("apply patch is not valid JSON: %v", err)
+	}
+	status, _ := body["status"].(map[string]any)
+	if status == nil {
+		t.Fatalf("apply patch has no status: %s", applied.GetPatch())
+	}
+	if _, present := status["conditions"]; !present {
+		t.Errorf("owned field 'conditions' missing from apply patch: %v", status)
+	}
+	if _, present := status["healthSummary"]; present {
+		t.Errorf("unowned field 'healthSummary' must not be sent by the release controller: %v", status)
 	}
 }
 

@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
-	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/extensions/v1alpha1"
+	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/extensions/v1alpha1"
+	typedextensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/extensions/v1alpha1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeResourceHealthRules implements ResourceHealthRuleInterface
 type fakeResourceHealthRules struct {
-	*gentype.FakeClientWithList[*v1alpha1.ResourceHealthRule, *v1alpha1.ResourceHealthRuleList]
+	*gentype.FakeClientWithListAndApply[*v1alpha1.ResourceHealthRule, *v1alpha1.ResourceHealthRuleList, *extensionsv1alpha1.ResourceHealthRuleApplyConfiguration]
 	Fake *FakeExtensionsV1alpha1
 }
 
-func newFakeResourceHealthRules(fake *FakeExtensionsV1alpha1, namespace string) extensionsv1alpha1.ResourceHealthRuleInterface {
+func newFakeResourceHealthRules(fake *FakeExtensionsV1alpha1, namespace string) typedextensionsv1alpha1.ResourceHealthRuleInterface {
 	return &fakeResourceHealthRules{
-		gentype.NewFakeClientWithList[*v1alpha1.ResourceHealthRule, *v1alpha1.ResourceHealthRuleList](
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.ResourceHealthRule, *v1alpha1.ResourceHealthRuleList, *extensionsv1alpha1.ResourceHealthRuleApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("resourcehealthrules"),

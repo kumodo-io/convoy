@@ -86,6 +86,7 @@ generate: tools
 		--output-dir api/generated/clientset \
 		--output-pkg $(MODULE)/api/generated/clientset \
 		--clientset-name versioned \
+		--apply-configuration-package $(MODULE)/api/generated/applyconfiguration \
 		--input-base $(MODULE)/api \
 		--input core/v1alpha1 \
 		--input source/v1alpha1 \

@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	sourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/source/v1alpha1"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/source/v1alpha1"
+	typedsourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/source/v1alpha1"
 	v1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeGitRepositories implements GitRepositoryInterface
 type fakeGitRepositories struct {
-	*gentype.FakeClientWithList[*v1alpha1.GitRepository, *v1alpha1.GitRepositoryList]
+	*gentype.FakeClientWithListAndApply[*v1alpha1.GitRepository, *v1alpha1.GitRepositoryList, *sourcev1alpha1.GitRepositoryApplyConfiguration]
 	Fake *FakeSourceV1alpha1
 }
 
-func newFakeGitRepositories(fake *FakeSourceV1alpha1, namespace string) sourcev1alpha1.GitRepositoryInterface {
+func newFakeGitRepositories(fake *FakeSourceV1alpha1, namespace string) typedsourcev1alpha1.GitRepositoryInterface {
 	return &fakeGitRepositories{
-		gentype.NewFakeClientWithList[*v1alpha1.GitRepository, *v1alpha1.GitRepositoryList](
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.GitRepository, *v1alpha1.GitRepositoryList, *sourcev1alpha1.GitRepositoryApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("gitrepositories"),

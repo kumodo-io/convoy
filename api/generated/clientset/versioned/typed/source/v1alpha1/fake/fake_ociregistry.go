@@ -19,20 +19,21 @@ limitations under the License.
 package fake
 
 import (
-	sourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/source/v1alpha1"
+	sourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/source/v1alpha1"
+	typedsourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/source/v1alpha1"
 	v1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeOCIRegistries implements OCIRegistryInterface
 type fakeOCIRegistries struct {
-	*gentype.FakeClientWithList[*v1alpha1.OCIRegistry, *v1alpha1.OCIRegistryList]
+	*gentype.FakeClientWithListAndApply[*v1alpha1.OCIRegistry, *v1alpha1.OCIRegistryList, *sourcev1alpha1.OCIRegistryApplyConfiguration]
 	Fake *FakeSourceV1alpha1
 }
 
-func newFakeOCIRegistries(fake *FakeSourceV1alpha1, namespace string) sourcev1alpha1.OCIRegistryInterface {
+func newFakeOCIRegistries(fake *FakeSourceV1alpha1, namespace string) typedsourcev1alpha1.OCIRegistryInterface {
 	return &fakeOCIRegistries{
-		gentype.NewFakeClientWithList[*v1alpha1.OCIRegistry, *v1alpha1.OCIRegistryList](
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.OCIRegistry, *v1alpha1.OCIRegistryList, *sourcev1alpha1.OCIRegistryApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("ociregistries"),

@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
-	corev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/core/v1alpha1"
+	corev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
+	typedcorev1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/core/v1alpha1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeReleases implements ReleaseInterface
 type fakeReleases struct {
-	*gentype.FakeClientWithList[*v1alpha1.Release, *v1alpha1.ReleaseList]
+	*gentype.FakeClientWithListAndApply[*v1alpha1.Release, *v1alpha1.ReleaseList, *corev1alpha1.ReleaseApplyConfiguration]
 	Fake *FakeCoreV1alpha1
 }
 
-func newFakeReleases(fake *FakeCoreV1alpha1, namespace string) corev1alpha1.ReleaseInterface {
+func newFakeReleases(fake *FakeCoreV1alpha1, namespace string) typedcorev1alpha1.ReleaseInterface {
 	return &fakeReleases{
-		gentype.NewFakeClientWithList[*v1alpha1.Release, *v1alpha1.ReleaseList](
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.Release, *v1alpha1.ReleaseList, *corev1alpha1.ReleaseApplyConfiguration](
 			fake.Fake,
 			namespace,
 			v1alpha1.SchemeGroupVersion.WithResource("releases"),

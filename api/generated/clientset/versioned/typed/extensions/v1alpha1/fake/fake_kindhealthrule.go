@@ -20,19 +20,20 @@ package fake
 
 import (
 	v1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
-	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/extensions/v1alpha1"
+	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/extensions/v1alpha1"
+	typedextensionsv1alpha1 "github.com/kumodo-io/convoy/api/generated/clientset/versioned/typed/extensions/v1alpha1"
 	gentype "k8s.io/client-go/gentype"
 )
 
 // fakeKindHealthRules implements KindHealthRuleInterface
 type fakeKindHealthRules struct {
-	*gentype.FakeClientWithList[*v1alpha1.KindHealthRule, *v1alpha1.KindHealthRuleList]
+	*gentype.FakeClientWithListAndApply[*v1alpha1.KindHealthRule, *v1alpha1.KindHealthRuleList, *extensionsv1alpha1.KindHealthRuleApplyConfiguration]
 	Fake *FakeExtensionsV1alpha1
 }
 
-func newFakeKindHealthRules(fake *FakeExtensionsV1alpha1) extensionsv1alpha1.KindHealthRuleInterface {
+func newFakeKindHealthRules(fake *FakeExtensionsV1alpha1) typedextensionsv1alpha1.KindHealthRuleInterface {
 	return &fakeKindHealthRules{
-		gentype.NewFakeClientWithList[*v1alpha1.KindHealthRule, *v1alpha1.KindHealthRuleList](
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.KindHealthRule, *v1alpha1.KindHealthRuleList, *extensionsv1alpha1.KindHealthRuleApplyConfiguration](
 			fake.Fake,
 			"",
 			v1alpha1.SchemeGroupVersion.WithResource("kindhealthrules"),

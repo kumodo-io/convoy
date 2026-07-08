@@ -21,6 +21,7 @@ package v1alpha1
 import (
 	context "context"
 
+	applyconfigurationsourcev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/source/v1alpha1"
 	scheme "github.com/kumodo-io/convoy/api/generated/clientset/versioned/scheme"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,18 +48,21 @@ type GitRepositoryInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*sourcev1alpha1.GitRepositoryList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *sourcev1alpha1.GitRepository, err error)
+	Apply(ctx context.Context, gitRepository *applyconfigurationsourcev1alpha1.GitRepositoryApplyConfiguration, opts v1.ApplyOptions) (result *sourcev1alpha1.GitRepository, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, gitRepository *applyconfigurationsourcev1alpha1.GitRepositoryApplyConfiguration, opts v1.ApplyOptions) (result *sourcev1alpha1.GitRepository, err error)
 	GitRepositoryExpansion
 }
 
 // gitRepositories implements GitRepositoryInterface
 type gitRepositories struct {
-	*gentype.ClientWithList[*sourcev1alpha1.GitRepository, *sourcev1alpha1.GitRepositoryList]
+	*gentype.ClientWithListAndApply[*sourcev1alpha1.GitRepository, *sourcev1alpha1.GitRepositoryList, *applyconfigurationsourcev1alpha1.GitRepositoryApplyConfiguration]
 }
 
 // newGitRepositories returns a GitRepositories
 func newGitRepositories(c *SourceV1alpha1Client, namespace string) *gitRepositories {
 	return &gitRepositories{
-		gentype.NewClientWithList[*sourcev1alpha1.GitRepository, *sourcev1alpha1.GitRepositoryList](
+		gentype.NewClientWithListAndApply[*sourcev1alpha1.GitRepository, *sourcev1alpha1.GitRepositoryList, *applyconfigurationsourcev1alpha1.GitRepositoryApplyConfiguration](
 			"gitrepositories",
 			c.RESTClient(),
 			scheme.ParameterCodec,

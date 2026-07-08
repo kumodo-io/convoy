@@ -22,6 +22,7 @@ import (
 	context "context"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	applyconfigurationcorev1alpha1 "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
 	scheme "github.com/kumodo-io/convoy/api/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -47,18 +48,21 @@ type ReleaseInterface interface {
 	List(ctx context.Context, opts v1.ListOptions) (*corev1alpha1.ReleaseList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
 	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *corev1alpha1.Release, err error)
+	Apply(ctx context.Context, release *applyconfigurationcorev1alpha1.ReleaseApplyConfiguration, opts v1.ApplyOptions) (result *corev1alpha1.Release, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, release *applyconfigurationcorev1alpha1.ReleaseApplyConfiguration, opts v1.ApplyOptions) (result *corev1alpha1.Release, err error)
 	ReleaseExpansion
 }
 
 // releases implements ReleaseInterface
 type releases struct {
-	*gentype.ClientWithList[*corev1alpha1.Release, *corev1alpha1.ReleaseList]
+	*gentype.ClientWithListAndApply[*corev1alpha1.Release, *corev1alpha1.ReleaseList, *applyconfigurationcorev1alpha1.ReleaseApplyConfiguration]
 }
 
 // newReleases returns a Releases
 func newReleases(c *CoreV1alpha1Client, namespace string) *releases {
 	return &releases{
-		gentype.NewClientWithList[*corev1alpha1.Release, *corev1alpha1.ReleaseList](
+		gentype.NewClientWithListAndApply[*corev1alpha1.Release, *corev1alpha1.ReleaseList, *applyconfigurationcorev1alpha1.ReleaseApplyConfiguration](
 			"releases",
 			c.RESTClient(),
 			scheme.ParameterCodec,

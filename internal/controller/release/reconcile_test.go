@@ -40,12 +40,12 @@ func TestComputeStatus_ReadyAndNotReady(t *testing.T) {
 	if ready.ObservedGeneration != 4 {
 		t.Errorf("ObservedGeneration = %d, want 4", ready.ObservedGeneration)
 	}
-	if c := apimeta.FindStatusCondition(ready.Conditions, conditionReady); c == nil || c.Status != metav1.ConditionTrue || c.Reason != conditionReasonApplied {
+	if c := apimeta.FindStatusCondition(ready.Conditions, conditionApplied); c == nil || c.Status != metav1.ConditionTrue || c.Reason != conditionReasonApplied {
 		t.Errorf("Ready condition = %+v, want True/Applied", c)
 	}
 
 	notReady := computeStatus(release(4, corev1alpha1.ReleaseStatus{}), now, false, conditionReasonSourceNotReady, "wait")
-	if c := apimeta.FindStatusCondition(notReady.Conditions, conditionReady); c == nil || c.Status != metav1.ConditionFalse || c.Reason != conditionReasonSourceNotReady {
+	if c := apimeta.FindStatusCondition(notReady.Conditions, conditionApplied); c == nil || c.Status != metav1.ConditionFalse || c.Reason != conditionReasonSourceNotReady {
 		t.Errorf("Ready condition = %+v, want False/SourceNotReady", c)
 	}
 }
