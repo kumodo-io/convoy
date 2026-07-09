@@ -88,3 +88,22 @@ spec:
           args:
             - --resync=2m
             - --workers=2
+            - --serve-addr=:8080
+          ports:
+            - name: http
+              containerPort: 8080
+---
+# The apiserver proxies the Release /preview (and later /diff) subresources to
+# this Service. Its DNS matches the apiserver's default --observer-url.
+apiVersion: v1
+kind: Service
+metadata:
+  name: convoy-observer
+  namespace: convoy-system
+spec:
+  selector:
+    app: convoy-observer
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

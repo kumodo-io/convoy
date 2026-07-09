@@ -18,11 +18,16 @@ package release
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -33,8 +38,36 @@ import (
 	"github.com/kumodo-io/convoy/internal/registry"
 )
 
-// NewREST returns RESTStorage for Release and its /status, /pin, and /sync subresources.
-func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*registry.REST, *StatusREST, *PinREST, *SyncREST, error) {
+// Storage bundles the Release REST and its subresource RESTs. Grouping them in a
+// struct (rather than a long positional return) keeps NewREST's signature stable
+// as subresources are added and lets callers reference them by name.
+type Storage struct {
+	Release *registry.REST
+	Status  *StatusREST
+	Pin     *PinREST
+	Sync    *SyncREST
+	Preview *observerProxyREST
+	Diff    *observerProxyREST
+}
+
+// Map returns the resource-path → storage entries to install in the API group's
+// VersionedResourcesStorageMap. It is the single source of truth for the Release
+// subresource paths, so adding a subresource touches only this file.
+func (s *Storage) Map() map[string]rest.Storage {
+	return map[string]rest.Storage{
+		"releases":         s.Release,
+		"releases/status":  s.Status,
+		"releases/pin":     s.Pin,
+		"releases/sync":    s.Sync,
+		"releases/preview": s.Preview,
+		"releases/diff":    s.Diff,
+	}
+}
+
+// NewREST returns the Release RESTStorage and its subresources. observerURL is
+// the base URL of the observer the /preview subresource proxies to (empty
+// disables /preview: it returns ServiceUnavailable).
+func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, observerURL string) (*Storage, error) {
 	strategy := NewStrategy(scheme)
 
 	store := &genericregistry.Store{
@@ -54,7 +87,7 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*reg
 
 	options := &generic.StoreOptions{RESTOptions: optsGetter, AttrFunc: GetAttrs}
 	if err := store.CompleteWithOptions(options); err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 
 	statusStore := *store
@@ -67,11 +100,14 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*reg
 	pinStore.UpdateStrategy = pinStrategy
 	pinStore.ResetFieldsStrategy = pinStrategy
 
-	return &registry.REST{Store: store},
-		&StatusREST{store: &statusStore},
-		&PinREST{store: &pinStore},
-		&SyncREST{store: store},
-		nil
+	return &Storage{
+		Release: &registry.REST{Store: store},
+		Status:  &StatusREST{store: &statusStore},
+		Pin:     &PinREST{store: &pinStore},
+		Sync:    &SyncREST{store: store},
+		Preview: &observerProxyREST{observerURL: observerURL, subresource: "preview"},
+		Diff:    &observerProxyREST{observerURL: observerURL, subresource: "diff"},
+	}, nil
 }
 
 // StatusREST implements the /status subresource for Release.
@@ -205,5 +241,68 @@ func (r *SyncREST) Connect(ctx context.Context, name string, _ runtime.Object, r
 			return
 		}
 		responder.Object(http.StatusOK, updated)
+	}), nil
+}
+
+// observerProxyREST implements a read-only Release subresource (GET) that the
+// apiserver proxies to the observer's HTTP server (the pods/log → kubelet
+// pattern). The apiserver serves API only, so rendering and diffing live in the
+// observer; /preview and /diff differ only by which observer path they hit.
+type observerProxyREST struct {
+	// observerURL is the observer's base URL; empty means the subresource is
+	// unavailable (returns ServiceUnavailable).
+	observerURL string
+	// subresource is the observer path segment ("preview" or "diff").
+	subresource string
+}
+
+var (
+	_ rest.Storage   = &observerProxyREST{}
+	_ rest.Connecter = &observerProxyREST{}
+)
+
+// New returns an empty Release.
+func (r *observerProxyREST) New() runtime.Object { return &core.Release{} }
+
+// Destroy releases resources held by the store.
+func (r *observerProxyREST) Destroy() {}
+
+// ConnectMethods declares GET as the only method.
+func (r *observerProxyREST) ConnectMethods() []string { return []string{http.MethodGet} }
+
+// NewConnectOptions declares no options.
+func (r *observerProxyREST) NewConnectOptions() (runtime.Object, bool, string) {
+	return nil, false, ""
+}
+
+// Connect proxies the GET to the observer, streaming its response back to the
+// client. It does not touch etcd — the observer renders/diffs on demand.
+func (r *observerProxyREST) Connect(ctx context.Context, name string, _ runtime.Object, responder rest.Responder) (http.Handler, error) {
+	if r.observerURL == "" {
+		return nil, apierrors.NewServiceUnavailable(fmt.Sprintf("%s is not configured (no observer URL)", r.subresource))
+	}
+	namespace := genericapirequest.NamespaceValue(ctx)
+	target := fmt.Sprintf("%s/%s/%s/%s", strings.TrimRight(r.observerURL, "/"), r.subresource, namespace, name)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		proxyReq, err := http.NewRequestWithContext(req.Context(), http.MethodGet, target, nil)
+		if err != nil {
+			responder.Error(err)
+			return
+		}
+		resp, err := http.DefaultClient.Do(proxyReq)
+		if err != nil {
+			responder.Error(apierrors.NewServiceUnavailable(fmt.Sprintf("observer unavailable: %v", err)))
+			return
+		}
+		defer func() { _ = resp.Body.Close() }()
+
+		for key, values := range resp.Header {
+			for _, v := range values {
+				w.Header().Add(key, v)
+			}
+		}
+		w.WriteHeader(resp.StatusCode)
+		_, _ = io.Copy(w, resp.Body)
 	}), nil
 }

@@ -18,15 +18,20 @@ package observer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"gomodules.xyz/jsonpatch/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
+
+	"github.com/kumodo-io/convoy/internal/diffresult"
 )
 
 const (
@@ -39,44 +44,54 @@ const (
 // apply would change; dry-run never persists ownership.
 const driftFieldManager = "convoy"
 
-// detectDrift reports whether the live cluster has drifted from the desired
-// objects: true if any desired object is absent or a dry-run apply would change
-// it. Comparison is over managed state — server-side defaulting and admission
-// cancel out because both sides come back from the API server.
-func detectDrift(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, objects []*unstructured.Unstructured) (bool, error) {
+// computeDiff produces the per-object drift of the desired objects against the
+// live cluster. Each object is either Missing (absent), Modified (a dry-run
+// apply would change it), or InSync. Comparison is over managed state —
+// server-side defaulting and admission cancel out because both sides come back
+// from the API server. This is the single engine behind both the periodic drift
+// loop (via Result.HasDrift) and the on-demand /diff subresource.
+func computeDiff(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, objects []*unstructured.Unstructured) (*diffresult.Result, error) {
+	result := &diffresult.Result{Objects: make([]diffresult.ObjectDiff, 0, len(objects))}
 	for _, obj := range objects {
-		drifted, err := objectDrifted(ctx, dyn, mapper, obj)
+		od, err := objectDiff(ctx, dyn, mapper, obj)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
-		if drifted {
-			return true, nil
-		}
+		result.Objects = append(result.Objects, od)
 	}
-	return false, nil
+	return result, nil
 }
 
-// objectDrifted reports whether a single desired object differs from its live
-// counterpart. A missing object is drift; otherwise a dry-run apply is compared
-// to the live object, ignoring server-managed metadata noise.
-func objectDrifted(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, obj *unstructured.Unstructured) (bool, error) {
+// objectDiff computes the drift of a single desired object against its live
+// counterpart.
+func objectDiff(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, obj *unstructured.Unstructured) (diffresult.ObjectDiff, error) {
+	gvk := obj.GroupVersionKind()
+	od := diffresult.ObjectDiff{
+		Group:     gvk.Group,
+		Version:   gvk.Version,
+		Kind:      gvk.Kind,
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+	}
+
 	ri, err := resourceFor(dyn, mapper, obj)
 	if err != nil {
-		return false, err
+		return od, err
 	}
 	name := obj.GetName()
 
 	live, err := ri.Get(ctx, name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return true, nil // desired but absent — drifted (or never applied)
+		od.Status = diffresult.StatusMissing // desired but absent (or never applied)
+		return od, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("reading live %s %q: %w", obj.GetKind(), name, err)
+		return od, fmt.Errorf("reading live %s %q: %w", obj.GetKind(), name, err)
 	}
 
 	data, err := obj.MarshalJSON()
 	if err != nil {
-		return false, fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), name, err)
+		return od, fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), name, err)
 	}
 	result, err := ri.Patch(ctx, name, types.ApplyPatchType, data, metav1.PatchOptions{
 		FieldManager: driftFieldManager,
@@ -84,10 +99,89 @@ func objectDrifted(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTM
 		DryRun:       []string{metav1.DryRunAll},
 	})
 	if err != nil {
-		return false, fmt.Errorf("dry-run applying %s %q: %w", obj.GetKind(), name, err)
+		return od, fmt.Errorf("dry-run applying %s %q: %w", obj.GetKind(), name, err)
 	}
 
-	return !equalIgnoringNoise(live, result), nil
+	changes, err := fieldChanges(normalize(live), normalize(result))
+	if err != nil {
+		return od, fmt.Errorf("diffing %s %q: %w", obj.GetKind(), name, err)
+	}
+	if len(changes) == 0 {
+		od.Status = diffresult.StatusInSync
+	} else {
+		od.Status = diffresult.StatusModified
+		od.Changes = changes
+	}
+	return od, nil
+}
+
+// fieldChanges computes the field-level differences that transform live into
+// desired, as an RFC6902 patch. Each op becomes a FieldChange carrying the
+// target value (add/replace) and, resolved from live, the current value
+// (replace/remove).
+func fieldChanges(live, desired map[string]any) ([]diffresult.FieldChange, error) {
+	liveJSON, err := json.Marshal(live)
+	if err != nil {
+		return nil, err
+	}
+	desiredJSON, err := json.Marshal(desired)
+	if err != nil {
+		return nil, err
+	}
+	ops, err := jsonpatch.CreatePatch(liveJSON, desiredJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	changes := make([]diffresult.FieldChange, 0, len(ops))
+	for _, op := range ops {
+		fc := diffresult.FieldChange{Path: op.Path, Op: op.Operation}
+		switch op.Operation {
+		case "add":
+			fc.Desired = op.Value
+		case "replace":
+			fc.Desired = op.Value
+			if v, ok := resolvePointer(live, op.Path); ok {
+				fc.Live = v
+			}
+		case "remove":
+			if v, ok := resolvePointer(live, op.Path); ok {
+				fc.Live = v
+			}
+		}
+		changes = append(changes, fc)
+	}
+	return changes, nil
+}
+
+// resolvePointer resolves an RFC6901 JSON Pointer against a decoded JSON value
+// (map[string]any / []any), returning the value and whether it was found.
+func resolvePointer(root any, pointer string) (any, bool) {
+	if pointer == "" || pointer == "/" {
+		return root, true
+	}
+	cur := root
+	for _, tok := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		tok = strings.ReplaceAll(tok, "~1", "/")
+		tok = strings.ReplaceAll(tok, "~0", "~")
+		switch node := cur.(type) {
+		case map[string]any:
+			v, ok := node[tok]
+			if !ok {
+				return nil, false
+			}
+			cur = v
+		case []any:
+			i, err := strconv.Atoi(tok)
+			if err != nil || i < 0 || i >= len(node) {
+				return nil, false
+			}
+			cur = node[i]
+		default:
+			return nil, false
+		}
+	}
+	return cur, true
 }
 
 // resourceFor resolves obj's GVK to a namespaced-or-cluster dynamic resource client.
@@ -107,14 +201,10 @@ func resourceFor(dyn dynamic.Interface, mapper meta.RESTMapper, obj *unstructure
 	return dyn.Resource(mapping.Resource), nil
 }
 
-// equalIgnoringNoise compares two objects after stripping server-managed metadata
-// (resourceVersion, uid, generation, creationTimestamp, managedFields) and status.
-// The desired vs dry-run-result comparison cancels defaulting; only convoy-managed
-// state remains, so a difference is real drift.
-func equalIgnoringNoise(live, desired *unstructured.Unstructured) bool {
-	return apiequality.Semantic.DeepEqual(normalize(live), normalize(desired))
-}
-
+// normalize strips server-managed metadata (resourceVersion, uid, generation,
+// creationTimestamp, managedFields) and status before comparison. The desired
+// vs dry-run-result comparison cancels defaulting; only convoy-managed state
+// remains, so a difference is real drift.
 func normalize(o *unstructured.Unstructured) map[string]any {
 	c := o.DeepCopy()
 	for _, f := range [][]string{

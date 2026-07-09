@@ -18,6 +18,8 @@ limitations under the License.
 package apiserver
 
 import (
+	"maps"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -66,7 +68,11 @@ func init() {
 }
 
 // ExtraConfig holds convoy-specific apiserver configuration.
-type ExtraConfig struct{}
+type ExtraConfig struct {
+	// ObserverURL is the base URL of the observer that the Release /preview
+	// subresource proxies to.
+	ObserverURL string
+}
 
 // Config wraps the generic recommended config plus convoy extras.
 type Config struct {
@@ -116,18 +122,16 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	releaseREST, releaseStatusREST, releasePinREST, releaseSyncREST, err := releasestorage.NewREST(Scheme, optsGetter)
+	releaseStorage, err := releasestorage.NewREST(Scheme, optsGetter, c.ExtraConfig.ObserverURL)
 	if err != nil {
 		return nil, err
 	}
-	coreGroup.VersionedResourcesStorageMap["v1alpha1"] = map[string]rest.Storage{
+	coreStorage := map[string]rest.Storage{
 		"clusters":        clusterREST,
 		"clusters/status": clusterStatusREST,
-		"releases":        releaseREST,
-		"releases/status": releaseStatusREST,
-		"releases/pin":    releasePinREST,
-		"releases/sync":   releaseSyncREST,
 	}
+	maps.Copy(coreStorage, releaseStorage.Map())
+	coreGroup.VersionedResourcesStorageMap["v1alpha1"] = coreStorage
 
 	// source API group
 	sourceGroup := genericapiserver.NewDefaultAPIGroupInfo(source.GroupName, Scheme, metav1.ParameterCodec, Codecs)
