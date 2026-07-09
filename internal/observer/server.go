@@ -19,6 +19,7 @@ package observer
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -37,6 +38,8 @@ func (c *Controller) Serve(ctx context.Context, addr string) error {
 	mux := http.NewServeMux()
 	// Render-only preview: "what would be applied for this Release right now".
 	mux.HandleFunc("GET /preview/{namespace}/{name}", c.handlePreview)
+	// Render + compare-to-live: the structured per-object drift.
+	mux.HandleFunc("GET /diff/{namespace}/{name}", c.handleDiff)
 
 	srv := &http.Server{Addr: addr, Handler: mux}
 	go func() {
@@ -84,6 +87,39 @@ func (c *Controller) handlePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/yaml")
+	_, _ = w.Write(out)
+}
+
+// handleDiff computes the structured per-object drift for a Release and writes
+// it as JSON. 404 for a missing Release; 422 when the diff can't be produced
+// (source/cluster absent or unreachable) — an expected, often self-resolving
+// condition the caller can read, not a server fault.
+func (c *Controller) handleDiff(w http.ResponseWriter, r *http.Request) {
+	namespace := r.PathValue("namespace")
+	name := r.PathValue("name")
+
+	rel, err := c.releaseLister.Releases(namespace).Get(name)
+	if apierrors.IsNotFound(err) {
+		http.Error(w, fmt.Sprintf("release %s/%s not found", namespace, name), http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	result, err := c.diff(r.Context(), rel)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	out, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(out)
 }
 

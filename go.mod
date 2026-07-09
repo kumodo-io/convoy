@@ -9,6 +9,7 @@ require (
 	github.com/golangci/golangci-lint/v2 v2.12.2
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sync v0.21.0
+	gomodules.xyz/jsonpatch/v2 v2.5.0
 	google.golang.org/grpc v1.81.1
 	helm.sh/helm/v3 v3.21.2
 	k8s.io/api v0.36.2

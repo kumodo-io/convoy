@@ -19,6 +19,7 @@ package release
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -26,7 +27,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/diffresult"
 )
+
+const ConfigMapKind = "ConfigMap"
 
 // fakeClient records the calls the command logic makes.
 type fakeClient struct {
@@ -42,6 +46,9 @@ type fakeClient struct {
 	previewCalled  bool
 	previewPayload []byte
 	previewErr     error
+	diffCalled     bool
+	diffPayload    []byte
+	diffErr        error
 }
 
 func (f *fakeClient) GetRelease(_ context.Context, _, _ string) (*corev1alpha1.Release, error) {
@@ -80,6 +87,14 @@ func (f *fakeClient) Preview(_ context.Context, _, _ string) ([]byte, error) {
 		return nil, f.previewErr
 	}
 	return f.previewPayload, nil
+}
+
+func (f *fakeClient) Diff(_ context.Context, _, _ string) ([]byte, error) {
+	f.diffCalled = true
+	if f.diffErr != nil {
+		return nil, f.diffErr
+	}
+	return f.diffPayload, nil
 }
 
 func releaseWithRender(renderRef string) *corev1alpha1.Release {
@@ -193,5 +208,75 @@ func TestRunPreview_ErrorPropagates(t *testing.T) {
 
 	if err := runPreview(context.Background(), &out, f, "ns", "r1"); err == nil {
 		t.Fatal("runPreview returned nil, want the preview error propagated")
+	}
+}
+
+func diffPayload(t *testing.T, r diffresult.Result) []byte {
+	t.Helper()
+	b, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("marshaling diff payload: %v", err)
+	}
+	return b
+}
+
+func TestRunDiff_HumanReadable(t *testing.T) {
+	result := diffresult.Result{Objects: []diffresult.ObjectDiff{
+		{Kind: ConfigMapKind, Namespace: "ns", Name: "ok", Status: diffresult.StatusInSync},
+		{Kind: "Deployment", Namespace: "ns", Name: "app", Status: diffresult.StatusModified, Changes: []diffresult.FieldChange{
+			{Path: "/spec/replicas", Op: "replace", Live: float64(1), Desired: float64(3)},
+			{Path: "/metadata/labels/new", Op: "add", Desired: "x"},
+		}},
+		{Kind: "Service", Namespace: "ns", Name: "gone", Status: diffresult.StatusMissing},
+	}}
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), diffPayload: diffPayload(t, result)}
+	var out bytes.Buffer
+
+	if err := runDiff(context.Background(), &out, f, "ns", "r1", ""); err != nil {
+		t.Fatalf("runDiff returned error: %v", err)
+	}
+	s := out.String()
+	// Modified + Missing shown; InSync omitted; replace renders live -> desired.
+	if !strings.Contains(s, "Deployment ns/app: Modified") || !strings.Contains(s, "/spec/replicas: 1 -> 3") {
+		t.Errorf("output missing modified detail:\n%s", s)
+	}
+	if !strings.Contains(s, "+ /metadata/labels/new: x") {
+		t.Errorf("output missing added field:\n%s", s)
+	}
+	if !strings.Contains(s, "Service ns/gone: Missing") {
+		t.Errorf("output missing the Missing object:\n%s", s)
+	}
+	if strings.Contains(s, "ok") {
+		t.Errorf("in-sync object should be omitted from human output:\n%s", s)
+	}
+}
+
+func TestRunDiff_InSync(t *testing.T) {
+	result := diffresult.Result{Objects: []diffresult.ObjectDiff{
+		{Kind: ConfigMapKind, Namespace: "ns", Name: "ok", Status: diffresult.StatusInSync},
+	}}
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), diffPayload: diffPayload(t, result)}
+	var out bytes.Buffer
+
+	if err := runDiff(context.Background(), &out, f, "ns", "r1", ""); err != nil {
+		t.Fatalf("runDiff returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "in sync") {
+		t.Errorf("output = %q, want it to report in sync", out.String())
+	}
+}
+
+func TestRunDiff_JSONPassthrough(t *testing.T) {
+	raw := diffPayload(t, diffresult.Result{Objects: []diffresult.ObjectDiff{
+		{Kind: ConfigMapKind, Namespace: "ns", Name: "ok", Status: diffresult.StatusInSync},
+	}})
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), diffPayload: raw}
+	var out bytes.Buffer
+
+	if err := runDiff(context.Background(), &out, f, "ns", "r1", "json"); err != nil {
+		t.Fatalf("runDiff returned error: %v", err)
+	}
+	if out.String() != string(raw) {
+		t.Errorf("json output = %q, want the raw payload %q", out.String(), raw)
 	}
 }

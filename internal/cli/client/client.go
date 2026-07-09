@@ -41,6 +41,9 @@ type Client interface {
 	// Preview returns the rendered desired objects for a Release (multi-document
 	// YAML) via the /preview subresource.
 	Preview(ctx context.Context, namespace, name string) ([]byte, error)
+	// Diff returns the structured per-object drift for a Release (JSON) via the
+	// /diff subresource.
+	Diff(ctx context.Context, namespace, name string) ([]byte, error)
 }
 
 // restClient talks to the convoy aggregated apiserver. The /pin and /sync
@@ -111,6 +114,18 @@ func (c *restClient) Preview(ctx context.Context, namespace, name string) ([]byt
 		Resource("releases").
 		Name(name).
 		SubResource("preview").
+		Do(ctx).
+		Raw()
+}
+
+// Diff GETs the /diff subresource (proxied to the observer); the response body
+// is a diffresult.Result as JSON.
+func (c *restClient) Diff(ctx context.Context, namespace, name string) ([]byte, error) {
+	return c.rc.Get().
+		Namespace(namespace).
+		Resource("releases").
+		Name(name).
+		SubResource("diff").
 		Do(ctx).
 		Raw()
 }

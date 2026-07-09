@@ -46,7 +46,8 @@ type Storage struct {
 	Status  *StatusREST
 	Pin     *PinREST
 	Sync    *SyncREST
-	Preview *PreviewREST
+	Preview *observerProxyREST
+	Diff    *observerProxyREST
 }
 
 // Map returns the resource-path → storage entries to install in the API group's
@@ -59,6 +60,7 @@ func (s *Storage) Map() map[string]rest.Storage {
 		"releases/pin":     s.Pin,
 		"releases/sync":    s.Sync,
 		"releases/preview": s.Preview,
+		"releases/diff":    s.Diff,
 	}
 }
 
@@ -103,7 +105,8 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, obser
 		Status:  &StatusREST{store: &statusStore},
 		Pin:     &PinREST{store: &pinStore},
 		Sync:    &SyncREST{store: store},
-		Preview: &PreviewREST{observerURL: observerURL},
+		Preview: &observerProxyREST{observerURL: observerURL, subresource: "preview"},
+		Diff:    &observerProxyREST{observerURL: observerURL, subresource: "diff"},
 	}, nil
 }
 
@@ -241,40 +244,45 @@ func (r *SyncREST) Connect(ctx context.Context, name string, _ runtime.Object, r
 	}), nil
 }
 
-// PreviewREST implements the /preview subresource: GET returns the rendered
-// desired objects for a Release. The apiserver serves API only, so rendering
-// lives in the observer; this REST is a Connecter that proxies the request to
-// the observer's HTTP server (the pods/log → kubelet pattern).
-type PreviewREST struct {
-	// observerURL is the observer's base URL; empty means /preview is unavailable.
+// observerProxyREST implements a read-only Release subresource (GET) that the
+// apiserver proxies to the observer's HTTP server (the pods/log → kubelet
+// pattern). The apiserver serves API only, so rendering and diffing live in the
+// observer; /preview and /diff differ only by which observer path they hit.
+type observerProxyREST struct {
+	// observerURL is the observer's base URL; empty means the subresource is
+	// unavailable (returns ServiceUnavailable).
 	observerURL string
+	// subresource is the observer path segment ("preview" or "diff").
+	subresource string
 }
 
 var (
-	_ rest.Storage   = &PreviewREST{}
-	_ rest.Connecter = &PreviewREST{}
+	_ rest.Storage   = &observerProxyREST{}
+	_ rest.Connecter = &observerProxyREST{}
 )
 
 // New returns an empty Release.
-func (r *PreviewREST) New() runtime.Object { return &core.Release{} }
+func (r *observerProxyREST) New() runtime.Object { return &core.Release{} }
 
 // Destroy releases resources held by the store.
-func (r *PreviewREST) Destroy() {}
+func (r *observerProxyREST) Destroy() {}
 
-// ConnectMethods declares GET as the only method for /preview.
-func (r *PreviewREST) ConnectMethods() []string { return []string{http.MethodGet} }
+// ConnectMethods declares GET as the only method.
+func (r *observerProxyREST) ConnectMethods() []string { return []string{http.MethodGet} }
 
-// NewConnectOptions declares no options for /preview.
-func (r *PreviewREST) NewConnectOptions() (runtime.Object, bool, string) { return nil, false, "" }
+// NewConnectOptions declares no options.
+func (r *observerProxyREST) NewConnectOptions() (runtime.Object, bool, string) {
+	return nil, false, ""
+}
 
-// Connect proxies GET /preview to the observer, streaming its response back to
-// the client. It does not touch etcd — the observer renders on demand.
-func (r *PreviewREST) Connect(ctx context.Context, name string, _ runtime.Object, responder rest.Responder) (http.Handler, error) {
+// Connect proxies the GET to the observer, streaming its response back to the
+// client. It does not touch etcd — the observer renders/diffs on demand.
+func (r *observerProxyREST) Connect(ctx context.Context, name string, _ runtime.Object, responder rest.Responder) (http.Handler, error) {
 	if r.observerURL == "" {
-		return nil, apierrors.NewServiceUnavailable("preview is not configured (no observer URL)")
+		return nil, apierrors.NewServiceUnavailable(fmt.Sprintf("%s is not configured (no observer URL)", r.subresource))
 	}
 	namespace := genericapirequest.NamespaceValue(ctx)
-	target := fmt.Sprintf("%s/preview/%s/%s", strings.TrimRight(r.observerURL, "/"), namespace, name)
+	target := fmt.Sprintf("%s/%s/%s/%s", strings.TrimRight(r.observerURL, "/"), r.subresource, namespace, name)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		proxyReq, err := http.NewRequestWithContext(req.Context(), http.MethodGet, target, nil)

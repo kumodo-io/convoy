@@ -40,6 +40,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
+	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/render"
 )
@@ -149,28 +150,41 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 // error means drift could not be determined (transient fetch/connect, or a
 // terminal config problem); the boolean is only meaningful when err is nil.
 func (c *Controller) assess(ctx context.Context, rel *corev1alpha1.Release) (bool, error) {
+	result, err := c.diff(ctx, rel)
+	if err != nil {
+		return false, err
+	}
+	return result.HasDrift(), nil
+}
+
+// diff renders the desired state, reads the live cluster, and computes the
+// structured per-object diff. It is the engine behind both the drift loop (via
+// assess → HasDrift) and the on-demand /diff subresource, so the two never
+// disagree. A non-nil error means the diff couldn't be produced (source/cluster
+// absent or unreachable, unsupported config).
+func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diffresult.Result, error) {
 	clusterNamespace := rel.Spec.ClusterRef.Namespace
 	if clusterNamespace == "" {
 		clusterNamespace = rel.Namespace
 	}
 	cluster, err := c.clusterLister.Clusters(clusterNamespace).Get(rel.Spec.ClusterRef.Name)
 	if err != nil {
-		return false, fmt.Errorf("resolving target cluster: %w", err)
+		return nil, fmt.Errorf("resolving target cluster: %w", err)
 	}
 	if !cluster.Status.Reachable {
-		return false, fmt.Errorf("target cluster %s is not reachable", cluster.Name)
+		return nil, fmt.Errorf("target cluster %s is not reachable", cluster.Name)
 	}
 
 	objects, err := c.renderDesired(ctx, rel)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	dyn, mapper, err := c.connector.DynamicClients(ctx, cluster)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return detectDrift(ctx, dyn, mapper, objects)
+	return computeDiff(ctx, dyn, mapper, objects)
 }
 
 // renderDesired fetches the Release's source and renders its desired objects. It
