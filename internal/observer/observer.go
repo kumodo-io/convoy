@@ -28,6 +28,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -148,14 +149,6 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 // error means drift could not be determined (transient fetch/connect, or a
 // terminal config problem); the boolean is only meaningful when err is nil.
 func (c *Controller) assess(ctx context.Context, rel *corev1alpha1.Release) (bool, error) {
-	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source, rel.Namespace)
-	if err != nil {
-		return false, err
-	}
-	if !res.Ready {
-		return false, fmt.Errorf("source not ready: %s", res.Message)
-	}
-
 	clusterNamespace := rel.Spec.ClusterRef.Namespace
 	if clusterNamespace == "" {
 		clusterNamespace = rel.Namespace
@@ -168,11 +161,7 @@ func (c *Controller) assess(ctx context.Context, rel *corev1alpha1.Release) (boo
 		return false, fmt.Errorf("target cluster %s is not reachable", cluster.Name)
 	}
 
-	valueLayers, err := c.resolveValueLayers(ctx, rel)
-	if err != nil {
-		return false, err
-	}
-	objects, err := render.Render(rel.Spec.Content, res.Artifact, valueLayers)
+	objects, err := c.renderDesired(ctx, rel)
 	if err != nil {
 		return false, err
 	}
@@ -182,6 +171,24 @@ func (c *Controller) assess(ctx context.Context, rel *corev1alpha1.Release) (boo
 		return false, err
 	}
 	return detectDrift(ctx, dyn, mapper, objects)
+}
+
+// renderDesired fetches the Release's source and renders its desired objects. It
+// is the render-only path shared by the drift loop (which then compares to live)
+// and the /preview server (which returns it directly).
+func (c *Controller) renderDesired(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, error) {
+	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source, rel.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	if !res.Ready {
+		return nil, fmt.Errorf("source not ready: %s", res.Message)
+	}
+	valueLayers, err := c.resolveValueLayers(ctx, rel)
+	if err != nil {
+		return nil, err
+	}
+	return render.Render(rel.Spec.Content, res.Artifact, valueLayers)
 }
 
 // resolveValueLayers resolves the Helm value sources to ordered raw-YAML layers.

@@ -35,10 +35,13 @@ type fakeClient struct {
 	getErr error
 	pinErr error
 
-	pinnedRef string
-	pinCalled bool
-	unpinned  bool
-	synced    bool
+	pinnedRef      string
+	pinCalled      bool
+	unpinned       bool
+	synced         bool
+	previewCalled  bool
+	previewPayload []byte
+	previewErr     error
 }
 
 func (f *fakeClient) GetRelease(_ context.Context, _, _ string) (*corev1alpha1.Release, error) {
@@ -69,6 +72,14 @@ func (f *fakeClient) Unpin(_ context.Context, _, _ string) (*corev1alpha1.Releas
 func (f *fakeClient) Sync(_ context.Context, _, _ string) (*corev1alpha1.Release, error) {
 	f.synced = true
 	return f.rel, nil
+}
+
+func (f *fakeClient) Preview(_ context.Context, _, _ string) ([]byte, error) {
+	f.previewCalled = true
+	if f.previewErr != nil {
+		return nil, f.previewErr
+	}
+	return f.previewPayload, nil
 }
 
 func releaseWithRender(renderRef string) *corev1alpha1.Release {
@@ -157,5 +168,30 @@ func TestRunSync(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "requested sync") {
 		t.Errorf("output = %q, want it to confirm the sync request", out.String())
+	}
+}
+
+func TestRunPreview(t *testing.T) {
+	manifests := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), previewPayload: []byte(manifests)}
+	var out bytes.Buffer
+
+	if err := runPreview(context.Background(), &out, f, "ns", "r1"); err != nil {
+		t.Fatalf("runPreview returned error: %v", err)
+	}
+	if !f.previewCalled {
+		t.Error("Preview was not called")
+	}
+	if out.String() != manifests {
+		t.Errorf("output = %q, want the raw manifests %q", out.String(), manifests)
+	}
+}
+
+func TestRunPreview_ErrorPropagates(t *testing.T) {
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), previewErr: errors.New("observer unavailable")}
+	var out bytes.Buffer
+
+	if err := runPreview(context.Background(), &out, f, "ns", "r1"); err == nil {
+		t.Fatal("runPreview returned nil, want the preview error propagated")
 	}
 }

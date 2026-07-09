@@ -22,6 +22,7 @@ func Command(f *cliclient.ConfigFlags) *cobra.Command {
 		newReleasePinCmd(f),
 		newReleaseUnpinCmd(f),
 		newReleaseSyncCmd(f),
+		newReleasePreviewCmd(f),
 	)
 	return cmd
 }
@@ -74,6 +75,21 @@ func newReleaseSyncCmd(f *cliclient.ConfigFlags) *cobra.Command {
 	}
 }
 
+func newReleasePreviewCmd(f *cliclient.ConfigFlags) *cobra.Command {
+	return &cobra.Command{
+		Use:   "preview <name>",
+		Short: "Show the rendered manifests that would be applied for a release",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, namespace, err := f.Client()
+			if err != nil {
+				return err
+			}
+			return runPreview(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0])
+		},
+	}
+}
+
 // runPin resolves the pin target (defaulting to the current successful render)
 // and pins the release.
 func runPin(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, renderRef string) error {
@@ -112,6 +128,17 @@ func runSync(ctx context.Context, out io.Writer, client cliclient.Client, namesp
 		return err
 	}
 	if _, err := fmt.Fprintf(out, "requested sync for %s/%s\n", namespace, name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func runPreview(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name string) error {
+	manifests, err := client.Preview(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	if _, err := out.Write(manifests); err != nil {
 		return err
 	}
 	return nil

@@ -42,11 +42,18 @@ const defaultEtcdPathPrefix = "/registry/convoy.kumodo.io"
 // not embed or assume any particular etcd.
 type Options struct {
 	RecommendedOptions *genericoptions.RecommendedOptions
+	// ObserverURL is the base URL of the observer that the Release /preview (and,
+	// later, /diff) subresources proxy to.
+	ObserverURL string
 }
+
+// defaultObserverURL is the in-cluster Service DNS for the observer's HTTP server.
+const defaultObserverURL = "http://convoy-observer.convoy-system.svc:8080"
 
 // NewOptions returns Options with sane defaults.
 func NewOptions() *Options {
 	o := &Options{
+		ObserverURL: defaultObserverURL,
 		RecommendedOptions: genericoptions.NewRecommendedOptions(
 			defaultEtcdPathPrefix,
 			// Storage codec: must cover every served group so each object encodes
@@ -114,7 +121,7 @@ func (o *Options) Config() (*Config, error) {
 
 	return &Config{
 		GenericConfig: serverConfig,
-		ExtraConfig:   ExtraConfig{},
+		ExtraConfig:   ExtraConfig{ObserverURL: o.ObserverURL},
 	}, nil
 }
 
@@ -153,6 +160,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	cmd.SetContext(ctx)
 
 	o.RecommendedOptions.AddFlags(cmd.Flags())
+	cmd.Flags().StringVar(&o.ObserverURL, "observer-url", o.ObserverURL, "Base URL of the observer that /preview and /diff proxy to.")
 
 	return cmd
 }

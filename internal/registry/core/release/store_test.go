@@ -43,12 +43,12 @@ const dummyClusterRef = "prod-eu"
 func newStorage(t *testing.T) (*genericregistry.Store, *releasestorage.StatusREST, *releasestorage.PinREST, *releasestorage.SyncREST, *etcd3testing.EtcdTestServer) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("releases"))
 
-	restStorage, statusStorage, pinStorage, syncStorage, err := releasestorage.NewREST(scheme, restOptions)
+	storage, err := releasestorage.NewREST(scheme, restOptions, "")
 	if err != nil {
 		server.Terminate(t)
 		t.Fatalf("unexpected error from NewREST: %v", err)
 	}
-	return restStorage.Store, statusStorage, pinStorage, syncStorage, server
+	return storage.Release.Store, storage.Status, storage.Pin, storage.Sync, server
 }
 
 func validNewRelease(namespace string) *core.Release {

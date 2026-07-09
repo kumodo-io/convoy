@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -51,13 +52,17 @@ type Options struct {
 	Resync time.Duration
 	// Workers is the number of concurrent drift-check workers.
 	Workers int
+	// ServeAddr is the address the on-demand HTTP server (/preview, later /diff)
+	// listens on. The apiserver proxies the Release subresources here.
+	ServeAddr string
 }
 
 // NewOptions returns Options with defaults.
 func NewOptions() *Options {
 	return &Options{
-		Resync:  2 * time.Minute,
-		Workers: 2,
+		Resync:    2 * time.Minute,
+		Workers:   2,
+		ServeAddr: ":8080",
 	}
 }
 
@@ -122,7 +127,13 @@ func (o *Options) Run(ctx context.Context) error {
 	// those caches populate and report spurious "source/cluster not found" for
 	// objects that exist, until the caches catch up.
 	factory.WaitForCacheSync(ctx.Done())
-	return obs.Run(ctx, o.Workers)
+
+	// Run the drift loop and the on-demand HTTP server together; if either returns,
+	// cancel the other and surface the error.
+	group, gctx := errgroup.WithContext(ctx)
+	group.Go(func() error { return obs.Run(gctx, o.Workers) })
+	group.Go(func() error { return obs.Serve(gctx, o.ServeAddr) })
+	return group.Wait()
 }
 
 // NewCommand builds the cobra command that starts the observer.
@@ -141,6 +152,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.StringVar(&o.Kubeconfig, "kubeconfig", o.Kubeconfig, "Path to a kubeconfig file. Empty uses in-cluster config.")
 	flags.DurationVar(&o.Resync, "resync", o.Resync, "Informer resync period; drives periodic drift re-checks.")
 	flags.IntVar(&o.Workers, "workers", o.Workers, "Number of concurrent drift-check workers.")
+	flags.StringVar(&o.ServeAddr, "serve-addr", o.ServeAddr, "Address for the on-demand HTTP server (/preview) the apiserver proxies to.")
 
 	return cmd
 }
