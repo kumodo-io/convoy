@@ -2,7 +2,7 @@ apiVersion: source.convoy.kumodo.io/v1alpha1
 kind: OCIRegistry
 metadata:
   name: podinfo
-  namespace: convoy-system
+  namespace: default
 spec:
   auth:
     type: none

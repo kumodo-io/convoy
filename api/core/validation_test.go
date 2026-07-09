@@ -1,0 +1,124 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package core
+
+import (
+	"strings"
+	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+)
+
+const (
+	dummyReleaseNamespace = "team-a"
+	dummyInfraNamespace   = "infra"
+)
+
+// validRelease builds a Release in namespace "team-a" with a git source and
+// manifests content — the baseline the same-namespace tests then mutate.
+func validRelease() *Release {
+	return &Release{
+		ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: dummyReleaseNamespace},
+		Spec: ReleaseSpec{
+			Source: ReleaseSourceSpec{
+				Type:          ReleaseSourceTypeGitRepository,
+				GitRepository: &ReleaseGitRepositorySpec{Name: "repo"},
+			},
+			Content: ReleaseContentSpec{
+				Type:      ReleaseContentTypeManifests,
+				Manifests: &ReleaseContentManifestsSpec{Paths: []string{"."}},
+			},
+			ClusterRef: ReleaseClusterRefSpec{Name: "prod"},
+		},
+	}
+}
+
+// hasForbiddenOn reports whether errs contains a Forbidden error whose field
+// path ends with the given suffix.
+func hasForbiddenOn(errs field.ErrorList, pathSuffix string) bool {
+	for _, e := range errs {
+		if strings.HasSuffix(e.Field, pathSuffix) && strings.Contains(e.Error(), "cross-namespace") {
+			return true
+		}
+	}
+	return false
+}
+
+func TestValidateRelease_SameNamespaceRefsAllowed(t *testing.T) {
+	// Empty ref namespaces (default to the Release's own) are allowed.
+	if errs := ValidateRelease(validRelease()); len(errs) != 0 {
+		t.Errorf("valid same-namespace Release rejected: %v", errs)
+	}
+
+	// Explicit ref namespaces equal to the Release namespace are allowed.
+	rel := validRelease()
+	rel.Spec.ClusterRef.Namespace = dummyReleaseNamespace
+	rel.Spec.Source.GitRepository.Namespace = dummyReleaseNamespace
+	if errs := ValidateRelease(rel); len(errs) != 0 {
+		t.Errorf("explicit same-namespace refs rejected: %v", errs)
+	}
+}
+
+func TestValidateRelease_CrossNamespaceClusterRefRejected(t *testing.T) {
+	rel := validRelease()
+	rel.Spec.ClusterRef.Namespace = dummyInfraNamespace
+	errs := ValidateRelease(rel)
+	if !hasForbiddenOn(errs, "clusterRef.namespace") {
+		t.Errorf("cross-namespace clusterRef not rejected: %v", errs)
+	}
+}
+
+func TestValidateRelease_CrossNamespaceSourceRejected(t *testing.T) {
+	rel := validRelease()
+	rel.Spec.Source.GitRepository.Namespace = dummyInfraNamespace
+	errs := ValidateRelease(rel)
+	if !hasForbiddenOn(errs, "source.gitRepository.namespace") {
+		t.Errorf("cross-namespace source not rejected: %v", errs)
+	}
+}
+
+func TestValidateRelease_CrossNamespaceValuesSourceRejected(t *testing.T) {
+	rel := validRelease()
+	rel.Spec.Content = ReleaseContentSpec{
+		Type: ReleaseContentTypeHelm,
+		Helm: &ReleaseContentHelmSpec{
+			Path: "chart",
+			Values: []ValuesSourceSpec{{
+				Type: ValuesSourceTypeGitRepository,
+				GitRepository: &ValuesSourceGitRepositorySpec{
+					ReleaseGitRepositorySpec: &ReleaseGitRepositorySpec{Name: "vals", Namespace: dummyInfraNamespace},
+					Paths:                    []string{"values.yaml"},
+				},
+			}},
+		},
+	}
+	errs := ValidateRelease(rel)
+	if !hasForbiddenOn(errs, "gitRepository.namespace") {
+		t.Errorf("cross-namespace values source not rejected: %v", errs)
+	}
+}
+
+func TestValidateReleaseUpdate_CrossNamespaceRejected(t *testing.T) {
+	old := validRelease()
+	updated := validRelease()
+	updated.Spec.Source.GitRepository.Namespace = dummyInfraNamespace
+	errs := ValidateReleaseUpdate(updated, old)
+	if !hasForbiddenOn(errs, "source.gitRepository.namespace") {
+		t.Errorf("cross-namespace ref not rejected on update: %v", errs)
+	}
+}
