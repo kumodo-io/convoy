@@ -141,6 +141,49 @@ func validateClusterAuthSpec(spec *ClusterAuthSpec, fldPath *field.Path) field.E
 func ValidateRelease(release *Release) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMeta(&release.ObjectMeta, true, apivalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateReleaseSpec(&release.Spec, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateSameNamespaceRefs(release)...)
+	return allErrs
+}
+
+// validateSameNamespaceRefs enforces that a Release only references Clusters and
+// Sources in its own namespace. The ref Namespace fields exist for a future
+// cross-namespace grant model (see ROADMAP: ReferenceGrant); until that lands, a
+// cross-namespace ref would let a user borrow credential-bearing Cluster/Source
+// objects they cannot access — the controller resolves refs as its own identity,
+// not the requester's — so reject them. An empty ref namespace defaults to the
+// Release's own namespace and is always allowed.
+func validateSameNamespaceRefs(release *Release) field.ErrorList {
+	allErrs := field.ErrorList{}
+	ns := release.Namespace
+	spec := &release.Spec
+	specPath := field.NewPath("spec")
+
+	check := func(refNS string, path *field.Path) {
+		if refNS != "" && refNS != ns {
+			allErrs = append(allErrs, field.Forbidden(path,
+				fmt.Sprintf("cross-namespace references are not permitted; must be empty or the Release namespace %q", ns)))
+		}
+	}
+
+	check(spec.ClusterRef.Namespace, specPath.Child("clusterRef", "namespace"))
+	if spec.Source.GitRepository != nil {
+		check(spec.Source.GitRepository.Namespace, specPath.Child("source", "gitRepository", "namespace"))
+	}
+	if spec.Source.HelmRegistry != nil {
+		check(spec.Source.HelmRegistry.Namespace, specPath.Child("source", "helmRegistry", "namespace"))
+	}
+	if spec.Source.OCIRegistry != nil {
+		check(spec.Source.OCIRegistry.Namespace, specPath.Child("source", "ociRegistry", "namespace"))
+	}
+	if spec.Content.Helm != nil {
+		valuesPath := specPath.Child("content", "helm", "values")
+		for i := range spec.Content.Helm.Values {
+			v := &spec.Content.Helm.Values[i]
+			if v.GitRepository != nil && v.GitRepository.ReleaseGitRepositorySpec != nil {
+				check(v.GitRepository.Namespace, valuesPath.Index(i).Child("gitRepository", "namespace"))
+			}
+		}
+	}
 	return allErrs
 }
 
@@ -149,6 +192,7 @@ func ValidateRelease(release *Release) field.ErrorList {
 func ValidateReleaseUpdate(release, old *Release) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMetaUpdate(&release.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateReleaseSpec(&release.Spec, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateSameNamespaceRefs(release)...)
 
 	// source configuration validation
 	if release.Spec.Source.Type != old.Spec.Source.Type {
