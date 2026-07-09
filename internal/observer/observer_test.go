@@ -138,9 +138,11 @@ func TestSyncHandler_AssessErrorMarksUnknown(t *testing.T) {
 	synced := false
 	c.syncFn = func(context.Context, *corev1alpha1.Release) error { synced = true; return nil }
 
-	// Transient assess error is returned for retry, after marking Unknown.
-	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
-		t.Fatal("syncHandler returned nil, want the transient error for retry")
+	// An assess failure is not a controller error: the observer marks InSync=Unknown
+	// and returns nil (re-checks on the next interval/resync), rather than logging
+	// loudly and hot-retrying.
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned %v, want nil (undetermined is not a controller error)", err)
 	}
 	cond := inSyncCondition(client.Actions())
 	if cond == nil || cond.Status != metav1.ConditionUnknown || cond.Reason != reasonUndetermined {

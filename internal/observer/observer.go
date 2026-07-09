@@ -24,7 +24,6 @@ package observer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -111,12 +110,18 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 
 	drifted, recErr := c.assessFn(ctx, rel)
 	if recErr != nil {
-		// Couldn't determine drift (transient or config problem): mark Unknown and
-		// let the requeue retry. Undetermined is not treated as drift, so no /sync.
-		if writeErr := c.writeInSync(ctx, rel, metav1.ConditionUnknown, reasonUndetermined, recErr.Error()); writeErr != nil {
-			return writeErr
+		// Drift can't be determined yet — the source or target cluster isn't present
+		// or reachable, or the config is unsupported. These are expected,
+		// self-resolving states, not controller errors: report InSync=Unknown and
+		// re-check on the next interval/resync. Returning the error here would log
+		// loudly ("Unhandled Error") and hot-retry, which for a best-effort drift
+		// reporter is just noise.
+		klog.V(4).InfoS("drift undetermined", "release", key, "reason", recErr.Error())
+		if err := c.writeInSync(ctx, rel, metav1.ConditionUnknown, reasonUndetermined, recErr.Error()); err != nil {
+			return err // the status write itself failing IS a real error worth retrying
 		}
-		return c.requeue(key, rel, recErr)
+		c.scheduleRecheck(key, rel)
+		return nil
 	}
 
 	status, reason, message := metav1.ConditionTrue, reasonInSync, "live state matches the desired render"
@@ -135,7 +140,8 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		klog.V(4).InfoS("requested sync on detected drift", "release", key)
 	}
 
-	return c.requeue(key, rel, nil)
+	c.scheduleRecheck(key, rel)
+	return nil
 }
 
 // assess renders the desired state and compares it to the live cluster. A non-nil
@@ -186,17 +192,13 @@ func (c *Controller) resolveValueLayers(ctx context.Context, rel *corev1alpha1.R
 	return render.ResolveValues(ctx, rel.Spec.Content.Helm.Values, rel.Namespace, c.resolver, c.coordinator)
 }
 
-// requeue schedules the next drift re-check at the Release's sync interval. On a
-// transient error it returns the error so the base rate limiter retries instead.
-func (c *Controller) requeue(key string, rel *corev1alpha1.Release, recErr error) error {
-	if recErr != nil {
-		if errors.Is(recErr, render.ErrUnsupported) || errors.Is(recErr, clusterconn.ErrUnsupported) {
-			return nil // terminal config problem: don't hammer; resync re-checks
-		}
-		return recErr // transient: rate-limited retry
-	}
+// scheduleRecheck schedules the next drift re-check at the Release's sync
+// interval, if one is set. With no interval, the informer resync heartbeat is the
+// only re-check driver. The observer never hot-retries: drift detection is
+// best-effort and periodic, so undetermined and steady states re-check on the
+// same cadence.
+func (c *Controller) scheduleRecheck(key string, rel *corev1alpha1.Release) {
 	if d := rel.Spec.SyncPolicy.Interval.Duration; d > 0 {
 		c.EnqueueAfter(key, d)
 	}
-	return nil
 }

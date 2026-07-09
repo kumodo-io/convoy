@@ -115,6 +115,13 @@ func (o *Options) Run(ctx context.Context) error {
 	obs := observer.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector)
 
 	factory.Start(ctx.Done())
+	// The observer only *watches* Releases, so base.Controller.Run waits for the
+	// Release cache alone. But each drift pass also reads the Cluster and the three
+	// source caches (via the coordinator's listers), so wait for every started
+	// informer here first — otherwise the observer would begin reconciling before
+	// those caches populate and report spurious "source/cluster not found" for
+	// objects that exist, until the caches catch up.
+	factory.WaitForCacheSync(ctx.Done())
 	return obs.Run(ctx, o.Workers)
 }
 
