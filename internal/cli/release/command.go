@@ -10,6 +10,7 @@ import (
 
 	cliclient "github.com/kumodo-io/convoy/internal/cli/client"
 	"github.com/kumodo-io/convoy/internal/diffresult"
+	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
 // Command groups the release-scoped verbs (pin/unpin/sync). Grouping by
@@ -26,6 +27,7 @@ func Command(f *cliclient.ConfigFlags) *cobra.Command {
 		newReleaseSyncCmd(f),
 		newReleasePreviewCmd(f),
 		newReleaseDiffCmd(f),
+		newReleaseHealthCmd(f),
 	)
 	return cmd
 }
@@ -111,6 +113,24 @@ func newReleaseDiffCmd(f *cliclient.ConfigFlags) *cobra.Command {
 	return cmd
 }
 
+func newReleaseHealthCmd(f *cliclient.ConfigFlags) *cobra.Command {
+	var output string
+	cmd := &cobra.Command{
+		Use:   "health <name>",
+		Short: "Show the health of a release's managed resources",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, namespace, err := f.Client()
+			if err != nil {
+				return err
+			}
+			return runHealth(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], output)
+		},
+	}
+	cmd.Flags().StringVarP(&output, "output", "o", "", "output format: empty for human-readable, or 'json' for the raw result")
+	return cmd
+}
+
 // runPin resolves the pin target (defaulting to the current successful render)
 // and pins the release.
 func runPin(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, renderRef string) error {
@@ -180,6 +200,41 @@ func runDiff(ctx context.Context, out io.Writer, client cliclient.Client, namesp
 		return fmt.Errorf("decoding diff result: %w", err)
 	}
 	return renderDiff(out, &result)
+}
+
+func runHealth(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, output string) error {
+	raw, err := client.Health(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	if output == "json" {
+		_, err := out.Write(raw)
+		return err
+	}
+
+	var result healthresult.Result
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return fmt.Errorf("decoding health result: %w", err)
+	}
+	return renderHealth(out, &result)
+}
+
+// renderHealth writes a human-readable per-object health summary.
+func renderHealth(out io.Writer, result *healthresult.Result) error {
+	if len(result.Objects) == 0 {
+		_, err := fmt.Fprintln(out, "not assessed")
+		return err
+	}
+	for _, o := range result.Objects {
+		line := fmt.Sprintf("%s %s/%s: %s", o.Kind, o.Namespace, o.Name, o.State)
+		if o.Message != "" {
+			line += "  (" + o.Message + ")"
+		}
+		if _, err := fmt.Fprintln(out, line); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // renderDiff writes a human-readable summary of the diff: one line per object

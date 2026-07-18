@@ -48,6 +48,7 @@ type Storage struct {
 	Sync    *SyncREST
 	Preview *observerProxyREST
 	Diff    *observerProxyREST
+	Health  *observerProxyREST
 }
 
 // Map returns the resource-path → storage entries to install in the API group's
@@ -61,6 +62,7 @@ func (s *Storage) Map() map[string]rest.Storage {
 		"releases/sync":    s.Sync,
 		"releases/preview": s.Preview,
 		"releases/diff":    s.Diff,
+		"releases/health":  s.Health,
 	}
 }
 
@@ -107,6 +109,7 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, obser
 		Sync:    &SyncREST{store: store},
 		Preview: &observerProxyREST{observerURL: observerURL, subresource: "preview"},
 		Diff:    &observerProxyREST{observerURL: observerURL, subresource: "diff"},
+		Health:  &observerProxyREST{observerURL: observerURL, subresource: "health"},
 	}, nil
 }
 
