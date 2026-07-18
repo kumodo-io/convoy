@@ -120,6 +120,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseGitRepositoryRefSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositorySpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseGitRepositorySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHealthAssessment"):
+		return &applyconfigurationcorev1alpha1.ReleaseHealthAssessmentApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHealthSummary"):
 		return &applyconfigurationcorev1alpha1.ReleaseHealthSummaryApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHelmRegistryChartSpec"):

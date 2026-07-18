@@ -37,6 +37,9 @@ type ReleaseSpecApplyConfiguration struct {
 	RetentionPolicy *ReleaseRetentionPolicySpecApplyConfiguration `json:"retentionPolicy,omitempty"`
 	// DeletionPolicy defines the deletion policy for Release.
 	DeletionPolicy *ReleaseDeletionPolicyApplyConfiguration `json:"deletionPolicy,omitempty"`
+	// HealthAssessment defines the health assessment configuration
+	// for resources delivered by the Release.
+	HealthAssessment *ReleaseHealthAssessmentApplyConfiguration `json:"healthAssessment,omitempty"`
 }
 
 // ReleaseSpecApplyConfiguration constructs a declarative configuration of the ReleaseSpec type for use with
@@ -90,5 +93,13 @@ func (b *ReleaseSpecApplyConfiguration) WithRetentionPolicy(value *ReleaseRetent
 // If called multiple times, the DeletionPolicy field is set to the value of the last call.
 func (b *ReleaseSpecApplyConfiguration) WithDeletionPolicy(value *ReleaseDeletionPolicyApplyConfiguration) *ReleaseSpecApplyConfiguration {
 	b.DeletionPolicy = value
+	return b
+}
+
+// WithHealthAssessment sets the HealthAssessment field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the HealthAssessment field is set to the value of the last call.
+func (b *ReleaseSpecApplyConfiguration) WithHealthAssessment(value *ReleaseHealthAssessmentApplyConfiguration) *ReleaseSpecApplyConfiguration {
+	b.HealthAssessment = value
 	return b
 }

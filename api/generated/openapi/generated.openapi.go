@@ -81,6 +81,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicy(ref),
 		v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref),
 		v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref),
+		v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseHealthAssessment(ref),
 		v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
 		v1alpha1.ReleaseHelmRegistryChartSpec{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleaseHelmRegistryChartSpec(ref),
 		v1alpha1.ReleaseHelmRegistrySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseHelmRegistrySpec(ref),
@@ -2488,6 +2489,36 @@ func schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref common.Referen
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ReleaseHealthAssessment(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseHealthAssessment defines selectors to get the health rules along with assessment deadline anchor.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"globalRuleSetSelector": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref(metav1.LabelSelector{}.OpenAPIModelName()),
+						},
+					},
+					"localRuleSetSelector": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref(metav1.LabelSelector{}.OpenAPIModelName()),
+						},
+					},
+					"deadline": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref(metav1.Duration{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			metav1.Duration{}.OpenAPIModelName(), metav1.LabelSelector{}.OpenAPIModelName()},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3333,12 +3364,18 @@ func schema_convoy_api_core_v1alpha1_ReleaseSpec(ref common.ReferenceCallback) c
 							Ref:         ref(v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName()),
 						},
 					},
+					"healthAssessment": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HealthAssessment defines the health assessment configuration for resources delivered by the Release.",
+							Ref:         ref(v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"source", "content", "clusterRef", "syncPolicy", "retentionPolicy", "deletionPolicy"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentSpec{}.OpenAPIModelName(), v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName(), v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName(), v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName(), v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()},
+			v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentSpec{}.OpenAPIModelName(), v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName(), v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName(), v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName(), v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName(), v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()},
 	}
 }
 
