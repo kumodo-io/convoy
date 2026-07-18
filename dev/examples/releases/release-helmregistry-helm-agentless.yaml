@@ -10,7 +10,7 @@ spec:
     type: helmRegistry
     helmRegistry:
       name: podinfo
-      namespace: convoy-system
+      namespace: default
       chart:
         name: podinfo
         version: "6.12.0"

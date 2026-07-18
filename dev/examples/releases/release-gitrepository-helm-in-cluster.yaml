@@ -10,7 +10,7 @@ spec:
     type: gitRepository
     gitRepository:
       name: podinfo
-      namespace: convoy-system
+      namespace: default
       ref:
         branch: master
   content:
@@ -33,3 +33,8 @@ spec:
       includeCRDs: false
       includeNamespaces: false
     interval: 1m
+  healthAssessment:
+    globalRuleSetSelector:
+      matchLabels:
+        convoy.kumodo.io/default: "true"
+    deadline: 1m

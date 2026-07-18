@@ -25,6 +25,10 @@ rules:
   - apiGroups: ["source.convoy.kumodo.io"]
     resources: ["gitrepositories", "helmregistries", "ociregistries"]
     verbs: ["get", "list", "watch"]
+  # Health rule sets feed the health-assessment loop.
+  - apiGroups: ["extensions.convoy.kumodo.io"]
+    resources: ["globalhealthrulesets", "healthrulesets"]
+    verbs: ["get", "list", "watch"]
   # Resolve credential material referenced by a Cluster's auth spec (kubeconfig
   # Secret for agentless) and Helm value sources.
   - apiGroups: [""]

@@ -38,11 +38,11 @@ const (
 	// conditionHealthy reports whether the Release's managed resources are healthy.
 	conditionHealthy = "Healthy"
 
-	reasonHealthy        = "Healthy"
-	reasonProgressing    = "Progressing"
-	reasonDegraded       = "Degraded"
-	reasonUnknown        = "Unknown"
-	reasonNotConfigured  = "NotConfigured"
+	reasonHealthy       = "Healthy"
+	reasonProgressing   = "Progressing"
+	reasonDegraded      = "Degraded"
+	reasonUnknown       = "Unknown"
+	reasonNotConfigured = "NotConfigured"
 )
 
 // writeHealth applies the Healthy condition and health summary via Server-Side

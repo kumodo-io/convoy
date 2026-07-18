@@ -10,7 +10,7 @@ spec:
     type: gitRepository
     gitRepository:
       name: podinfo
-      namespace: convoy-system
+      namespace: default
       ref:
         tag: 6.5.0
   content:

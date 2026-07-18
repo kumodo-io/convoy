@@ -31,10 +31,10 @@ import (
 	"k8s.io/klog/v2"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
-	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
 	extensionslisters "github.com/kumodo-io/convoy/api/generated/listers/extensions/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
