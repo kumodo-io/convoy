@@ -34,6 +34,8 @@ import (
 	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
+const deploymentKind = "Deployment"
+
 func newTestHealthController(t *testing.T, rel *corev1alpha1.Release) (*HealthController, *fakeclient.Clientset) {
 	t.Helper()
 	client := fakeclient.NewSimpleClientset(rel)
@@ -91,7 +93,7 @@ func TestHealth_AllHealthy(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
 	c.assessFn = func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error) {
 		return &healthresult.Result{Objects: []healthresult.ObjectHealth{
-			{Kind: "Deployment", Name: "app", State: healthresult.StateHealthy},
+			{Kind: deploymentKind, Name: "app", State: healthresult.StateHealthy},
 		}}, nil
 	}
 
@@ -109,9 +111,9 @@ func TestHealth_DegradedWorstStateWins(t *testing.T) {
 	c.assessFn = func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error) {
 		// A mix: progressing + degraded + unknown → Degraded is the worst.
 		return &healthresult.Result{Objects: []healthresult.ObjectHealth{
-			{Kind: "Deployment", Name: "a", State: healthresult.StateProgressing},
-			{Kind: "Deployment", Name: "b", State: healthresult.StateDegraded},
-			{Kind: "Deployment", Name: "c", State: healthresult.StateUnknown},
+			{Kind: deploymentKind, Name: "a", State: healthresult.StateProgressing},
+			{Kind: deploymentKind, Name: "b", State: healthresult.StateDegraded},
+			{Kind: deploymentKind, Name: "c", State: healthresult.StateUnknown},
 		}}, nil
 	}
 
@@ -144,8 +146,8 @@ func TestHealth_ProgressingWhenNoWorse(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
 	c.assessFn = func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error) {
 		return &healthresult.Result{Objects: []healthresult.ObjectHealth{
-			{Kind: "Deployment", Name: "a", State: healthresult.StateHealthy},
-			{Kind: "Deployment", Name: "b", State: healthresult.StateProgressing},
+			{Kind: deploymentKind, Name: "a", State: healthresult.StateHealthy},
+			{Kind: deploymentKind, Name: "b", State: healthresult.StateProgressing},
 		}}, nil
 	}
 

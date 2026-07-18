@@ -24,21 +24,26 @@ import (
 	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
 )
 
+const (
+	deploymentsResource  = "deployments"
+	deploymentDesiredNum = 3
+)
+
 func deploymentRule(expr, msg string) extensionsv1alpha1.RuleSpec {
 	return extensionsv1alpha1.RuleSpec{
 		ApiVersion:        "apps/v1",
-		Resources:         []string{"deployments"},
+		Resources:         []string{deploymentsResource},
 		RuleExpression:    expr,
 		MessageExpression: msg,
 	}
 }
 
-func deployment(available, desired int64) *unstructured.Unstructured {
+func deployment(available int64) *unstructured.Unstructured {
 	return &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
 		"metadata":   map[string]any{"name": "app", "namespace": "ns"},
-		"spec":       map[string]any{"replicas": desired},
+		"spec":       map[string]any{"replicas": deploymentDesiredNum},
 		"status":     map[string]any{"availableReplicas": available},
 	}}
 }
@@ -50,7 +55,7 @@ func TestEvaluator_Passes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvaluator: %v", err)
 	}
-	got := e.Assess(deployment(3, 3), []string{"deployments"})
+	got := e.Assess(deployment(3), []string{deploymentsResource})
 	if !got.Passed || got.Err != nil {
 		t.Errorf("Assess = %+v, want Passed with no error", got)
 	}
@@ -64,7 +69,7 @@ func TestEvaluator_FailsWithMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvaluator: %v", err)
 	}
-	got := e.Assess(deployment(1, 3), []string{"deployments"})
+	got := e.Assess(deployment(1), []string{deploymentsResource})
 	if got.Passed {
 		t.Fatalf("Assess passed, want failed")
 	}
@@ -83,7 +88,7 @@ func TestEvaluator_Conjunction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvaluator: %v", err)
 	}
-	if got := e.Assess(deployment(1, 3), []string{"deployments"}); got.Passed {
+	if got := e.Assess(deployment(1), []string{deploymentsResource}); got.Passed {
 		t.Error("Assess passed, want failed on the second rule")
 	}
 }
@@ -104,7 +109,7 @@ func TestEvaluator_NoApplicableRulePassesVacuously(t *testing.T) {
 	if e.HasRules("v1", []string{"configmaps"}) {
 		t.Error("HasRules = true for an unmatched object, want false")
 	}
-	if !e.HasRules("apps/v1", []string{"deployments"}) {
+	if !e.HasRules("apps/v1", []string{deploymentsResource}) {
 		t.Error("HasRules = false for a matched object, want true")
 	}
 }
@@ -114,7 +119,7 @@ func TestEvaluator_NonBoolIsError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewEvaluator: %v", err)
 	}
-	got := e.Assess(deployment(3, 3), []string{"deployments"})
+	got := e.Assess(deployment(3), []string{deploymentsResource})
 	if got.Err == nil {
 		t.Error("Assess err = nil, want an error for a non-bool ruleExpression")
 	}
