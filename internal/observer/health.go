@@ -285,9 +285,9 @@ func (c *HealthController) scheduleRecheck(key string, rel *corev1alpha1.Release
 	}
 }
 
-// healthResult returns the last assessed per-object health for a Release, for the
+// HealthResult returns the last assessed per-object health for a Release, for the
 // /health subresource, or nil if it has not been assessed.
-func (c *HealthController) healthResult(releaseKey string) *healthresult.Result {
+func (c *HealthController) HealthResult(releaseKey string) *healthresult.Result {
 	return c.store.result(releaseKey)
 }
 

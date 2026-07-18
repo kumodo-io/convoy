@@ -95,6 +95,10 @@ func (o *Options) Run(ctx context.Context) error {
 	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
 	helmRegInformer := factory.Source().V1alpha1().HelmRegistries()
 	ociRegInformer := factory.Source().V1alpha1().OCIRegistries()
+	// Health rule sets feed the health loop; instantiating the informers here
+	// ensures the factory starts and syncs their caches before assessment runs.
+	globalRuleSetInformer := factory.Extensions().V1alpha1().GlobalHealthRuleSets()
+	ruleSetInformer := factory.Extensions().V1alpha1().HealthRuleSets()
 
 	resolver := auth.NewSecretResolver(kube)
 	clusterAuth := clusterconn.Registry{
@@ -118,6 +122,11 @@ func (o *Options) Run(ctx context.Context) error {
 	})
 
 	obs := observer.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector)
+	healthCtl := observer.NewHealthController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector,
+		globalRuleSetInformer.Lister(), ruleSetInformer.Lister())
+	// The drift loop hosts the HTTP server; wire the /health lookup to the health
+	// loop's store so /preview, /diff, and /health are served from one endpoint.
+	obs.SetHealthResults(healthCtl.HealthResult)
 
 	factory.Start(ctx.Done())
 	// The observer only *watches* Releases, so base.Controller.Run waits for the
@@ -132,6 +141,7 @@ func (o *Options) Run(ctx context.Context) error {
 	// cancel the other and surface the error.
 	group, gctx := errgroup.WithContext(ctx)
 	group.Go(func() error { return obs.Run(gctx, o.Workers) })
+	group.Go(func() error { return healthCtl.Run(gctx, o.Workers) })
 	group.Go(func() error { return obs.Serve(gctx, o.ServeAddr) })
 	return group.Wait()
 }

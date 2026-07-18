@@ -42,6 +42,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
 // Controller runs the drift-detection loop, keyed on Release. It embeds the
@@ -61,6 +62,16 @@ type Controller struct {
 	// without a live target cluster.
 	assessFn func(context.Context, *corev1alpha1.Release) (bool, error)
 	syncFn   func(context.Context, *corev1alpha1.Release) error
+	// healthResults, when set, serves the /health subresource from the health
+	// loop's store. The observer's HTTP server hosts /preview, /diff (drift) and
+	// /health (health) together; the manager wires this to the HealthController.
+	healthResults func(releaseKey string) *healthresult.Result
+}
+
+// SetHealthResults wires the /health lookup (the HealthController's store) into
+// the observer's HTTP server.
+func (c *Controller) SetHealthResults(fn func(releaseKey string) *healthresult.Result) {
+	c.healthResults = fn
 }
 
 // NewController wires an observer Controller to a Release informer. It renders
