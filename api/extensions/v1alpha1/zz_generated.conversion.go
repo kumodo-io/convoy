@@ -36,327 +36,237 @@ func init() {
 // RegisterConversions adds conversion functions to the given scheme.
 // Public to allow building arbitrary schemes.
 func RegisterConversions(s *runtime.Scheme) error {
-	if err := s.AddGeneratedConversionFunc((*HealthRule)(nil), (*extensions.HealthRule)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_HealthRule_To_extensions_HealthRule(a.(*HealthRule), b.(*extensions.HealthRule), scope)
+	if err := s.AddGeneratedConversionFunc((*GlobalHealthRuleSet)(nil), (*extensions.GlobalHealthRuleSet)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_GlobalHealthRuleSet_To_extensions_GlobalHealthRuleSet(a.(*GlobalHealthRuleSet), b.(*extensions.GlobalHealthRuleSet), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*extensions.HealthRule)(nil), (*HealthRule)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_HealthRule_To_v1alpha1_HealthRule(a.(*extensions.HealthRule), b.(*HealthRule), scope)
+	if err := s.AddGeneratedConversionFunc((*extensions.GlobalHealthRuleSet)(nil), (*GlobalHealthRuleSet)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_extensions_GlobalHealthRuleSet_To_v1alpha1_GlobalHealthRuleSet(a.(*extensions.GlobalHealthRuleSet), b.(*GlobalHealthRuleSet), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*KindHealthRule)(nil), (*extensions.KindHealthRule)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_KindHealthRule_To_extensions_KindHealthRule(a.(*KindHealthRule), b.(*extensions.KindHealthRule), scope)
+	if err := s.AddGeneratedConversionFunc((*GlobalHealthRuleSetList)(nil), (*extensions.GlobalHealthRuleSetList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_GlobalHealthRuleSetList_To_extensions_GlobalHealthRuleSetList(a.(*GlobalHealthRuleSetList), b.(*extensions.GlobalHealthRuleSetList), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*extensions.KindHealthRule)(nil), (*KindHealthRule)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_KindHealthRule_To_v1alpha1_KindHealthRule(a.(*extensions.KindHealthRule), b.(*KindHealthRule), scope)
+	if err := s.AddGeneratedConversionFunc((*extensions.GlobalHealthRuleSetList)(nil), (*GlobalHealthRuleSetList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_extensions_GlobalHealthRuleSetList_To_v1alpha1_GlobalHealthRuleSetList(a.(*extensions.GlobalHealthRuleSetList), b.(*GlobalHealthRuleSetList), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*KindHealthRuleList)(nil), (*extensions.KindHealthRuleList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_KindHealthRuleList_To_extensions_KindHealthRuleList(a.(*KindHealthRuleList), b.(*extensions.KindHealthRuleList), scope)
+	if err := s.AddGeneratedConversionFunc((*GlobalHealthRuleSetSpec)(nil), (*extensions.GlobalHealthRuleSetSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetSpec(a.(*GlobalHealthRuleSetSpec), b.(*extensions.GlobalHealthRuleSetSpec), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*extensions.KindHealthRuleList)(nil), (*KindHealthRuleList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_KindHealthRuleList_To_v1alpha1_KindHealthRuleList(a.(*extensions.KindHealthRuleList), b.(*KindHealthRuleList), scope)
+	if err := s.AddGeneratedConversionFunc((*extensions.GlobalHealthRuleSetSpec)(nil), (*GlobalHealthRuleSetSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_extensions_GlobalHealthRuleSetSpec_To_v1alpha1_GlobalHealthRuleSetSpec(a.(*extensions.GlobalHealthRuleSetSpec), b.(*GlobalHealthRuleSetSpec), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*KindHealthRuleSpec)(nil), (*extensions.KindHealthRuleSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_KindHealthRuleSpec_To_extensions_KindHealthRuleSpec(a.(*KindHealthRuleSpec), b.(*extensions.KindHealthRuleSpec), scope)
+	if err := s.AddGeneratedConversionFunc((*HealthRuleSet)(nil), (*extensions.HealthRuleSet)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_HealthRuleSet_To_extensions_HealthRuleSet(a.(*HealthRuleSet), b.(*extensions.HealthRuleSet), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*extensions.KindHealthRuleSpec)(nil), (*KindHealthRuleSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_KindHealthRuleSpec_To_v1alpha1_KindHealthRuleSpec(a.(*extensions.KindHealthRuleSpec), b.(*KindHealthRuleSpec), scope)
+	if err := s.AddGeneratedConversionFunc((*extensions.HealthRuleSet)(nil), (*HealthRuleSet)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_extensions_HealthRuleSet_To_v1alpha1_HealthRuleSet(a.(*extensions.HealthRuleSet), b.(*HealthRuleSet), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*KindTarget)(nil), (*extensions.KindTarget)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_KindTarget_To_extensions_KindTarget(a.(*KindTarget), b.(*extensions.KindTarget), scope)
+	if err := s.AddGeneratedConversionFunc((*HealthRuleSetList)(nil), (*extensions.HealthRuleSetList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_HealthRuleSetList_To_extensions_HealthRuleSetList(a.(*HealthRuleSetList), b.(*extensions.HealthRuleSetList), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*extensions.KindTarget)(nil), (*KindTarget)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_KindTarget_To_v1alpha1_KindTarget(a.(*extensions.KindTarget), b.(*KindTarget), scope)
+	if err := s.AddGeneratedConversionFunc((*extensions.HealthRuleSetList)(nil), (*HealthRuleSetList)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_extensions_HealthRuleSetList_To_v1alpha1_HealthRuleSetList(a.(*extensions.HealthRuleSetList), b.(*HealthRuleSetList), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*ResourceHealthRule)(nil), (*extensions.ResourceHealthRule)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ResourceHealthRule_To_extensions_ResourceHealthRule(a.(*ResourceHealthRule), b.(*extensions.ResourceHealthRule), scope)
+	if err := s.AddGeneratedConversionFunc((*HealthRuleSetSpec)(nil), (*extensions.HealthRuleSetSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec(a.(*HealthRuleSetSpec), b.(*extensions.HealthRuleSetSpec), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*extensions.ResourceHealthRule)(nil), (*ResourceHealthRule)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_ResourceHealthRule_To_v1alpha1_ResourceHealthRule(a.(*extensions.ResourceHealthRule), b.(*ResourceHealthRule), scope)
+	if err := s.AddGeneratedConversionFunc((*extensions.HealthRuleSetSpec)(nil), (*HealthRuleSetSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec(a.(*extensions.HealthRuleSetSpec), b.(*HealthRuleSetSpec), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*ResourceHealthRuleList)(nil), (*extensions.ResourceHealthRuleList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ResourceHealthRuleList_To_extensions_ResourceHealthRuleList(a.(*ResourceHealthRuleList), b.(*extensions.ResourceHealthRuleList), scope)
+	if err := s.AddGeneratedConversionFunc((*RuleSpec)(nil), (*extensions.RuleSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1alpha1_RuleSpec_To_extensions_RuleSpec(a.(*RuleSpec), b.(*extensions.RuleSpec), scope)
 	}); err != nil {
 		return err
 	}
-	if err := s.AddGeneratedConversionFunc((*extensions.ResourceHealthRuleList)(nil), (*ResourceHealthRuleList)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_ResourceHealthRuleList_To_v1alpha1_ResourceHealthRuleList(a.(*extensions.ResourceHealthRuleList), b.(*ResourceHealthRuleList), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*ResourceHealthRuleSpec)(nil), (*extensions.ResourceHealthRuleSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ResourceHealthRuleSpec_To_extensions_ResourceHealthRuleSpec(a.(*ResourceHealthRuleSpec), b.(*extensions.ResourceHealthRuleSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*extensions.ResourceHealthRuleSpec)(nil), (*ResourceHealthRuleSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_ResourceHealthRuleSpec_To_v1alpha1_ResourceHealthRuleSpec(a.(*extensions.ResourceHealthRuleSpec), b.(*ResourceHealthRuleSpec), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*ResourceTarget)(nil), (*extensions.ResourceTarget)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_v1alpha1_ResourceTarget_To_extensions_ResourceTarget(a.(*ResourceTarget), b.(*extensions.ResourceTarget), scope)
-	}); err != nil {
-		return err
-	}
-	if err := s.AddGeneratedConversionFunc((*extensions.ResourceTarget)(nil), (*ResourceTarget)(nil), func(a, b interface{}, scope conversion.Scope) error {
-		return Convert_extensions_ResourceTarget_To_v1alpha1_ResourceTarget(a.(*extensions.ResourceTarget), b.(*ResourceTarget), scope)
+	if err := s.AddGeneratedConversionFunc((*extensions.RuleSpec)(nil), (*RuleSpec)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_extensions_RuleSpec_To_v1alpha1_RuleSpec(a.(*extensions.RuleSpec), b.(*RuleSpec), scope)
 	}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func autoConvert_v1alpha1_HealthRule_To_extensions_HealthRule(in *HealthRule, out *extensions.HealthRule, s conversion.Scope) error {
-	out.Expression = in.Expression
-	out.ProgressDeadline = in.ProgressDeadline
+func autoConvert_v1alpha1_GlobalHealthRuleSet_To_extensions_GlobalHealthRuleSet(in *GlobalHealthRuleSet, out *extensions.GlobalHealthRuleSet, s conversion.Scope) error {
+	out.ObjectMeta = in.ObjectMeta
+	if err := Convert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_v1alpha1_GlobalHealthRuleSet_To_extensions_GlobalHealthRuleSet is an autogenerated conversion function.
+func Convert_v1alpha1_GlobalHealthRuleSet_To_extensions_GlobalHealthRuleSet(in *GlobalHealthRuleSet, out *extensions.GlobalHealthRuleSet, s conversion.Scope) error {
+	return autoConvert_v1alpha1_GlobalHealthRuleSet_To_extensions_GlobalHealthRuleSet(in, out, s)
+}
+
+func autoConvert_extensions_GlobalHealthRuleSet_To_v1alpha1_GlobalHealthRuleSet(in *extensions.GlobalHealthRuleSet, out *GlobalHealthRuleSet, s conversion.Scope) error {
+	out.ObjectMeta = in.ObjectMeta
+	if err := Convert_extensions_GlobalHealthRuleSetSpec_To_v1alpha1_GlobalHealthRuleSetSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_extensions_GlobalHealthRuleSet_To_v1alpha1_GlobalHealthRuleSet is an autogenerated conversion function.
+func Convert_extensions_GlobalHealthRuleSet_To_v1alpha1_GlobalHealthRuleSet(in *extensions.GlobalHealthRuleSet, out *GlobalHealthRuleSet, s conversion.Scope) error {
+	return autoConvert_extensions_GlobalHealthRuleSet_To_v1alpha1_GlobalHealthRuleSet(in, out, s)
+}
+
+func autoConvert_v1alpha1_GlobalHealthRuleSetList_To_extensions_GlobalHealthRuleSetList(in *GlobalHealthRuleSetList, out *extensions.GlobalHealthRuleSetList, s conversion.Scope) error {
+	out.ListMeta = in.ListMeta
+	out.Items = *(*[]extensions.GlobalHealthRuleSet)(unsafe.Pointer(&in.Items))
+	return nil
+}
+
+// Convert_v1alpha1_GlobalHealthRuleSetList_To_extensions_GlobalHealthRuleSetList is an autogenerated conversion function.
+func Convert_v1alpha1_GlobalHealthRuleSetList_To_extensions_GlobalHealthRuleSetList(in *GlobalHealthRuleSetList, out *extensions.GlobalHealthRuleSetList, s conversion.Scope) error {
+	return autoConvert_v1alpha1_GlobalHealthRuleSetList_To_extensions_GlobalHealthRuleSetList(in, out, s)
+}
+
+func autoConvert_extensions_GlobalHealthRuleSetList_To_v1alpha1_GlobalHealthRuleSetList(in *extensions.GlobalHealthRuleSetList, out *GlobalHealthRuleSetList, s conversion.Scope) error {
+	out.ListMeta = in.ListMeta
+	out.Items = *(*[]GlobalHealthRuleSet)(unsafe.Pointer(&in.Items))
+	return nil
+}
+
+// Convert_extensions_GlobalHealthRuleSetList_To_v1alpha1_GlobalHealthRuleSetList is an autogenerated conversion function.
+func Convert_extensions_GlobalHealthRuleSetList_To_v1alpha1_GlobalHealthRuleSetList(in *extensions.GlobalHealthRuleSetList, out *GlobalHealthRuleSetList, s conversion.Scope) error {
+	return autoConvert_extensions_GlobalHealthRuleSetList_To_v1alpha1_GlobalHealthRuleSetList(in, out, s)
+}
+
+func autoConvert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetSpec(in *GlobalHealthRuleSetSpec, out *extensions.GlobalHealthRuleSetSpec, s conversion.Scope) error {
+	out.Rules = *(*[]extensions.RuleSpec)(unsafe.Pointer(&in.Rules))
+	return nil
+}
+
+// Convert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetSpec is an autogenerated conversion function.
+func Convert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetSpec(in *GlobalHealthRuleSetSpec, out *extensions.GlobalHealthRuleSetSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetSpec(in, out, s)
+}
+
+func autoConvert_extensions_GlobalHealthRuleSetSpec_To_v1alpha1_GlobalHealthRuleSetSpec(in *extensions.GlobalHealthRuleSetSpec, out *GlobalHealthRuleSetSpec, s conversion.Scope) error {
+	out.Rules = *(*[]RuleSpec)(unsafe.Pointer(&in.Rules))
+	return nil
+}
+
+// Convert_extensions_GlobalHealthRuleSetSpec_To_v1alpha1_GlobalHealthRuleSetSpec is an autogenerated conversion function.
+func Convert_extensions_GlobalHealthRuleSetSpec_To_v1alpha1_GlobalHealthRuleSetSpec(in *extensions.GlobalHealthRuleSetSpec, out *GlobalHealthRuleSetSpec, s conversion.Scope) error {
+	return autoConvert_extensions_GlobalHealthRuleSetSpec_To_v1alpha1_GlobalHealthRuleSetSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_HealthRuleSet_To_extensions_HealthRuleSet(in *HealthRuleSet, out *extensions.HealthRuleSet, s conversion.Scope) error {
+	out.ObjectMeta = in.ObjectMeta
+	if err := Convert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_v1alpha1_HealthRuleSet_To_extensions_HealthRuleSet is an autogenerated conversion function.
+func Convert_v1alpha1_HealthRuleSet_To_extensions_HealthRuleSet(in *HealthRuleSet, out *extensions.HealthRuleSet, s conversion.Scope) error {
+	return autoConvert_v1alpha1_HealthRuleSet_To_extensions_HealthRuleSet(in, out, s)
+}
+
+func autoConvert_extensions_HealthRuleSet_To_v1alpha1_HealthRuleSet(in *extensions.HealthRuleSet, out *HealthRuleSet, s conversion.Scope) error {
+	out.ObjectMeta = in.ObjectMeta
+	if err := Convert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_extensions_HealthRuleSet_To_v1alpha1_HealthRuleSet is an autogenerated conversion function.
+func Convert_extensions_HealthRuleSet_To_v1alpha1_HealthRuleSet(in *extensions.HealthRuleSet, out *HealthRuleSet, s conversion.Scope) error {
+	return autoConvert_extensions_HealthRuleSet_To_v1alpha1_HealthRuleSet(in, out, s)
+}
+
+func autoConvert_v1alpha1_HealthRuleSetList_To_extensions_HealthRuleSetList(in *HealthRuleSetList, out *extensions.HealthRuleSetList, s conversion.Scope) error {
+	out.ListMeta = in.ListMeta
+	out.Items = *(*[]extensions.HealthRuleSet)(unsafe.Pointer(&in.Items))
+	return nil
+}
+
+// Convert_v1alpha1_HealthRuleSetList_To_extensions_HealthRuleSetList is an autogenerated conversion function.
+func Convert_v1alpha1_HealthRuleSetList_To_extensions_HealthRuleSetList(in *HealthRuleSetList, out *extensions.HealthRuleSetList, s conversion.Scope) error {
+	return autoConvert_v1alpha1_HealthRuleSetList_To_extensions_HealthRuleSetList(in, out, s)
+}
+
+func autoConvert_extensions_HealthRuleSetList_To_v1alpha1_HealthRuleSetList(in *extensions.HealthRuleSetList, out *HealthRuleSetList, s conversion.Scope) error {
+	out.ListMeta = in.ListMeta
+	out.Items = *(*[]HealthRuleSet)(unsafe.Pointer(&in.Items))
+	return nil
+}
+
+// Convert_extensions_HealthRuleSetList_To_v1alpha1_HealthRuleSetList is an autogenerated conversion function.
+func Convert_extensions_HealthRuleSetList_To_v1alpha1_HealthRuleSetList(in *extensions.HealthRuleSetList, out *HealthRuleSetList, s conversion.Scope) error {
+	return autoConvert_extensions_HealthRuleSetList_To_v1alpha1_HealthRuleSetList(in, out, s)
+}
+
+func autoConvert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec(in *HealthRuleSetSpec, out *extensions.HealthRuleSetSpec, s conversion.Scope) error {
+	out.Rules = *(*[]extensions.RuleSpec)(unsafe.Pointer(&in.Rules))
+	return nil
+}
+
+// Convert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec is an autogenerated conversion function.
+func Convert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec(in *HealthRuleSetSpec, out *extensions.HealthRuleSetSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec(in, out, s)
+}
+
+func autoConvert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec(in *extensions.HealthRuleSetSpec, out *HealthRuleSetSpec, s conversion.Scope) error {
+	out.Rules = *(*[]RuleSpec)(unsafe.Pointer(&in.Rules))
+	return nil
+}
+
+// Convert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec is an autogenerated conversion function.
+func Convert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec(in *extensions.HealthRuleSetSpec, out *HealthRuleSetSpec, s conversion.Scope) error {
+	return autoConvert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec(in, out, s)
+}
+
+func autoConvert_v1alpha1_RuleSpec_To_extensions_RuleSpec(in *RuleSpec, out *extensions.RuleSpec, s conversion.Scope) error {
+	out.ApiVersion = in.ApiVersion
+	out.Resources = *(*[]string)(unsafe.Pointer(&in.Resources))
+	out.RuleExpression = in.RuleExpression
 	out.MessageExpression = in.MessageExpression
 	return nil
 }
 
-// Convert_v1alpha1_HealthRule_To_extensions_HealthRule is an autogenerated conversion function.
-func Convert_v1alpha1_HealthRule_To_extensions_HealthRule(in *HealthRule, out *extensions.HealthRule, s conversion.Scope) error {
-	return autoConvert_v1alpha1_HealthRule_To_extensions_HealthRule(in, out, s)
+// Convert_v1alpha1_RuleSpec_To_extensions_RuleSpec is an autogenerated conversion function.
+func Convert_v1alpha1_RuleSpec_To_extensions_RuleSpec(in *RuleSpec, out *extensions.RuleSpec, s conversion.Scope) error {
+	return autoConvert_v1alpha1_RuleSpec_To_extensions_RuleSpec(in, out, s)
 }
 
-func autoConvert_extensions_HealthRule_To_v1alpha1_HealthRule(in *extensions.HealthRule, out *HealthRule, s conversion.Scope) error {
-	out.Expression = in.Expression
-	out.ProgressDeadline = in.ProgressDeadline
+func autoConvert_extensions_RuleSpec_To_v1alpha1_RuleSpec(in *extensions.RuleSpec, out *RuleSpec, s conversion.Scope) error {
+	out.ApiVersion = in.ApiVersion
+	out.Resources = *(*[]string)(unsafe.Pointer(&in.Resources))
+	out.RuleExpression = in.RuleExpression
 	out.MessageExpression = in.MessageExpression
 	return nil
 }
 
-// Convert_extensions_HealthRule_To_v1alpha1_HealthRule is an autogenerated conversion function.
-func Convert_extensions_HealthRule_To_v1alpha1_HealthRule(in *extensions.HealthRule, out *HealthRule, s conversion.Scope) error {
-	return autoConvert_extensions_HealthRule_To_v1alpha1_HealthRule(in, out, s)
-}
-
-func autoConvert_v1alpha1_KindHealthRule_To_extensions_KindHealthRule(in *KindHealthRule, out *extensions.KindHealthRule, s conversion.Scope) error {
-	out.ObjectMeta = in.ObjectMeta
-	if err := Convert_v1alpha1_KindHealthRuleSpec_To_extensions_KindHealthRuleSpec(&in.Spec, &out.Spec, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_v1alpha1_KindHealthRule_To_extensions_KindHealthRule is an autogenerated conversion function.
-func Convert_v1alpha1_KindHealthRule_To_extensions_KindHealthRule(in *KindHealthRule, out *extensions.KindHealthRule, s conversion.Scope) error {
-	return autoConvert_v1alpha1_KindHealthRule_To_extensions_KindHealthRule(in, out, s)
-}
-
-func autoConvert_extensions_KindHealthRule_To_v1alpha1_KindHealthRule(in *extensions.KindHealthRule, out *KindHealthRule, s conversion.Scope) error {
-	out.ObjectMeta = in.ObjectMeta
-	if err := Convert_extensions_KindHealthRuleSpec_To_v1alpha1_KindHealthRuleSpec(&in.Spec, &out.Spec, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_extensions_KindHealthRule_To_v1alpha1_KindHealthRule is an autogenerated conversion function.
-func Convert_extensions_KindHealthRule_To_v1alpha1_KindHealthRule(in *extensions.KindHealthRule, out *KindHealthRule, s conversion.Scope) error {
-	return autoConvert_extensions_KindHealthRule_To_v1alpha1_KindHealthRule(in, out, s)
-}
-
-func autoConvert_v1alpha1_KindHealthRuleList_To_extensions_KindHealthRuleList(in *KindHealthRuleList, out *extensions.KindHealthRuleList, s conversion.Scope) error {
-	out.ListMeta = in.ListMeta
-	out.Items = *(*[]extensions.KindHealthRule)(unsafe.Pointer(&in.Items))
-	return nil
-}
-
-// Convert_v1alpha1_KindHealthRuleList_To_extensions_KindHealthRuleList is an autogenerated conversion function.
-func Convert_v1alpha1_KindHealthRuleList_To_extensions_KindHealthRuleList(in *KindHealthRuleList, out *extensions.KindHealthRuleList, s conversion.Scope) error {
-	return autoConvert_v1alpha1_KindHealthRuleList_To_extensions_KindHealthRuleList(in, out, s)
-}
-
-func autoConvert_extensions_KindHealthRuleList_To_v1alpha1_KindHealthRuleList(in *extensions.KindHealthRuleList, out *KindHealthRuleList, s conversion.Scope) error {
-	out.ListMeta = in.ListMeta
-	out.Items = *(*[]KindHealthRule)(unsafe.Pointer(&in.Items))
-	return nil
-}
-
-// Convert_extensions_KindHealthRuleList_To_v1alpha1_KindHealthRuleList is an autogenerated conversion function.
-func Convert_extensions_KindHealthRuleList_To_v1alpha1_KindHealthRuleList(in *extensions.KindHealthRuleList, out *KindHealthRuleList, s conversion.Scope) error {
-	return autoConvert_extensions_KindHealthRuleList_To_v1alpha1_KindHealthRuleList(in, out, s)
-}
-
-func autoConvert_v1alpha1_KindHealthRuleSpec_To_extensions_KindHealthRuleSpec(in *KindHealthRuleSpec, out *extensions.KindHealthRuleSpec, s conversion.Scope) error {
-	if err := Convert_v1alpha1_HealthRule_To_extensions_HealthRule(&in.HealthRule, &out.HealthRule, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_KindTarget_To_extensions_KindTarget(&in.Target, &out.Target, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_v1alpha1_KindHealthRuleSpec_To_extensions_KindHealthRuleSpec is an autogenerated conversion function.
-func Convert_v1alpha1_KindHealthRuleSpec_To_extensions_KindHealthRuleSpec(in *KindHealthRuleSpec, out *extensions.KindHealthRuleSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_KindHealthRuleSpec_To_extensions_KindHealthRuleSpec(in, out, s)
-}
-
-func autoConvert_extensions_KindHealthRuleSpec_To_v1alpha1_KindHealthRuleSpec(in *extensions.KindHealthRuleSpec, out *KindHealthRuleSpec, s conversion.Scope) error {
-	if err := Convert_extensions_HealthRule_To_v1alpha1_HealthRule(&in.HealthRule, &out.HealthRule, s); err != nil {
-		return err
-	}
-	if err := Convert_extensions_KindTarget_To_v1alpha1_KindTarget(&in.Target, &out.Target, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_extensions_KindHealthRuleSpec_To_v1alpha1_KindHealthRuleSpec is an autogenerated conversion function.
-func Convert_extensions_KindHealthRuleSpec_To_v1alpha1_KindHealthRuleSpec(in *extensions.KindHealthRuleSpec, out *KindHealthRuleSpec, s conversion.Scope) error {
-	return autoConvert_extensions_KindHealthRuleSpec_To_v1alpha1_KindHealthRuleSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_KindTarget_To_extensions_KindTarget(in *KindTarget, out *extensions.KindTarget, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Kind = in.Kind
-	out.Version = in.Version
-	return nil
-}
-
-// Convert_v1alpha1_KindTarget_To_extensions_KindTarget is an autogenerated conversion function.
-func Convert_v1alpha1_KindTarget_To_extensions_KindTarget(in *KindTarget, out *extensions.KindTarget, s conversion.Scope) error {
-	return autoConvert_v1alpha1_KindTarget_To_extensions_KindTarget(in, out, s)
-}
-
-func autoConvert_extensions_KindTarget_To_v1alpha1_KindTarget(in *extensions.KindTarget, out *KindTarget, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Kind = in.Kind
-	out.Version = in.Version
-	return nil
-}
-
-// Convert_extensions_KindTarget_To_v1alpha1_KindTarget is an autogenerated conversion function.
-func Convert_extensions_KindTarget_To_v1alpha1_KindTarget(in *extensions.KindTarget, out *KindTarget, s conversion.Scope) error {
-	return autoConvert_extensions_KindTarget_To_v1alpha1_KindTarget(in, out, s)
-}
-
-func autoConvert_v1alpha1_ResourceHealthRule_To_extensions_ResourceHealthRule(in *ResourceHealthRule, out *extensions.ResourceHealthRule, s conversion.Scope) error {
-	out.ObjectMeta = in.ObjectMeta
-	if err := Convert_v1alpha1_ResourceHealthRuleSpec_To_extensions_ResourceHealthRuleSpec(&in.Spec, &out.Spec, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_v1alpha1_ResourceHealthRule_To_extensions_ResourceHealthRule is an autogenerated conversion function.
-func Convert_v1alpha1_ResourceHealthRule_To_extensions_ResourceHealthRule(in *ResourceHealthRule, out *extensions.ResourceHealthRule, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ResourceHealthRule_To_extensions_ResourceHealthRule(in, out, s)
-}
-
-func autoConvert_extensions_ResourceHealthRule_To_v1alpha1_ResourceHealthRule(in *extensions.ResourceHealthRule, out *ResourceHealthRule, s conversion.Scope) error {
-	out.ObjectMeta = in.ObjectMeta
-	if err := Convert_extensions_ResourceHealthRuleSpec_To_v1alpha1_ResourceHealthRuleSpec(&in.Spec, &out.Spec, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_extensions_ResourceHealthRule_To_v1alpha1_ResourceHealthRule is an autogenerated conversion function.
-func Convert_extensions_ResourceHealthRule_To_v1alpha1_ResourceHealthRule(in *extensions.ResourceHealthRule, out *ResourceHealthRule, s conversion.Scope) error {
-	return autoConvert_extensions_ResourceHealthRule_To_v1alpha1_ResourceHealthRule(in, out, s)
-}
-
-func autoConvert_v1alpha1_ResourceHealthRuleList_To_extensions_ResourceHealthRuleList(in *ResourceHealthRuleList, out *extensions.ResourceHealthRuleList, s conversion.Scope) error {
-	out.ListMeta = in.ListMeta
-	out.Items = *(*[]extensions.ResourceHealthRule)(unsafe.Pointer(&in.Items))
-	return nil
-}
-
-// Convert_v1alpha1_ResourceHealthRuleList_To_extensions_ResourceHealthRuleList is an autogenerated conversion function.
-func Convert_v1alpha1_ResourceHealthRuleList_To_extensions_ResourceHealthRuleList(in *ResourceHealthRuleList, out *extensions.ResourceHealthRuleList, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ResourceHealthRuleList_To_extensions_ResourceHealthRuleList(in, out, s)
-}
-
-func autoConvert_extensions_ResourceHealthRuleList_To_v1alpha1_ResourceHealthRuleList(in *extensions.ResourceHealthRuleList, out *ResourceHealthRuleList, s conversion.Scope) error {
-	out.ListMeta = in.ListMeta
-	out.Items = *(*[]ResourceHealthRule)(unsafe.Pointer(&in.Items))
-	return nil
-}
-
-// Convert_extensions_ResourceHealthRuleList_To_v1alpha1_ResourceHealthRuleList is an autogenerated conversion function.
-func Convert_extensions_ResourceHealthRuleList_To_v1alpha1_ResourceHealthRuleList(in *extensions.ResourceHealthRuleList, out *ResourceHealthRuleList, s conversion.Scope) error {
-	return autoConvert_extensions_ResourceHealthRuleList_To_v1alpha1_ResourceHealthRuleList(in, out, s)
-}
-
-func autoConvert_v1alpha1_ResourceHealthRuleSpec_To_extensions_ResourceHealthRuleSpec(in *ResourceHealthRuleSpec, out *extensions.ResourceHealthRuleSpec, s conversion.Scope) error {
-	if err := Convert_v1alpha1_HealthRule_To_extensions_HealthRule(&in.HealthRule, &out.HealthRule, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ResourceTarget_To_extensions_ResourceTarget(&in.Target, &out.Target, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_v1alpha1_ResourceHealthRuleSpec_To_extensions_ResourceHealthRuleSpec is an autogenerated conversion function.
-func Convert_v1alpha1_ResourceHealthRuleSpec_To_extensions_ResourceHealthRuleSpec(in *ResourceHealthRuleSpec, out *extensions.ResourceHealthRuleSpec, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ResourceHealthRuleSpec_To_extensions_ResourceHealthRuleSpec(in, out, s)
-}
-
-func autoConvert_extensions_ResourceHealthRuleSpec_To_v1alpha1_ResourceHealthRuleSpec(in *extensions.ResourceHealthRuleSpec, out *ResourceHealthRuleSpec, s conversion.Scope) error {
-	if err := Convert_extensions_HealthRule_To_v1alpha1_HealthRule(&in.HealthRule, &out.HealthRule, s); err != nil {
-		return err
-	}
-	if err := Convert_extensions_ResourceTarget_To_v1alpha1_ResourceTarget(&in.Target, &out.Target, s); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Convert_extensions_ResourceHealthRuleSpec_To_v1alpha1_ResourceHealthRuleSpec is an autogenerated conversion function.
-func Convert_extensions_ResourceHealthRuleSpec_To_v1alpha1_ResourceHealthRuleSpec(in *extensions.ResourceHealthRuleSpec, out *ResourceHealthRuleSpec, s conversion.Scope) error {
-	return autoConvert_extensions_ResourceHealthRuleSpec_To_v1alpha1_ResourceHealthRuleSpec(in, out, s)
-}
-
-func autoConvert_v1alpha1_ResourceTarget_To_extensions_ResourceTarget(in *ResourceTarget, out *extensions.ResourceTarget, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Kind = in.Kind
-	out.Version = in.Version
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	return nil
-}
-
-// Convert_v1alpha1_ResourceTarget_To_extensions_ResourceTarget is an autogenerated conversion function.
-func Convert_v1alpha1_ResourceTarget_To_extensions_ResourceTarget(in *ResourceTarget, out *extensions.ResourceTarget, s conversion.Scope) error {
-	return autoConvert_v1alpha1_ResourceTarget_To_extensions_ResourceTarget(in, out, s)
-}
-
-func autoConvert_extensions_ResourceTarget_To_v1alpha1_ResourceTarget(in *extensions.ResourceTarget, out *ResourceTarget, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Kind = in.Kind
-	out.Version = in.Version
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	return nil
-}
-
-// Convert_extensions_ResourceTarget_To_v1alpha1_ResourceTarget is an autogenerated conversion function.
-func Convert_extensions_ResourceTarget_To_v1alpha1_ResourceTarget(in *extensions.ResourceTarget, out *ResourceTarget, s conversion.Scope) error {
-	return autoConvert_extensions_ResourceTarget_To_v1alpha1_ResourceTarget(in, out, s)
+// Convert_extensions_RuleSpec_To_v1alpha1_RuleSpec is an autogenerated conversion function.
+func Convert_extensions_RuleSpec_To_v1alpha1_RuleSpec(in *extensions.RuleSpec, out *RuleSpec, s conversion.Scope) error {
+	return autoConvert_extensions_RuleSpec_To_v1alpha1_RuleSpec(in, out, s)
 }

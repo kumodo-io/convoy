@@ -2,71 +2,54 @@ package extensions
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-type HealthRule struct {
-	Expression        string
-	ProgressDeadline  metav1.Duration
+type RuleSpec struct {
+	ApiVersion        string
+	Resources         []string
+	RuleExpression    string
 	MessageExpression string
 }
 
-type KindHealthRuleSpec struct {
-	HealthRule
-	Target KindTarget
-}
-
-type KindTarget struct {
-	Group   string
-	Kind    string
-	Version string
+type GlobalHealthRuleSetSpec struct {
+	Rules []RuleSpec
 }
 
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type KindHealthRule struct {
+type GlobalHealthRuleSet struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	Spec KindHealthRuleSpec
+	Spec GlobalHealthRuleSetSpec
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type KindHealthRuleList struct {
+type GlobalHealthRuleSetList struct {
 	metav1.TypeMeta
 	metav1.ListMeta
-
-	Items []KindHealthRule
+	Items []GlobalHealthRuleSet
 }
 
-type ResourceHealthRuleSpec struct {
-	HealthRule
-	Target ResourceTarget
-}
-
-type ResourceTarget struct {
-	Group     string
-	Kind      string
-	Version   string
-	Name      string
-	Namespace string
+type HealthRuleSetSpec struct {
+	Rules []RuleSpec
 }
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type ResourceHealthRule struct {
+type HealthRuleSet struct {
 	metav1.TypeMeta
 	metav1.ObjectMeta
 
-	Spec ResourceHealthRuleSpec
+	Spec HealthRuleSetSpec
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type ResourceHealthRuleList struct {
+type HealthRuleSetList struct {
 	metav1.TypeMeta
 	metav1.ListMeta
-
-	Items []ResourceHealthRule
+	Items []HealthRuleSet
 }

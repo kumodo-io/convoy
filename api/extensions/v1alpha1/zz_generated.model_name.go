@@ -22,46 +22,36 @@ limitations under the License.
 package v1alpha1
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in HealthRule) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.HealthRule"
+func (in GlobalHealthRuleSet) OpenAPIModelName() string {
+	return "io.kumodo.convoy.extensions.v1alpha1.GlobalHealthRuleSet"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in KindHealthRule) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.KindHealthRule"
+func (in GlobalHealthRuleSetList) OpenAPIModelName() string {
+	return "io.kumodo.convoy.extensions.v1alpha1.GlobalHealthRuleSetList"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in KindHealthRuleList) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.KindHealthRuleList"
+func (in GlobalHealthRuleSetSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.extensions.v1alpha1.GlobalHealthRuleSetSpec"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in KindHealthRuleSpec) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.KindHealthRuleSpec"
+func (in HealthRuleSet) OpenAPIModelName() string {
+	return "io.kumodo.convoy.extensions.v1alpha1.HealthRuleSet"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in KindTarget) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.KindTarget"
+func (in HealthRuleSetList) OpenAPIModelName() string {
+	return "io.kumodo.convoy.extensions.v1alpha1.HealthRuleSetList"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ResourceHealthRule) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.ResourceHealthRule"
+func (in HealthRuleSetSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.extensions.v1alpha1.HealthRuleSetSpec"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ResourceHealthRuleList) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.ResourceHealthRuleList"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ResourceHealthRuleSpec) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.ResourceHealthRuleSpec"
-}
-
-// OpenAPIModelName returns the OpenAPI model name for this type.
-func (in ResourceTarget) OpenAPIModelName() string {
-	return "io.kumodo.convoy.extensions.v1alpha1.ResourceTarget"
+func (in RuleSpec) OpenAPIModelName() string {
+	return "io.kumodo.convoy.extensions.v1alpha1.RuleSpec"
 }

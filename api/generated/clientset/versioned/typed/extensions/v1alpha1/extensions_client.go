@@ -28,8 +28,8 @@ import (
 
 type ExtensionsV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	KindHealthRulesGetter
-	ResourceHealthRulesGetter
+	GlobalHealthRuleSetsGetter
+	HealthRuleSetsGetter
 }
 
 // ExtensionsV1alpha1Client is used to interact with features provided by the extensions.convoy.kumodo.io group.
@@ -37,12 +37,12 @@ type ExtensionsV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ExtensionsV1alpha1Client) KindHealthRules() KindHealthRuleInterface {
-	return newKindHealthRules(c)
+func (c *ExtensionsV1alpha1Client) GlobalHealthRuleSets() GlobalHealthRuleSetInterface {
+	return newGlobalHealthRuleSets(c)
 }
 
-func (c *ExtensionsV1alpha1Client) ResourceHealthRules(namespace string) ResourceHealthRuleInterface {
-	return newResourceHealthRules(c, namespace)
+func (c *ExtensionsV1alpha1Client) HealthRuleSets(namespace string) HealthRuleSetInterface {
+	return newHealthRuleSets(c, namespace)
 }
 
 // NewForConfig creates a new ExtensionsV1alpha1Client for the given config.

@@ -18,14 +18,14 @@ limitations under the License.
 
 package v1alpha1
 
-// KindHealthRuleListerExpansion allows custom methods to be added to
-// KindHealthRuleLister.
-type KindHealthRuleListerExpansion interface{}
+// GlobalHealthRuleSetListerExpansion allows custom methods to be added to
+// GlobalHealthRuleSetLister.
+type GlobalHealthRuleSetListerExpansion interface{}
 
-// ResourceHealthRuleListerExpansion allows custom methods to be added to
-// ResourceHealthRuleLister.
-type ResourceHealthRuleListerExpansion interface{}
+// HealthRuleSetListerExpansion allows custom methods to be added to
+// HealthRuleSetLister.
+type HealthRuleSetListerExpansion interface{}
 
-// ResourceHealthRuleNamespaceListerExpansion allows custom methods to be added to
-// ResourceHealthRuleNamespaceLister.
-type ResourceHealthRuleNamespaceListerExpansion interface{}
+// HealthRuleSetNamespaceListerExpansion allows custom methods to be added to
+// HealthRuleSetNamespaceLister.
+type HealthRuleSetNamespaceListerExpansion interface{}

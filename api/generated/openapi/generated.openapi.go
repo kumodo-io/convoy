@@ -108,15 +108,13 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ResourceWaveStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
 		v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ValuesSourceGitRepositorySpec(ref),
 		v1alpha1.ValuesSourceSpec{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref),
-		extensionsv1alpha1.HealthRule{}.OpenAPIModelName():                        schema_convoy_api_extensions_v1alpha1_HealthRule(ref),
-		extensionsv1alpha1.KindHealthRule{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref),
-		extensionsv1alpha1.KindHealthRuleList{}.OpenAPIModelName():                schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref),
-		extensionsv1alpha1.KindHealthRuleSpec{}.OpenAPIModelName():                schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref),
-		extensionsv1alpha1.KindTarget{}.OpenAPIModelName():                        schema_convoy_api_extensions_v1alpha1_KindTarget(ref),
-		extensionsv1alpha1.ResourceHealthRule{}.OpenAPIModelName():                schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref),
-		extensionsv1alpha1.ResourceHealthRuleList{}.OpenAPIModelName():            schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref),
-		extensionsv1alpha1.ResourceHealthRuleSpec{}.OpenAPIModelName():            schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref),
-		extensionsv1alpha1.ResourceTarget{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_ResourceTarget(ref),
+		extensionsv1alpha1.GlobalHealthRuleSet{}.OpenAPIModelName():               schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSet(ref),
+		extensionsv1alpha1.GlobalHealthRuleSetList{}.OpenAPIModelName():           schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetList(ref),
+		extensionsv1alpha1.GlobalHealthRuleSetSpec{}.OpenAPIModelName():           schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetSpec(ref),
+		extensionsv1alpha1.HealthRuleSet{}.OpenAPIModelName():                     schema_convoy_api_extensions_v1alpha1_HealthRuleSet(ref),
+		extensionsv1alpha1.HealthRuleSetList{}.OpenAPIModelName():                 schema_convoy_api_extensions_v1alpha1_HealthRuleSetList(ref),
+		extensionsv1alpha1.HealthRuleSetSpec{}.OpenAPIModelName():                 schema_convoy_api_extensions_v1alpha1_HealthRuleSetSpec(ref),
+		extensionsv1alpha1.RuleSpec{}.OpenAPIModelName():                          schema_convoy_api_extensions_v1alpha1_RuleSpec(ref),
 		sourcev1alpha1.GitRepository{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_GitRepository(ref),
 		sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName():                 schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
 		sourcev1alpha1.GitRepositoryList{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
@@ -3963,44 +3961,7 @@ func schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref common.ReferenceCallba
 	}
 }
 
-func schema_convoy_api_extensions_v1alpha1_HealthRule(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "HealthRule defines a health check rule.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"expression": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Expression is the inlined CEL expression to evaluate.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"progressDeadline": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ProgressDeadline is the maximum time to wait for the health check to complete.",
-							Ref:         ref(metav1.Duration{}.OpenAPIModelName()),
-						},
-					},
-					"messageExpression": {
-						SchemaProps: spec.SchemaProps{
-							Description: "MessageExpression is the inlined CEL expression to evaluate for the health check message.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"expression", "progressDeadline"},
-			},
-		},
-		Dependencies: []string{
-			metav1.Duration{}.OpenAPIModelName()},
-	}
-}
-
-func schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSet(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -4029,18 +3990,18 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRule(ref common.ReferenceCa
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref(extensionsv1alpha1.KindHealthRuleSpec{}.OpenAPIModelName()),
+							Ref:     ref(extensionsv1alpha1.GlobalHealthRuleSetSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			extensionsv1alpha1.KindHealthRuleSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.GlobalHealthRuleSetSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
-func schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -4073,7 +4034,7 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref common.Referen
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref(extensionsv1alpha1.KindHealthRule{}.OpenAPIModelName()),
+										Ref:     ref(extensionsv1alpha1.GlobalHealthRuleSet{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4084,93 +4045,40 @@ func schema_convoy_api_extensions_v1alpha1_KindHealthRuleList(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			extensionsv1alpha1.KindHealthRule{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.GlobalHealthRuleSet{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
-func schema_convoy_api_extensions_v1alpha1_KindHealthRuleSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "KindHealthRuleSpec defines the desired state of KindHealthRule",
+				Description: "GlobalHealthRuleSetSpec defines the desired state of GlobalHealthRuleSet",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"expression": {
+					"rules": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Expression is the inlined CEL expression to evaluate.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"progressDeadline": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ProgressDeadline is the maximum time to wait for the health check to complete.",
-							Ref:         ref(metav1.Duration{}.OpenAPIModelName()),
-						},
-					},
-					"messageExpression": {
-						SchemaProps: spec.SchemaProps{
-							Description: "MessageExpression is the inlined CEL expression to evaluate for the health check message.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"target": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Target is the target kind.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(extensionsv1alpha1.KindTarget{}.OpenAPIModelName()),
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref(extensionsv1alpha1.RuleSpec{}.OpenAPIModelName()),
+									},
+								},
+							},
 						},
 					},
 				},
-				Required: []string{"expression", "progressDeadline", "target"},
+				Required: []string{"rules"},
 			},
 		},
 		Dependencies: []string{
-			extensionsv1alpha1.KindTarget{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
+			extensionsv1alpha1.RuleSpec{}.OpenAPIModelName()},
 	}
 }
 
-func schema_convoy_api_extensions_v1alpha1_KindTarget(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "KindTarget defines the target kind by its group, kind and version.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"group": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Group is the group of the target kind.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is the target kind.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"version": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Version is the API version of the target kind.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"group", "kind", "version"},
-			},
-		},
-	}
-}
-
-func schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_extensions_v1alpha1_HealthRuleSet(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -4199,18 +4107,18 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRule(ref common.Referen
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref(extensionsv1alpha1.ResourceHealthRuleSpec{}.OpenAPIModelName()),
+							Ref:     ref(extensionsv1alpha1.HealthRuleSetSpec{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			extensionsv1alpha1.ResourceHealthRuleSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.HealthRuleSetSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
-func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_extensions_v1alpha1_HealthRuleSetList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -4243,7 +4151,7 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref common.Ref
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref(extensionsv1alpha1.ResourceHealthRule{}.OpenAPIModelName()),
+										Ref:     ref(extensionsv1alpha1.HealthRuleSet{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4254,29 +4162,75 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleList(ref common.Ref
 			},
 		},
 		Dependencies: []string{
-			extensionsv1alpha1.ResourceHealthRule{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
+			extensionsv1alpha1.HealthRuleSet{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
-func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_convoy_api_extensions_v1alpha1_HealthRuleSetSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ResourceHealthRuleSpec defines the desired state of ResourceHealthRule.",
+				Description: "HealthRuleSetSpec defines the desired state of HealthRuleSet",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"expression": {
+					"rules": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Expression is the inlined CEL expression to evaluate.",
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref(extensionsv1alpha1.RuleSpec{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"rules"},
+			},
+		},
+		Dependencies: []string{
+			extensionsv1alpha1.RuleSpec{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_extensions_v1alpha1_RuleSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "RuleSpec defines a health assessment rule along with target resources.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ApiVersion defines the target API group/version (ex. apps/v1) for resources being assessed.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
-					"progressDeadline": {
+					"resources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ProgressDeadline is the maximum time to wait for the health check to complete.",
-							Ref:         ref(metav1.Duration{}.OpenAPIModelName()),
+							Description: "Resources defines the list of resources of given group/version.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"ruleExpression": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RuleExpression is the inlined CEL expression to evaluate.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"messageExpression": {
@@ -4286,70 +4240,8 @@ func schema_convoy_api_extensions_v1alpha1_ResourceHealthRuleSpec(ref common.Ref
 							Format:      "",
 						},
 					},
-					"target": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Target is the target resource.",
-							Default:     map[string]interface{}{},
-							Ref:         ref(extensionsv1alpha1.ResourceTarget{}.OpenAPIModelName()),
-						},
-					},
 				},
-				Required: []string{"expression", "progressDeadline", "target"},
-			},
-		},
-		Dependencies: []string{
-			extensionsv1alpha1.ResourceTarget{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
-	}
-}
-
-func schema_convoy_api_extensions_v1alpha1_ResourceTarget(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
-				Properties: map[string]spec.Schema{
-					"group": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Group is the group of the target resource.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"kind": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Kind is the kind of the target resource.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"version": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Version is the API version of the target resource.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"name": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Name is the name of the target resource.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"namespace": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Namespace is the namespace of the target resource.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-				Required: []string{"group", "kind", "version", "name", "namespace"},
+				Required: []string{"apiVersion", "resources", "ruleExpression"},
 			},
 		},
 	}
