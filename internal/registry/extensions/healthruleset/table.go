@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kindhealthrule
+package healthruleset
 
 import (
 	"context"
@@ -34,37 +34,30 @@ func newTableConvertor() rest.TableConvertor { return tableConvertor{} }
 
 type tableConvertor struct{}
 
-// ConvertToTable renders KindHealthRule objects as a kubectl-style table.
+// ConvertToTable renders HealthRuleSet objects as a kubectl-style table.
 func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _ runtime.Object) (*metav1.Table, error) {
 	table := &metav1.Table{
 		ColumnDefinitions: []metav1.TableColumnDefinition{
-			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the KindHealthRule"},
-			{Name: "API Group", Type: helper.StringValueString, Description: "Targeted API group"},
-			{Name: "Kind", Type: helper.StringValueString, Description: "Targeted kind"},
-			{Name: "Version", Type: helper.StringValueString, Description: "Targeted API version"},
-			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the KindHealthRule was created"},
+			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the HealthRuleSet"},
+			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the HealthRuleSet was created"},
 		},
 	}
 
-	rowFor := func(r *extensions.KindHealthRule) metav1.TableRow {
+	rowFor := func(r *extensions.HealthRuleSet) metav1.TableRow {
 		age := "<unknown>"
 		if !r.CreationTimestamp.IsZero() {
 			age = duration.HumanDuration(time.Since(r.CreationTimestamp.Time))
 		}
-		group := r.Spec.Target.Group
-		if group == "" {
-			group = "<core>"
-		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, group, r.Spec.Target.Kind, r.Spec.Target.Version, age},
+			Cells:  []any{r.Name, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}
 
 	switch t := object.(type) {
-	case *extensions.KindHealthRule:
+	case *extensions.HealthRuleSet:
 		table.Rows = append(table.Rows, rowFor(t))
-	case *extensions.KindHealthRuleList:
+	case *extensions.HealthRuleSetList:
 		table.ResourceVersion = t.ResourceVersion
 		table.Continue = t.Continue
 		for i := range t.Items {

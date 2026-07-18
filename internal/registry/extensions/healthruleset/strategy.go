@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resourcehealthrule
+package healthruleset
 
 import (
 	"context"
@@ -33,12 +33,12 @@ import (
 	"github.com/kumodo-io/convoy/api/extensions"
 )
 
-// NewStrategy returns the create/update/delete strategy for ResourceHealthRule.
+// NewStrategy returns the create/update/delete strategy for HealthRuleSet.
 func NewStrategy(typer runtime.ObjectTyper) Strategy {
 	return Strategy{typer, names.SimpleNameGenerator}
 }
 
-// Strategy implements the behavior for ResourceHealthRule objects. The resource
+// Strategy implements the behavior for HealthRuleSet objects. The resource
 // is namespaced and has no status subresource.
 type Strategy struct {
 	runtime.ObjectTyper
@@ -51,27 +51,27 @@ var (
 	_ rest.RESTDeleteStrategy = Strategy{}
 )
 
-// NamespaceScoped returns true: ResourceHealthRule is namespaced.
+// NamespaceScoped returns true: HealthRuleSet is namespaced.
 func (Strategy) NamespaceScoped() bool { return true }
 
 // PrepareForCreate initializes the generation.
 func (Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
-	rule := obj.(*extensions.ResourceHealthRule)
+	rule := obj.(*extensions.HealthRuleSet)
 	rule.Generation = 1
 }
 
 // PrepareForUpdate bumps the generation when the spec changes.
 func (Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
-	newRule := obj.(*extensions.ResourceHealthRule)
-	oldRule := old.(*extensions.ResourceHealthRule)
+	newRule := obj.(*extensions.HealthRuleSet)
+	oldRule := old.(*extensions.HealthRuleSet)
 	if !apiequality.Semantic.DeepEqual(newRule.Spec, oldRule.Spec) {
 		newRule.Generation = oldRule.Generation + 1
 	}
 }
 
-// Validate validates a new ResourceHealthRule.
+// Validate validates a new HealthRuleSet.
 func (Strategy) Validate(_ context.Context, obj runtime.Object) field.ErrorList {
-	return extensions.ValidateResourceHealthRule(obj.(*extensions.ResourceHealthRule))
+	return extensions.ValidateHealthRuleSet(obj.(*extensions.HealthRuleSet))
 }
 
 // WarningsOnCreate returns no warnings.
@@ -86,25 +86,25 @@ func (Strategy) AllowCreateOnUpdate() bool { return false }
 // AllowUnconditionalUpdate disallows unconditional update.
 func (Strategy) AllowUnconditionalUpdate() bool { return false }
 
-// ValidateUpdate validates a ResourceHealthRule spec/metadata update.
+// ValidateUpdate validates a HealthRuleSet spec/metadata update.
 func (Strategy) ValidateUpdate(_ context.Context, obj, old runtime.Object) field.ErrorList {
-	return extensions.ValidateResourceHealthRuleUpdate(obj.(*extensions.ResourceHealthRule), old.(*extensions.ResourceHealthRule))
+	return extensions.ValidateHealthRuleSetUpdate(obj.(*extensions.HealthRuleSet), old.(*extensions.HealthRuleSet))
 }
 
 // WarningsOnUpdate returns no warnings.
 func (Strategy) WarningsOnUpdate(_ context.Context, _, _ runtime.Object) []string { return nil }
 
-// GetAttrs returns the labels and fields of a ResourceHealthRule for filtering.
+// GetAttrs returns the labels and fields of a HealthRuleSet for filtering.
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
-	rule, ok := obj.(*extensions.ResourceHealthRule)
+	rule, ok := obj.(*extensions.HealthRuleSet)
 	if !ok {
-		return nil, nil, fmt.Errorf("given object is not a ResourceHealthRule")
+		return nil, nil, fmt.Errorf("given object is not a HealthRuleSet")
 	}
 	return labels.Set(rule.Labels), selectableFields(rule), nil
 }
 
-// MatchResourceHealthRule returns a selection predicate for the given selectors.
-func MatchResourceHealthRule(label labels.Selector, fld fields.Selector) storage.SelectionPredicate {
+// MatchHealthRuleSet returns a selection predicate for the given selectors.
+func MatchHealthRuleSet(label labels.Selector, fld fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
 		Label:    label,
 		Field:    fld,
@@ -112,6 +112,6 @@ func MatchResourceHealthRule(label labels.Selector, fld fields.Selector) storage
 	}
 }
 
-func selectableFields(obj *extensions.ResourceHealthRule) fields.Set {
+func selectableFields(obj *extensions.HealthRuleSet) fields.Set {
 	return generic.ObjectMetaFieldsSet(&obj.ObjectMeta, true)
 }

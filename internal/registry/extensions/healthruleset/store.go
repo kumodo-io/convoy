@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resourcehealthrule
+package healthruleset
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,17 +25,17 @@ import (
 	"github.com/kumodo-io/convoy/internal/registry"
 )
 
-// NewREST returns RESTStorage for ResourceHealthRule. The resource has no status
+// NewREST returns RESTStorage for HealthRuleSet. The resource has no status
 // subresource, so only the main endpoint is returned.
 func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*registry.REST, error) {
 	strategy := NewStrategy(scheme)
 
 	store := &genericregistry.Store{
-		NewFunc:                   func() runtime.Object { return &extensions.ResourceHealthRule{} },
-		NewListFunc:               func() runtime.Object { return &extensions.ResourceHealthRuleList{} },
-		PredicateFunc:             MatchResourceHealthRule,
-		DefaultQualifiedResource:  extensions.Resource("resourcehealthrules"),
-		SingularQualifiedResource: extensions.Resource("resourcehealthrule"),
+		NewFunc:                   func() runtime.Object { return &extensions.HealthRuleSet{} },
+		NewListFunc:               func() runtime.Object { return &extensions.HealthRuleSetList{} },
+		PredicateFunc:             MatchHealthRuleSet,
+		DefaultQualifiedResource:  extensions.Resource("HealthRuleSets"),
+		SingularQualifiedResource: extensions.Resource("HealthRuleSet"),
 
 		CreateStrategy: strategy,
 		UpdateStrategy: strategy,

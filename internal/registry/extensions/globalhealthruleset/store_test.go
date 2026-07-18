@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kindhealthrule_test
+package globalhealthruleset_test
 
 import (
 	"testing"
@@ -28,14 +28,14 @@ import (
 	"github.com/kumodo-io/convoy/api/extensions"
 	extensionsinstall "github.com/kumodo-io/convoy/api/extensions/install"
 	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
-	kindhealthrulestorage "github.com/kumodo-io/convoy/internal/registry/extensions/kindhealthrule"
+	GlobalHealthRuleSetstorage "github.com/kumodo-io/convoy/internal/registry/extensions/globalhealthruleset"
 	"github.com/kumodo-io/convoy/internal/registry/registrytest"
 )
 
 func newStorage(t *testing.T) (*genericregistry.Store, *etcd3testing.EtcdTestServer) {
-	scheme, restOptions, server := registrytest.NewEtcdStorage(t, extensionsinstall.Install, extensionsv1alpha1.SchemeGroupVersion, extensions.Resource("kindhealthrules"))
+	scheme, restOptions, server := registrytest.NewEtcdStorage(t, extensionsinstall.Install, extensionsv1alpha1.SchemeGroupVersion, extensions.Resource("GlobalHealthRuleSets"))
 
-	restStorage, err := kindhealthrulestorage.NewREST(scheme, restOptions)
+	restStorage, err := GlobalHealthRuleSetstorage.NewREST(scheme, restOptions)
 	if err != nil {
 		server.Terminate(t)
 		t.Fatalf("unexpected error from NewREST: %v", err)
@@ -43,36 +43,35 @@ func newStorage(t *testing.T) (*genericregistry.Store, *etcd3testing.EtcdTestSer
 	return restStorage.Store, server
 }
 
-// validNewKindHealthRule returns a cluster-scoped rule (no namespace).
-func validNewKindHealthRule() *extensions.KindHealthRule {
-	return &extensions.KindHealthRule{
+// validNewGlobalHealthRuleSet returns a cluster-scoped rule (no namespace).
+func validNewGlobalHealthRuleSet() *extensions.GlobalHealthRuleSet {
+	return &extensions.GlobalHealthRuleSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "certificate-health",
 		},
-		Spec: extensions.KindHealthRuleSpec{
-			Target: extensions.KindTarget{
-				Group:   "cert-manager.io",
-				Kind:    "Certificate",
-				Version: "v1",
-			},
-			HealthRule: extensions.HealthRule{
-				Expression: `object.status.phase == "Ready" ? "Healthy" : "Progressing"`,
+		Spec: extensions.GlobalHealthRuleSetSpec{
+			Rules: []extensions.RuleSpec{
+				{
+					ApiVersion:     "cert-manager/v1",
+					Resources:      []string{"certificates"},
+					RuleExpression: `object.status.phase == "Ready" ? "Healthy" : "Progressing"`,
+				},
 			},
 		},
 	}
 }
 
 // khrMissingExpression is invalid: a CEL expression is required.
-func khrMissingExpression() *extensions.KindHealthRule {
-	r := validNewKindHealthRule()
-	r.Spec.Expression = ""
+func khrMissingExpression() *extensions.GlobalHealthRuleSet {
+	r := validNewGlobalHealthRuleSet()
+	r.Spec.Rules[0].RuleExpression = ""
 	return r
 }
 
-// khrMissingKind is invalid: target.kind is required.
-func khrMissingKind() *extensions.KindHealthRule {
-	r := validNewKindHealthRule()
-	r.Spec.Target.Kind = ""
+// khrMissingKind is invalid: api version is required.
+func khrMissingApiVersion() *extensions.GlobalHealthRuleSet {
+	r := validNewGlobalHealthRuleSet()
+	r.Spec.Rules[0].ApiVersion = ""
 	return r
 }
 
@@ -81,9 +80,9 @@ func TestCreate(t *testing.T) {
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage).ClusterScope()
 	test.TestCreate(
-		validNewKindHealthRule(),
+		validNewGlobalHealthRuleSet(),
 		khrMissingExpression(),
-		khrMissingKind(),
+		khrMissingApiVersion(),
 	)
 }
 
@@ -92,17 +91,17 @@ func TestUpdate(t *testing.T) {
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage).ClusterScope()
 	test.TestUpdate(
-		validNewKindHealthRule(),
+		validNewGlobalHealthRuleSet(),
 		// valid update: change the message expression
 		func(obj runtime.Object) runtime.Object {
-			r := obj.(*extensions.KindHealthRule)
-			r.Spec.MessageExpression = `"updated"`
+			r := obj.(*extensions.GlobalHealthRuleSet)
+			r.Spec.Rules[0].MessageExpression = `"updated"`
 			return r
 		},
 		// invalid update: clears the required expression
 		func(obj runtime.Object) runtime.Object {
-			r := obj.(*extensions.KindHealthRule)
-			r.Spec.Expression = ""
+			r := obj.(*extensions.GlobalHealthRuleSet)
+			r.Spec.Rules[0].RuleExpression = ""
 			return r
 		},
 	)
@@ -112,19 +111,19 @@ func TestGet(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage).ClusterScope()
-	test.TestGet(validNewKindHealthRule())
+	test.TestGet(validNewGlobalHealthRuleSet())
 }
 
 func TestList(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage).ClusterScope()
-	test.TestList(validNewKindHealthRule())
+	test.TestList(validNewGlobalHealthRuleSet())
 }
 
 func TestDelete(t *testing.T) {
 	storage, server := newStorage(t)
 	defer server.Terminate(t)
 	test := genericregistrytest.New(t, storage).ClusterScope()
-	test.TestDelete(validNewKindHealthRule())
+	test.TestDelete(validNewGlobalHealthRuleSet())
 }

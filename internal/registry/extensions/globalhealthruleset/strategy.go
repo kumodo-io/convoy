@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kindhealthrule
+package globalhealthruleset
 
 import (
 	"context"
@@ -33,12 +33,12 @@ import (
 	"github.com/kumodo-io/convoy/api/extensions"
 )
 
-// NewStrategy returns the create/update/delete strategy for KindHealthRule.
+// NewStrategy returns the create/update/delete strategy for GlobalHealthRuleSet.
 func NewStrategy(typer runtime.ObjectTyper) Strategy {
 	return Strategy{typer, names.SimpleNameGenerator}
 }
 
-// Strategy implements the behavior for KindHealthRule objects. KindHealthRule is
+// Strategy implements the behavior for GlobalHealthRuleSet objects. GlobalHealthRuleSet is
 // cluster-scoped and has no status subresource.
 type Strategy struct {
 	runtime.ObjectTyper
@@ -51,27 +51,27 @@ var (
 	_ rest.RESTDeleteStrategy = Strategy{}
 )
 
-// NamespaceScoped returns false: KindHealthRule is cluster-scoped.
+// NamespaceScoped returns false: GlobalHealthRuleSet is cluster-scoped.
 func (Strategy) NamespaceScoped() bool { return false }
 
 // PrepareForCreate initializes the generation.
 func (Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
-	rule := obj.(*extensions.KindHealthRule)
+	rule := obj.(*extensions.GlobalHealthRuleSet)
 	rule.Generation = 1
 }
 
 // PrepareForUpdate bumps the generation when the spec changes.
 func (Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
-	newRule := obj.(*extensions.KindHealthRule)
-	oldRule := old.(*extensions.KindHealthRule)
+	newRule := obj.(*extensions.GlobalHealthRuleSet)
+	oldRule := old.(*extensions.GlobalHealthRuleSet)
 	if !apiequality.Semantic.DeepEqual(newRule.Spec, oldRule.Spec) {
 		newRule.Generation = oldRule.Generation + 1
 	}
 }
 
-// Validate validates a new KindHealthRule.
+// Validate validates a new GlobalHealthRuleSet.
 func (Strategy) Validate(_ context.Context, obj runtime.Object) field.ErrorList {
-	return extensions.ValidateKindHealthRule(obj.(*extensions.KindHealthRule))
+	return extensions.ValidateGlobalHealthRuleSet(obj.(*extensions.GlobalHealthRuleSet))
 }
 
 // WarningsOnCreate returns no warnings.
@@ -86,25 +86,25 @@ func (Strategy) AllowCreateOnUpdate() bool { return false }
 // AllowUnconditionalUpdate disallows unconditional update.
 func (Strategy) AllowUnconditionalUpdate() bool { return false }
 
-// ValidateUpdate validates a KindHealthRule spec/metadata update.
+// ValidateUpdate validates a GlobalHealthRuleSet spec/metadata update.
 func (Strategy) ValidateUpdate(_ context.Context, obj, old runtime.Object) field.ErrorList {
-	return extensions.ValidateKindHealthRuleUpdate(obj.(*extensions.KindHealthRule), old.(*extensions.KindHealthRule))
+	return extensions.ValidateGlobalHealthRuleSetUpdate(obj.(*extensions.GlobalHealthRuleSet), old.(*extensions.GlobalHealthRuleSet))
 }
 
 // WarningsOnUpdate returns no warnings.
 func (Strategy) WarningsOnUpdate(_ context.Context, _, _ runtime.Object) []string { return nil }
 
-// GetAttrs returns the labels and fields of a KindHealthRule for filtering.
+// GetAttrs returns the labels and fields of a GlobalHealthRuleSet for filtering.
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
-	rule, ok := obj.(*extensions.KindHealthRule)
+	rule, ok := obj.(*extensions.GlobalHealthRuleSet)
 	if !ok {
-		return nil, nil, fmt.Errorf("given object is not a KindHealthRule")
+		return nil, nil, fmt.Errorf("given object is not a GlobalHealthRuleSet")
 	}
 	return labels.Set(rule.Labels), selectableFields(rule), nil
 }
 
-// MatchKindHealthRule returns a selection predicate for the given selectors.
-func MatchKindHealthRule(label labels.Selector, fld fields.Selector) storage.SelectionPredicate {
+// MatchGlobalHealthRuleSet returns a selection predicate for the given selectors.
+func MatchGlobalHealthRuleSet(label labels.Selector, fld fields.Selector) storage.SelectionPredicate {
 	return storage.SelectionPredicate{
 		Label:    label,
 		Field:    fld,
@@ -112,7 +112,7 @@ func MatchKindHealthRule(label labels.Selector, fld fields.Selector) storage.Sel
 	}
 }
 
-func selectableFields(obj *extensions.KindHealthRule) fields.Set {
+func selectableFields(obj *extensions.GlobalHealthRuleSet) fields.Set {
 	// cluster-scoped: no namespace field.
 	return generic.ObjectMetaFieldsSet(&obj.ObjectMeta, false)
 }

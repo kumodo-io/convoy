@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resourcehealthrule
+package globalhealthruleset
 
 import (
 	"context"
@@ -34,36 +34,30 @@ func newTableConvertor() rest.TableConvertor { return tableConvertor{} }
 
 type tableConvertor struct{}
 
-// ConvertToTable renders ResourceHealthRule objects as a kubectl-style table.
+// ConvertToTable renders GlobalHealthRuleSet objects as a kubectl-style table.
 func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _ runtime.Object) (*metav1.Table, error) {
 	table := &metav1.Table{
 		ColumnDefinitions: []metav1.TableColumnDefinition{
-			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the ResourceHealthRule"},
-			{Name: "Kind", Type: helper.StringValueString, Description: "Targeted kind"},
-			{Name: "Target", Type: helper.StringValueString, Description: "Targeted resource instance (namespace/name)"},
-			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the ResourceHealthRule was created"},
+			{Name: "Name", Type: helper.StringValueString, Format: "name", Description: "Name of the GlobalHealthRuleSet"},
+			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the GlobalHealthRuleSet was created"},
 		},
 	}
 
-	rowFor := func(r *extensions.ResourceHealthRule) metav1.TableRow {
+	rowFor := func(r *extensions.GlobalHealthRuleSet) metav1.TableRow {
 		age := "<unknown>"
 		if !r.CreationTimestamp.IsZero() {
 			age = duration.HumanDuration(time.Since(r.CreationTimestamp.Time))
 		}
-		target := r.Spec.Target.Name
-		if r.Spec.Target.Namespace != "" {
-			target = fmt.Sprintf("%s/%s", r.Spec.Target.Namespace, r.Spec.Target.Name)
-		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, r.Spec.Target.Kind, target, age},
+			Cells:  []any{r.Name, age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}
 
 	switch t := object.(type) {
-	case *extensions.ResourceHealthRule:
+	case *extensions.GlobalHealthRuleSet:
 		table.Rows = append(table.Rows, rowFor(t))
-	case *extensions.ResourceHealthRuleList:
+	case *extensions.GlobalHealthRuleSetList:
 		table.ResourceVersion = t.ResourceVersion
 		table.Continue = t.Continue
 		for i := range t.Items {

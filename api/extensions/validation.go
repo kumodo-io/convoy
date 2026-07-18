@@ -21,73 +21,53 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// ---------- KindHealthRule (cluster-scoped) ----------
+// ---------- GlobalHealthRuleSet (cluster-scoped) ----------
 
-// ValidateKindHealthRule validates a KindHealthRule on creation.
-func ValidateKindHealthRule(rule *KindHealthRule) field.ErrorList {
+// ValidateGlobalHealthRuleSet validates a GlobalHealthRuleSet on creation.
+func ValidateGlobalHealthRuleSet(rule *GlobalHealthRuleSet) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMeta(&rule.ObjectMeta, false, apivalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
-	allErrs = append(allErrs, validateKindTarget(&rule.Spec.Target, field.NewPath("spec", "target"))...)
-	allErrs = append(allErrs, validateHealthRule(&rule.Spec.HealthRule, field.NewPath("spec"))...)
+	for _, item := range rule.Spec.Rules {
+		allErrs = append(allErrs, validateHealthRule(item, field.NewPath("spec", "rules"))...)
+	}
 	return allErrs
 }
 
-// ValidateKindHealthRuleUpdate validates a KindHealthRule spec/metadata update.
-func ValidateKindHealthRuleUpdate(rule, old *KindHealthRule) field.ErrorList {
+// ValidateGlobalHealthRuleSetUpdate validates a GlobalHealthRuleSet spec/metadata update.
+func ValidateGlobalHealthRuleSetUpdate(rule, old *GlobalHealthRuleSet) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMetaUpdate(&rule.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))
-	allErrs = append(allErrs, validateKindTarget(&rule.Spec.Target, field.NewPath("spec", "target"))...)
-	allErrs = append(allErrs, validateHealthRule(&rule.Spec.HealthRule, field.NewPath("spec"))...)
-	return allErrs
-}
-
-func validateKindTarget(target *KindTarget, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-	// Group may be empty (the core group).
-	if target.Kind == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("kind"), ""))
-	}
-	if target.Version == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("version"), ""))
+	for _, item := range rule.Spec.Rules {
+		allErrs = append(allErrs, validateHealthRule(item, field.NewPath("spec", "rules"))...)
 	}
 	return allErrs
 }
 
-// ---------- ResourceHealthRule (namespaced) ----------
+// ---------- HealthRuleSet (namespaced) ----------
 
-// ValidateResourceHealthRule validates a ResourceHealthRule on creation.
-func ValidateResourceHealthRule(rule *ResourceHealthRule) field.ErrorList {
+// ValidateHealthRuleSet validates a HealthRuleSet on creation.
+func ValidateHealthRuleSet(rule *HealthRuleSet) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMeta(&rule.ObjectMeta, true, apivalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
-	allErrs = append(allErrs, validateResourceTarget(&rule.Spec.Target, field.NewPath("spec", "target"))...)
-	allErrs = append(allErrs, validateHealthRule(&rule.Spec.HealthRule, field.NewPath("spec"))...)
+	for _, item := range rule.Spec.Rules {
+		allErrs = append(allErrs, validateHealthRule(item, field.NewPath("spec", "rules"))...)
+	}
 	return allErrs
 }
 
-// ValidateResourceHealthRuleUpdate validates a ResourceHealthRule spec/metadata update.
-func ValidateResourceHealthRuleUpdate(rule, old *ResourceHealthRule) field.ErrorList {
+// ValidateHealthRuleSetUpdate validates a HealthRuleSet spec/metadata update.
+func ValidateHealthRuleSetUpdate(rule, old *HealthRuleSet) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMetaUpdate(&rule.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))
-	allErrs = append(allErrs, validateResourceTarget(&rule.Spec.Target, field.NewPath("spec", "target"))...)
-	allErrs = append(allErrs, validateHealthRule(&rule.Spec.HealthRule, field.NewPath("spec"))...)
-	return allErrs
-}
-
-func validateResourceTarget(target *ResourceTarget, fldPath *field.Path) field.ErrorList {
-	allErrs := field.ErrorList{}
-	// Group may be empty (the core group); Namespace may be empty for cluster-scoped targets.
-	if target.Kind == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("kind"), ""))
-	}
-	if target.Version == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("version"), ""))
-	}
-	if target.Name == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("name"), ""))
+	for _, item := range rule.Spec.Rules {
+		allErrs = append(allErrs, validateHealthRule(item, field.NewPath("spec", "rules"))...)
 	}
 	return allErrs
 }
 
-func validateHealthRule(rule *HealthRule, fldPath *field.Path) field.ErrorList {
+func validateHealthRule(rule RuleSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	if rule.Expression == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("expression"), "a CEL health expression is required"))
+	if rule.ApiVersion == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("apiVersion"), "api version required"))
+	}
+	if rule.RuleExpression == "" {
+		allErrs = append(allErrs, field.Required(fldPath.Child("ruleExpression"), "a CEL health expression is required"))
 	}
 	return allErrs
 }
