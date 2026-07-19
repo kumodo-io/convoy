@@ -42,13 +42,14 @@ import (
 // struct (rather than a long positional return) keeps NewREST's signature stable
 // as subresources are added and lets callers reference them by name.
 type Storage struct {
-	Release *registry.REST
-	Status  *StatusREST
-	Pin     *PinREST
-	Sync    *SyncREST
-	Preview *observerProxyREST
-	Diff    *observerProxyREST
-	Health  *observerProxyREST
+	Release   *registry.REST
+	Status    *StatusREST
+	Pin       *PinREST
+	Sync      *SyncREST
+	Mutations *MutationsREST
+	Preview   *observerProxyREST
+	Diff      *observerProxyREST
+	Health    *observerProxyREST
 }
 
 // Map returns the resource-path → storage entries to install in the API group's
@@ -58,9 +59,10 @@ func (s *Storage) Map() map[string]rest.Storage {
 	return map[string]rest.Storage{
 		"releases":         s.Release,
 		"releases/status":  s.Status,
-		"releases/pin":     s.Pin,
-		"releases/sync":    s.Sync,
-		"releases/preview": s.Preview,
+		"releases/pin":       s.Pin,
+		"releases/sync":      s.Sync,
+		"releases/mutations": s.Mutations,
+		"releases/preview":   s.Preview,
 		"releases/diff":    s.Diff,
 		"releases/health":  s.Health,
 	}
@@ -102,14 +104,20 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, obser
 	pinStore.UpdateStrategy = pinStrategy
 	pinStore.ResetFieldsStrategy = pinStrategy
 
+	mutationsStore := *store
+	mutationsStrategy := NewMutationsStrategy(strategy)
+	mutationsStore.UpdateStrategy = mutationsStrategy
+	mutationsStore.ResetFieldsStrategy = mutationsStrategy
+
 	return &Storage{
-		Release: &registry.REST{Store: store},
-		Status:  &StatusREST{store: &statusStore},
-		Pin:     &PinREST{store: &pinStore},
-		Sync:    &SyncREST{store: store},
-		Preview: &observerProxyREST{observerURL: observerURL, subresource: "preview"},
-		Diff:    &observerProxyREST{observerURL: observerURL, subresource: "diff"},
-		Health:  &observerProxyREST{observerURL: observerURL, subresource: "health"},
+		Release:   &registry.REST{Store: store},
+		Status:    &StatusREST{store: &statusStore},
+		Pin:       &PinREST{store: &pinStore},
+		Sync:      &SyncREST{store: store},
+		Mutations: &MutationsREST{store: &mutationsStore},
+		Preview:   &observerProxyREST{observerURL: observerURL, subresource: "preview"},
+		Diff:      &observerProxyREST{observerURL: observerURL, subresource: "diff"},
+		Health:    &observerProxyREST{observerURL: observerURL, subresource: "health"},
 	}, nil
 }
 
@@ -199,6 +207,49 @@ func (r *PinREST) Update(
 
 // ConvertToTable delegates to the store's table convertor.
 func (r *PinREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
+	return r.store.ConvertToTable(ctx, object, tableOptions)
+}
+
+// MutationsREST implements the /mutations subresource: GET reads the Release, PUT
+// replaces its top-level Mutations pipeline. Separately addressable so mutation
+// edits can be RBAC-scoped independently of the rest of the Release.
+type MutationsREST struct {
+	store *genericregistry.Store
+}
+
+var (
+	_ rest.Storage        = &MutationsREST{}
+	_ rest.Getter         = &MutationsREST{}
+	_ rest.Updater        = &MutationsREST{}
+	_ rest.TableConvertor = &MutationsREST{}
+)
+
+// New returns an empty Release.
+func (r *MutationsREST) New() runtime.Object { return &core.Release{} }
+
+// Destroy releases resources held by the store.
+func (r *MutationsREST) Destroy() {}
+
+// Get retrieves the Release (including its mutations).
+func (r *MutationsREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	return r.store.Get(ctx, name, options)
+}
+
+// Update replaces the Release's mutation pipeline.
+func (r *MutationsREST) Update(
+	ctx context.Context,
+	name string,
+	objInfo rest.UpdatedObjectInfo,
+	createValidation rest.ValidateObjectFunc,
+	updateValidation rest.ValidateObjectUpdateFunc,
+	forceAllowCreate bool,
+	options *metav1.UpdateOptions,
+) (runtime.Object, bool, error) {
+	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation, forceAllowCreate, options)
+}
+
+// ConvertToTable delegates to the store's table convertor.
+func (r *MutationsREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
 	return r.store.ConvertToTable(ctx, object, tableOptions)
 }
 
