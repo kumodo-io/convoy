@@ -44,7 +44,14 @@ func renderReleaseObjects(ctx context.Context, coordinator fetch.Coordinator, re
 	if err != nil {
 		return nil, err
 	}
-	return render.Render(rel.Spec.Content, res.Artifact, valueLayers)
+	objects, err := render.Render(rel.Spec.Content, res.Artifact, valueLayers)
+	if err != nil {
+		return nil, err
+	}
+	// Apply the same post-render mutation pipeline the controller-manager does, so
+	// drift/preview/health compare against the mutated desired state.
+	objects, _, err = render.ApplyMutations(ctx, objects, rel.Mutations, resolver, coordinator, rel.Namespace)
+	return objects, err
 }
 
 // resolveReleaseValues resolves the Helm value sources to ordered raw-YAML layers.
