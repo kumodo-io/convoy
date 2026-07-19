@@ -61,10 +61,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Core().V1alpha1().Releases().Informer()}, nil
 
 		// Group=extensions.convoy.kumodo.io, Version=v1alpha1
-	case extensionsv1alpha1.SchemeGroupVersion.WithResource("kindhealthrules"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Extensions().V1alpha1().KindHealthRules().Informer()}, nil
-	case extensionsv1alpha1.SchemeGroupVersion.WithResource("resourcehealthrules"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Extensions().V1alpha1().ResourceHealthRules().Informer()}, nil
+	case extensionsv1alpha1.SchemeGroupVersion.WithResource("globalhealthrulesets"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Extensions().V1alpha1().GlobalHealthRuleSets().Informer()}, nil
+	case extensionsv1alpha1.SchemeGroupVersion.WithResource("healthrulesets"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Extensions().V1alpha1().HealthRuleSets().Informer()}, nil
 
 		// Group=source.convoy.kumodo.io, Version=v1alpha1
 	case sourcev1alpha1.SchemeGroupVersion.WithResource("gitrepositories"):

@@ -7,3 +7,4 @@ resources:
   - apiservices.yaml
   - controller.yaml
   - observer.yaml
+  - health-rules.yaml

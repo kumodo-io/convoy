@@ -10,7 +10,7 @@ spec:
     type: ociRegistry
     ociRegistry:
       name: podinfo
-      namespace: convoy-system
+      namespace: default
       artifact:
         name: podinfo
         version: "6.10.2"

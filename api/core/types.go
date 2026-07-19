@@ -267,12 +267,13 @@ const (
 )
 
 type ReleaseSpec struct {
-	Source          ReleaseSourceSpec
-	Content         ReleaseContentSpec
-	ClusterRef      ReleaseClusterRefSpec
-	SyncPolicy      ReleaseSyncPolicySpec
-	RetentionPolicy ReleaseRetentionPolicySpec
-	DeletionPolicy  ReleaseDeletionPolicy
+	Source           ReleaseSourceSpec
+	Content          ReleaseContentSpec
+	ClusterRef       ReleaseClusterRefSpec
+	SyncPolicy       ReleaseSyncPolicySpec
+	RetentionPolicy  ReleaseRetentionPolicySpec
+	DeletionPolicy   ReleaseDeletionPolicy
+	HealthAssessment *ReleaseHealthAssessment
 }
 
 type ReleaseSourceSpec struct {
@@ -399,6 +400,12 @@ type ReleaseRetentionPolicySpec struct {
 type ReleaseDeletionPolicy struct {
 	KeepWorkloads             bool
 	BlockOnClusterUnreachable bool
+}
+
+type ReleaseHealthAssessment struct {
+	GlobalRuleSetSelector *metav1.LabelSelector `json:"globalRuleSetSelector,omitempty"`
+	LocalRuleSetSelector  *metav1.LabelSelector `json:"localRuleSetSelector,omitempty"`
+	Deadline              *metav1.Duration      `json:"deadline,omitempty"`
 }
 
 type ReleaseMutation struct {

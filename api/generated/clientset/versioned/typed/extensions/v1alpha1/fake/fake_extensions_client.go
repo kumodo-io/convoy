@@ -28,12 +28,12 @@ type FakeExtensionsV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeExtensionsV1alpha1) KindHealthRules() v1alpha1.KindHealthRuleInterface {
-	return newFakeKindHealthRules(c)
+func (c *FakeExtensionsV1alpha1) GlobalHealthRuleSets() v1alpha1.GlobalHealthRuleSetInterface {
+	return newFakeGlobalHealthRuleSets(c)
 }
 
-func (c *FakeExtensionsV1alpha1) ResourceHealthRules(namespace string) v1alpha1.ResourceHealthRuleInterface {
-	return newFakeResourceHealthRules(c, namespace)
+func (c *FakeExtensionsV1alpha1) HealthRuleSets(namespace string) v1alpha1.HealthRuleSetInterface {
+	return newFakeHealthRuleSets(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

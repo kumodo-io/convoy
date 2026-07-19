@@ -28,6 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
+
+	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
 // Serve runs the observer's HTTP server until ctx is cancelled. The apiserver
@@ -40,6 +42,8 @@ func (c *Controller) Serve(ctx context.Context, addr string) error {
 	mux.HandleFunc("GET /preview/{namespace}/{name}", c.handlePreview)
 	// Render + compare-to-live: the structured per-object drift.
 	mux.HandleFunc("GET /diff/{namespace}/{name}", c.handleDiff)
+	// Per-object health from the health loop's store.
+	mux.HandleFunc("GET /health/{namespace}/{name}", c.handleHealth)
 
 	srv := &http.Server{Addr: addr, Handler: mux}
 	go func() {
@@ -112,6 +116,37 @@ func (c *Controller) handleDiff(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
+	}
+
+	out, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(out)
+}
+
+// handleHealth returns the last assessed per-object health for a Release as JSON,
+// from the health loop's in-mem store. A Release that exists but has not been
+// assessed yet returns an empty result (200); a missing Release returns 404.
+func (c *Controller) handleHealth(w http.ResponseWriter, r *http.Request) {
+	namespace := r.PathValue("namespace")
+	name := r.PathValue("name")
+
+	if _, err := c.releaseLister.Releases(namespace).Get(name); apierrors.IsNotFound(err) {
+		http.Error(w, fmt.Sprintf("release %s/%s not found", namespace, name), http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	result := &healthresult.Result{Objects: []healthresult.ObjectHealth{}}
+	if c.healthResults != nil {
+		if stored := c.healthResults(namespace + "/" + name); stored != nil {
+			result = stored
+		}
 	}
 
 	out, err := json.Marshal(result)

@@ -44,6 +44,9 @@ type Client interface {
 	// Diff returns the structured per-object drift for a Release (JSON) via the
 	// /diff subresource.
 	Diff(ctx context.Context, namespace, name string) ([]byte, error)
+	// Health returns the per-object health for a Release (JSON) via the /health
+	// subresource.
+	Health(ctx context.Context, namespace, name string) ([]byte, error)
 }
 
 // restClient talks to the convoy aggregated apiserver. The /pin and /sync
@@ -126,6 +129,18 @@ func (c *restClient) Diff(ctx context.Context, namespace, name string) ([]byte, 
 		Resource("releases").
 		Name(name).
 		SubResource("diff").
+		Do(ctx).
+		Raw()
+}
+
+// Health GETs the /health subresource (proxied to the observer); the response
+// body is a healthresult.Result as JSON.
+func (c *restClient) Health(ctx context.Context, namespace, name string) ([]byte, error) {
+	return c.rc.Get().
+		Namespace(namespace).
+		Resource("releases").
+		Name(name).
+		SubResource("health").
 		Do(ctx).
 		Raw()
 }

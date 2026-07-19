@@ -120,6 +120,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseGitRepositoryRefSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositorySpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseGitRepositorySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHealthAssessment"):
+		return &applyconfigurationcorev1alpha1.ReleaseHealthAssessmentApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHealthSummary"):
 		return &applyconfigurationcorev1alpha1.ReleaseHealthSummaryApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHelmRegistryChartSpec"):
@@ -174,20 +176,16 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ValuesSourceSpecApplyConfiguration{}
 
 		// Group=extensions.convoy.kumodo.io, Version=v1alpha1
-	case extensionsv1alpha1.SchemeGroupVersion.WithKind("HealthRule"):
-		return &applyconfigurationextensionsv1alpha1.HealthRuleApplyConfiguration{}
-	case extensionsv1alpha1.SchemeGroupVersion.WithKind("KindHealthRule"):
-		return &applyconfigurationextensionsv1alpha1.KindHealthRuleApplyConfiguration{}
-	case extensionsv1alpha1.SchemeGroupVersion.WithKind("KindHealthRuleSpec"):
-		return &applyconfigurationextensionsv1alpha1.KindHealthRuleSpecApplyConfiguration{}
-	case extensionsv1alpha1.SchemeGroupVersion.WithKind("KindTarget"):
-		return &applyconfigurationextensionsv1alpha1.KindTargetApplyConfiguration{}
-	case extensionsv1alpha1.SchemeGroupVersion.WithKind("ResourceHealthRule"):
-		return &applyconfigurationextensionsv1alpha1.ResourceHealthRuleApplyConfiguration{}
-	case extensionsv1alpha1.SchemeGroupVersion.WithKind("ResourceHealthRuleSpec"):
-		return &applyconfigurationextensionsv1alpha1.ResourceHealthRuleSpecApplyConfiguration{}
-	case extensionsv1alpha1.SchemeGroupVersion.WithKind("ResourceTarget"):
-		return &applyconfigurationextensionsv1alpha1.ResourceTargetApplyConfiguration{}
+	case extensionsv1alpha1.SchemeGroupVersion.WithKind("GlobalHealthRuleSet"):
+		return &applyconfigurationextensionsv1alpha1.GlobalHealthRuleSetApplyConfiguration{}
+	case extensionsv1alpha1.SchemeGroupVersion.WithKind("GlobalHealthRuleSetSpec"):
+		return &applyconfigurationextensionsv1alpha1.GlobalHealthRuleSetSpecApplyConfiguration{}
+	case extensionsv1alpha1.SchemeGroupVersion.WithKind("HealthRuleSet"):
+		return &applyconfigurationextensionsv1alpha1.HealthRuleSetApplyConfiguration{}
+	case extensionsv1alpha1.SchemeGroupVersion.WithKind("HealthRuleSetSpec"):
+		return &applyconfigurationextensionsv1alpha1.HealthRuleSetSpecApplyConfiguration{}
+	case extensionsv1alpha1.SchemeGroupVersion.WithKind("RuleSpec"):
+		return &applyconfigurationextensionsv1alpha1.RuleSpecApplyConfiguration{}
 
 		// Group=source.convoy.kumodo.io, Version=v1alpha1
 	case sourcev1alpha1.SchemeGroupVersion.WithKind("GitRepository"):

@@ -346,6 +346,10 @@ type ReleaseSpec struct {
 
 	// DeletionPolicy defines the deletion policy for Release.
 	DeletionPolicy ReleaseDeletionPolicy `json:"deletionPolicy"`
+
+	// HealthAssessment defines the health assessment configuration
+	// for resources delivered by the Release.
+	HealthAssessment *ReleaseHealthAssessment `json:"healthAssessment,omitempty"`
 }
 
 // ReleaseSourceSpec defines the source for the release.
@@ -613,6 +617,14 @@ type ReleaseDeletionPolicy struct {
 	// deletion in case the KeepWorkloads flag is set to false and the target
 	// Cluster is unreachable.
 	BlockOnClusterUnreachable bool `json:"blockOnClusterUnreachable"`
+}
+
+// ReleaseHealthAssessment defines selectors to get the health rules along
+// with assessment deadline anchor.
+type ReleaseHealthAssessment struct {
+	GlobalRuleSetSelector *metav1.LabelSelector `json:"globalRuleSetSelector,omitempty"`
+	LocalRuleSetSelector  *metav1.LabelSelector `json:"localRuleSetSelector,omitempty"`
+	Deadline              *metav1.Duration      `json:"deadline,omitempty"`
 }
 
 // ReleaseMutation defines the desired state of the ReleaseMutation.

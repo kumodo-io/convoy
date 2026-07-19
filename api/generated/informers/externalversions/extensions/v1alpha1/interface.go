@@ -24,10 +24,10 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// KindHealthRules returns a KindHealthRuleInformer.
-	KindHealthRules() KindHealthRuleInformer
-	// ResourceHealthRules returns a ResourceHealthRuleInformer.
-	ResourceHealthRules() ResourceHealthRuleInformer
+	// GlobalHealthRuleSets returns a GlobalHealthRuleSetInformer.
+	GlobalHealthRuleSets() GlobalHealthRuleSetInformer
+	// HealthRuleSets returns a HealthRuleSetInformer.
+	HealthRuleSets() HealthRuleSetInformer
 }
 
 type version struct {
@@ -41,12 +41,12 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// KindHealthRules returns a KindHealthRuleInformer.
-func (v *version) KindHealthRules() KindHealthRuleInformer {
-	return &kindHealthRuleInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+// GlobalHealthRuleSets returns a GlobalHealthRuleSetInformer.
+func (v *version) GlobalHealthRuleSets() GlobalHealthRuleSetInformer {
+	return &globalHealthRuleSetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// ResourceHealthRules returns a ResourceHealthRuleInformer.
-func (v *version) ResourceHealthRules() ResourceHealthRuleInformer {
-	return &resourceHealthRuleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// HealthRuleSets returns a HealthRuleSetInformer.
+func (v *version) HealthRuleSets() HealthRuleSetInformer {
+	return &healthRuleSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

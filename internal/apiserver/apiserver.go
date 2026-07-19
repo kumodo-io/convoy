@@ -35,8 +35,8 @@ import (
 	sourceinstall "github.com/kumodo-io/convoy/api/source/install"
 	clusterstorage "github.com/kumodo-io/convoy/internal/registry/core/cluster"
 	releasestorage "github.com/kumodo-io/convoy/internal/registry/core/release"
-	kindhealthrulestorage "github.com/kumodo-io/convoy/internal/registry/extensions/kindhealthrule"
-	resourcehealthrulestorage "github.com/kumodo-io/convoy/internal/registry/extensions/resourcehealthrule"
+	globalhealthrulesetstorage "github.com/kumodo-io/convoy/internal/registry/extensions/globalhealthruleset"
+	healthrulesetstorage "github.com/kumodo-io/convoy/internal/registry/extensions/healthruleset"
 	gitrepositorystorage "github.com/kumodo-io/convoy/internal/registry/source/gitrepository"
 	helmregistrystorage "github.com/kumodo-io/convoy/internal/registry/source/helmregistry"
 	ociregistrystorage "github.com/kumodo-io/convoy/internal/registry/source/ociregistry"
@@ -160,17 +160,17 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	// extensions API group
 	extensionsGroup := genericapiserver.NewDefaultAPIGroupInfo(extensions.GroupName, Scheme, metav1.ParameterCodec, Codecs)
 
-	kindHealthRuleREST, err := kindhealthrulestorage.NewREST(Scheme, optsGetter)
+	globalHealthRuleSetREST, err := globalhealthrulesetstorage.NewREST(Scheme, optsGetter)
 	if err != nil {
 		return nil, err
 	}
-	resourceHealthRuleREST, err := resourcehealthrulestorage.NewREST(Scheme, optsGetter)
+	healthRuleSetREST, err := healthrulesetstorage.NewREST(Scheme, optsGetter)
 	if err != nil {
 		return nil, err
 	}
 	extensionsGroup.VersionedResourcesStorageMap["v1alpha1"] = map[string]rest.Storage{
-		"kindhealthrules":     kindHealthRuleREST,
-		"resourcehealthrules": resourceHealthRuleREST,
+		"globalhealthrulesets": globalHealthRuleSetREST,
+		"healthrulesets":       healthRuleSetREST,
 	}
 
 	if err := s.GenericAPIServer.InstallAPIGroups(&coreGroup, &sourceGroup, &extensionsGroup); err != nil {

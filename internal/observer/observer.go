@@ -42,7 +42,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/fetch"
-	"github.com/kumodo-io/convoy/internal/render"
+	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
 // Controller runs the drift-detection loop, keyed on Release. It embeds the
@@ -62,6 +62,16 @@ type Controller struct {
 	// without a live target cluster.
 	assessFn func(context.Context, *corev1alpha1.Release) (bool, error)
 	syncFn   func(context.Context, *corev1alpha1.Release) error
+	// healthResults, when set, serves the /health subresource from the health
+	// loop's store. The observer's HTTP server hosts /preview, /diff (drift) and
+	// /health (health) together; the manager wires this to the HealthController.
+	healthResults func(releaseKey string) *healthresult.Result
+}
+
+// SetHealthResults wires the /health lookup (the HealthController's store) into
+// the observer's HTTP server.
+func (c *Controller) SetHealthResults(fn func(releaseKey string) *healthresult.Result) {
+	c.healthResults = fn
 }
 
 // NewController wires an observer Controller to a Release informer. It renders
@@ -187,30 +197,9 @@ func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diff
 	return computeDiff(ctx, dyn, mapper, objects)
 }
 
-// renderDesired fetches the Release's source and renders its desired objects. It
-// is the render-only path shared by the drift loop (which then compares to live)
-// and the /preview server (which returns it directly).
+// renderDesired renders the Release's desired objects via the shared helper.
 func (c *Controller) renderDesired(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, error) {
-	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source, rel.Namespace)
-	if err != nil {
-		return nil, err
-	}
-	if !res.Ready {
-		return nil, fmt.Errorf("source not ready: %s", res.Message)
-	}
-	valueLayers, err := c.resolveValueLayers(ctx, rel)
-	if err != nil {
-		return nil, err
-	}
-	return render.Render(rel.Spec.Content, res.Artifact, valueLayers)
-}
-
-// resolveValueLayers resolves the Helm value sources to ordered raw-YAML layers.
-func (c *Controller) resolveValueLayers(ctx context.Context, rel *corev1alpha1.Release) ([][]byte, error) {
-	if rel.Spec.Content.Type != corev1alpha1.ReleaseContentTypeHelm || rel.Spec.Content.Helm == nil {
-		return nil, nil
-	}
-	return render.ResolveValues(ctx, rel.Spec.Content.Helm.Values, rel.Namespace, c.resolver, c.coordinator)
+	return renderReleaseObjects(ctx, c.coordinator, c.resolver, rel)
 }
 
 // scheduleRecheck schedules the next drift re-check at the Release's sync

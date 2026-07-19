@@ -157,6 +157,11 @@ func (in ReleaseGitRepositorySpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseHealthAssessment) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseHealthAssessment"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseHealthSummary) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseHealthSummary"
 }

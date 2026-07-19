@@ -18,6 +18,6 @@ limitations under the License.
 
 package v1alpha1
 
-type KindHealthRuleExpansion interface{}
+type GlobalHealthRuleSetExpansion interface{}
 
-type ResourceHealthRuleExpansion interface{}
+type HealthRuleSetExpansion interface{}

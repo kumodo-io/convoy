@@ -24,10 +24,10 @@ func Resource(resource string) schema.GroupResource {
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(
 		SchemeGroupVersion,
-		&KindHealthRule{},
-		&KindHealthRuleList{},
-		&ResourceHealthRule{},
-		&ResourceHealthRuleList{},
+		&HealthRuleSet{},
+		&HealthRuleSetList{},
+		&GlobalHealthRuleSet{},
+		&GlobalHealthRuleSetList{},
 	)
 
 	return nil

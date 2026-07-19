@@ -28,6 +28,7 @@ import (
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/diffresult"
+	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
 const ConfigMapKind = "ConfigMap"
@@ -49,6 +50,9 @@ type fakeClient struct {
 	diffCalled     bool
 	diffPayload    []byte
 	diffErr        error
+	healthCalled   bool
+	healthPayload  []byte
+	healthErr      error
 }
 
 func (f *fakeClient) GetRelease(_ context.Context, _, _ string) (*corev1alpha1.Release, error) {
@@ -95,6 +99,14 @@ func (f *fakeClient) Diff(_ context.Context, _, _ string) ([]byte, error) {
 		return nil, f.diffErr
 	}
 	return f.diffPayload, nil
+}
+
+func (f *fakeClient) Health(_ context.Context, _, _ string) ([]byte, error) {
+	f.healthCalled = true
+	if f.healthErr != nil {
+		return nil, f.healthErr
+	}
+	return f.healthPayload, nil
 }
 
 func releaseWithRender(renderRef string) *corev1alpha1.Release {
@@ -263,6 +275,43 @@ func TestRunDiff_InSync(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "in sync") {
 		t.Errorf("output = %q, want it to report in sync", out.String())
+	}
+}
+
+func TestRunHealth_HumanReadable(t *testing.T) {
+	result := healthresult.Result{Objects: []healthresult.ObjectHealth{
+		{Kind: "Deployment", Namespace: "ns", Name: "app", State: healthresult.StateDegraded, Message: "0/3 available"},
+		{Kind: "Service", Namespace: "ns", Name: "svc", State: healthresult.StateHealthy},
+	}}
+	raw, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), healthPayload: raw}
+	var out bytes.Buffer
+
+	if err := runHealth(context.Background(), &out, f, "ns", "r1", ""); err != nil {
+		t.Fatalf("runHealth: %v", err)
+	}
+	s := out.String()
+	if !strings.Contains(s, "Deployment ns/app: Degraded  (0/3 available)") {
+		t.Errorf("output missing degraded detail:\n%s", s)
+	}
+	if !strings.Contains(s, "Service ns/svc: Healthy") {
+		t.Errorf("output missing healthy line:\n%s", s)
+	}
+}
+
+func TestRunHealth_NotAssessed(t *testing.T) {
+	raw, _ := json.Marshal(healthresult.Result{Objects: []healthresult.ObjectHealth{}})
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), healthPayload: raw}
+	var out bytes.Buffer
+
+	if err := runHealth(context.Background(), &out, f, "ns", "r1", ""); err != nil {
+		t.Fatalf("runHealth: %v", err)
+	}
+	if !strings.Contains(out.String(), "not assessed") {
+		t.Errorf("output = %q, want 'not assessed'", out.String())
 	}
 }
 
