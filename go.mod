@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	github.com/cashapp/hermit v0.52.1
+	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/go-git/go-billy/v5 v5.9.0
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/golangci/golangci-lint/v2 v2.12.2
