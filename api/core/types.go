@@ -155,7 +155,6 @@ const (
 type ReleaseMutationType string
 
 const (
-	MutationTypeHelmValues          ReleaseMutationType = "helmValues"
 	MutationTypeGoTemplate          ReleaseMutationType = "goTemplate"
 	MutationTypeJsonPatch           ReleaseMutationType = "jsonPatch"
 	MutationTypeStrategicMergePatch ReleaseMutationType = "strategicMergePatch"
@@ -403,16 +402,25 @@ type ReleaseDeletionPolicy struct {
 }
 
 type ReleaseHealthAssessment struct {
-	GlobalRuleSetSelector *metav1.LabelSelector `json:"globalRuleSetSelector,omitempty"`
-	LocalRuleSetSelector  *metav1.LabelSelector `json:"localRuleSetSelector,omitempty"`
-	Deadline              *metav1.Duration      `json:"deadline,omitempty"`
+	GlobalRuleSetSelector *metav1.LabelSelector
+	LocalRuleSetSelector  *metav1.LabelSelector
+	Deadline              *metav1.Duration
 }
 
 type ReleaseMutation struct {
 	Type    ReleaseMutationType
+	Target  ReleaseMutationTarget
 	Inline  []string
 	From    *ReleaseMutationFromSpec
 	Patches []ReleaseMutationPatchSpec
+}
+
+type ReleaseMutationTarget struct {
+	Group     string
+	Version   string
+	Kind      string
+	Name      string
+	Namespace string
 }
 
 type ReleaseMutationFromSpec struct {

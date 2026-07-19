@@ -202,6 +202,11 @@ func (in ReleaseMutationPatchSpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseMutationTarget) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseMutationTarget"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseOCIRegistryArtifactSpec) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseOCIRegistryArtifactSpec"
 }
