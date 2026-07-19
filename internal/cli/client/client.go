@@ -47,6 +47,9 @@ type Client interface {
 	// Health returns the per-object health for a Release (JSON) via the /health
 	// subresource.
 	Health(ctx context.Context, namespace, name string) ([]byte, error)
+	// SetMutations replaces the Release's mutation pipeline via the /mutations
+	// subresource.
+	SetMutations(ctx context.Context, namespace, name string, mutations []corev1alpha1.ReleaseMutation) (*corev1alpha1.Release, error)
 }
 
 // restClient talks to the convoy aggregated apiserver. The /pin and /sync
@@ -143,6 +146,30 @@ func (c *restClient) Health(ctx context.Context, namespace, name string) ([]byte
 		SubResource("health").
 		Do(ctx).
 		Raw()
+}
+
+// SetMutations GET-modify-PUTs the Release through the /mutations subresource. The
+// Updater there ignores everything but .mutations, so sending the whole object is
+// safe.
+func (c *restClient) SetMutations(ctx context.Context, namespace, name string, mutations []corev1alpha1.ReleaseMutation) (*corev1alpha1.Release, error) {
+	rel, err := c.GetRelease(ctx, namespace, name)
+	if err != nil {
+		return nil, err
+	}
+	rel.Mutations = mutations
+	result := &corev1alpha1.Release{}
+	err = c.rc.Put().
+		Namespace(namespace).
+		Resource("releases").
+		Name(name).
+		SubResource("mutations").
+		Body(rel).
+		Do(ctx).
+		Into(result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // ConfigFlags hold the standard kubeconfig-selection flags and build a Client.

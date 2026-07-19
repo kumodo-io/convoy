@@ -57,14 +57,14 @@ type Storage struct {
 // subresource paths, so adding a subresource touches only this file.
 func (s *Storage) Map() map[string]rest.Storage {
 	return map[string]rest.Storage{
-		"releases":         s.Release,
-		"releases/status":  s.Status,
+		"releases":           s.Release,
+		"releases/status":    s.Status,
 		"releases/pin":       s.Pin,
 		"releases/sync":      s.Sync,
 		"releases/mutations": s.Mutations,
 		"releases/preview":   s.Preview,
-		"releases/diff":    s.Diff,
-		"releases/health":  s.Health,
+		"releases/diff":      s.Diff,
+		"releases/health":    s.Health,
 	}
 }
 
