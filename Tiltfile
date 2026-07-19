@@ -84,3 +84,16 @@ k8s_resource(
     resource_deps=['convoy-compile', 'convoy-apiserver'],
     labels=['convoy'],
 )
+
+# Default health rules are an instance of an aggregated kind (GlobalHealthRuleSet),
+# so they can't be applied until the apiserver serves the extensions API. Applied
+# out-of-band (not via k8s_yaml) after waiting for the APIService to be Available.
+local_resource(
+    'convoy-health-rules',
+    cmd='bin/kubectl --context kind-convoy-dev wait --for=condition=Available --timeout=120s ' +
+        'apiservice/v1alpha1.extensions.convoy.kumodo.io && ' +
+        'bin/kubectl --context kind-convoy-dev apply -f dev/deploy/health-rules.yaml',
+    deps=['dev/deploy/health-rules.yaml'],
+    resource_deps=['convoy-apiserver'],
+    labels=['convoy'],
+)

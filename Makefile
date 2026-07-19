@@ -223,6 +223,9 @@ kind-deploy: image kind kubectl
 		apiservice/v1alpha1.core.convoy.kumodo.io \
 		apiservice/v1alpha1.source.convoy.kumodo.io \
 		apiservice/v1alpha1.extensions.convoy.kumodo.io
+	# Default health rules are an aggregated CR, so apply them only now that the
+	# extensions API is served.
+	$(TOOLS_BIN)/kubectl apply -f dev/deploy/health-rules.yaml
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-controller-manager --timeout=120s
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-observer --timeout=120s
 

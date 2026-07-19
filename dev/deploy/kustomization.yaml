@@ -7,4 +7,7 @@ resources:
   - apiservices.yaml
   - controller.yaml
   - observer.yaml
-  - health-rules.yaml
+  # health-rules.yaml is intentionally NOT here: it is an instance of an
+  # aggregated kind (GlobalHealthRuleSet), so it can only be applied after the
+  # apiserver is serving. It is applied separately once the APIService is
+  # Available (see the Makefile kind-deploy target and the Tiltfile).
