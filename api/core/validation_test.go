@@ -27,6 +27,7 @@ import (
 const (
 	dummyReleaseNamespace = "team-a"
 	dummyInfraNamespace   = "infra"
+	deploymentKind        = "Deployment"
 )
 
 // validRelease builds a Release in namespace "team-a" with a git source and
@@ -126,7 +127,7 @@ func TestValidateReleaseUpdate_CrossNamespaceRejected(t *testing.T) {
 func jsonPatchMutation() ReleaseMutation {
 	return ReleaseMutation{
 		Type:    MutationTypeJsonPatch,
-		Target:  ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: "Deployment"},
+		Target:  ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: deploymentKind},
 		Patches: []ReleaseMutationPatchSpec{{Op: JSONPatchOperationReplace, Path: "/spec/replicas"}},
 	}
 }
@@ -152,7 +153,7 @@ func TestValidateReleaseMutations_JsonPatchRequiresPatches(t *testing.T) {
 
 func TestValidateReleaseMutations_UnknownTypeRejected(t *testing.T) {
 	rel := validRelease()
-	rel.Mutations = []ReleaseMutation{{Type: "bogus", Target: ReleaseMutationTarget{Kind: "Deployment"}}}
+	rel.Mutations = []ReleaseMutation{{Type: "bogus", Target: ReleaseMutationTarget{Kind: deploymentKind}}}
 	errs := ValidateReleaseMutations(rel)
 	if len(errs) == 0 {
 		t.Error("unknown mutation type not rejected")
@@ -163,7 +164,7 @@ func TestValidateReleaseMutations_CrossNamespaceFromRejected(t *testing.T) {
 	rel := validRelease()
 	rel.Mutations = []ReleaseMutation{{
 		Type:   MutationTypeStrategicMergePatch,
-		Target: ReleaseMutationTarget{Kind: "Deployment"},
+		Target: ReleaseMutationTarget{Kind: deploymentKind},
 		From:   &ReleaseMutationFromSpec{Kind: "ConfigMap", Name: "patches", Namespace: dummyInfraNamespace, Path: "patch.yaml"},
 	}}
 	errs := ValidateReleaseMutations(rel)

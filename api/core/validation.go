@@ -149,7 +149,7 @@ func ValidateRelease(release *Release) field.ErrorList {
 // validateReleaseMutationList validates each mutation's type/content (without the
 // same-namespace check, which validateSameNamespaceRefs already covers).
 func validateReleaseMutationList(release *Release) field.ErrorList {
-	allErrs := field.ErrorList{}
+	allErrs := make(field.ErrorList, 0, len(release.Mutations))
 	path := field.NewPath("mutations")
 	for i := range release.Mutations {
 		allErrs = append(allErrs, validateReleaseMutation(&release.Mutations[i], path.Index(i))...)
@@ -262,7 +262,7 @@ func ValidateReleaseStatusUpdate(release, old *Release) field.ErrorList {
 // the content that type requires. It also re-checks the same-namespace guard on
 // mutation From references.
 func ValidateReleaseMutations(release *Release) field.ErrorList {
-	allErrs := field.ErrorList{}
+	allErrs := make(field.ErrorList, 0, len(release.Mutations))
 	path := field.NewPath("mutations")
 	for i := range release.Mutations {
 		allErrs = append(allErrs, validateReleaseMutation(&release.Mutations[i], path.Index(i))...)

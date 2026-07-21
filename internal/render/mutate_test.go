@@ -27,17 +27,29 @@ import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
-func deployment(name string, replicas int64) *unstructured.Unstructured {
+const (
+	unstructuredApiVersion = "apiVersion"
+	unstructuredKind       = "kind"
+	unstructuredMetadata   = "metadata"
+
+	metadataName      = "name"
+	metadataNamespace = "namespace"
+
+	appsv1ApiVersion = "apps/v1"
+	deploymentKind   = "Deployment"
+)
+
+func deployment(name string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "apps/v1",
-		"kind":       "Deployment",
-		"metadata":   map[string]any{"name": name, "namespace": "ns"},
+		unstructuredApiVersion: appsv1ApiVersion,
+		unstructuredKind:       deploymentKind,
+		unstructuredMetadata:   map[string]any{metadataName: name, metadataNamespace: "ns"},
 		"spec": map[string]any{
-			"replicas": replicas,
+			"replicas": 1,
 			"template": map[string]any{"spec": map[string]any{
 				"containers": []any{
-					map[string]any{"name": "app", "image": "app:1"},
-					map[string]any{"name": "sidecar", "image": "sc:1"},
+					map[string]any{metadataName: "app", "image": "app:1"},
+					map[string]any{metadataName: "sidecar", "image": "sc:1"},
 				},
 			}},
 		},
@@ -46,17 +58,18 @@ func deployment(name string, replicas int64) *unstructured.Unstructured {
 
 func configMap(name string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "v1", "kind": "ConfigMap",
-		"metadata": map[string]any{"name": name, "namespace": "ns"},
+		unstructuredApiVersion: "v1",
+		unstructuredKind:       "ConfigMap",
+		unstructuredMetadata:   map[string]any{metadataName: name, metadataNamespace: "ns"},
 	}}
 }
 
 func deploymentTarget(name string) corev1alpha1.ReleaseMutationTarget {
-	return corev1alpha1.ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: "Deployment", Name: name}
+	return corev1alpha1.ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: deploymentKind, Name: name}
 }
 
 func TestApplyMutations_JSONPatchTargeted(t *testing.T) {
-	objs := []*unstructured.Unstructured{deployment("web", 1), configMap("cfg")}
+	objs := []*unstructured.Unstructured{deployment("web"), configMap("cfg")}
 	m := corev1alpha1.ReleaseMutation{
 		Type:   corev1alpha1.MutationTypeJsonPatch,
 		Target: deploymentTarget("web"),
@@ -82,11 +95,11 @@ func TestApplyMutations_JSONPatchTargeted(t *testing.T) {
 }
 
 func TestApplyMutations_WildcardTargetMatchesKind(t *testing.T) {
-	objs := []*unstructured.Unstructured{deployment("a", 1), deployment("b", 1)}
+	objs := []*unstructured.Unstructured{deployment("a"), deployment("b")}
 	// No Name → matches all Deployments.
 	m := corev1alpha1.ReleaseMutation{
 		Type:   corev1alpha1.MutationTypeJsonPatch,
-		Target: corev1alpha1.ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: "Deployment"},
+		Target: corev1alpha1.ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: deploymentKind},
 		Patches: []corev1alpha1.ReleaseMutationPatchSpec{
 			{Op: corev1alpha1.JSONPatchOperationReplace, Path: "/spec/replicas", Value: &apiextensionsv1.JSON{Raw: []byte("5")}},
 		},
@@ -103,7 +116,7 @@ func TestApplyMutations_WildcardTargetMatchesKind(t *testing.T) {
 }
 
 func TestApplyMutations_StrategicMergeMergesListByKey(t *testing.T) {
-	objs := []*unstructured.Unstructured{deployment("web", 1)}
+	objs := []*unstructured.Unstructured{deployment("web")}
 	// Strategic merge updates the "app" container by name, leaving "sidecar" intact
 	// — a plain JSON merge would replace the whole list.
 	m := corev1alpha1.ReleaseMutation{
@@ -128,7 +141,7 @@ func TestApplyMutations_StrategicMergeMergesListByKey(t *testing.T) {
 	byName := map[string]string{}
 	for _, c := range containers {
 		cm := c.(map[string]any)
-		byName[cm["name"].(string)], _ = cm["image"].(string)
+		byName[cm[metadataName].(string)], _ = cm["image"].(string)
 	}
 	if byName["app"] != "app:2" || byName["sidecar"] != "sc:1" {
 		t.Errorf("images = %v, want app:2 + sidecar sc:1", byName)
@@ -138,8 +151,9 @@ func TestApplyMutations_StrategicMergeMergesListByKey(t *testing.T) {
 func TestApplyMutations_StrategicMergeRejectsUnregisteredKind(t *testing.T) {
 	// A CRD kind isn't in the built-in scheme → strategic merge is rejected.
 	cr := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "example.com/v1", "kind": "Widget",
-		"metadata": map[string]any{"name": "w", "namespace": "ns"},
+		unstructuredApiVersion: "example.com/v1",
+		unstructuredKind:       "Widget",
+		unstructuredMetadata:   map[string]any{metadataName: "w", metadataNamespace: "ns"},
 	}}
 	m := corev1alpha1.ReleaseMutation{
 		Type:   corev1alpha1.MutationTypeStrategicMergePatch,
@@ -153,14 +167,14 @@ func TestApplyMutations_StrategicMergeRejectsUnregisteredKind(t *testing.T) {
 
 func TestApplyMutations_UnsupportedTypeIsErrUnsupported(t *testing.T) {
 	m := corev1alpha1.ReleaseMutation{Type: corev1alpha1.MutationTypeGoTemplate, Target: deploymentTarget("web"), Inline: []string{"x"}}
-	_, _, err := ApplyMutations(context.Background(), []*unstructured.Unstructured{deployment("web", 1)}, []corev1alpha1.ReleaseMutation{m}, nil, nil, "ns")
+	_, _, err := ApplyMutations(context.Background(), []*unstructured.Unstructured{deployment("web")}, []corev1alpha1.ReleaseMutation{m}, nil, nil, "ns")
 	if !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported for goTemplate (slice 2)", err)
 	}
 }
 
 func TestApplyMutations_NoneIsNoop(t *testing.T) {
-	objs := []*unstructured.Unstructured{deployment("web", 1)}
+	objs := []*unstructured.Unstructured{deployment("web")}
 	out, resolved, err := ApplyMutations(context.Background(), objs, nil, nil, nil, "ns")
 	if err != nil || resolved != nil {
 		t.Fatalf("ApplyMutations = %v, %v; want no-op", resolved, err)

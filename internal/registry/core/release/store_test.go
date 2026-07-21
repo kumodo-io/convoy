@@ -346,7 +346,7 @@ func TestMutationsSubresource(t *testing.T) {
 	}
 
 	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
-	if _, err := storage.Release.Store.Create(ctx, validNewRelease(metav1.NamespaceDefault), rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {
+	if _, err := storage.Release.Create(ctx, validNewRelease(metav1.NamespaceDefault), rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {
 		t.Fatalf("creating release: %v", err)
 	}
 
