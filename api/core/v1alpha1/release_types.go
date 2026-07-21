@@ -94,9 +94,6 @@ const (
 type ReleaseMutationType string
 
 const (
-	// MutationTypeHelmValues is the mutation type that uses Helm values as mutation source.
-	MutationTypeHelmValues ReleaseMutationType = "helmValues"
-
 	// MutationTypeGoTemplate is the mutation type that uses Go template as mutation source.
 	MutationTypeGoTemplate ReleaseMutationType = "goTemplate"
 
@@ -632,6 +629,9 @@ type ReleaseMutation struct {
 	// Type is the type of the mutation.
 	Type ReleaseMutationType `json:"type"`
 
+	// Target define mutation target.
+	Target ReleaseMutationTarget `json:"target"`
+
 	// Inline is the inline mutation.
 	// +listType=atomic
 	Inline []string `json:"inline,omitempty"`
@@ -642,6 +642,30 @@ type ReleaseMutation struct {
 	// Patches is the list of JSON patches to apply to the release.
 	// +listType=atomic
 	Patches []ReleaseMutationPatchSpec `json:"patches,omitempty"`
+}
+
+// ReleaseMutationTarget defines the target the mutation should be applied to.
+// - If the name is empty, then the mutation will be applied to all rendered
+// objects in the given namespace.
+// - If the namespace is empty, the mutation will be applied to all rendered
+// objects with matching name.
+// - If both name and namespace are empty, the the mutation will be applied
+// to all rendered objects.
+type ReleaseMutationTarget struct {
+	// Group defines the API group of the target.
+	Group string `json:"group"`
+
+	// Version defines the API version of the target.
+	Version string `json:"version"`
+
+	// Kind defines the kind of the target.
+	Kind string `json:"kind"`
+
+	// Name defines the name of the target.
+	Name string `json:"name,omitempty"`
+
+	// Namespace defines the namespace of the target.
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // ReleaseMutationFromSpec defines the source of the mutation.
@@ -657,6 +681,9 @@ type ReleaseMutationFromSpec struct {
 
 	// Path is the path to the mutation within the source.
 	Path string `json:"path"`
+
+	// Ref is the reference for GitRepository used as a mutation source.
+	Ref *ReleaseGitRepositoryRefSpec `json:"ref,omitempty"`
 }
 
 // ReleaseMutationPatchSpec defines the JSON patch to apply to the release within the mutation.

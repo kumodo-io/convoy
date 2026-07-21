@@ -5,7 +5,6 @@ metadata:
   namespace: default
 spec:
   connectionMode: inCluster
-  deletionPolicy:
-    releases: block
-    workloads: prune
-    onUnreachable: block
+  metadata:
+    type: kind
+    role: managed

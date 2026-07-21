@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/render"
@@ -31,8 +32,9 @@ import (
 // renderReleaseObjects fetches a Release's source and renders its desired
 // objects. It is the render-only path shared by the drift loop, the health loop,
 // and the /preview server — a free function so both controllers (distinct types)
-// can call it.
-func renderReleaseObjects(ctx context.Context, coordinator fetch.Coordinator, resolver auth.SecretResolver, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, error) {
+// can call it. cluster is the resolved target (may be nil), used only for the
+// mutation pipeline's .Cluster templating context.
+func renderReleaseObjects(ctx context.Context, coordinator fetch.Coordinator, resolver auth.SecretResolver, rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) ([]*unstructured.Unstructured, error) {
 	res, err := coordinator.Ensure(ctx, rel.Spec.Source, rel.Namespace)
 	if err != nil {
 		return nil, err
@@ -44,7 +46,37 @@ func renderReleaseObjects(ctx context.Context, coordinator fetch.Coordinator, re
 	if err != nil {
 		return nil, err
 	}
-	return render.Render(rel.Spec.Content, res.Artifact, valueLayers)
+	objects, err := render.Render(rel.Spec.Content, res.Artifact, valueLayers)
+	if err != nil {
+		return nil, err
+	}
+	// Apply the same post-render mutation pipeline the controller-manager does, so
+	// drift/preview/health compare against the mutated desired state.
+	objects, _, err = render.ApplyMutations(ctx, render.MutationInput{
+		Objects:     objects,
+		Mutations:   rel.Mutations,
+		Release:     rel,
+		Cluster:     cluster,
+		Resolver:    resolver,
+		Coordinator: coordinator,
+	})
+	return objects, err
+}
+
+// resolveClusterRef looks up a Release's target Cluster from the lister,
+// best-effort — nil if not found, since the mutation context tolerates a missing
+// cluster (an empty .Cluster). Callers that require the cluster for live reads
+// (drift/health) resolve and check it separately.
+func resolveClusterRef(clusterLister corelisters.ClusterLister, rel *corev1alpha1.Release) *corev1alpha1.Cluster {
+	ns := rel.Spec.ClusterRef.Namespace
+	if ns == "" {
+		ns = rel.Namespace
+	}
+	cluster, err := clusterLister.Clusters(ns).Get(rel.Spec.ClusterRef.Name)
+	if err != nil {
+		return nil
+	}
+	return cluster
 }
 
 // resolveReleaseValues resolves the Helm value sources to ordered raw-YAML layers.

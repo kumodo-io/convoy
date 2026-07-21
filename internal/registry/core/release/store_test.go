@@ -334,3 +334,56 @@ func TestSyncStampsAnnotation(t *testing.T) {
 		t.Errorf("expected %s annotation to be stamped by /sync", corev1alpha1.SyncRequestedAtAnnotation)
 	}
 }
+
+// TestMutationsSubresource verifies /mutations replaces the pipeline, stamps the
+// reconcile annotation, and rejects an invalid mutation.
+func TestMutationsSubresource(t *testing.T) {
+	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("releases"))
+	defer server.Terminate(t)
+	storage, err := releasestorage.NewREST(scheme, restOptions, "")
+	if err != nil {
+		t.Fatalf("NewREST: %v", err)
+	}
+
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	if _, err := storage.Release.Create(ctx, validNewRelease(metav1.NamespaceDefault), rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {
+		t.Fatalf("creating release: %v", err)
+	}
+
+	setMutations := func(muts []core.ReleaseMutation) (*core.Release, error) {
+		obj, err := storage.Mutations.Get(ctx, "foo", &metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		rel := obj.(*core.Release).DeepCopy()
+		rel.Mutations = muts
+		updated, _, err := storage.Mutations.Update(ctx, "foo", rest.DefaultUpdatedObjectInfo(rel),
+			rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return updated.(*core.Release), nil
+	}
+
+	valid := []core.ReleaseMutation{{
+		Type:    core.MutationTypeJsonPatch,
+		Target:  core.ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: "Deployment"},
+		Patches: []core.ReleaseMutationPatchSpec{{Op: core.JSONPatchOperationReplace, Path: "/spec/replicas"}},
+	}}
+	rel, err := setMutations(valid)
+	if err != nil {
+		t.Fatalf("setting mutations: %v", err)
+	}
+	if len(rel.Mutations) != 1 || rel.Mutations[0].Type != core.MutationTypeJsonPatch {
+		t.Errorf("mutations = %+v, want one jsonPatch", rel.Mutations)
+	}
+	if _, ok := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]; !ok {
+		t.Errorf("expected %s annotation stamped by /mutations", corev1alpha1.SyncRequestedAtAnnotation)
+	}
+
+	// Invalid mutation (jsonPatch with no patches) is rejected.
+	invalid := []core.ReleaseMutation{{Type: core.MutationTypeJsonPatch, Target: core.ReleaseMutationTarget{Kind: "Deployment"}}}
+	if _, err := setMutations(invalid); !apierrors.IsInvalid(err) {
+		t.Fatalf("expected Invalid for a jsonPatch with no patches, got %v", err)
+	}
+}

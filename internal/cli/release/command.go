@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
+	"sigs.k8s.io/yaml"
 
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	cliclient "github.com/kumodo-io/convoy/internal/cli/client"
 	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/healthresult"
@@ -28,7 +31,44 @@ func Command(f *cliclient.ConfigFlags) *cobra.Command {
 		newReleasePreviewCmd(f),
 		newReleaseDiffCmd(f),
 		newReleaseHealthCmd(f),
+		newReleaseMutationsCmd(f),
 	)
+	return cmd
+}
+
+func newReleaseMutationsCmd(f *cliclient.ConfigFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "mutations",
+		Short: "View or set a release's post-render mutation pipeline",
+	}
+	get := &cobra.Command{
+		Use:   "get <name>",
+		Short: "Print a release's mutation pipeline as YAML",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, namespace, err := f.Client()
+			if err != nil {
+				return err
+			}
+			return runMutationsGet(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0])
+		},
+	}
+	var file string
+	set := &cobra.Command{
+		Use:   "set <name> -f <file>",
+		Short: "Replace a release's mutation pipeline from a YAML/JSON file",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, namespace, err := f.Client()
+			if err != nil {
+				return err
+			}
+			return runMutationsSet(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], file)
+		},
+	}
+	set.Flags().StringVarP(&file, "file", "f", "", "YAML/JSON file with the list of mutations (required)")
+	_ = set.MarkFlagRequired("file")
+	cmd.AddCommand(get, set)
 	return cmd
 }
 
@@ -217,6 +257,39 @@ func runHealth(ctx context.Context, out io.Writer, client cliclient.Client, name
 		return fmt.Errorf("decoding health result: %w", err)
 	}
 	return renderHealth(out, &result)
+}
+
+func runMutationsGet(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name string) error {
+	rel, err := client.GetRelease(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	if len(rel.Mutations) == 0 {
+		_, err := fmt.Fprintln(out, "no mutations")
+		return err
+	}
+	b, err := yaml.Marshal(rel.Mutations)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(b)
+	return err
+}
+
+func runMutationsSet(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, file string) error {
+	raw, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	var mutations []corev1alpha1.ReleaseMutation
+	if err := yaml.Unmarshal(raw, &mutations); err != nil {
+		return fmt.Errorf("parsing mutations file: %w", err)
+	}
+	if _, err := client.SetMutations(ctx, namespace, name, mutations); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(out, "set %d mutation(s) on %s/%s\n", len(mutations), namespace, name)
+	return err
 }
 
 // renderHealth writes a human-readable per-object health summary.

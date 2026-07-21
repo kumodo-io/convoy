@@ -53,6 +53,7 @@ type fakeClient struct {
 	healthCalled   bool
 	healthPayload  []byte
 	healthErr      error
+	setMutations   []corev1alpha1.ReleaseMutation
 }
 
 func (f *fakeClient) GetRelease(_ context.Context, _, _ string) (*corev1alpha1.Release, error) {
@@ -107,6 +108,13 @@ func (f *fakeClient) Health(_ context.Context, _, _ string) ([]byte, error) {
 		return nil, f.healthErr
 	}
 	return f.healthPayload, nil
+}
+
+func (f *fakeClient) SetMutations(_ context.Context, _, _ string, mutations []corev1alpha1.ReleaseMutation) (*corev1alpha1.Release, error) {
+	f.setMutations = mutations
+	r := f.rel.DeepCopy()
+	r.Mutations = mutations
+	return r, nil
 }
 
 func releaseWithRender(renderRef string) *corev1alpha1.Release {

@@ -136,6 +136,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseMutationFromSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutationPatchSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseMutationPatchSpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutationTarget"):
+		return &applyconfigurationcorev1alpha1.ReleaseMutationTargetApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseOCIRegistryArtifactSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseOCIRegistryArtifactSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseOCIRegistrySpec"):

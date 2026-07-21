@@ -31,6 +31,8 @@ type ReleaseMutationFromSpecApplyConfiguration struct {
 	Namespace *string `json:"namespace,omitempty"`
 	// Path is the path to the mutation within the source.
 	Path *string `json:"path,omitempty"`
+	// Ref is the reference for GitRepository used as a mutation source.
+	Ref *ReleaseGitRepositoryRefSpecApplyConfiguration `json:"ref,omitempty"`
 }
 
 // ReleaseMutationFromSpecApplyConfiguration constructs a declarative configuration of the ReleaseMutationFromSpec type for use with
@@ -68,5 +70,13 @@ func (b *ReleaseMutationFromSpecApplyConfiguration) WithNamespace(value string) 
 // If called multiple times, the Path field is set to the value of the last call.
 func (b *ReleaseMutationFromSpecApplyConfiguration) WithPath(value string) *ReleaseMutationFromSpecApplyConfiguration {
 	b.Path = &value
+	return b
+}
+
+// WithRef sets the Ref field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Ref field is set to the value of the last call.
+func (b *ReleaseMutationFromSpecApplyConfiguration) WithRef(value *ReleaseGitRepositoryRefSpecApplyConfiguration) *ReleaseMutationFromSpecApplyConfiguration {
+	b.Ref = value
 	return b
 }

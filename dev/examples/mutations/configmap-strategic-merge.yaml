@@ -1,0 +1,28 @@
+# strategicMergePatch content sourced from a ConfigMap.
+#
+# Strategic merge uses the target's built-in Go type for list-merge keys, so it
+# applies to built-in kinds (Deployment, StatefulSet, ...); use jsonPatch for
+# CRDs. (jsonPatch itself is always inline via `patches` — it has no ConfigMap /
+# Secret form.)
+#
+# Reference it from a Release's top-level `mutations`:
+#
+#   mutations:
+#     - type: strategicMergePatch
+#       target: { group: apps, version: v1, kind: Deployment }
+#       from: { kind: ConfigMap, name: mutation-strategic-merge, path: patch.yaml }
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mutation-strategic-merge
+  namespace: default
+data:
+  patch.yaml: |
+    metadata:
+      labels:
+        example.convoy.kumodo.io/mutated-by: convoy
+    spec:
+      template:
+        metadata:
+          annotations:
+            example.convoy.kumodo.io/patched-from: configmap

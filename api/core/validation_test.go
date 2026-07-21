@@ -27,6 +27,7 @@ import (
 const (
 	dummyReleaseNamespace = "team-a"
 	dummyInfraNamespace   = "infra"
+	deploymentKind        = "Deployment"
 )
 
 // validRelease builds a Release in namespace "team-a" with a git source and
@@ -120,5 +121,54 @@ func TestValidateReleaseUpdate_CrossNamespaceRejected(t *testing.T) {
 	errs := ValidateReleaseUpdate(updated, old)
 	if !hasForbiddenOn(errs, "source.gitRepository.namespace") {
 		t.Errorf("cross-namespace ref not rejected on update: %v", errs)
+	}
+}
+
+func jsonPatchMutation() ReleaseMutation {
+	return ReleaseMutation{
+		Type:    MutationTypeJsonPatch,
+		Target:  ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: deploymentKind},
+		Patches: []ReleaseMutationPatchSpec{{Op: JSONPatchOperationReplace, Path: "/spec/replicas"}},
+	}
+}
+
+func TestValidateReleaseMutations_Valid(t *testing.T) {
+	rel := validRelease()
+	rel.Mutations = []ReleaseMutation{jsonPatchMutation()}
+	if errs := ValidateReleaseMutations(rel); len(errs) != 0 {
+		t.Errorf("valid mutations rejected: %v", errs)
+	}
+}
+
+func TestValidateReleaseMutations_JsonPatchRequiresPatches(t *testing.T) {
+	rel := validRelease()
+	m := jsonPatchMutation()
+	m.Patches = nil
+	rel.Mutations = []ReleaseMutation{m}
+	errs := ValidateReleaseMutations(rel)
+	if len(errs) == 0 {
+		t.Error("jsonPatch with no patches not rejected")
+	}
+}
+
+func TestValidateReleaseMutations_UnknownTypeRejected(t *testing.T) {
+	rel := validRelease()
+	rel.Mutations = []ReleaseMutation{{Type: "bogus", Target: ReleaseMutationTarget{Kind: deploymentKind}}}
+	errs := ValidateReleaseMutations(rel)
+	if len(errs) == 0 {
+		t.Error("unknown mutation type not rejected")
+	}
+}
+
+func TestValidateReleaseMutations_CrossNamespaceFromRejected(t *testing.T) {
+	rel := validRelease()
+	rel.Mutations = []ReleaseMutation{{
+		Type:   MutationTypeStrategicMergePatch,
+		Target: ReleaseMutationTarget{Kind: deploymentKind},
+		From:   &ReleaseMutationFromSpec{Kind: "ConfigMap", Name: "patches", Namespace: dummyInfraNamespace, Path: "patch.yaml"},
+	}}
+	errs := ValidateReleaseMutations(rel)
+	if !hasForbiddenOn(errs, "from.namespace") {
+		t.Errorf("cross-namespace mutation From not rejected: %v", errs)
 	}
 }

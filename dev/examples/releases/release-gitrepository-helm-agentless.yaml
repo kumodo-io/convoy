@@ -3,6 +3,16 @@ kind: Release
 metadata:
   name: podinfo-managed-helm
   namespace: default
+mutations:
+  - type: goTemplate
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+    from:
+      kind: ConfigMap
+      name: mutation-go-template
+      path: overlay.yaml
 spec:
   clusterRef:
     name: convoy-managed

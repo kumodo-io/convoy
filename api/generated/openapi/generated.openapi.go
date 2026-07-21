@@ -90,6 +90,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseMutation{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
 		v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
 		v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref),
+		v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseMutationTarget(ref),
 		v1alpha1.ReleaseOCIRegistryArtifactSpec{}.OpenAPIModelName():              schema_convoy_api_core_v1alpha1_ReleaseOCIRegistryArtifactSpec(ref),
 		v1alpha1.ReleaseOCIRegistrySpec{}.OpenAPIModelName():                      schema_convoy_api_core_v1alpha1_ReleaseOCIRegistrySpec(ref),
 		v1alpha1.ReleasePin{}.OpenAPIModelName():                                  schema_convoy_api_core_v1alpha1_ReleasePin(ref),
@@ -2853,11 +2854,18 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"celTransform", "goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch"},
+						},
+					},
+					"target": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Target define mutation target.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName()),
 						},
 					},
 					"inline": {
@@ -2906,11 +2914,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 						},
 					},
 				},
-				Required: []string{"type"},
+				Required: []string{"type", "target"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName()},
+			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName()},
 	}
 }
 
@@ -2952,10 +2960,18 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref common.Referenc
 							Format:      "",
 						},
 					},
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ref is the reference for GitRepository used as a mutation source.",
+							Ref:         ref(v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"kind", "name", "path"},
 			},
 		},
+		Dependencies: []string{
+			v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -3002,6 +3018,58 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref common.Referen
 		},
 		Dependencies: []string{
 			apiextensionsv1.JSON{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseMutationTarget(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseMutationTarget defines the target the mutation should be applied to. - If the name is empty, then the mutation will be applied to all rendered objects in the given namespace. - If the namespace is empty, the mutation will be applied to all rendered objects with matching name. - If both name and namespace are empty, the the mutation will be applied to all rendered objects.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"group": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Group defines the API group of the target.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version defines the API version of the target.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind defines the kind of the target.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name defines the name of the target.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace defines the namespace of the target.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"group", "version", "kind"},
+			},
+		},
 	}
 }
 
@@ -3670,11 +3738,11 @@ func schema_convoy_api_core_v1alpha1_ResolvedMutation(ref common.ReferenceCallba
 					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"helmValues\"` is the mutation type that uses Helm values as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"celTransform", "goTemplate", "helmValues", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch"},
 						},
 					},
 					"sourceRef": {

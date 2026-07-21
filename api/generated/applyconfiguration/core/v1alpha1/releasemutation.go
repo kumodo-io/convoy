@@ -29,6 +29,8 @@ import (
 type ReleaseMutationApplyConfiguration struct {
 	// Type is the type of the mutation.
 	Type *corev1alpha1.ReleaseMutationType `json:"type,omitempty"`
+	// Target define mutation target.
+	Target *ReleaseMutationTargetApplyConfiguration `json:"target,omitempty"`
 	// Inline is the inline mutation.
 	Inline []string `json:"inline,omitempty"`
 	// From is the source of the mutation.
@@ -48,6 +50,14 @@ func ReleaseMutation() *ReleaseMutationApplyConfiguration {
 // If called multiple times, the Type field is set to the value of the last call.
 func (b *ReleaseMutationApplyConfiguration) WithType(value corev1alpha1.ReleaseMutationType) *ReleaseMutationApplyConfiguration {
 	b.Type = &value
+	return b
+}
+
+// WithTarget sets the Target field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Target field is set to the value of the last call.
+func (b *ReleaseMutationApplyConfiguration) WithTarget(value *ReleaseMutationTargetApplyConfiguration) *ReleaseMutationApplyConfiguration {
+	b.Target = value
 	return b
 }
 

@@ -13,7 +13,6 @@ spec:
         secretRef:
           name: convoy-managed-kubeconfig
           key: kubeconfig
-  deletionPolicy:
-    releases: block
-    workloads: prune
-    onUnreachable: block
+  metadata:
+    type: kind
+    role: managed

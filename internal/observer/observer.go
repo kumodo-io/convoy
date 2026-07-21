@@ -197,9 +197,10 @@ func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diff
 	return computeDiff(ctx, dyn, mapper, objects)
 }
 
-// renderDesired renders the Release's desired objects via the shared helper.
+// renderDesired renders the Release's desired objects via the shared helper,
+// resolving the target cluster (best-effort) for the mutation templating context.
 func (c *Controller) renderDesired(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, error) {
-	return renderReleaseObjects(ctx, c.coordinator, c.resolver, rel)
+	return renderReleaseObjects(ctx, c.coordinator, c.resolver, rel, resolveClusterRef(c.clusterLister, rel))
 }
 
 // scheduleRecheck schedules the next drift re-check at the Release's sync

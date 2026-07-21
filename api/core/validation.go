@@ -142,6 +142,18 @@ func ValidateRelease(release *Release) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMeta(&release.ObjectMeta, true, apivalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateReleaseSpec(&release.Spec, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateSameNamespaceRefs(release)...)
+	allErrs = append(allErrs, validateReleaseMutationList(release)...)
+	return allErrs
+}
+
+// validateReleaseMutationList validates each mutation's type/content (without the
+// same-namespace check, which validateSameNamespaceRefs already covers).
+func validateReleaseMutationList(release *Release) field.ErrorList {
+	allErrs := make(field.ErrorList, 0, len(release.Mutations))
+	path := field.NewPath("mutations")
+	for i := range release.Mutations {
+		allErrs = append(allErrs, validateReleaseMutation(&release.Mutations[i], path.Index(i))...)
+	}
 	return allErrs
 }
 
@@ -184,6 +196,13 @@ func validateSameNamespaceRefs(release *Release) field.ErrorList {
 			}
 		}
 	}
+	// Mutation From sources are credential-bearing refs too.
+	mutationsPath := field.NewPath("mutations")
+	for i := range release.Mutations {
+		if from := release.Mutations[i].From; from != nil {
+			check(from.Namespace, mutationsPath.Index(i).Child("from", "namespace"))
+		}
+	}
 	return allErrs
 }
 
@@ -193,6 +212,7 @@ func ValidateReleaseUpdate(release, old *Release) field.ErrorList {
 	allErrs := apivalidation.ValidateObjectMetaUpdate(&release.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))
 	allErrs = append(allErrs, validateReleaseSpec(&release.Spec, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateSameNamespaceRefs(release)...)
+	allErrs = append(allErrs, validateReleaseMutationList(release)...)
 
 	// source configuration validation
 	if release.Spec.Source.Type != old.Spec.Source.Type {
@@ -235,6 +255,57 @@ func ValidateReleaseUpdate(release, old *Release) field.ErrorList {
 // ValidateReleaseStatusUpdate validates a Release on a status update.
 func ValidateReleaseStatusUpdate(release, old *Release) field.ErrorList {
 	return apivalidation.ValidateObjectMetaUpdate(&release.ObjectMeta, &old.ObjectMeta, field.NewPath("metadata"))
+}
+
+// ValidateReleaseMutations validates the Release's post-render mutation pipeline
+// (the /mutations subresource). Each mutation must declare a known type and carry
+// the content that type requires. It also re-checks the same-namespace guard on
+// mutation From references.
+func ValidateReleaseMutations(release *Release) field.ErrorList {
+	allErrs := make(field.ErrorList, 0, len(release.Mutations))
+	path := field.NewPath("mutations")
+	for i := range release.Mutations {
+		allErrs = append(allErrs, validateReleaseMutation(&release.Mutations[i], path.Index(i))...)
+	}
+	allErrs = append(allErrs, validateSameNamespaceRefs(release)...)
+	return allErrs
+}
+
+func validateReleaseMutation(m *ReleaseMutation, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	switch m.Type {
+	case MutationTypeJsonPatch:
+		if len(m.Patches) == 0 {
+			allErrs = append(allErrs, field.Required(fldPath.Child("patches"), "jsonPatch requires at least one patch"))
+		}
+		for j := range m.Patches {
+			if !knownJSONPatchOp(m.Patches[j].Op) {
+				allErrs = append(allErrs, field.NotSupported(fldPath.Child("patches").Index(j).Child("op"), m.Patches[j].Op,
+					[]string{"add", "remove", "replace", "move", "copy", "test"}))
+			}
+			if m.Patches[j].Path == "" {
+				allErrs = append(allErrs, field.Required(fldPath.Child("patches").Index(j).Child("path"), ""))
+			}
+		}
+	case MutationTypeStrategicMergePatch, MutationTypeGoTemplate, MutationTypeCelTransform:
+		if len(m.Inline) == 0 && m.From == nil {
+			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("%s requires inline content or a from source", m.Type)))
+		}
+	default:
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), m.Type,
+			[]string{string(MutationTypeJsonPatch), string(MutationTypeStrategicMergePatch), string(MutationTypeGoTemplate), string(MutationTypeCelTransform)}))
+	}
+	return allErrs
+}
+
+func knownJSONPatchOp(op JSONPatchOperation) bool {
+	switch op {
+	case JSONPatchOperationAdd, JSONPatchOperationRemove, JSONPatchOperationReplace,
+		JSONPatchOperationMove, JSONPatchOperationCopy, JSONPatchOperationTest:
+		return true
+	default:
+		return false
+	}
 }
 
 func validateReleaseSpec(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList {
