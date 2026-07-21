@@ -41,6 +41,7 @@ const (
 
 	clusterMetaRegion = "eu-west"
 	releaseName       = "release-1"
+	imageValue        = "sc:1"
 )
 
 func deployment(name string) *unstructured.Unstructured {
@@ -53,7 +54,7 @@ func deployment(name string) *unstructured.Unstructured {
 			"template": map[string]any{"spec": map[string]any{
 				"containers": []any{
 					map[string]any{metadataName: "app", "image": "app:1"},
-					map[string]any{metadataName: "sidecar", "image": "sc:1"},
+					map[string]any{metadataName: "sidecar", "image": imageValue},
 				},
 			}},
 		},
@@ -162,7 +163,7 @@ func TestApplyMutations_StrategicMergeMergesListByKey(t *testing.T) {
 		cm := c.(map[string]any)
 		byName[cm[metadataName].(string)], _ = cm["image"].(string)
 	}
-	if byName["app"] != "app:2" || byName["sidecar"] != "sc:1" {
+	if byName["app"] != "app:2" || byName["sidecar"] != imageValue {
 		t.Errorf("images = %v, want app:2 + sidecar sc:1", byName)
 	}
 }
@@ -191,9 +192,9 @@ func TestApplyMutations_GoTemplateOverlayInjectsContext(t *testing.T) {
 		Target: deploymentTarget(),
 		Inline: []string{`metadata:
   annotations:
-    region: "{{ .Cluster.region }}"
-    release: "{{ .Self.name }}"
-    self-name: "{{ .Object.metadata.name }}"`},
+    region: "{{ .cluster.region }}"
+    release: "{{ .self.name }}"
+    self-name: "{{ .object.metadata.name }}"`},
 	}
 	out, _, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, testCluster())
 	if err != nil {
@@ -226,6 +227,66 @@ func TestApplyMutations_CelTransformOverlayInjectsContext(t *testing.T) {
 	}
 	if r, _, _ := unstructured.NestedInt64(out[0].Object, "spec", "replicas"); r != 1 {
 		t.Errorf("replicas = %d, want 1 preserved", r)
+	}
+}
+
+func TestApplyMutations_StrategicMergeTemplated(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web")}
+	// Injects .cluster.region into a label AND updates the "app" container by name
+	// — proving templating + strategic list-merge together.
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeStrategicMergePatch,
+		Target: deploymentTarget(),
+		Inline: []string{`metadata:
+  labels:
+    region: "{{ .cluster.region }}"
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: "app:{{ .cluster.region }}"`},
+	}
+	out, _, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, testCluster())
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "region"); got != clusterMetaRegion {
+		t.Errorf("label region = %q, want %q (templated)", got, clusterMetaRegion)
+	}
+	containers, _, _ := unstructured.NestedSlice(out[0].Object, "spec", "template", "spec", "containers")
+	if len(containers) != 2 {
+		t.Fatalf("containers = %d, want 2 (strategic merge kept sidecar)", len(containers))
+	}
+	byName := map[string]string{}
+	for _, c := range containers {
+		cm := c.(map[string]any)
+		byName[cm[metadataName].(string)], _ = cm["image"].(string)
+	}
+	if byName["app"] != "app:eu-west" || byName["sidecar"] != imageValue {
+		t.Errorf("images = %v, want app:app:eu-west + sidecar sc:1", byName)
+	}
+}
+
+func TestApplyMutations_JSONPatchTemplated(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web")}
+	// The patch value injects .self.name (a string) into a new labels map.
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeJsonPatch,
+		Target: deploymentTarget(),
+		Patches: []corev1alpha1.ReleaseMutationPatchSpec{
+			{
+				Op: corev1alpha1.JSONPatchOperationAdd, Path: "/metadata/labels",
+				Value: &apiextensionsv1.JSON{Raw: []byte(`{"release": "{{ .self.name }}"}`)},
+			},
+		},
+	}
+	out, _, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, testCluster())
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "release"); got != releaseName {
+		t.Errorf("label release = %q, want %q (templated)", got, releaseName)
 	}
 }
 

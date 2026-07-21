@@ -88,9 +88,9 @@ func ApplyMutations(ctx context.Context, in MutationInput) ([]*unstructured.Unst
 func applyMutation(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
 	switch m.Type {
 	case corev1alpha1.MutationTypeJsonPatch:
-		return applyJSONPatch(objects, m)
+		return applyJSONPatch(objects, m, in)
 	case corev1alpha1.MutationTypeStrategicMergePatch:
-		return applyStrategicMerge(ctx, objects, m, in.Resolver, in.Coordinator, in.Release.Namespace)
+		return applyStrategicMerge(ctx, objects, m, in)
 	case corev1alpha1.MutationTypeGoTemplate:
 		return applyGoTemplate(ctx, objects, m, in)
 	case corev1alpha1.MutationTypeCelTransform:
@@ -101,15 +101,19 @@ func applyMutation(ctx context.Context, objects []*unstructured.Unstructured, m 
 }
 
 // applyJSONPatch applies an RFC6902 JSON patch (built from the mutation's Patches)
-// to each matching object. The Patches field's JSON tags already match RFC6902.
-func applyJSONPatch(objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation) ([]*unstructured.Unstructured, string, error) {
+// to each matching object. The patch is Go-templated per object against the
+// {cluster,self,object} context before it is applied, so patch fields can inject
+// context values. Note: templating runs over the patch JSON text, so substituted
+// values land as strings — natural for string values; for typed values prefer
+// strategicMergePatch/goTemplate.
+func applyJSONPatch(objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
 	patchJSON, err := json.Marshal(m.Patches)
 	if err != nil {
 		return nil, "", fmt.Errorf("marshaling patches: %w", err)
 	}
-	patch, err := jsonpatch.DecodePatch(patchJSON)
+	tmpl, err := template.New("mutation").Option("missingkey=zero").Parse(string(patchJSON))
 	if err != nil {
-		return nil, "", fmt.Errorf("decoding json patch: %w", err)
+		return nil, "", fmt.Errorf("parsing json patch template: %w", err)
 	}
 
 	out := make([]*unstructured.Unstructured, len(objects))
@@ -117,6 +121,14 @@ func applyJSONPatch(objects []*unstructured.Unstructured, m corev1alpha1.Release
 		if !matchesTarget(m.Target, obj) {
 			out[i] = obj
 			continue
+		}
+		rendered, err := renderWith(tmpl, templateContext(in.Release, in.Cluster, obj))
+		if err != nil {
+			return nil, "", fmt.Errorf("rendering json patch for %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		patch, err := jsonpatch.DecodePatch(rendered)
+		if err != nil {
+			return nil, "", fmt.Errorf("decoding json patch for %s %q: %w", obj.GetKind(), obj.GetName(), err)
 		}
 		objJSON, err := obj.MarshalJSON()
 		if err != nil {
@@ -137,15 +149,21 @@ func applyJSONPatch(objects []*unstructured.Unstructured, m corev1alpha1.Release
 
 // applyStrategicMerge applies one or more strategic-merge patch documents (from
 // the mutation's Inline strings and/or its From source) to each matching object.
-// Strategic merge needs the object's built-in Go type to know list-merge keys, so
-// CRDs/unregistered kinds are rejected (use jsonPatch for those).
-func applyStrategicMerge(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, resolver auth.SecretResolver, coordinator fetch.Coordinator, releaseNamespace string) ([]*unstructured.Unstructured, string, error) {
-	docs, err := mutationDocs(ctx, m, resolver, coordinator, releaseNamespace)
+// Each doc is Go-templated per object against the {cluster,self,object} context
+// before merging, so patches can inject context values while keeping strategic
+// (list-merge-by-key) semantics. Strategic merge needs the object's built-in Go
+// type, so CRDs/unregistered kinds are rejected (use jsonPatch for those).
+func applyStrategicMerge(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
+	docs, err := mutationDocs(ctx, m, in.Resolver, in.Coordinator, in.Release.Namespace)
 	if err != nil {
 		return nil, "", err
 	}
 	if len(docs) == 0 {
 		return nil, "", fmt.Errorf("strategicMergePatch has no patch content (set inline or from)")
+	}
+	templates, err := parseTemplates(docs)
+	if err != nil {
+		return nil, "", err
 	}
 
 	out := make([]*unstructured.Unstructured, len(objects))
@@ -162,8 +180,13 @@ func applyStrategicMerge(ctx context.Context, objects []*unstructured.Unstructur
 		if err != nil {
 			return nil, "", fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), obj.GetName(), err)
 		}
-		for _, doc := range docs {
-			patchJSON, err := yaml.YAMLToJSON(doc)
+		data := templateContext(in.Release, in.Cluster, obj)
+		for _, t := range templates {
+			rendered, err := renderWith(t, data)
+			if err != nil {
+				return nil, "", fmt.Errorf("rendering strategic merge patch for %s %q: %w", obj.GetKind(), obj.GetName(), err)
+			}
+			patchJSON, err := yaml.YAMLToJSON(rendered)
 			if err != nil {
 				return nil, "", fmt.Errorf("parsing strategic merge patch: %w", err)
 			}
@@ -181,7 +204,7 @@ func applyStrategicMerge(ctx context.Context, objects []*unstructured.Unstructur
 	return out, hashDocs(docs), nil
 }
 
-// applyGoTemplate renders each template document with the {.Cluster,.Self,.Object}
+// applyGoTemplate renders each template document with the {.cluster,.self,.object}
 // context and RFC7386-merges the resulting overlay onto each matching object. The
 // overlay is a partial: it injects/updates fields, it does not replace the object.
 func applyGoTemplate(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
@@ -192,13 +215,9 @@ func applyGoTemplate(ctx context.Context, objects []*unstructured.Unstructured, 
 	if len(docs) == 0 {
 		return nil, "", fmt.Errorf("goTemplate has no template content (set inline or from)")
 	}
-	templates := make([]*template.Template, len(docs))
-	for i, doc := range docs {
-		t, err := template.New("mutation").Option("missingkey=zero").Parse(string(doc))
-		if err != nil {
-			return nil, "", fmt.Errorf("parsing goTemplate: %w", err)
-		}
-		templates[i] = t
+	templates, err := parseTemplates(docs)
+	if err != nil {
+		return nil, "", err
 	}
 
 	out := make([]*unstructured.Unstructured, len(objects))
@@ -207,18 +226,17 @@ func applyGoTemplate(ctx context.Context, objects []*unstructured.Unstructured, 
 			out[i] = obj
 			continue
 		}
-		clusterMeta, self := contextValues(in.Release, in.Cluster)
-		data := map[string]any{"Cluster": clusterMeta, "Self": self, "Object": obj.Object}
+		data := templateContext(in.Release, in.Cluster, obj)
 		objJSON, err := obj.MarshalJSON()
 		if err != nil {
 			return nil, "", fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), obj.GetName(), err)
 		}
 		for _, t := range templates {
-			var buf bytes.Buffer
-			if err := t.Execute(&buf, data); err != nil {
+			rendered, err := renderWith(t, data)
+			if err != nil {
 				return nil, "", fmt.Errorf("rendering goTemplate for %s %q: %w", obj.GetKind(), obj.GetName(), err)
 			}
-			overlayJSON, err := yaml.YAMLToJSON(buf.Bytes())
+			overlayJSON, err := yaml.YAMLToJSON(rendered)
 			if err != nil {
 				return nil, "", fmt.Errorf("parsing goTemplate output: %w", err)
 			}
@@ -260,6 +278,38 @@ func orEmpty(m map[string]string) map[string]string {
 	return m
 }
 
+// templateContext builds the per-object {cluster,self,object} context shared by
+// every templated mutation type — Go templates access `.cluster`/`.self`/
+// `.object`, CEL uses the same names as variables. Keys are lowercase across both
+// engines for consistency.
+func templateContext(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, obj *unstructured.Unstructured) map[string]any {
+	clusterMeta, self := contextValues(rel, cluster)
+	return map[string]any{"cluster": clusterMeta, "self": self, "object": obj.Object}
+}
+
+// parseTemplates compiles each mutation document as a text/template. missingkey=zero
+// makes an absent key (e.g. .cluster.region) render empty rather than error.
+func parseTemplates(docs [][]byte) ([]*template.Template, error) {
+	ts := make([]*template.Template, len(docs))
+	for i, doc := range docs {
+		t, err := template.New("mutation").Option("missingkey=zero").Parse(string(doc))
+		if err != nil {
+			return nil, fmt.Errorf("parsing template: %w", err)
+		}
+		ts[i] = t
+	}
+	return ts, nil
+}
+
+// renderWith executes a template against the per-object context.
+func renderWith(t *template.Template, data map[string]any) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // applyCELTransform evaluates each CEL expression (vars cluster/self/object) to an
 // overlay map and RFC7386-merges it onto each matching object.
 func applyCELTransform(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
@@ -297,8 +347,7 @@ func applyCELTransform(ctx context.Context, objects []*unstructured.Unstructured
 			out[i] = obj
 			continue
 		}
-		clusterMeta, self := contextValues(in.Release, in.Cluster)
-		vars := map[string]any{"cluster": clusterMeta, "self": self, "object": obj.Object}
+		vars := templateContext(in.Release, in.Cluster, obj)
 		objJSON, err := obj.MarshalJSON()
 		if err != nil {
 			return nil, "", fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), obj.GetName(), err)
