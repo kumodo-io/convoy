@@ -1,0 +1,25 @@
+# goTemplate content sourced from a ConfigMap.
+#
+# The template renders a partial overlay that is RFC7386-merged onto each matched
+# object (it injects/updates fields, it does not replace the object). Context:
+#   .Cluster  -> Cluster.Spec.Metadata (e.g. {{ .Cluster.region }})
+#   .Self     -> the Release's name / namespace / labels / annotations
+#   .Object   -> the object being mutated (e.g. {{ .Object.metadata.name }})
+#
+#   mutations:
+#     - type: goTemplate
+#       target: { group: apps, version: v1, kind: Deployment }
+#       from: { kind: ConfigMap, name: mutation-go-template, path: overlay.yaml }
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mutation-go-template
+  namespace: default
+data:
+  overlay.yaml: |
+    metadata:
+      labels:
+        convoy.kumodo.io/release: "{{ .Self.name }}"
+      annotations:
+        convoy.kumodo.io/type: "{{ .Cluster.type }}"
+        convoy.kumodo.io/role: "{{ .Cluster.role }}"

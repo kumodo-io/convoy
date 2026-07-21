@@ -1,0 +1,25 @@
+# celTransform content sourced from a ConfigMap.
+#
+# The CEL expression returns a map overlay that is RFC7386-merged onto each
+# matched object. Available variables:
+#   cluster -> Cluster.Spec.Metadata (e.g. cluster.region)
+#   self    -> the Release's name / namespace / labels / annotations
+#   object  -> the object being mutated
+#
+#   mutations:
+#     - type: celTransform
+#       target: { group: apps, version: v1, kind: Deployment }
+#       from: { kind: ConfigMap, name: mutation-cel-transform, path: transform.cel }
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mutation-cel-transform
+  namespace: default
+data:
+  transform.cel: |
+    {
+      "metadata": {
+        "labels": {"convoy.kumodo.io/release": self.name},
+        "annotations": {"convoy.kumodo.io/region": cluster.region}
+      }
+    }
