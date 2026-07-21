@@ -26,6 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/artifact"
+	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
 const (
@@ -287,6 +289,40 @@ func TestApplyMutations_JSONPatchTemplated(t *testing.T) {
 	}
 	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "release"); got != releaseName {
 		t.Errorf("label release = %q, want %q (templated)", got, releaseName)
+	}
+}
+
+func TestApplyMutations_StrategicMergeFromGitRepository(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web")}
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: "abc123",
+		Artifact: artifact.Artifact{Files: map[string][]byte{
+			"patches/labels.yaml": []byte("metadata:\n  labels:\n    from: git\n"),
+		}},
+	}}
+	branch := "main"
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeStrategicMergePatch,
+		Target: deploymentTarget(),
+		From: &corev1alpha1.ReleaseMutationFromSpec{
+			Kind: "GitRepository",
+			Name: "patches-repo",
+			Path: "patches/labels.yaml",
+			Ref:  &corev1alpha1.ReleaseGitRepositoryRefSpec{Branch: &branch},
+		},
+	}
+	out, _, err := ApplyMutations(context.Background(), MutationInput{
+		Objects:     objs,
+		Mutations:   []corev1alpha1.ReleaseMutation{m},
+		Release:     &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: releaseName, Namespace: "ns"}},
+		Coordinator: coord,
+	})
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "from"); got != "git" {
+		t.Errorf("label from = %q, want %q (patch fetched from GitRepository)", got, "git")
 	}
 }
 

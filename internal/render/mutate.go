@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"text/template"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -443,14 +444,34 @@ func mutationDocs(ctx context.Context, m corev1alpha1.ReleaseMutation, resolver 
 }
 
 // resolveFrom fetches a mutation's external content. ConfigMap/Secret are read via
-// the resolver, with From.Path naming the data key. GitRepository sources need a
-// revision the From spec does not carry yet and are not supported here.
+// the resolver (From.Path names the data key); GitRepository is fetched through
+// the coordinator at From.Ref (From.Path names the file within the repo).
 func resolveFrom(ctx context.Context, from *corev1alpha1.ReleaseMutationFromSpec, resolver auth.SecretResolver, coordinator fetch.Coordinator, releaseNamespace string) ([]byte, error) {
 	ns := from.Namespace
 	if ns == "" {
 		ns = releaseNamespace
 	}
 	switch from.Kind {
+	case "GitRepository":
+		res, err := coordinator.Ensure(ctx, corev1alpha1.ReleaseSourceSpec{
+			Type: corev1alpha1.ReleaseSourceTypeGitRepository,
+			GitRepository: &corev1alpha1.ReleaseGitRepositorySpec{
+				Name:      from.Name,
+				Namespace: from.Namespace,
+				Ref:       from.Ref,
+			},
+		}, releaseNamespace)
+		if err != nil {
+			return nil, err // transient (requeue)
+		}
+		if !res.Ready {
+			return nil, fmt.Errorf("mutation source GitRepository %s not ready: %s", from.Name, res.Message)
+		}
+		data, ok := res.Artifact.Files[strings.TrimPrefix(from.Path, "/")]
+		if !ok {
+			return nil, fmt.Errorf("mutation file %q not found in GitRepository %s@%s", from.Path, from.Name, res.Revision)
+		}
+		return data, nil
 	case "ConfigMap":
 		cm, err := resolver.ConfigMap(ctx, ns, from.Name)
 		if err != nil {

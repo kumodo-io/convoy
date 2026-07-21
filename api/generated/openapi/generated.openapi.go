@@ -2960,10 +2960,18 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref common.Referenc
 							Format:      "",
 						},
 					},
+					"ref": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Ref is the reference for GitRepository used as a mutation source.",
+							Ref:         ref(v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"kind", "name", "path"},
 			},
 		},
+		Dependencies: []string{
+			v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName()},
 	}
 }
 

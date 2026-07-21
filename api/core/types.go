@@ -428,6 +428,7 @@ type ReleaseMutationFromSpec struct {
 	Name      string
 	Namespace string
 	Path      string
+	Ref       *ReleaseGitRepositoryRefSpec
 }
 
 type ReleaseMutationPatchSpec struct {

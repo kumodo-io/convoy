@@ -681,6 +681,9 @@ type ReleaseMutationFromSpec struct {
 
 	// Path is the path to the mutation within the source.
 	Path string `json:"path"`
+
+	// Ref is the reference for GitRepository used as a mutation source.
+	Ref *ReleaseGitRepositoryRefSpec `json:"ref,omitempty"`
 }
 
 // ReleaseMutationPatchSpec defines the JSON patch to apply to the release within the mutation.

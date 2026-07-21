@@ -1561,6 +1561,7 @@ func autoConvert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpe
 	out.Name = in.Name
 	out.Namespace = in.Namespace
 	out.Path = in.Path
+	out.Ref = (*core.ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
 	return nil
 }
 
@@ -1574,6 +1575,7 @@ func autoConvert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpe
 	out.Name = in.Name
 	out.Namespace = in.Namespace
 	out.Path = in.Path
+	out.Ref = (*ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
 	return nil
 }
 
