@@ -162,11 +162,6 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 		return nil, fmt.Errorf("compiling health rules: %w", err)
 	}
 
-	objects, err := renderReleaseObjects(ctx, c.coordinator, c.resolver, rel)
-	if err != nil {
-		return nil, err
-	}
-
 	clusterNamespace := rel.Spec.ClusterRef.Namespace
 	if clusterNamespace == "" {
 		clusterNamespace = rel.Namespace
@@ -178,6 +173,12 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 	if !cluster.Status.Reachable {
 		return nil, fmt.Errorf("target cluster %s is not reachable", cluster.Name)
 	}
+
+	objects, err := renderReleaseObjects(ctx, c.coordinator, c.resolver, rel, cluster)
+	if err != nil {
+		return nil, err
+	}
+
 	dyn, mapper, err := c.connector.DynamicClients(ctx, cluster)
 	if err != nil {
 		return nil, err

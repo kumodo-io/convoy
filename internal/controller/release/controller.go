@@ -471,7 +471,14 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	// Post-render mutation pipeline. Runs here in the render path so the applied
 	// objects (and, via the shared path, the observer's diff/preview/health) all
 	// reflect the mutated result.
-	objects, resolvedMutations, err := render.ApplyMutations(ctx, objects, rel.Mutations, c.resolver, c.coordinator, rel.Namespace)
+	objects, resolvedMutations, err := render.ApplyMutations(ctx, render.MutationInput{
+		Objects:     objects,
+		Mutations:   rel.Mutations,
+		Release:     rel,
+		Cluster:     cluster,
+		Resolver:    c.resolver,
+		Coordinator: c.coordinator,
+	})
 	if err != nil {
 		if errors.Is(err, render.ErrUnsupported) {
 			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)

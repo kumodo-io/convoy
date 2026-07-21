@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -37,6 +38,9 @@ const (
 
 	appsv1ApiVersion = "apps/v1"
 	deploymentKind   = "Deployment"
+
+	clusterMetaRegion = "eu-west"
+	releaseName       = "release-1"
 )
 
 func deployment(name string) *unstructured.Unstructured {
@@ -64,21 +68,36 @@ func configMap(name string) *unstructured.Unstructured {
 	}}
 }
 
-func deploymentTarget(name string) corev1alpha1.ReleaseMutationTarget {
-	return corev1alpha1.ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: deploymentKind, Name: name}
+func deploymentTarget() corev1alpha1.ReleaseMutationTarget {
+	return corev1alpha1.ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: deploymentKind, Name: "web"}
+}
+
+func testCluster() *corev1alpha1.Cluster {
+	return &corev1alpha1.Cluster{Spec: corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": clusterMetaRegion}}}
+}
+
+// apply runs ApplyMutations with a fixed Release identity ("release-1"/"ns") and
+// the given (optional) cluster for templating context.
+func apply(objs []*unstructured.Unstructured, muts []corev1alpha1.ReleaseMutation, cluster *corev1alpha1.Cluster) ([]*unstructured.Unstructured, []corev1alpha1.ResolvedMutation, error) {
+	return ApplyMutations(context.Background(), MutationInput{
+		Objects:   objs,
+		Mutations: muts,
+		Release:   &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: releaseName, Namespace: "ns"}},
+		Cluster:   cluster,
+	})
 }
 
 func TestApplyMutations_JSONPatchTargeted(t *testing.T) {
 	objs := []*unstructured.Unstructured{deployment("web"), configMap("cfg")}
 	m := corev1alpha1.ReleaseMutation{
 		Type:   corev1alpha1.MutationTypeJsonPatch,
-		Target: deploymentTarget("web"),
+		Target: deploymentTarget(),
 		Patches: []corev1alpha1.ReleaseMutationPatchSpec{
 			{Op: corev1alpha1.JSONPatchOperationReplace, Path: "/spec/replicas", Value: &apiextensionsv1.JSON{Raw: []byte("3")}},
 		},
 	}
 
-	out, resolved, err := ApplyMutations(context.Background(), objs, []corev1alpha1.ReleaseMutation{m}, nil, nil, "ns")
+	out, resolved, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, nil)
 	if err != nil {
 		t.Fatalf("ApplyMutations: %v", err)
 	}
@@ -104,7 +123,7 @@ func TestApplyMutations_WildcardTargetMatchesKind(t *testing.T) {
 			{Op: corev1alpha1.JSONPatchOperationReplace, Path: "/spec/replicas", Value: &apiextensionsv1.JSON{Raw: []byte("5")}},
 		},
 	}
-	out, _, err := ApplyMutations(context.Background(), objs, []corev1alpha1.ReleaseMutation{m}, nil, nil, "ns")
+	out, _, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, nil)
 	if err != nil {
 		t.Fatalf("ApplyMutations: %v", err)
 	}
@@ -121,7 +140,7 @@ func TestApplyMutations_StrategicMergeMergesListByKey(t *testing.T) {
 	// — a plain JSON merge would replace the whole list.
 	m := corev1alpha1.ReleaseMutation{
 		Type:   corev1alpha1.MutationTypeStrategicMergePatch,
-		Target: deploymentTarget("web"),
+		Target: deploymentTarget(),
 		Inline: []string{`spec:
   template:
     spec:
@@ -130,7 +149,7 @@ func TestApplyMutations_StrategicMergeMergesListByKey(t *testing.T) {
           image: app:2`},
 	}
 
-	out, _, err := ApplyMutations(context.Background(), objs, []corev1alpha1.ReleaseMutation{m}, nil, nil, "ns")
+	out, _, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, nil)
 	if err != nil {
 		t.Fatalf("ApplyMutations: %v", err)
 	}
@@ -160,22 +179,67 @@ func TestApplyMutations_StrategicMergeRejectsUnregisteredKind(t *testing.T) {
 		Target: corev1alpha1.ReleaseMutationTarget{Group: "example.com", Version: "v1", Kind: "Widget"},
 		Inline: []string{"spec: {}"},
 	}
-	if _, _, err := ApplyMutations(context.Background(), []*unstructured.Unstructured{cr}, []corev1alpha1.ReleaseMutation{m}, nil, nil, "ns"); err == nil {
+	if _, _, err := apply([]*unstructured.Unstructured{cr}, []corev1alpha1.ReleaseMutation{m}, nil); err == nil {
 		t.Error("ApplyMutations err = nil, want rejection of strategic merge on a CRD")
 	}
 }
 
-func TestApplyMutations_UnsupportedTypeIsErrUnsupported(t *testing.T) {
-	m := corev1alpha1.ReleaseMutation{Type: corev1alpha1.MutationTypeGoTemplate, Target: deploymentTarget("web"), Inline: []string{"x"}}
-	_, _, err := ApplyMutations(context.Background(), []*unstructured.Unstructured{deployment("web")}, []corev1alpha1.ReleaseMutation{m}, nil, nil, "ns")
+func TestApplyMutations_GoTemplateOverlayInjectsContext(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web")}
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeGoTemplate,
+		Target: deploymentTarget(),
+		Inline: []string{`metadata:
+  annotations:
+    region: "{{ .Cluster.region }}"
+    release: "{{ .Self.name }}"
+    self-name: "{{ .Object.metadata.name }}"`},
+	}
+	out, _, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, testCluster())
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	got, _, _ := unstructured.NestedStringMap(out[0].Object, "metadata", "annotations")
+	if got["region"] != clusterMetaRegion || got["release"] != releaseName || got["self-name"] != "web" {
+		t.Errorf("annotations = %v, want region=eu-west release=release-1 self-name=web", got)
+	}
+	// Overlay-merge must not clobber the object — spec.replicas survives.
+	if r, _, _ := unstructured.NestedInt64(out[0].Object, "spec", "replicas"); r != 1 {
+		t.Errorf("replicas = %d, want 1 preserved (overlay-merge, not replace)", r)
+	}
+}
+
+func TestApplyMutations_CelTransformOverlayInjectsContext(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web")}
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeCelTransform,
+		Target: deploymentTarget(),
+		Inline: []string{`{"metadata": {"annotations": {"region": cluster.region, "release": self.name}}}`},
+	}
+	out, _, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, testCluster())
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	got, _, _ := unstructured.NestedStringMap(out[0].Object, "metadata", "annotations")
+	if got["region"] != clusterMetaRegion || got["release"] != releaseName {
+		t.Errorf("annotations = %v, want region=eu-west release=release-1", got)
+	}
+	if r, _, _ := unstructured.NestedInt64(out[0].Object, "spec", "replicas"); r != 1 {
+		t.Errorf("replicas = %d, want 1 preserved", r)
+	}
+}
+
+func TestApplyMutations_UnknownTypeIsErrUnsupported(t *testing.T) {
+	m := corev1alpha1.ReleaseMutation{Type: "bogus", Target: deploymentTarget(), Inline: []string{"x"}}
+	_, _, err := apply([]*unstructured.Unstructured{deployment("web")}, []corev1alpha1.ReleaseMutation{m}, nil)
 	if !errors.Is(err, ErrUnsupported) {
-		t.Errorf("err = %v, want ErrUnsupported for goTemplate (slice 2)", err)
+		t.Errorf("err = %v, want ErrUnsupported for an unknown type", err)
 	}
 }
 
 func TestApplyMutations_NoneIsNoop(t *testing.T) {
 	objs := []*unstructured.Unstructured{deployment("web")}
-	out, resolved, err := ApplyMutations(context.Background(), objs, nil, nil, nil, "ns")
+	out, resolved, err := apply(objs, nil, nil)
 	if err != nil || resolved != nil {
 		t.Fatalf("ApplyMutations = %v, %v; want no-op", resolved, err)
 	}

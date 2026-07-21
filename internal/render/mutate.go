@@ -17,13 +17,19 @@ limitations under the License.
 package render
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"text/template"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types"
+	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
@@ -35,20 +41,34 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
+// MutationInput carries everything the post-render mutation pipeline needs: the
+// rendered objects, the pipeline, the target Release (for the .Self templating
+// context) and Cluster (for .Cluster), and the resolver/coordinator used to
+// resolve a mutation's From source.
+type MutationInput struct {
+	Objects     []*unstructured.Unstructured
+	Mutations   []corev1alpha1.ReleaseMutation
+	Release     *corev1alpha1.Release
+	Cluster     *corev1alpha1.Cluster // may be nil (e.g. preview when unresolvable)
+	Resolver    auth.SecretResolver
+	Coordinator fetch.Coordinator
+}
+
 // ApplyMutations runs the ordered post-render mutation pipeline over the rendered
 // objects. Each mutation transforms the objects matching its target, in order;
 // objects that match no mutation pass through unchanged. It runs in the shared
 // render path so every consumer (apply, diff, preview, health) sees the same
 // mutated output. It returns the mutated objects and a ResolvedMutation record per
 // mutation for status.
-func ApplyMutations(ctx context.Context, objects []*unstructured.Unstructured, mutations []corev1alpha1.ReleaseMutation, resolver auth.SecretResolver, coordinator fetch.Coordinator, releaseNamespace string) ([]*unstructured.Unstructured, []corev1alpha1.ResolvedMutation, error) {
-	if len(mutations) == 0 {
-		return objects, nil, nil
+func ApplyMutations(ctx context.Context, in MutationInput) ([]*unstructured.Unstructured, []corev1alpha1.ResolvedMutation, error) {
+	if len(in.Mutations) == 0 {
+		return in.Objects, nil, nil
 	}
-	resolved := make([]corev1alpha1.ResolvedMutation, 0, len(mutations))
-	for i := range mutations {
-		m := mutations[i]
-		mutated, hash, err := applyMutation(ctx, objects, m, resolver, coordinator, releaseNamespace)
+	objects := in.Objects
+	resolved := make([]corev1alpha1.ResolvedMutation, 0, len(in.Mutations))
+	for i := range in.Mutations {
+		m := in.Mutations[i]
+		mutated, hash, err := applyMutation(ctx, objects, m, in)
 		if err != nil {
 			return nil, nil, fmt.Errorf("mutation %d (%s): %w", i, m.Type, err)
 		}
@@ -65,14 +85,16 @@ func ApplyMutations(ctx context.Context, objects []*unstructured.Unstructured, m
 
 // applyMutation transforms every object matching the mutation's target and
 // returns the resulting object set plus a content hash of the applied patch.
-func applyMutation(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, resolver auth.SecretResolver, coordinator fetch.Coordinator, releaseNamespace string) ([]*unstructured.Unstructured, string, error) {
+func applyMutation(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
 	switch m.Type {
 	case corev1alpha1.MutationTypeJsonPatch:
 		return applyJSONPatch(objects, m)
 	case corev1alpha1.MutationTypeStrategicMergePatch:
-		return applyStrategicMerge(ctx, objects, m, resolver, coordinator, releaseNamespace)
-	case corev1alpha1.MutationTypeGoTemplate, corev1alpha1.MutationTypeCelTransform:
-		return nil, "", fmt.Errorf("%w: mutation type %q is not implemented yet", ErrUnsupported, m.Type)
+		return applyStrategicMerge(ctx, objects, m, in.Resolver, in.Coordinator, in.Release.Namespace)
+	case corev1alpha1.MutationTypeGoTemplate:
+		return applyGoTemplate(ctx, objects, m, in)
+	case corev1alpha1.MutationTypeCelTransform:
+		return applyCELTransform(ctx, objects, m, in)
 	default:
 		return nil, "", fmt.Errorf("%w: unknown mutation type %q", ErrUnsupported, m.Type)
 	}
@@ -157,6 +179,199 @@ func applyStrategicMerge(ctx context.Context, objects []*unstructured.Unstructur
 		out[i] = next
 	}
 	return out, hashDocs(docs), nil
+}
+
+// applyGoTemplate renders each template document with the {.Cluster,.Self,.Object}
+// context and RFC7386-merges the resulting overlay onto each matching object. The
+// overlay is a partial: it injects/updates fields, it does not replace the object.
+func applyGoTemplate(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
+	docs, err := mutationDocs(ctx, m, in.Resolver, in.Coordinator, in.Release.Namespace)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(docs) == 0 {
+		return nil, "", fmt.Errorf("goTemplate has no template content (set inline or from)")
+	}
+	templates := make([]*template.Template, len(docs))
+	for i, doc := range docs {
+		t, err := template.New("mutation").Option("missingkey=zero").Parse(string(doc))
+		if err != nil {
+			return nil, "", fmt.Errorf("parsing goTemplate: %w", err)
+		}
+		templates[i] = t
+	}
+
+	out := make([]*unstructured.Unstructured, len(objects))
+	for i, obj := range objects {
+		if !matchesTarget(m.Target, obj) {
+			out[i] = obj
+			continue
+		}
+		clusterMeta, self := contextValues(in.Release, in.Cluster)
+		data := map[string]any{"Cluster": clusterMeta, "Self": self, "Object": obj.Object}
+		objJSON, err := obj.MarshalJSON()
+		if err != nil {
+			return nil, "", fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		for _, t := range templates {
+			var buf bytes.Buffer
+			if err := t.Execute(&buf, data); err != nil {
+				return nil, "", fmt.Errorf("rendering goTemplate for %s %q: %w", obj.GetKind(), obj.GetName(), err)
+			}
+			overlayJSON, err := yaml.YAMLToJSON(buf.Bytes())
+			if err != nil {
+				return nil, "", fmt.Errorf("parsing goTemplate output: %w", err)
+			}
+			objJSON, err = jsonpatch.MergePatch(objJSON, overlayJSON)
+			if err != nil {
+				return nil, "", fmt.Errorf("merging goTemplate overlay onto %s %q: %w", obj.GetKind(), obj.GetName(), err)
+			}
+		}
+		next := &unstructured.Unstructured{}
+		if err := next.UnmarshalJSON(objJSON); err != nil {
+			return nil, "", fmt.Errorf("decoding mutated %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		out[i] = next
+	}
+	return out, hashDocs(docs), nil
+}
+
+// contextValues projects Cluster.Spec.Metadata and the Release's self-identity
+// into the shapes templating consumes. Cluster credentials are never exposed —
+// only Cluster.Spec.Metadata.
+func contextValues(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) (clusterMeta map[string]string, self map[string]any) {
+	clusterMeta = map[string]string{}
+	if cluster != nil && cluster.Spec.Metadata != nil {
+		clusterMeta = cluster.Spec.Metadata
+	}
+	self = map[string]any{
+		"name":        rel.Name,
+		"namespace":   rel.Namespace,
+		"labels":      orEmpty(rel.Labels),
+		"annotations": orEmpty(rel.Annotations),
+	}
+	return clusterMeta, self
+}
+
+func orEmpty(m map[string]string) map[string]string {
+	if m == nil {
+		return map[string]string{}
+	}
+	return m
+}
+
+// applyCELTransform evaluates each CEL expression (vars cluster/self/object) to an
+// overlay map and RFC7386-merges it onto each matching object.
+func applyCELTransform(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
+	docs, err := mutationDocs(ctx, m, in.Resolver, in.Coordinator, in.Release.Namespace)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(docs) == 0 {
+		return nil, "", fmt.Errorf("celTransform has no expression content (set inline or from)")
+	}
+	env, err := cel.NewEnv(
+		cel.Variable("cluster", cel.MapType(cel.StringType, cel.StringType)),
+		cel.Variable("self", cel.MapType(cel.StringType, cel.DynType)),
+		cel.Variable("object", cel.DynType),
+	)
+	if err != nil {
+		return nil, "", fmt.Errorf("building CEL env: %w", err)
+	}
+	programs := make([]cel.Program, len(docs))
+	for i, doc := range docs {
+		ast, issues := env.Compile(string(doc))
+		if issues != nil && issues.Err() != nil {
+			return nil, "", fmt.Errorf("compiling celTransform: %w", issues.Err())
+		}
+		prg, err := env.Program(ast)
+		if err != nil {
+			return nil, "", fmt.Errorf("building celTransform program: %w", err)
+		}
+		programs[i] = prg
+	}
+
+	out := make([]*unstructured.Unstructured, len(objects))
+	for i, obj := range objects {
+		if !matchesTarget(m.Target, obj) {
+			out[i] = obj
+			continue
+		}
+		clusterMeta, self := contextValues(in.Release, in.Cluster)
+		vars := map[string]any{"cluster": clusterMeta, "self": self, "object": obj.Object}
+		objJSON, err := obj.MarshalJSON()
+		if err != nil {
+			return nil, "", fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		for _, prg := range programs {
+			result, _, err := prg.Eval(vars)
+			if err != nil {
+				return nil, "", fmt.Errorf("evaluating celTransform for %s %q: %w", obj.GetKind(), obj.GetName(), err)
+			}
+			native, err := celToNative(result)
+			if err != nil {
+				return nil, "", fmt.Errorf("celTransform result for %s %q: %w", obj.GetKind(), obj.GetName(), err)
+			}
+			overlay, ok := native.(map[string]any)
+			if !ok {
+				return nil, "", fmt.Errorf("celTransform must return a map overlay for %s %q, got %T", obj.GetKind(), obj.GetName(), native)
+			}
+			overlayJSON, err := json.Marshal(overlay)
+			if err != nil {
+				return nil, "", err
+			}
+			objJSON, err = jsonpatch.MergePatch(objJSON, overlayJSON)
+			if err != nil {
+				return nil, "", fmt.Errorf("merging celTransform overlay onto %s %q: %w", obj.GetKind(), obj.GetName(), err)
+			}
+		}
+		next := &unstructured.Unstructured{}
+		if err := next.UnmarshalJSON(objJSON); err != nil {
+			return nil, "", fmt.Errorf("decoding mutated %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		out[i] = next
+	}
+	return out, hashDocs(docs), nil
+}
+
+// celToNative recursively converts a CEL result to a JSON-marshalable Go value
+// (map[string]any / []any / scalars), using only cel-go's own ref/traits — no
+// protobuf. CEL's ConvertToNative(map[string]any) is not recursive, so we walk it.
+func celToNative(v ref.Val) (any, error) {
+	if v == types.NullValue {
+		return nil, nil
+	}
+	switch val := v.(type) {
+	case traits.Mapper:
+		out := map[string]any{}
+		it := val.Iterator()
+		for it.HasNext() == types.True {
+			k := it.Next()
+			key, ok := k.Value().(string)
+			if !ok {
+				return nil, fmt.Errorf("map keys must be strings, got %T", k.Value())
+			}
+			nv, err := celToNative(val.Get(k))
+			if err != nil {
+				return nil, err
+			}
+			out[key] = nv
+		}
+		return out, nil
+	case traits.Lister:
+		n := int(val.Size().(types.Int))
+		out := make([]any, 0, n)
+		for i := 0; i < n; i++ {
+			nv, err := celToNative(val.Get(types.Int(i)))
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, nv)
+		}
+		return out, nil
+	default:
+		return v.Value(), nil
+	}
 }
 
 // mutationDocs collects a mutation's patch documents: its inline strings first,
