@@ -155,7 +155,7 @@ func applyJSONPatch(objects []*unstructured.Unstructured, m corev1alpha1.Release
 // (list-merge-by-key) semantics. Strategic merge needs the object's built-in Go
 // type, so CRDs/unregistered kinds are rejected (use jsonPatch for those).
 func applyStrategicMerge(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
-	docs, err := mutationDocs(ctx, m, in.Resolver, in.Coordinator, in.Release.Namespace)
+	docs, err := mutationDocs(ctx, m, in)
 	if err != nil {
 		return nil, "", err
 	}
@@ -209,7 +209,7 @@ func applyStrategicMerge(ctx context.Context, objects []*unstructured.Unstructur
 // context and RFC7386-merges the resulting overlay onto each matching object. The
 // overlay is a partial: it injects/updates fields, it does not replace the object.
 func applyGoTemplate(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
-	docs, err := mutationDocs(ctx, m, in.Resolver, in.Coordinator, in.Release.Namespace)
+	docs, err := mutationDocs(ctx, m, in)
 	if err != nil {
 		return nil, "", err
 	}
@@ -294,6 +294,20 @@ func templateContext(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, o
 	return map[string]any{"cluster": clusterMeta, "self": self, "object": obj.Object}
 }
 
+// renderField renders a single template string (a From reference field) against
+// the given context, using the same missingkey=zero policy as the doc templates.
+func renderField(s string, data map[string]any) (string, error) {
+	t, err := template.New("from").Option("missingkey=zero").Parse(s)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 // parseTemplates compiles each mutation document as a text/template. missingkey=zero
 // makes an absent key (e.g. .cluster.region) render empty rather than error.
 func parseTemplates(docs [][]byte) ([]*template.Template, error) {
@@ -320,7 +334,7 @@ func renderWith(t *template.Template, data map[string]any) ([]byte, error) {
 // applyCELTransform evaluates each CEL expression (vars cluster/self/object) to an
 // overlay map and RFC7386-merges it onto each matching object.
 func applyCELTransform(ctx context.Context, objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation, in MutationInput) ([]*unstructured.Unstructured, string, error) {
-	docs, err := mutationDocs(ctx, m, in.Resolver, in.Coordinator, in.Release.Namespace)
+	docs, err := mutationDocs(ctx, m, in)
 	if err != nil {
 		return nil, "", err
 	}
@@ -431,8 +445,8 @@ func celToNative(v ref.Val) (any, error) {
 }
 
 // mutationDocs collects a mutation's patch documents: its inline strings first,
-// then its From source (ConfigMap/Secret) content, in order.
-func mutationDocs(ctx context.Context, m corev1alpha1.ReleaseMutation, resolver auth.SecretResolver, coordinator fetch.Coordinator, releaseNamespace string) ([][]byte, error) {
+// then its From source (ConfigMap/Secret/GitRepository) content, in order.
+func mutationDocs(ctx context.Context, m corev1alpha1.ReleaseMutation, in MutationInput) ([][]byte, error) {
 	var docs [][]byte
 	for _, s := range m.Inline {
 		if s != "" {
@@ -440,7 +454,7 @@ func mutationDocs(ctx context.Context, m corev1alpha1.ReleaseMutation, resolver 
 		}
 	}
 	if m.From != nil {
-		data, err := resolveFrom(ctx, m.From, resolver, coordinator, releaseNamespace)
+		data, err := resolveFrom(ctx, m.From, in)
 		if err != nil {
 			return nil, err
 		}
@@ -452,56 +466,73 @@ func mutationDocs(ctx context.Context, m corev1alpha1.ReleaseMutation, resolver 
 // resolveFrom fetches a mutation's external content. ConfigMap/Secret are read via
 // the resolver (From.Path names the data key); GitRepository is fetched through
 // the coordinator at From.Ref (From.Path names the file within the repo).
-func resolveFrom(ctx context.Context, from *corev1alpha1.ReleaseMutationFromSpec, resolver auth.SecretResolver, coordinator fetch.Coordinator, releaseNamespace string) ([]byte, error) {
+//
+// From.Name and From.Path are Go-templated with the release-level {cluster,self}
+// context before use (e.g. name: "{{ .cluster.name }}-patches"). Only release-level
+// context is available — not .object — because a From source is resolved once per
+// mutation, not per object. From.Namespace is deliberately NOT templated so the
+// same-namespace admission guard stays enforceable against a literal value.
+func resolveFrom(ctx context.Context, from *corev1alpha1.ReleaseMutationFromSpec, in MutationInput) ([]byte, error) {
+	clusterCtx, self := contextValues(in.Release, in.Cluster)
+	refCtx := map[string]any{"cluster": clusterCtx, "self": self}
+	name, err := renderField(from.Name, refCtx)
+	if err != nil {
+		return nil, fmt.Errorf("rendering from.name: %w", err)
+	}
+	path, err := renderField(from.Path, refCtx)
+	if err != nil {
+		return nil, fmt.Errorf("rendering from.path: %w", err)
+	}
+
 	ns := from.Namespace
 	if ns == "" {
-		ns = releaseNamespace
+		ns = in.Release.Namespace
 	}
 	switch from.Kind {
 	case "GitRepository":
-		res, err := coordinator.Ensure(ctx, corev1alpha1.ReleaseSourceSpec{
+		res, err := in.Coordinator.Ensure(ctx, corev1alpha1.ReleaseSourceSpec{
 			Type: corev1alpha1.ReleaseSourceTypeGitRepository,
 			GitRepository: &corev1alpha1.ReleaseGitRepositorySpec{
-				Name:      from.Name,
+				Name:      name,
 				Namespace: from.Namespace,
 				Ref:       from.Ref,
 			},
-		}, releaseNamespace)
+		}, in.Release.Namespace)
 		if err != nil {
 			return nil, err // transient (requeue)
 		}
 		if !res.Ready {
-			return nil, fmt.Errorf("mutation source GitRepository %s not ready: %s", from.Name, res.Message)
+			return nil, fmt.Errorf("mutation source GitRepository %s not ready: %s", name, res.Message)
 		}
-		data, ok := res.Artifact.Files[strings.TrimPrefix(from.Path, "/")]
+		data, ok := res.Artifact.Files[strings.TrimPrefix(path, "/")]
 		if !ok {
-			return nil, fmt.Errorf("mutation file %q not found in GitRepository %s@%s", from.Path, from.Name, res.Revision)
+			return nil, fmt.Errorf("mutation file %q not found in GitRepository %s@%s", path, name, res.Revision)
 		}
 		return data, nil
 	case "ConfigMap":
-		cm, err := resolver.ConfigMap(ctx, ns, from.Name)
+		cm, err := in.Resolver.ConfigMap(ctx, ns, name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("configMap %s/%s not found", ns, from.Name)
+				return nil, fmt.Errorf("configMap %s/%s not found", ns, name)
 			}
 			return nil, err
 		}
-		v, ok := cm.Data[from.Path]
+		v, ok := cm.Data[path]
 		if !ok {
-			return nil, fmt.Errorf("configMap %s/%s has no key %q", ns, from.Name, from.Path)
+			return nil, fmt.Errorf("configMap %s/%s has no key %q", ns, name, path)
 		}
 		return []byte(v), nil
 	case "Secret":
-		s, err := resolver.Secret(ctx, ns, from.Name)
+		s, err := in.Resolver.Secret(ctx, ns, name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("secret %s/%s not found", ns, from.Name)
+				return nil, fmt.Errorf("secret %s/%s not found", ns, name)
 			}
 			return nil, err
 		}
-		v, ok := s.Data[from.Path]
+		v, ok := s.Data[path]
 		if !ok {
-			return nil, fmt.Errorf("secret %s/%s has no key %q", ns, from.Name, from.Path)
+			return nil, fmt.Errorf("secret %s/%s has no key %q", ns, name, path)
 		}
 		return v, nil
 	default:

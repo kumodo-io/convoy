@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -330,6 +331,37 @@ func TestApplyMutations_StrategicMergeFromGitRepository(t *testing.T) {
 	}
 	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "from"); got != "git" {
 		t.Errorf("label from = %q, want %q (patch fetched from GitRepository)", got, "git")
+	}
+}
+
+func TestApplyMutations_FromNameTemplated(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web")}
+	// from.name is templated with .cluster.name -> the resolver is queried for the
+	// rendered name ("prod-eu-patch"), not the literal "{{ .cluster.name }}-patch".
+	resolver := fakeResolver{configMaps: map[string]*corev1.ConfigMap{
+		clusterName + "-patch": {Data: map[string]string{"patch.yaml": "metadata:\n  labels:\n    from: cm\n"}},
+	}}
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeStrategicMergePatch,
+		Target: deploymentTarget(),
+		From: &corev1alpha1.ReleaseMutationFromSpec{
+			Kind: configMapKind,
+			Name: "{{ .cluster.name }}-patch",
+			Path: "patch.yaml",
+		},
+	}
+	out, _, err := ApplyMutations(context.Background(), MutationInput{
+		Objects:   objs,
+		Mutations: []corev1alpha1.ReleaseMutation{m},
+		Release:   &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: releaseName, Namespace: "ns"}},
+		Cluster:   testCluster(),
+		Resolver:  resolver,
+	})
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "from"); got != "cm" {
+		t.Errorf("label from = %q, want %q (ConfigMap resolved via templated from.name)", got, "cm")
 	}
 }
 
