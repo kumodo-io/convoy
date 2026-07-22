@@ -42,6 +42,7 @@ const (
 	deploymentKind   = "Deployment"
 
 	clusterMetaRegion = "eu-west"
+	clusterName       = "prod-eu"
 	releaseName       = "release-1"
 	imageValue        = "sc:1"
 )
@@ -76,7 +77,10 @@ func deploymentTarget() corev1alpha1.ReleaseMutationTarget {
 }
 
 func testCluster() *corev1alpha1.Cluster {
-	return &corev1alpha1.Cluster{Spec: corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": clusterMetaRegion}}}
+	return &corev1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: clusterName},
+		Spec:       corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": clusterMetaRegion}},
+	}
 }
 
 // apply runs ApplyMutations with a fixed Release identity ("release-1"/"ns") and
@@ -195,6 +199,7 @@ func TestApplyMutations_GoTemplateOverlayInjectsContext(t *testing.T) {
 		Inline: []string{`metadata:
   annotations:
     region: "{{ .cluster.region }}"
+    cluster: "{{ .cluster.name }}"
     release: "{{ .self.name }}"
     self-name: "{{ .object.metadata.name }}"`},
 	}
@@ -203,8 +208,10 @@ func TestApplyMutations_GoTemplateOverlayInjectsContext(t *testing.T) {
 		t.Fatalf("ApplyMutations: %v", err)
 	}
 	got, _, _ := unstructured.NestedStringMap(out[0].Object, "metadata", "annotations")
-	if got["region"] != clusterMetaRegion || got["release"] != releaseName || got["self-name"] != "web" {
-		t.Errorf("annotations = %v, want region=eu-west release=release-1 self-name=web", got)
+	// .cluster.name (object name) coexists with .cluster.region (metadata) — the
+	// name key is additive, metadata access is unchanged.
+	if got["region"] != clusterMetaRegion || got["cluster"] != clusterName || got["release"] != releaseName || got["self-name"] != "web" {
+		t.Errorf("annotations = %v, want region=eu-west cluster=prod-eu release=release-1 self-name=web", got)
 	}
 	// Overlay-merge must not clobber the object — spec.replicas survives.
 	if r, _, _ := unstructured.NestedInt64(out[0].Object, "spec", "replicas"); r != 1 {

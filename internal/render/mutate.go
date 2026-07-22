@@ -255,13 +255,19 @@ func applyGoTemplate(ctx context.Context, objects []*unstructured.Unstructured, 
 	return out, hashDocs(docs), nil
 }
 
-// contextValues projects Cluster.Spec.Metadata and the Release's self-identity
-// into the shapes templating consumes. Cluster credentials are never exposed —
-// only Cluster.Spec.Metadata.
-func contextValues(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) (clusterMeta map[string]string, self map[string]any) {
-	clusterMeta = map[string]string{}
-	if cluster != nil && cluster.Spec.Metadata != nil {
-		clusterMeta = cluster.Spec.Metadata
+// contextValues projects the target Cluster and the Release's self-identity into
+// the shapes templating consumes. The cluster map exposes its Spec.Metadata keys
+// plus a `name` key (the Cluster object's name), so `.cluster.name` works like
+// `.self.name`; a metadata key literally named "name" is shadowed by it. Cluster
+// credentials are never exposed — only the object name and Spec.Metadata.
+func contextValues(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) (clusterCtx map[string]string, self map[string]any) {
+	// Fresh map (never alias Cluster.Spec.Metadata — adding `name` would mutate it).
+	clusterCtx = map[string]string{}
+	if cluster != nil {
+		for k, v := range cluster.Spec.Metadata {
+			clusterCtx[k] = v
+		}
+		clusterCtx["name"] = cluster.Name
 	}
 	self = map[string]any{
 		"name":        rel.Name,
@@ -269,7 +275,7 @@ func contextValues(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) (cl
 		"labels":      orEmpty(rel.Labels),
 		"annotations": orEmpty(rel.Annotations),
 	}
-	return clusterMeta, self
+	return clusterCtx, self
 }
 
 func orEmpty(m map[string]string) map[string]string {
