@@ -11,6 +11,9 @@
 #     - type: strategicMergePatch
 #       target: { group: apps, version: v1, kind: Deployment }
 #       from: { kind: ConfigMap, name: mutation-strategic-merge, path: patch.yaml }
+# The patch body is Go-templated with {.cluster,.self,.object}; from.name and
+# from.path may also be templated with {.cluster,.self} (e.g. name:
+# "{{ .cluster.name }}-strategic-merge").
 apiVersion: v1
 kind: ConfigMap
 metadata:

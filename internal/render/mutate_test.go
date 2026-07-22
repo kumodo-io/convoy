@@ -21,6 +21,7 @@ import (
 	"errors"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,6 +43,7 @@ const (
 	deploymentKind   = "Deployment"
 
 	clusterMetaRegion = "eu-west"
+	clusterName       = "prod-eu"
 	releaseName       = "release-1"
 	imageValue        = "sc:1"
 )
@@ -76,7 +78,10 @@ func deploymentTarget() corev1alpha1.ReleaseMutationTarget {
 }
 
 func testCluster() *corev1alpha1.Cluster {
-	return &corev1alpha1.Cluster{Spec: corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": clusterMetaRegion}}}
+	return &corev1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: clusterName},
+		Spec:       corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": clusterMetaRegion}},
+	}
 }
 
 // apply runs ApplyMutations with a fixed Release identity ("release-1"/"ns") and
@@ -195,6 +200,7 @@ func TestApplyMutations_GoTemplateOverlayInjectsContext(t *testing.T) {
 		Inline: []string{`metadata:
   annotations:
     region: "{{ .cluster.region }}"
+    cluster: "{{ .cluster.name }}"
     release: "{{ .self.name }}"
     self-name: "{{ .object.metadata.name }}"`},
 	}
@@ -203,8 +209,10 @@ func TestApplyMutations_GoTemplateOverlayInjectsContext(t *testing.T) {
 		t.Fatalf("ApplyMutations: %v", err)
 	}
 	got, _, _ := unstructured.NestedStringMap(out[0].Object, "metadata", "annotations")
-	if got["region"] != clusterMetaRegion || got["release"] != releaseName || got["self-name"] != "web" {
-		t.Errorf("annotations = %v, want region=eu-west release=release-1 self-name=web", got)
+	// .cluster.name (object name) coexists with .cluster.region (metadata) — the
+	// name key is additive, metadata access is unchanged.
+	if got["region"] != clusterMetaRegion || got["cluster"] != clusterName || got["release"] != releaseName || got["self-name"] != "web" {
+		t.Errorf("annotations = %v, want region=eu-west cluster=prod-eu release=release-1 self-name=web", got)
 	}
 	// Overlay-merge must not clobber the object — spec.replicas survives.
 	if r, _, _ := unstructured.NestedInt64(out[0].Object, "spec", "replicas"); r != 1 {
@@ -323,6 +331,37 @@ func TestApplyMutations_StrategicMergeFromGitRepository(t *testing.T) {
 	}
 	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "from"); got != "git" {
 		t.Errorf("label from = %q, want %q (patch fetched from GitRepository)", got, "git")
+	}
+}
+
+func TestApplyMutations_FromNameTemplated(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web")}
+	// from.name is templated with .cluster.name -> the resolver is queried for the
+	// rendered name ("prod-eu-patch"), not the literal "{{ .cluster.name }}-patch".
+	resolver := fakeResolver{configMaps: map[string]*corev1.ConfigMap{
+		clusterName + "-patch": {Data: map[string]string{"patch.yaml": "metadata:\n  labels:\n    from: cm\n"}},
+	}}
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeStrategicMergePatch,
+		Target: deploymentTarget(),
+		From: &corev1alpha1.ReleaseMutationFromSpec{
+			Kind: configMapKind,
+			Name: "{{ .cluster.name }}-patch",
+			Path: "patch.yaml",
+		},
+	}
+	out, _, err := ApplyMutations(context.Background(), MutationInput{
+		Objects:   objs,
+		Mutations: []corev1alpha1.ReleaseMutation{m},
+		Release:   &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: releaseName, Namespace: "ns"}},
+		Cluster:   testCluster(),
+		Resolver:  resolver,
+	})
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	if got, _, _ := unstructured.NestedString(out[0].Object, "metadata", "labels", "from"); got != "cm" {
+		t.Errorf("label from = %q, want %q (ConfigMap resolved via templated from.name)", got, "cm")
 	}
 }
 
