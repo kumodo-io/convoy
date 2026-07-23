@@ -39,7 +39,7 @@ func Command(f *cliclient.ConfigFlags) *cobra.Command {
 func newReleaseMutationsCmd(f *cliclient.ConfigFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mutations",
-		Short: "View or set a release's post-render mutation pipeline",
+		Short: "View or edit a release's post-render mutation pipeline",
 	}
 	get := &cobra.Command{
 		Use:   "get <name>",
@@ -53,22 +53,37 @@ func newReleaseMutationsCmd(f *cliclient.ConfigFlags) *cobra.Command {
 			return runMutationsGet(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0])
 		},
 	}
-	var file string
-	set := &cobra.Command{
-		Use:   "set <name> -f <file>",
-		Short: "Replace a release's mutation pipeline from a YAML/JSON file",
+	cmd.AddCommand(get, newReleaseMutationsWriteCmd(f, false), newReleaseMutationsWriteCmd(f, true))
+	return cmd
+}
+
+// newReleaseMutationsWriteCmd builds `mutations set` (replace) or `mutations add`
+// (append). Both take the pipeline from exactly one of `-f <file>`, `-f -`
+// (stdin), or `--from-string`.
+func newReleaseMutationsWriteCmd(f *cliclient.ConfigFlags, appendMode bool) *cobra.Command {
+	use, short := "set <name>", "Replace a release's mutation pipeline"
+	if appendMode {
+		use, short = "add <name>", "Append to a release's mutation pipeline"
+	}
+	var file, fromString string
+	cmd := &cobra.Command{
+		Use:   use,
+		Short: short + " (from -f <file>, -f - for stdin, or --from-string)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, namespace, err := f.Client()
 			if err != nil {
 				return err
 			}
-			return runMutationsSet(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], file)
+			mutations, err := readMutations(file, fromString, cmd.InOrStdin())
+			if err != nil {
+				return err
+			}
+			return runMutationsWrite(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], mutations, appendMode)
 		},
 	}
-	set.Flags().StringVarP(&file, "file", "f", "", "YAML/JSON file with the list of mutations (required)")
-	_ = set.MarkFlagRequired("file")
-	cmd.AddCommand(get, set)
+	cmd.Flags().StringVarP(&file, "file", "f", "", "YAML/JSON file with the list of mutations ('-' reads stdin)")
+	cmd.Flags().StringVar(&fromString, "from-string", "", "inline YAML/JSON list of mutations")
 	return cmd
 }
 
@@ -276,19 +291,53 @@ func runMutationsGet(ctx context.Context, out io.Writer, client cliclient.Client
 	return err
 }
 
-func runMutationsSet(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, file string) error {
-	raw, err := os.ReadFile(file)
+// readMutations resolves the mutation list from exactly one of: `--from-string`,
+// a file (`-f <path>`), or stdin (`-f -`).
+func readMutations(file, fromString string, stdin io.Reader) ([]corev1alpha1.ReleaseMutation, error) {
+	if fromString != "" && file != "" {
+		return nil, fmt.Errorf("--file and --from-string are mutually exclusive")
+	}
+	var raw []byte
+	var err error
+	switch {
+	case fromString != "":
+		raw = []byte(fromString)
+	case file == "-":
+		raw, err = io.ReadAll(stdin)
+	case file != "":
+		raw, err = os.ReadFile(file)
+	default:
+		return nil, fmt.Errorf("provide the mutations via -f <file>, -f - (stdin), or --from-string")
+	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var mutations []corev1alpha1.ReleaseMutation
 	if err := yaml.Unmarshal(raw, &mutations); err != nil {
-		return fmt.Errorf("parsing mutations file: %w", err)
+		return nil, fmt.Errorf("parsing mutations: %w", err)
 	}
-	if _, err := client.SetMutations(ctx, namespace, name, mutations); err != nil {
+	return mutations, nil
+}
+
+// runMutationsWrite replaces (set) or appends to (add) the release's pipeline.
+func runMutationsWrite(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name string, mutations []corev1alpha1.ReleaseMutation, appendMode bool) error {
+	final := mutations
+	if appendMode {
+		rel, err := client.GetRelease(ctx, namespace, name)
+		if err != nil {
+			return err
+		}
+		// Copy the existing slice before appending so we don't alias its backing array.
+		final = append(append([]corev1alpha1.ReleaseMutation{}, rel.Mutations...), mutations...)
+	}
+	if _, err := client.SetMutations(ctx, namespace, name, final); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(out, "set %d mutation(s) on %s/%s\n", len(mutations), namespace, name)
+	if appendMode {
+		_, err := fmt.Fprintf(out, "added %d mutation(s) to %s/%s (%d total)\n", len(mutations), namespace, name, len(final))
+		return err
+	}
+	_, err := fmt.Fprintf(out, "set %d mutation(s) on %s/%s\n", len(final), namespace, name)
 	return err
 }
 

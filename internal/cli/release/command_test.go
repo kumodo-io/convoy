@@ -337,3 +337,72 @@ func TestRunDiff_JSONPassthrough(t *testing.T) {
 		t.Errorf("json output = %q, want the raw payload %q", out.String(), raw)
 	}
 }
+
+const mutationsYAML = `- type: goTemplate
+  target: { group: apps, version: v1, kind: Deployment }
+  inline: ["metadata: {labels: {x: y}}"]`
+
+func TestReadMutations_FromString(t *testing.T) {
+	muts, err := readMutations("", mutationsYAML, nil)
+	if err != nil {
+		t.Fatalf("readMutations: %v", err)
+	}
+	if len(muts) != 1 || muts[0].Type != corev1alpha1.MutationTypeGoTemplate {
+		t.Errorf("parsed = %+v, want one goTemplate mutation", muts)
+	}
+}
+
+func TestReadMutations_Stdin(t *testing.T) {
+	muts, err := readMutations("-", "", strings.NewReader(mutationsYAML))
+	if err != nil {
+		t.Fatalf("readMutations(stdin): %v", err)
+	}
+	if len(muts) != 1 {
+		t.Errorf("parsed %d mutations from stdin, want 1", len(muts))
+	}
+}
+
+func TestReadMutations_MutualExclusion(t *testing.T) {
+	if _, err := readMutations("f.yaml", "inline", nil); err == nil {
+		t.Error("readMutations allowed both --file and --from-string, want error")
+	}
+}
+
+func TestReadMutations_NoInput(t *testing.T) {
+	if _, err := readMutations("", "", nil); err == nil {
+		t.Error("readMutations allowed no input, want error")
+	}
+}
+
+func TestRunMutationsWrite_Set(t *testing.T) {
+	f := &fakeClient{rel: releaseWithRender("sha256:cur")}
+	f.rel.Mutations = []corev1alpha1.ReleaseMutation{{Type: corev1alpha1.MutationTypeJsonPatch}}
+	newMut := []corev1alpha1.ReleaseMutation{{Type: corev1alpha1.MutationTypeGoTemplate}}
+	var out bytes.Buffer
+
+	if err := runMutationsWrite(context.Background(), &out, f, "ns", "r1", newMut, false); err != nil {
+		t.Fatalf("runMutationsWrite(set): %v", err)
+	}
+	// set replaces: exactly the new mutation, not the pre-existing one.
+	if len(f.setMutations) != 1 || f.setMutations[0].Type != corev1alpha1.MutationTypeGoTemplate {
+		t.Errorf("set sent %+v, want just the new goTemplate", f.setMutations)
+	}
+}
+
+func TestRunMutationsWrite_Add(t *testing.T) {
+	f := &fakeClient{rel: releaseWithRender("sha256:cur")}
+	f.rel.Mutations = []corev1alpha1.ReleaseMutation{{Type: corev1alpha1.MutationTypeJsonPatch}}
+	newMut := []corev1alpha1.ReleaseMutation{{Type: corev1alpha1.MutationTypeGoTemplate}}
+	var out bytes.Buffer
+
+	if err := runMutationsWrite(context.Background(), &out, f, "ns", "r1", newMut, true); err != nil {
+		t.Fatalf("runMutationsWrite(add): %v", err)
+	}
+	// add appends: existing first, then new.
+	if len(f.setMutations) != 2 || f.setMutations[0].Type != corev1alpha1.MutationTypeJsonPatch || f.setMutations[1].Type != corev1alpha1.MutationTypeGoTemplate {
+		t.Errorf("add sent %+v, want [jsonPatch, goTemplate]", f.setMutations)
+	}
+	if !strings.Contains(out.String(), "2 total") {
+		t.Errorf("output = %q, want it to report 2 total", out.String())
+	}
+}
