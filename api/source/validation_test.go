@@ -27,8 +27,8 @@ import (
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
-func secretKeyRef(name, key string) corev1.SecretKeySelector {
-	return corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: name}, Key: key}
+func secretKeyRef(key string) corev1.SecretKeySelector {
+	return corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "s"}, Key: key}
 }
 
 func gitRepo(auth GitRepositoryAuthSpec) *GitRepository {
@@ -50,7 +50,7 @@ func fieldErrContains(errs field.ErrorList, needle string) bool {
 func TestValidateGitRepository_BasicValid(t *testing.T) {
 	repo := gitRepo(GitRepositoryAuthSpec{
 		Type:  GitRepositoryAuthTypeBasic,
-		Basic: &authv1.BasicAuthSpec{Username: "u", PasswordRef: secretKeyRef("s", "password")},
+		Basic: &authv1.BasicAuthSpec{Username: "u", PasswordRef: secretKeyRef("password")},
 	})
 	if errs := ValidateGitRepository(repo); len(errs) != 0 {
 		t.Errorf("valid basic auth rejected: %v", errs)
@@ -70,7 +70,7 @@ func TestValidateGitRepository_TokenMissingRef(t *testing.T) {
 func TestValidateGitRepository_SSHRequiresKnownHosts(t *testing.T) {
 	repo := gitRepo(GitRepositoryAuthSpec{
 		Type:   GitRepositoryAuthTypeSSHKey,
-		SSHKey: &authv1.SSHKeyAuthSpec{SSHKeyRef: secretKeyRef("s", "id")}, // no KnownHostsRef
+		SSHKey: &authv1.SSHKeyAuthSpec{SSHKeyRef: secretKeyRef("id")}, // no KnownHostsRef
 	})
 	if errs := ValidateGitRepository(repo); !fieldErrContains(errs, "knownHostsRef") {
 		t.Errorf("ssh auth without knownHostsRef not rejected: %v", errs)
@@ -81,8 +81,8 @@ func TestValidateGitRepository_MismatchedBlockForbidden(t *testing.T) {
 	// Type is token but a basic block is also present → forbidden.
 	repo := gitRepo(GitRepositoryAuthSpec{
 		Type:  GitRepositoryAuthTypeToken,
-		Token: &authv1.TokenAuthSpec{TokenRef: secretKeyRef("s", "token")},
-		Basic: &authv1.BasicAuthSpec{Username: "u", PasswordRef: secretKeyRef("s", "password")},
+		Token: &authv1.TokenAuthSpec{TokenRef: secretKeyRef("token")},
+		Basic: &authv1.BasicAuthSpec{Username: "u", PasswordRef: secretKeyRef("password")},
 	})
 	if errs := ValidateGitRepository(repo); len(errs) == 0 {
 		t.Error("mismatched basic block alongside token type not rejected")
