@@ -159,6 +159,7 @@ const (
 	MutationTypeJsonPatch           ReleaseMutationType = "jsonPatch"
 	MutationTypeStrategicMergePatch ReleaseMutationType = "strategicMergePatch"
 	MutationTypeCelTransform        ReleaseMutationType = "celTransform"
+	MutationTypeSyncWave            ReleaseMutationType = "syncWave"
 )
 
 type JSONPatchOperation string
@@ -389,6 +390,7 @@ type ReleaseRetryBackoffSpec struct {
 
 type ReleaseWaveStrategySpec struct {
 	Strategy ReleaseWaveStrategy
+	Wave     int
 	Timeout  *metav1.Duration
 }
 
@@ -408,11 +410,12 @@ type ReleaseHealthAssessment struct {
 }
 
 type ReleaseMutation struct {
-	Type    ReleaseMutationType
-	Target  ReleaseMutationTarget
-	Inline  []string
-	From    *ReleaseMutationFromSpec
-	Patches []ReleaseMutationPatchSpec
+	Type         ReleaseMutationType
+	Target       ReleaseMutationTarget
+	Inline       []string
+	From         *ReleaseMutationFromSpec
+	Patches      []ReleaseMutationPatchSpec
+	WaveStrategy *ReleaseWaveStrategySpec
 }
 
 type ReleaseMutationTarget struct {

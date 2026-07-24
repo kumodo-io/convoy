@@ -37,6 +37,9 @@ type ReleaseMutationApplyConfiguration struct {
 	From *ReleaseMutationFromSpecApplyConfiguration `json:"from,omitempty"`
 	// Patches is the list of JSON patches to apply to the release.
 	Patches []ReleaseMutationPatchSpecApplyConfiguration `json:"patches,omitempty"`
+	// WaveStrategy is the sync-wave configuration applied as annotations
+	// to the defined target. Only applicable for "syncWave" mutation type.
+	WaveStrategy *ReleaseWaveStrategySpecApplyConfiguration `json:"waveStrategy,omitempty"`
 }
 
 // ReleaseMutationApplyConfiguration constructs a declarative configuration of the ReleaseMutation type for use with
@@ -89,5 +92,13 @@ func (b *ReleaseMutationApplyConfiguration) WithPatches(values ...*ReleaseMutati
 		}
 		b.Patches = append(b.Patches, *values[i])
 	}
+	return b
+}
+
+// WithWaveStrategy sets the WaveStrategy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the WaveStrategy field is set to the value of the last call.
+func (b *ReleaseMutationApplyConfiguration) WithWaveStrategy(value *ReleaseWaveStrategySpecApplyConfiguration) *ReleaseMutationApplyConfiguration {
+	b.WaveStrategy = value
 	return b
 }

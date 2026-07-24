@@ -7,6 +7,24 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// ConvoySyncWaveAnnotation is set on the rendered resource(s) to
+	// define the order resource(s) will be applied in. If not set,
+	// then it's treated as wave 0.
+	ConvoySyncWaveAnnotation = "convoy.kumodo.io/sync-wave"
+
+	// ConvoySyncStrategyAnnotation is set on the rendered resource(s) to
+	// define the strategy used to resolve the order and resource(s) readiness.
+	// If not set then it's treated as "waitForApply"
+	ConvoySyncStrategyAnnotation = "convoy.kumodo.io/sync-strategy"
+
+	// ConvoySyncTimeoutAnnotation is set on the rendered resource(s) to
+	// define the timeout the controller will wait for. If not set,
+	// then it's treated as 30s. Only applicable for "waitForHealthy"
+	// strategy.
+	ConvoySyncTimeoutAnnotation = "convoy.kumodo.io/sync-timeout"
+)
+
 // ReleaseSourceType defines the type of the source.
 // +enum
 type ReleaseSourceType string
@@ -105,6 +123,13 @@ const (
 
 	// MutationTypeCelTransform is the mutation type that uses CEL as mutation source.
 	MutationTypeCelTransform ReleaseMutationType = "celTransform"
+
+	// MutationTypeSyncWave is a special mutation type which is used to set
+	// the sync-related annotations on the rendered resources. These annotations
+	// could still be set using other mutation types, but it's typos-prone
+	// approach which is hard to debug. Dedicated mutation type in opposite
+	// provides the validated, targeted and typed way to produce those annotations.
+	MutationTypeSyncWave ReleaseMutationType = "syncWave"
 )
 
 // JSONPatchOperation defines the JSON patch operation.
@@ -592,6 +617,9 @@ type ReleaseWaveStrategySpec struct {
 	// Strategy is the wave strategy.
 	Strategy ReleaseWaveStrategy `json:"strategy"`
 
+	// Wave is the wave number.
+	Wave int `json:"wave"`
+
 	// Timeout is the timeout for the wave strategy. If not set, controller will wait indefinitely.
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
@@ -642,6 +670,10 @@ type ReleaseMutation struct {
 	// Patches is the list of JSON patches to apply to the release.
 	// +listType=atomic
 	Patches []ReleaseMutationPatchSpec `json:"patches,omitempty"`
+
+	// WaveStrategy is the sync-wave configuration applied as annotations
+	// to the defined target. Only applicable for "syncWave" mutation type.
+	WaveStrategy *ReleaseWaveStrategySpec `json:"waveStrategy,omitempty"`
 }
 
 // ReleaseMutationTarget defines the target the mutation should be applied to.

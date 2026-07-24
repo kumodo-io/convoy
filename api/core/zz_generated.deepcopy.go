@@ -968,6 +968,11 @@ func (in *ReleaseMutation) DeepCopyInto(out *ReleaseMutation) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.WaveStrategy != nil {
+		in, out := &in.WaveStrategy, &out.WaveStrategy
+		*out = new(ReleaseWaveStrategySpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

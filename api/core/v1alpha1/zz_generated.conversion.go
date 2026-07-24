@@ -1532,6 +1532,7 @@ func autoConvert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation(in *ReleaseMut
 	out.Inline = *(*[]string)(unsafe.Pointer(&in.Inline))
 	out.From = (*core.ReleaseMutationFromSpec)(unsafe.Pointer(in.From))
 	out.Patches = *(*[]core.ReleaseMutationPatchSpec)(unsafe.Pointer(&in.Patches))
+	out.WaveStrategy = (*core.ReleaseWaveStrategySpec)(unsafe.Pointer(in.WaveStrategy))
 	return nil
 }
 
@@ -1548,6 +1549,7 @@ func autoConvert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation(in *core.Relea
 	out.Inline = *(*[]string)(unsafe.Pointer(&in.Inline))
 	out.From = (*ReleaseMutationFromSpec)(unsafe.Pointer(in.From))
 	out.Patches = *(*[]ReleaseMutationPatchSpec)(unsafe.Pointer(&in.Patches))
+	out.WaveStrategy = (*ReleaseWaveStrategySpec)(unsafe.Pointer(in.WaveStrategy))
 	return nil
 }
 
@@ -1986,6 +1988,7 @@ func Convert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(in *co
 
 func autoConvert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(in *ReleaseWaveStrategySpec, out *core.ReleaseWaveStrategySpec, s conversion.Scope) error {
 	out.Strategy = core.ReleaseWaveStrategy(in.Strategy)
+	out.Wave = in.Wave
 	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
 	return nil
 }
@@ -1997,6 +2000,7 @@ func Convert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(in
 
 func autoConvert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(in *core.ReleaseWaveStrategySpec, out *ReleaseWaveStrategySpec, s conversion.Scope) error {
 	out.Strategy = ReleaseWaveStrategy(in.Strategy)
+	out.Wave = in.Wave
 	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
 	return nil
 }

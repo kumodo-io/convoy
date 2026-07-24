@@ -2854,11 +2854,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.\n - `\"syncWave\"` is a special mutation type which is used to set the sync-related annotations on the rendered resources. These annotations could still be set using other mutation types, but it's typos-prone approach which is hard to debug. Dedicated mutation type in opposite provides the validated, targeted and typed way to produce those annotations.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch", "syncWave"},
 						},
 					},
 					"target": {
@@ -2913,12 +2913,18 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 							},
 						},
 					},
+					"waveStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WaveStrategy is the sync-wave configuration applied as annotations to the defined target. Only applicable for \"syncWave\" mutation type.",
+							Ref:         ref(v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"type", "target"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName()},
+			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName(), v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -3637,6 +3643,14 @@ func schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref common.Referenc
 							Enum:        []interface{}{"waitForApplied", "waitForHealthy", "waitForHealthyWithTimeout"},
 						},
 					},
+					"wave": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wave is the wave number.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timeout is the timeout for the wave strategy. If not set, controller will wait indefinitely.",
@@ -3644,7 +3658,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref common.Referenc
 						},
 					},
 				},
-				Required: []string{"strategy"},
+				Required: []string{"strategy", "wave"},
 			},
 		},
 		Dependencies: []string{
@@ -3738,11 +3752,11 @@ func schema_convoy_api_core_v1alpha1_ResolvedMutation(ref common.ReferenceCallba
 					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.\n - `\"syncWave\"` is a special mutation type which is used to set the sync-related annotations on the rendered resources. These annotations could still be set using other mutation types, but it's typos-prone approach which is hard to debug. Dedicated mutation type in opposite provides the validated, targeted and typed way to produce those annotations.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch", "syncWave"},
 						},
 					},
 					"sourceRef": {
