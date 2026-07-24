@@ -55,6 +55,36 @@ func validateAuthConfig(configs []sourceAuthConfig, fldPath *field.Path, ownerTy
 	return allErrs
 }
 
+// validateAuthRefs checks that the selected auth type's secret/configmap
+// references are specified (a ref must name a source; whether it exists is a
+// reconcile-time concern). ssh additionally requires knownHostsRef, since host-key
+// verification is mandatory. Any of basic/token/ssh may be nil when not applicable
+// to the source (e.g. registries have no sshKey).
+func validateAuthRefs(fldPath *field.Path, authType authv1.AuthType, basic *authv1.BasicAuthSpec, token *authv1.TokenAuthSpec, ssh *authv1.SSHKeyAuthSpec) field.ErrorList {
+	allErrs := field.ErrorList{}
+	authPath := fldPath.Child("auth")
+	switch authType {
+	case authv1.AuthTypeBasic:
+		if basic != nil && basic.PasswordRef.Name == "" {
+			allErrs = append(allErrs, field.Required(authPath.Child("basic", "passwordRef", "name"), ""))
+		}
+	case authv1.AuthTypeToken:
+		if token != nil && token.TokenRef.Name == "" {
+			allErrs = append(allErrs, field.Required(authPath.Child("token", "tokenRef", "name"), ""))
+		}
+	case authv1.AuthTypeSSHKey:
+		if ssh != nil {
+			if ssh.SSHKeyRef.Name == "" {
+				allErrs = append(allErrs, field.Required(authPath.Child("sshKey", "sshKeyRef", "name"), ""))
+			}
+			if ssh.KnownHostsRef.Name == "" {
+				allErrs = append(allErrs, field.Required(authPath.Child("sshKey", "knownHostsRef", "name"), "required for host-key verification"))
+			}
+		}
+	}
+	return allErrs
+}
+
 // ---------- GitRepository ----------
 
 // ValidateGitRepository validates a GitRepository on creation.
@@ -112,6 +142,7 @@ func validateGitRepositorySpec(spec *GitRepositorySpec, fldPath *field.Path) fie
 	}
 
 	allErrs = append(allErrs, validateAuthConfig(configs, fldPath, authv1.AuthType(spec.Auth.Type))...)
+	allErrs = append(allErrs, validateAuthRefs(fldPath, authv1.AuthType(spec.Auth.Type), spec.Auth.Basic, spec.Auth.Token, spec.Auth.SSHKey)...)
 	return allErrs
 }
 
@@ -165,6 +196,7 @@ func validateHelmRegistrySpec(spec *HelmRegistrySpec, fldPath *field.Path) field
 	}
 
 	allErrs = append(allErrs, validateAuthConfig(configs, fldPath, authv1.AuthType(spec.Auth.Type))...)
+	allErrs = append(allErrs, validateAuthRefs(fldPath, authv1.AuthType(spec.Auth.Type), spec.Auth.Basic, spec.Auth.Token, nil)...)
 
 	if spec.URL == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("url"), ""))
@@ -224,6 +256,7 @@ func validateOCIRegistrySpec(spec *OCIRegistrySpec, fldPath *field.Path) field.E
 	}
 
 	allErrs = append(allErrs, validateAuthConfig(configs, fldPath, authv1.AuthType(spec.Auth.Type))...)
+	allErrs = append(allErrs, validateAuthRefs(fldPath, authv1.AuthType(spec.Auth.Type), spec.Auth.Basic, spec.Auth.Token, nil)...)
 
 	if spec.URL == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("url"), ""))

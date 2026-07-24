@@ -87,7 +87,7 @@ func TestFetch_PullsAndReRoots(t *testing.T) {
 		"templates/cm.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: demo\n",
 	})
 	var gotRef string
-	f := &ociFetcher{pull: func(ref string, _ *authv1.TLSSpec) ([]byte, error) {
+	f := &ociFetcher{pull: func(ref string, _ *authv1.TLSSpec, _ ociAuth) ([]byte, error) {
 		gotRef = ref
 		return tgz, nil
 	}}
@@ -111,7 +111,7 @@ func TestFetch_PullsAndReRoots(t *testing.T) {
 }
 
 func TestFetch_PullError(t *testing.T) {
-	f := &ociFetcher{pull: func(string, *authv1.TLSSpec) ([]byte, error) {
+	f := &ociFetcher{pull: func(string, *authv1.TLSSpec, ociAuth) ([]byte, error) {
 		return nil, errors.Join(ErrFetchFailed, errors.New("manifest unknown"))
 	}}
 	_, err := f.Fetch(context.Background(), registryWithURL("oci://reg.example.com/charts"), Ref{Name: refName, Version: refVersion})
@@ -123,7 +123,7 @@ func TestFetch_PullError(t *testing.T) {
 func TestFetch_UnsupportedAuth(t *testing.T) {
 	reg := registryWithURL("oci://reg.example.com/charts")
 	reg.Spec.Auth.Type = sourcev1alpha1.OCIRegistryAuthTypeBasic
-	f := &ociFetcher{pull: func(string, *authv1.TLSSpec) ([]byte, error) { return nil, nil }}
+	f := &ociFetcher{pull: func(string, *authv1.TLSSpec, ociAuth) ([]byte, error) { return nil, nil }}
 	_, err := f.Fetch(context.Background(), reg, Ref{Name: refName, Version: refVersion})
 	if !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported", err)
@@ -131,7 +131,7 @@ func TestFetch_UnsupportedAuth(t *testing.T) {
 }
 
 func TestFetch_MissingVersion(t *testing.T) {
-	f := &ociFetcher{pull: func(string, *authv1.TLSSpec) ([]byte, error) { return nil, nil }}
+	f := &ociFetcher{pull: func(string, *authv1.TLSSpec, ociAuth) ([]byte, error) { return nil, nil }}
 	_, err := f.Fetch(context.Background(), registryWithURL("oci://reg.example.com/charts"), Ref{Name: refName})
 	if !errors.Is(err, ErrFetchFailed) {
 		t.Errorf("err = %v, want ErrFetchFailed", err)

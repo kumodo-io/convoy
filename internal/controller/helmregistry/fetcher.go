@@ -112,14 +112,15 @@ func NewHelmFetcher(resolver auth.SecretResolver) Fetcher {
 }
 
 func (f *helmFetcher) Fetch(ctx context.Context, reg *sourcev1alpha1.HelmRegistry, ref Ref) (FetchResult, error) {
-	if reg.Spec.Auth.Type != sourcev1alpha1.HelmRegistryAuthTypeNone {
-		return FetchResult{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", reg.Spec.Auth.Type, sourcev1alpha1.HelmRegistryAuthTypeNone))
-	}
 	if ref.Version == "" {
 		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("chart version is required"))
 	}
+	cred, err := f.resolveAuth(ctx, reg)
+	if err != nil {
+		return FetchResult{}, err
+	}
 
-	idx, err := f.index(ctx, reg)
+	idx, err := f.index(ctx, reg, cred)
 	if err != nil {
 		return FetchResult{}, err
 	}
@@ -135,7 +136,7 @@ func (f *helmFetcher) Fetch(ctx context.Context, reg *sourcev1alpha1.HelmRegistr
 	if err != nil {
 		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("resolving chart URL: %w", err))
 	}
-	tgz, err := f.get(ctx, chartURL, reg.Spec.TLS)
+	tgz, err := f.get(ctx, chartURL, reg.Spec.TLS, cred)
 	if err != nil {
 		return FetchResult{}, err
 	}
@@ -147,17 +148,18 @@ func (f *helmFetcher) Fetch(ctx context.Context, reg *sourcev1alpha1.HelmRegistr
 }
 
 func (f *helmFetcher) Verify(ctx context.Context, reg *sourcev1alpha1.HelmRegistry) error {
-	if reg.Spec.Auth.Type != sourcev1alpha1.HelmRegistryAuthTypeNone {
-		return errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", reg.Spec.Auth.Type, sourcev1alpha1.HelmRegistryAuthTypeNone))
+	cred, err := f.resolveAuth(ctx, reg)
+	if err != nil {
+		return err
 	}
-	_, err := f.index(ctx, reg)
+	_, err = f.index(ctx, reg, cred)
 	return err
 }
 
 // index downloads and parses the repository's index.yaml.
-func (f *helmFetcher) index(ctx context.Context, reg *sourcev1alpha1.HelmRegistry) (*helmIndex, error) {
+func (f *helmFetcher) index(ctx context.Context, reg *sourcev1alpha1.HelmRegistry, cred helmAuth) (*helmIndex, error) {
 	indexURL := strings.TrimSuffix(reg.Spec.URL, "/") + "/index.yaml"
-	data, err := f.get(ctx, indexURL, reg.Spec.TLS)
+	data, err := f.get(ctx, indexURL, reg.Spec.TLS, cred)
 	if err != nil {
 		return nil, err
 	}
@@ -168,12 +170,60 @@ func (f *helmFetcher) index(ctx context.Context, reg *sourcev1alpha1.HelmRegistr
 	return idx, nil
 }
 
-// get performs an anonymous HTTP GET honoring the registry's TLS settings.
-func (f *helmFetcher) get(ctx context.Context, rawURL string, tls *authv1.TLSSpec) ([]byte, error) {
+// helmAuth is a resolved registry credential applied to outgoing requests: basic
+// (username+password) or a bearer token. The zero value is anonymous.
+type helmAuth struct {
+	username string
+	password string
+	bearer   string
+}
+
+func (a helmAuth) apply(req *http.Request) {
+	switch {
+	case a.bearer != "":
+		req.Header.Set("Authorization", "Bearer "+a.bearer)
+	case a.username != "" || a.password != "":
+		req.SetBasicAuth(a.username, a.password)
+	}
+}
+
+// resolveAuth resolves the registry's credential from its auth spec. Only none /
+// basic / token are supported; other types return ErrUnsupported.
+func (f *helmFetcher) resolveAuth(ctx context.Context, reg *sourcev1alpha1.HelmRegistry) (helmAuth, error) {
+	spec := reg.Spec.Auth
+	switch spec.Type {
+	case sourcev1alpha1.HelmRegistryAuthTypeNone:
+		return helmAuth{}, nil
+	case sourcev1alpha1.HelmRegistryAuthTypeBasic:
+		if spec.Basic == nil {
+			return helmAuth{}, errors.Join(ErrUnsupported, fmt.Errorf("basic auth selected but not configured"))
+		}
+		pw, err := auth.ResolveSecretKey(ctx, f.resolver, reg.Namespace, spec.Basic.PasswordRef)
+		if err != nil {
+			return helmAuth{}, errors.Join(ErrFetchFailed, err)
+		}
+		return helmAuth{username: spec.Basic.Username, password: string(pw)}, nil
+	case sourcev1alpha1.HelmRegistryAuthTypeToken:
+		if spec.Token == nil {
+			return helmAuth{}, errors.Join(ErrUnsupported, fmt.Errorf("token auth selected but not configured"))
+		}
+		tok, err := auth.ResolveSecretKey(ctx, f.resolver, reg.Namespace, spec.Token.TokenRef)
+		if err != nil {
+			return helmAuth{}, errors.Join(ErrFetchFailed, err)
+		}
+		return helmAuth{bearer: string(tok)}, nil
+	default:
+		return helmAuth{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported", spec.Type))
+	}
+}
+
+// get performs an HTTP GET honoring the registry's TLS settings and credential.
+func (f *helmFetcher) get(ctx context.Context, rawURL string, tls *authv1.TLSSpec, cred helmAuth) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, errors.Join(ErrFetchFailed, err)
 	}
+	cred.apply(req)
 	resp, err := httpClient(tls).Do(req)
 	if err != nil {
 		return nil, errors.Join(ErrFetchFailed, fmt.Errorf("GET %s: %w", rawURL, err))
