@@ -1,0 +1,26 @@
+# GitRepository with token auth. The token is read from a Secret key and sent as
+# the HTTP basic-auth password (works with GitHub/GitLab personal access tokens).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-token
+  namespace: default
+type: Opaque
+stringData:
+  token: ghp_replace_me
+---
+apiVersion: source.convoy.kumodo.io/v1alpha1
+kind: GitRepository
+metadata:
+  name: private-repo-token
+  namespace: default
+spec:
+  url: https://github.com/example/private-repo.git
+  auth:
+    type: token
+    token:
+      tokenRef:
+        name: git-token
+        key: token
+  interval: 1m0s
+  minSyncInterval: 30s

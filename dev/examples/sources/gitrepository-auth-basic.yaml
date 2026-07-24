@@ -1,0 +1,27 @@
+# GitRepository with basic auth. The username is inline; the password is read
+# from a Secret key.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-basic
+  namespace: default
+type: Opaque
+stringData:
+  password: replace_me
+---
+apiVersion: source.convoy.kumodo.io/v1alpha1
+kind: GitRepository
+metadata:
+  name: private-repo-basic
+  namespace: default
+spec:
+  url: https://git.example.com/example/private-repo.git
+  auth:
+    type: basic
+    basic:
+      username: deploy-bot
+      passwordRef:
+        name: git-basic
+        key: password
+  interval: 1m0s
+  minSyncInterval: 30s
