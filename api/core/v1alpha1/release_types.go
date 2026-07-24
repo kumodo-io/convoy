@@ -20,7 +20,7 @@ const (
 
 	// ConvoySyncTimeoutAnnotation is set on the rendered resource(s) to
 	// define the timeout the controller will wait for. If not set,
-	// then it's treated as 30s. Only applicable for "waitForHealthy"
+	// then it's treated as 30s. Only applicable for "waitForHealthyWithTimeout"
 	// strategy.
 	ConvoySyncTimeoutAnnotation = "convoy.kumodo.io/sync-timeout"
 )

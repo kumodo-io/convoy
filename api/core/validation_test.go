@@ -160,6 +160,38 @@ func TestValidateReleaseMutations_UnknownTypeRejected(t *testing.T) {
 	}
 }
 
+func TestValidateReleaseMutations_SyncWaveValid(t *testing.T) {
+	rel := validRelease()
+	rel.Mutations = []ReleaseMutation{{
+		Type:         MutationTypeSyncWave,
+		Target:       ReleaseMutationTarget{Group: "apps", Version: "v1", Kind: deploymentKind},
+		WaveStrategy: &ReleaseWaveStrategySpec{Wave: 1, Strategy: ReleaseWaveStrategyWaitForHealthy},
+	}}
+	if errs := ValidateReleaseMutations(rel); len(errs) != 0 {
+		t.Errorf("valid syncWave rejected: %v", errs)
+	}
+}
+
+func TestValidateReleaseMutations_SyncWaveRequiresWaveStrategy(t *testing.T) {
+	rel := validRelease()
+	rel.Mutations = []ReleaseMutation{{Type: MutationTypeSyncWave, Target: ReleaseMutationTarget{Kind: deploymentKind}}}
+	if errs := ValidateReleaseMutations(rel); len(errs) == 0 {
+		t.Error("syncWave without waveStrategy not rejected")
+	}
+}
+
+func TestValidateReleaseMutations_SyncWaveUnknownStrategy(t *testing.T) {
+	rel := validRelease()
+	rel.Mutations = []ReleaseMutation{{
+		Type:         MutationTypeSyncWave,
+		Target:       ReleaseMutationTarget{Kind: deploymentKind},
+		WaveStrategy: &ReleaseWaveStrategySpec{Strategy: "bogus"},
+	}}
+	if errs := ValidateReleaseMutations(rel); len(errs) == 0 {
+		t.Error("syncWave with unknown strategy not rejected")
+	}
+}
+
 func TestValidateReleaseMutations_CrossNamespaceFromRejected(t *testing.T) {
 	rel := validRelease()
 	rel.Mutations = []ReleaseMutation{{

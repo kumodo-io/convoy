@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -96,9 +97,63 @@ func applyMutation(ctx context.Context, objects []*unstructured.Unstructured, m 
 		return applyGoTemplate(ctx, objects, m, in)
 	case corev1alpha1.MutationTypeCelTransform:
 		return applyCELTransform(ctx, objects, m, in)
+	case corev1alpha1.MutationTypeSyncWave:
+		return applySyncWave(objects, m)
 	default:
 		return nil, "", fmt.Errorf("%w: unknown mutation type %q", ErrUnsupported, m.Type)
 	}
+}
+
+// applySyncWave stamps the convoy sync-wave annotations (wave / strategy /
+// timeout) from the mutation's WaveStrategy onto each matching object. It is the
+// validated, targeted way to author sync-wave assignment: the sync engine later
+// reads these annotations off the rendered objects. Non-matching objects pass
+// through unchanged.
+func applySyncWave(objects []*unstructured.Unstructured, m corev1alpha1.ReleaseMutation) ([]*unstructured.Unstructured, string, error) {
+	if m.WaveStrategy == nil {
+		return nil, "", fmt.Errorf("syncWave mutation requires waveStrategy")
+	}
+	ws := m.WaveStrategy
+
+	out := make([]*unstructured.Unstructured, len(objects))
+	for i, obj := range objects {
+		if !matchesTarget(m.Target, obj) {
+			out[i] = obj
+			continue
+		}
+		objJSON, err := obj.MarshalJSON()
+		if err != nil {
+			return nil, "", fmt.Errorf("marshaling %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		next := &unstructured.Unstructured{}
+		if err := next.UnmarshalJSON(objJSON); err != nil {
+			return nil, "", fmt.Errorf("decoding %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+		ann := next.GetAnnotations()
+		if ann == nil {
+			ann = map[string]string{}
+		}
+		ann[corev1alpha1.ConvoySyncWaveAnnotation] = strconv.Itoa(ws.Wave)
+		if ws.Strategy != "" {
+			ann[corev1alpha1.ConvoySyncStrategyAnnotation] = string(ws.Strategy)
+		}
+		if ws.Timeout != nil {
+			ann[corev1alpha1.ConvoySyncTimeoutAnnotation] = ws.Timeout.Duration.String()
+		}
+		next.SetAnnotations(ann)
+		out[i] = next
+	}
+	return out, syncWaveHash(ws), nil
+}
+
+// syncWaveHash is a content hash of the resolved wave config, for the
+// ResolvedMutation record.
+func syncWaveHash(ws *corev1alpha1.ReleaseWaveStrategySpec) string {
+	timeout := ""
+	if ws.Timeout != nil {
+		timeout = ws.Timeout.Duration.String()
+	}
+	return hashBytes([]byte(fmt.Sprintf("%d|%s|%s", ws.Wave, ws.Strategy, timeout)))
 }
 
 // applyJSONPatch applies an RFC6902 JSON patch (built from the mutation's Patches)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -370,6 +371,44 @@ func TestApplyMutations_UnknownTypeIsErrUnsupported(t *testing.T) {
 	_, _, err := apply([]*unstructured.Unstructured{deployment("web")}, []corev1alpha1.ReleaseMutation{m}, nil)
 	if !errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want ErrUnsupported for an unknown type", err)
+	}
+}
+
+func TestApplyMutations_SyncWaveStampsAnnotations(t *testing.T) {
+	objs := []*unstructured.Unstructured{deployment("web"), configMap("cfg")}
+	timeout := metav1.Duration{Duration: 90 * time.Second}
+	m := corev1alpha1.ReleaseMutation{
+		Type:   corev1alpha1.MutationTypeSyncWave,
+		Target: deploymentTarget(),
+		WaveStrategy: &corev1alpha1.ReleaseWaveStrategySpec{
+			Wave:     2,
+			Strategy: corev1alpha1.ReleaseWaveStrategyWaitForHealthy,
+			Timeout:  &timeout,
+		},
+	}
+	out, resolved, err := apply(objs, []corev1alpha1.ReleaseMutation{m}, nil)
+	if err != nil {
+		t.Fatalf("ApplyMutations: %v", err)
+	}
+	ann := out[0].GetAnnotations()
+	if ann[corev1alpha1.ConvoySyncWaveAnnotation] != "2" ||
+		ann[corev1alpha1.ConvoySyncStrategyAnnotation] != "waitForHealthy" ||
+		ann[corev1alpha1.ConvoySyncTimeoutAnnotation] != "1m30s" {
+		t.Errorf("annotations = %v, want wave=2 strategy=waitForHealthy timeout=1m30s", ann)
+	}
+	// The ConfigMap did not match the target → left untouched.
+	if _, ok := out[1].GetAnnotations()[corev1alpha1.ConvoySyncWaveAnnotation]; ok {
+		t.Error("non-matching object was annotated")
+	}
+	if len(resolved) != 1 || resolved[0].ContentHash == "" {
+		t.Errorf("resolved = %+v, want one record with a hash", resolved)
+	}
+}
+
+func TestApplyMutations_SyncWaveRequiresWaveStrategy(t *testing.T) {
+	m := corev1alpha1.ReleaseMutation{Type: corev1alpha1.MutationTypeSyncWave, Target: deploymentTarget()}
+	if _, _, err := apply([]*unstructured.Unstructured{deployment("web")}, []corev1alpha1.ReleaseMutation{m}, nil); err == nil {
+		t.Error("syncWave without waveStrategy accepted, want error")
 	}
 }
 

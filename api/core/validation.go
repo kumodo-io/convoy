@@ -291,11 +291,27 @@ func validateReleaseMutation(m *ReleaseMutation, fldPath *field.Path) field.Erro
 		if len(m.Inline) == 0 && m.From == nil {
 			allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("%s requires inline content or a from source", m.Type)))
 		}
+	case MutationTypeSyncWave:
+		if m.WaveStrategy == nil {
+			allErrs = append(allErrs, field.Required(fldPath.Child("waveStrategy"), "syncWave requires waveStrategy"))
+		} else if s := m.WaveStrategy.Strategy; s != "" && !knownWaveStrategy(s) {
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("waveStrategy", "strategy"), s,
+				[]string{string(ReleaseWaveStrategyWaitForApplied), string(ReleaseWaveStrategyWaitForHealthy), string(ReleaseWaveStrategyWaitForHealthyWithTimeout)}))
+		}
 	default:
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), m.Type,
-			[]string{string(MutationTypeJsonPatch), string(MutationTypeStrategicMergePatch), string(MutationTypeGoTemplate), string(MutationTypeCelTransform)}))
+			[]string{string(MutationTypeJsonPatch), string(MutationTypeStrategicMergePatch), string(MutationTypeGoTemplate), string(MutationTypeCelTransform), string(MutationTypeSyncWave)}))
 	}
 	return allErrs
+}
+
+func knownWaveStrategy(s ReleaseWaveStrategy) bool {
+	switch s {
+	case ReleaseWaveStrategyWaitForApplied, ReleaseWaveStrategyWaitForHealthy, ReleaseWaveStrategyWaitForHealthyWithTimeout:
+		return true
+	default:
+		return false
+	}
 }
 
 func knownJSONPatchOp(op JSONPatchOperation) bool {
