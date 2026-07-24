@@ -10,6 +10,7 @@ require (
 	github.com/golangci/golangci-lint/v2 v2.12.2
 	github.com/google/cel-go v0.26.0
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/crypto v0.53.0
 	golang.org/x/sync v0.21.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	google.golang.org/grpc v1.81.1
@@ -349,7 +350,6 @@ require (
 	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260209203927-2842357ff358 // indirect
 	golang.org/x/mod v0.36.0 // indirect

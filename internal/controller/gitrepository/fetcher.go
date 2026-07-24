@@ -101,24 +101,25 @@ func NewGitFetcher(resolver auth.SecretResolver) Fetcher {
 }
 
 func (f *gitFetcher) Fetch(ctx context.Context, repo *sourcev1alpha1.GitRepository, ref Ref) (FetchResult, error) {
-	if repo.Spec.Auth.Type != sourcev1alpha1.GitRepositoryAuthTypeNone {
-		return FetchResult{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", repo.Spec.Auth.Type, sourcev1alpha1.GitRepositoryAuthTypeNone))
+	authMethod, err := authMethod(ctx, f.resolver, repo)
+	if err != nil {
+		return FetchResult{}, err
 	}
-	// auth "none" → anonymous (nil transport auth).
-	return f.clone(ctx, repo, ref, nil)
+	return f.clone(ctx, repo, ref, authMethod)
 }
 
-// Verify confirms the repository is reachable and (for non-public auth, later)
-// that credentials are accepted, via an ls-remote — no content is fetched.
+// Verify confirms the repository is reachable and that the credentials are
+// accepted, via an ls-remote — no content is fetched.
 func (f *gitFetcher) Verify(ctx context.Context, repo *sourcev1alpha1.GitRepository) error {
-	if repo.Spec.Auth.Type != sourcev1alpha1.GitRepositoryAuthTypeNone {
-		return errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", repo.Spec.Auth.Type, sourcev1alpha1.GitRepositoryAuthTypeNone))
+	authMethod, err := authMethod(ctx, f.resolver, repo)
+	if err != nil {
+		return err
 	}
 	remote := gogit.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{repo.Spec.URL},
 	})
-	listOpts := &gogit.ListOptions{}
+	listOpts := &gogit.ListOptions{Auth: authMethod}
 	if repo.Spec.TLS != nil {
 		listOpts.InsecureSkipTLS = repo.Spec.TLS.InsecureSkipVerify
 	}

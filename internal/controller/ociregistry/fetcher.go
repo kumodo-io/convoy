@@ -75,13 +75,61 @@ var (
 // pullFunc pulls a Helm chart artifact and returns the chart .tgz bytes. It is a
 // field on the fetcher so tests can inject a fake without a live registry. Note:
 // Helm's registry client takes no context, so pulls are not cancellable.
-type pullFunc func(ref string, tls *authv1.TLSSpec) ([]byte, error)
+type pullFunc func(ref string, tls *authv1.TLSSpec, cred ociAuth) ([]byte, error)
 
-// ociFetcher pulls Helm charts stored as OCI artifacts. It currently supports
-// only the "none" auth type (anonymous pulls from public registries).
+// ociAuth is a resolved registry credential. OCI auth is basic (token is sent as
+// the basic-auth password). The zero value is anonymous.
+type ociAuth struct {
+	username string
+	password string
+}
+
+func (a ociAuth) set() bool { return a.username != "" || a.password != "" }
+
+func (a ociAuth) apply(req *http.Request) {
+	if a.set() {
+		req.SetBasicAuth(a.username, a.password)
+	}
+}
+
+// ociTokenUsername is the placeholder username paired with a token sent as the
+// basic-auth password (most registries accept any non-empty username with a PAT).
+const ociTokenUsername = "convoy"
+
+// ociFetcher pulls Helm charts stored as OCI artifacts (none / basic / token auth).
 type ociFetcher struct {
 	resolver auth.SecretResolver
 	pull     pullFunc
+}
+
+// resolveAuth resolves the registry's credential from its auth spec. Only none /
+// basic / token are supported; other types (e.g. dockerConfig) return ErrUnsupported.
+func (f *ociFetcher) resolveAuth(ctx context.Context, reg *sourcev1alpha1.OCIRegistry) (ociAuth, error) {
+	spec := reg.Spec.Auth
+	switch spec.Type {
+	case sourcev1alpha1.OCIRegistryAuthTypeNone:
+		return ociAuth{}, nil
+	case sourcev1alpha1.OCIRegistryAuthTypeBasic:
+		if spec.Basic == nil {
+			return ociAuth{}, errors.Join(ErrUnsupported, fmt.Errorf("basic auth selected but not configured"))
+		}
+		pw, err := auth.ResolveSecretKey(ctx, f.resolver, reg.Namespace, spec.Basic.PasswordRef)
+		if err != nil {
+			return ociAuth{}, errors.Join(ErrFetchFailed, err)
+		}
+		return ociAuth{username: spec.Basic.Username, password: string(pw)}, nil
+	case sourcev1alpha1.OCIRegistryAuthTypeToken:
+		if spec.Token == nil {
+			return ociAuth{}, errors.Join(ErrUnsupported, fmt.Errorf("token auth selected but not configured"))
+		}
+		tok, err := auth.ResolveSecretKey(ctx, f.resolver, reg.Namespace, spec.Token.TokenRef)
+		if err != nil {
+			return ociAuth{}, errors.Join(ErrFetchFailed, err)
+		}
+		return ociAuth{username: ociTokenUsername, password: string(tok)}, nil
+	default:
+		return ociAuth{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported", spec.Type))
+	}
 }
 
 // NewOCIFetcher returns a Fetcher that pulls charts from public OCI registries.
@@ -89,15 +137,16 @@ func NewOCIFetcher(resolver auth.SecretResolver) Fetcher {
 	return &ociFetcher{resolver: resolver, pull: defaultPull}
 }
 
-func (f *ociFetcher) Fetch(_ context.Context, reg *sourcev1alpha1.OCIRegistry, ref Ref) (FetchResult, error) {
-	if reg.Spec.Auth.Type != sourcev1alpha1.OCIRegistryAuthTypeNone {
-		return FetchResult{}, errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", reg.Spec.Auth.Type, sourcev1alpha1.OCIRegistryAuthTypeNone))
-	}
+func (f *ociFetcher) Fetch(ctx context.Context, reg *sourcev1alpha1.OCIRegistry, ref Ref) (FetchResult, error) {
 	if ref.Version == "" {
 		return FetchResult{}, errors.Join(ErrFetchFailed, fmt.Errorf("artifact version is required"))
 	}
+	cred, err := f.resolveAuth(ctx, reg)
+	if err != nil {
+		return FetchResult{}, err
+	}
 
-	tgz, err := f.pull(ociRef(reg.Spec.URL, ref.Name, ref.Version), reg.Spec.TLS)
+	tgz, err := f.pull(ociRef(reg.Spec.URL, ref.Name, ref.Version), reg.Spec.TLS, cred)
 	if err != nil {
 		return FetchResult{}, err
 	}
@@ -109,16 +158,20 @@ func (f *ociFetcher) Fetch(_ context.Context, reg *sourcev1alpha1.OCIRegistry, r
 }
 
 func (f *ociFetcher) Verify(ctx context.Context, reg *sourcev1alpha1.OCIRegistry) error {
-	if reg.Spec.Auth.Type != sourcev1alpha1.OCIRegistryAuthTypeNone {
-		return errors.Join(ErrUnsupported, fmt.Errorf("auth type %q is not supported yet (only %q)", reg.Spec.Auth.Type, sourcev1alpha1.OCIRegistryAuthTypeNone))
+	cred, err := f.resolveAuth(ctx, reg)
+	if err != nil {
+		return err
 	}
 	// The distribution API base (/v2/) is the standard liveness probe. A healthy
 	// registry returns 200 (open) or 401 (auth required) — both mean reachable.
+	// Credentials are applied so a correctly-authenticated registry answers 200;
+	// this checks reachability, not strict credential acceptance.
 	pingURL := registryPingURL(reg.Spec.URL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pingURL, nil)
 	if err != nil {
 		return errors.Join(ErrFetchFailed, err)
 	}
+	cred.apply(req)
 	resp, err := httpClient(reg.Spec.TLS).Do(req)
 	if err != nil {
 		return errors.Join(ErrFetchFailed, fmt.Errorf("GET %s: %w", pingURL, err))
@@ -130,8 +183,9 @@ func (f *ociFetcher) Verify(ctx context.Context, reg *sourcev1alpha1.OCIRegistry
 	return errors.Join(ErrFetchFailed, fmt.Errorf("GET %s: status %s", pingURL, resp.Status))
 }
 
-// defaultPull pulls a Helm chart artifact via Helm's OCI registry client.
-func defaultPull(ref string, tls *authv1.TLSSpec) ([]byte, error) {
+// defaultPull pulls a Helm chart artifact via Helm's OCI registry client,
+// logging in first when a credential is set (basic; token as password).
+func defaultPull(ref string, tls *authv1.TLSSpec, cred ociAuth) ([]byte, error) {
 	var opts []registry.ClientOption
 	if tls != nil && tls.InsecureSkipVerify {
 		opts = append(opts, registry.ClientOptHTTPClient(httpClient(tls)))
@@ -139,6 +193,12 @@ func defaultPull(ref string, tls *authv1.TLSSpec) ([]byte, error) {
 	client, err := registry.NewClient(opts...)
 	if err != nil {
 		return nil, errors.Join(ErrFetchFailed, fmt.Errorf("building registry client: %w", err))
+	}
+	if cred.set() {
+		host := strings.SplitN(ref, "/", 2)[0]
+		if err := client.Login(host, registry.LoginOptBasicAuth(cred.username, cred.password)); err != nil {
+			return nil, errors.Join(ErrFetchFailed, fmt.Errorf("registry login to %s: %w", host, err))
+		}
 	}
 	res, err := client.Pull(ref, registry.PullOptWithChart(true))
 	if err != nil {
