@@ -1,0 +1,28 @@
+# OCIRegistry with token auth. The token is read from a Secret key and used as the
+# registry login password (registries accept a token as the password). For
+# username+password, use `type: basic` with `basic.username` + `basic.passwordRef`.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oci-token
+  namespace: default
+type: Opaque
+stringData:
+  token: replace_me
+---
+apiVersion: source.convoy.kumodo.io/v1alpha1
+kind: OCIRegistry
+metadata:
+  name: private-oci-charts
+  namespace: default
+spec:
+  url: oci://ghcr.io/example/charts
+  auth:
+    type: token
+    token:
+      tokenRef:
+        name: oci-token
+        key: token
+  defaultContentType: helm
+  interval: 1m0s
+  minSyncInterval: 30s

@@ -1,0 +1,28 @@
+# HelmRegistry with basic auth (username inline, password from a Secret). For a
+# token instead, use `type: token` with `token.tokenRef` — it is sent as a Bearer
+# header.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: helm-basic
+  namespace: default
+type: Opaque
+stringData:
+  password: replace_me
+---
+apiVersion: source.convoy.kumodo.io/v1alpha1
+kind: HelmRegistry
+metadata:
+  name: private-charts
+  namespace: default
+spec:
+  url: https://charts.example.com
+  auth:
+    type: basic
+    basic:
+      username: deploy-bot
+      passwordRef:
+        name: helm-basic
+        key: password
+  interval: 1m0s
+  minSyncInterval: 30s

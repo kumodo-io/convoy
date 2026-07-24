@@ -1,0 +1,45 @@
+# GitRepository with SSH key auth. Requires two things:
+#   - a Secret holding the private key (sshKeyRef)
+#   - a ConfigMap holding known_hosts (knownHostsRef) — MANDATORY: convoy verifies
+#     the server host key against it (no insecure "ignore host key" mode).
+# known_hosts must use PLAINTEXT host entries (hashed |1|… entries are rejected).
+# Get the entries with, e.g.: ssh-keyscan github.com
+apiVersion: v1
+kind: Secret
+metadata:
+  name: git-ssh
+  namespace: default
+type: Opaque
+stringData:
+  identity: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    ...replace with your private key...
+    -----END OPENSSH PRIVATE KEY-----
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: git-known-hosts
+  namespace: default
+data:
+  known_hosts: |
+    github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+---
+apiVersion: source.convoy.kumodo.io/v1alpha1
+kind: GitRepository
+metadata:
+  name: private-repo-ssh
+  namespace: default
+spec:
+  url: ssh://git@github.com/example/private-repo.git
+  auth:
+    type: sshKey
+    sshKey:
+      sshKeyRef:
+        name: git-ssh
+        key: identity
+      knownHostsRef:
+        name: git-known-hosts
+        key: known_hosts
+  interval: 1m0s
+  minSyncInterval: 30s
