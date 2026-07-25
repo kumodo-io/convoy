@@ -838,7 +838,8 @@ type ReleaseStatus struct {
 	// Waves reflects the order in which resources were applied and their health status.
 	// Each wave entry represents a group of resources applied together, with a state indicating
 	// whether they have been fully applied and healthy, are in progress, or have failed.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=number
 	Waves []ResourceWaveStatus `json:"waves,omitempty"`
 
 	// ReconciledAt is the time when the release was reconciled.
@@ -1029,6 +1030,12 @@ type ReleaseAttemptedRenderFailureStatus struct {
 type ResourceWaveStatus struct {
 	// Number is the resources wave weight.
 	Number int64 `json:"number"`
+
+	// Applied reflects whether all resources within the wave are applied.
+	Applied bool `json:"applied"`
+
+	// Healthy reflects whether all resources within the wave are healthy.
+	Healthy bool `json:"healthy"`
 
 	// Resources is the number of resources in the wave.
 	Resources int `json:"resources"`

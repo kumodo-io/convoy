@@ -3517,7 +3517,10 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 					"waves": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
+								"x-kubernetes-list-map-keys": []interface{}{
+									"number",
+								},
+								"x-kubernetes-list-type": "map",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
@@ -3928,6 +3931,22 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 							Format:      "int64",
 						},
 					},
+					"applied": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Applied reflects whether all resources within the wave are applied.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"healthy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Healthy reflects whether all resources within the wave are healthy.",
+							Default:     false,
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Resources is the number of resources in the wave.",
@@ -3971,7 +3990,7 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"number", "resources", "state"},
+				Required: []string{"number", "applied", "healthy", "resources", "state"},
 			},
 		},
 		Dependencies: []string{

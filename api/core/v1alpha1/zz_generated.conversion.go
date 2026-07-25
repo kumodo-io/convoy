@@ -2134,6 +2134,8 @@ func Convert_core_ResolvedSource_To_v1alpha1_ResolvedSource(in *core.ResolvedSou
 
 func autoConvert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(in *ResourceWaveStatus, out *core.ResourceWaveStatus, s conversion.Scope) error {
 	out.Number = in.Number
+	out.Applied = in.Applied
+	out.Healthy = in.Healthy
 	out.Resources = in.Resources
 	out.State = core.ResourceWaveState(in.State)
 	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
@@ -2150,6 +2152,8 @@ func Convert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(in *Resource
 
 func autoConvert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in *core.ResourceWaveStatus, out *ResourceWaveStatus, s conversion.Scope) error {
 	out.Number = in.Number
+	out.Applied = in.Applied
+	out.Healthy = in.Healthy
 	out.Resources = in.Resources
 	out.State = ResourceWaveState(in.State)
 	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
