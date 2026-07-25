@@ -3934,7 +3934,6 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 					"applied": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Applied reflects whether all resources within the wave are applied.",
-							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -3942,7 +3941,6 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 					"healthy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Healthy reflects whether all resources within the wave are healthy.",
-							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -3950,7 +3948,6 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 					"resources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Resources is the number of resources in the wave.",
-							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -3958,7 +3955,6 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 					"state": {
 						SchemaProps: spec.SchemaProps{
 							Description: "State is the state of the wave.\n\nPossible enum values:\n - `\"Completed\"` is the state of a resource wave that has been completed.\n - `\"Failed\"` is the state of a resource wave that has failed.\n - `\"InProgress\"` is the state of a resource wave that is in progress.\n - `\"Pending\"` is the state of a resource wave that is pending.\n - `\"TimedOut\"` is the state of a resource wave that has timed out.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 							Enum:        []interface{}{"Completed", "Failed", "InProgress", "Pending", "TimedOut"},
@@ -3990,7 +3986,7 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"number", "applied", "healthy", "resources", "state"},
+				Required: []string{"number"},
 			},
 		},
 		Dependencies: []string{

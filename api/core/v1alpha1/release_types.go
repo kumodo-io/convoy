@@ -1032,16 +1032,16 @@ type ResourceWaveStatus struct {
 	Number int64 `json:"number"`
 
 	// Applied reflects whether all resources within the wave are applied.
-	Applied bool `json:"applied"`
+	Applied *bool `json:"applied,omitempty"`
 
 	// Healthy reflects whether all resources within the wave are healthy.
-	Healthy bool `json:"healthy"`
+	Healthy *bool `json:"healthy,omitempty"`
 
 	// Resources is the number of resources in the wave.
-	Resources int `json:"resources"`
+	Resources int `json:"resources,omitempty"`
 
 	// State is the state of the wave.
-	State ResourceWaveState `json:"state"`
+	State ResourceWaveState `json:"state,omitempty"`
 
 	// StartedAt is the time when the wave started.
 	StartedAt *metav1.Time `json:"startedAt,omitempty"`

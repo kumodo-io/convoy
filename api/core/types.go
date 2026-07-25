@@ -559,8 +559,8 @@ type ReleaseAttemptedRenderFailureStatus struct {
 
 type ResourceWaveStatus struct {
 	Number      int64
-	Applied     bool
-	Healthy     bool
+	Applied     *bool
+	Healthy     *bool
 	Resources   int
 	State       ResourceWaveState
 	StartedAt   *metav1.Time
