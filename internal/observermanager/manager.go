@@ -92,6 +92,10 @@ func (o *Options) Run(ctx context.Context) error {
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
 	releaseInformer := factory.Core().V1alpha1().Releases()
 	clusterInformer := factory.Core().V1alpha1().Clusters()
+	// ReleaseInventory carries the durable per-resource health the health loop
+	// writes (and the controller rolls up for the sync-wave gate); the lister
+	// backs both the anchor reads and the /health subresource.
+	releaseInventoryInformer := factory.Core().V1alpha1().ReleaseInventories()
 	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
 	helmRegInformer := factory.Source().V1alpha1().HelmRegistries()
 	ociRegInformer := factory.Source().V1alpha1().OCIRegistries()
@@ -123,7 +127,7 @@ func (o *Options) Run(ctx context.Context) error {
 
 	obs := observer.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector)
 	healthCtl := observer.NewHealthController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector,
-		globalRuleSetInformer.Lister(), ruleSetInformer.Lister())
+		globalRuleSetInformer.Lister(), ruleSetInformer.Lister(), releaseInventoryInformer.Lister())
 	// The drift loop hosts the HTTP server; wire the /health lookup to the health
 	// loop's store so /preview, /diff, and /health are served from one endpoint.
 	obs.SetHealthResults(healthCtl.HealthResult)

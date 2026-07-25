@@ -27,7 +27,7 @@ import (
 func cm(data map[string]any, mutate func(m map[string]any)) *unstructured.Unstructured {
 	m := map[string]any{
 		"apiVersion":      "v1",
-		"kind":            "ConfigMap",
+		"kind":            kindConfigMap,
 		metadataFieldName: map[string]any{"name": "cm", "namespace": "ns"},
 		"data":            data,
 	}

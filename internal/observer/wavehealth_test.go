@@ -35,50 +35,14 @@ func appliedWave(n int64) corev1alpha1.ResourceWaveStatus {
 	return corev1alpha1.ResourceWaveStatus{Number: n, Applied: new(true)}
 }
 
-func entry(wave int, state corev1alpha1.ResourceState) healthEntry {
-	return healthEntry{wave: wave, state: state}
-}
-
+// TestAppliedWaves covers which waves the observer treats as applied — only
+// those the controller marked applied in status.waves. The observer persists
+// per-resource health onto the ReleaseInventory only for these waves (an
+// unapplied wave's objects aren't in the cluster yet).
 func TestAppliedWaves(t *testing.T) {
 	rel := relWithWaves(appliedWave(0), appliedWave(1), corev1alpha1.ResourceWaveStatus{Number: 2}) // wave 2 not applied
 	got := appliedWaves(rel)
 	if len(got) != 2 || !got[0] || !got[1] || got[2] {
 		t.Errorf("appliedWaves = %v, want {0,1}", got)
-	}
-}
-
-func TestWaveHealthRollup(t *testing.T) {
-	// Waves 0 and 1 applied; wave 2 not applied.
-	rel := relWithWaves(appliedWave(0), appliedWave(1), corev1alpha1.ResourceWaveStatus{Number: 2})
-	entries := []healthEntry{
-		entry(0, corev1alpha1.ResourceStateHealthy),  // wave 0: all healthy
-		entry(0, corev1alpha1.ResourceStateHealthy),  //
-		entry(1, corev1alpha1.ResourceStateHealthy),  // wave 1: one degraded → not healthy
-		entry(1, corev1alpha1.ResourceStateDegraded), //
-		entry(2, corev1alpha1.ResourceStateUnknown),  // wave 2: not applied → excluded
-	}
-	got := waveHealthRollup(rel, entries)
-
-	if len(got) != 2 {
-		t.Fatalf("rollup has %d waves, want 2 (only applied)", len(got))
-	}
-	if !got[0] {
-		t.Error("wave 0 = false, want true (all healthy)")
-	}
-	if got[1] {
-		t.Error("wave 1 = true, want false (one degraded)")
-	}
-	if _, ok := got[2]; ok {
-		t.Error("wave 2 present, want excluded (not applied)")
-	}
-}
-
-func TestWaveHealthRollup_AppliedWaveWithNoObjectsIsHealthy(t *testing.T) {
-	// An applied wave with no assessed objects (e.g. no rules) is healthy by
-	// default — nothing gates it.
-	rel := relWithWaves(appliedWave(0))
-	got := waveHealthRollup(rel, nil)
-	if !got[0] {
-		t.Error("applied wave with no objects = false, want true (nothing unhealthy)")
 	}
 }

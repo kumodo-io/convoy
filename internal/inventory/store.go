@@ -16,24 +16,40 @@ limitations under the License.
 
 // Package inventory records the set of resources each Release currently manages,
 // so the release controller can prune resources dropped from the rendered set.
-// The store is in-memory and lost on restart; losing it can only under-prune
-// (leave orphans), never over-delete, because an empty inventory yields an empty
-// orphan set. The interface is the seam for a durable (S3-backed) implementation
-// later.
+// The production Store is backed by the ReleaseInventory aggregated API object
+// (see apistore.go), so the record survives a controller restart — the delete
+// path can still find and prune a Release's resources after the process bounced.
+// The in-memory Store (NewMemoryStore) is retained for unit tests. Losing an
+// inventory can only under-prune (leave orphans), never over-delete, because an
+// empty inventory yields an empty orphan set.
 package inventory
 
-import "sync"
+import (
+	"context"
+	"sync"
+
+	"k8s.io/apimachinery/pkg/types"
+
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+)
 
 // Ref identifies a managed resource. Identity for diffing is (Group, Kind,
 // Namespace, Name) — Version is carried for reference only and deliberately
 // excluded from identity, so a resource whose apiVersion bumps between renders
-// is not treated as a delete-and-recreate.
+// is not treated as a delete-and-recreate. Wave records the sync wave the
+// resource was applied in, and UID the applied object's cluster UID; both are
+// persisted for observability and are not part of identity. State is the
+// observer-assessed health, read back so the controller can roll up per-wave
+// health for the sync-wave gate; nil means not yet assessed.
 type Ref struct {
 	Group     string
 	Version   string
 	Kind      string
 	Namespace string
 	Name      string
+	Wave      int
+	UID       types.UID
+	State     *corev1alpha1.ResourceState
 }
 
 // ID is the identity key used to compare refs across renders (Version-independent).
@@ -42,11 +58,15 @@ func (r Ref) ID() string {
 }
 
 // Store holds the managed-resource inventory for each Release, keyed by the
-// Release's namespace/name.
+// Release's namespace and name. Operations are context-aware and may fail
+// (the durable store talks to the API server).
 type Store interface {
-	Get(releaseKey string) ([]Ref, bool)
-	Put(releaseKey string, refs []Ref)
-	Delete(releaseKey string)
+	// Get returns the recorded refs for a Release and whether a record exists.
+	Get(ctx context.Context, namespace, name string) ([]Ref, bool, error)
+	// Put records the full managed set for a Release, replacing any prior record.
+	Put(ctx context.Context, namespace, name string, refs []Ref) error
+	// Delete removes the Release's inventory record.
+	Delete(ctx context.Context, namespace, name string) error
 }
 
 type memoryStore struct {
@@ -54,28 +74,30 @@ type memoryStore struct {
 	items map[string][]Ref
 }
 
-// NewMemoryStore returns an in-memory, concurrency-safe Store.
+// NewMemoryStore returns an in-memory, concurrency-safe Store, used in tests.
 func NewMemoryStore() Store {
 	return &memoryStore{items: make(map[string][]Ref)}
 }
 
-func (s *memoryStore) Get(releaseKey string) ([]Ref, bool) {
+func (s *memoryStore) Get(_ context.Context, namespace, name string) ([]Ref, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	refs, ok := s.items[releaseKey]
-	return refs, ok
+	refs, ok := s.items[namespace+"/"+name]
+	return refs, ok, nil
 }
 
-func (s *memoryStore) Put(releaseKey string, refs []Ref) {
+func (s *memoryStore) Put(_ context.Context, namespace, name string, refs []Ref) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.items[releaseKey] = refs
+	s.items[namespace+"/"+name] = refs
+	return nil
 }
 
-func (s *memoryStore) Delete(releaseKey string) {
+func (s *memoryStore) Delete(_ context.Context, namespace, name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.items, releaseKey)
+	delete(s.items, namespace+"/"+name)
+	return nil
 }
 
 // Diff returns the refs in old whose identity is absent from current — i.e. the

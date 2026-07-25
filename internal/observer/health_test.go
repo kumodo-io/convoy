@@ -42,13 +42,14 @@ func newTestHealthController(t *testing.T, rel *corev1alpha1.Release) (*HealthCo
 	factory := informers.NewSharedInformerFactory(client, 0)
 	relInformer := factory.Core().V1alpha1().Releases()
 	clInformer := factory.Core().V1alpha1().Clusters()
+	inventoryInformer := factory.Core().V1alpha1().ReleaseInventories()
 	globalRuleSets := factory.Extensions().V1alpha1().GlobalHealthRuleSets()
 	ruleSets := factory.Extensions().V1alpha1().HealthRuleSets()
 	if err := relInformer.Informer().GetStore().Add(rel); err != nil {
 		t.Fatalf("seeding release store: %v", err)
 	}
 	c := NewHealthController(client, relInformer, clInformer.Lister(), nil, nil, nil,
-		globalRuleSets.Lister(), ruleSets.Lister())
+		globalRuleSets.Lister(), ruleSets.Lister(), inventoryInformer.Lister())
 	fixed := metav1.NewTime(time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
 	return c, client

@@ -60,7 +60,7 @@ type HealthController struct {
 	connector           *clusterconn.Connector
 	globalRuleSetLister extensionslisters.GlobalHealthRuleSetLister
 	ruleSetLister       extensionslisters.HealthRuleSetLister
-	store               *healthStore
+	inventoryLister     corelisters.ReleaseInventoryLister
 	// now is injectable for tests.
 	now func() metav1.Time
 	// assessFn is a seam: it defaults to the real assessment and is stubbed in
@@ -78,6 +78,7 @@ func NewHealthController(
 	connector *clusterconn.Connector,
 	globalRuleSetLister extensionslisters.GlobalHealthRuleSetLister,
 	ruleSetLister extensionslisters.HealthRuleSetLister,
+	inventoryLister corelisters.ReleaseInventoryLister,
 ) *HealthController {
 	c := &HealthController{
 		client:              client,
@@ -88,7 +89,7 @@ func NewHealthController(
 		connector:           connector,
 		globalRuleSetLister: globalRuleSetLister,
 		ruleSetLister:       ruleSetLister,
-		store:               newHealthStore(),
+		inventoryLister:     inventoryLister,
 		now:                 metav1.Now,
 	}
 	c.assessFn = c.assess
@@ -107,8 +108,7 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 
 	rel, err := c.releaseLister.Releases(namespace).Get(name)
 	if apierrors.IsNotFound(err) {
-		c.store.delete(key)
-		return nil
+		return nil // the release controller owns the ReleaseInventory lifecycle
 	}
 	if err != nil {
 		return err
@@ -118,20 +118,13 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	}
 
 	// No assessment configured: report Healthy — everything applied, nothing to
-	// check. Drop any stale store entries. Per the "no applicable rules → healthy"
-	// rule, every applied wave is healthy too (nothing gates it), so wave gating
-	// still advances for a release using waitForHealthy* without health rules.
+	// check. Per the "no applicable rules → healthy" rule, every applied wave is
+	// healthy too (nothing gates it); the controller treats a release without a
+	// health assessment as satisfying every wave's health bar, so gating still
+	// advances without the observer writing per-resource health.
 	if rel.Spec.HealthAssessment == nil {
-		c.store.delete(key)
 		if err := c.writeHealth(ctx, rel, metav1.ConditionTrue, reasonNotConfigured,
 			"no health assessment configured", healthresult.Summary{}); err != nil {
-			return err
-		}
-		allHealthy := map[int64]bool{}
-		for n := range appliedWaves(rel) {
-			allHealthy[n] = true
-		}
-		if err := c.writeWaveHealth(ctx, rel, allHealthy); err != nil {
 			return err
 		}
 		c.scheduleRecheck(key, rel)
@@ -141,8 +134,8 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	result, recErr := c.assessFn(ctx, rel)
 	if recErr != nil {
 		// Couldn't assess (source/cluster unreachable, invalid rules): report
-		// Healthy=Unknown and re-check later, preserving the store's anchors. Not a
-		// controller error — best-effort, like the drift loop.
+		// Healthy=Unknown and re-check later, preserving the persisted anchors. Not
+		// a controller error — best-effort, like the drift loop.
 		klog.V(4).InfoS("health undetermined", "release", key, "reason", recErr.Error())
 		if err := c.writeHealth(ctx, rel, metav1.ConditionUnknown, reasonUnknown, recErr.Error(),
 			toWireSummary(rel.Status.HealthSummary)); err != nil {
@@ -152,11 +145,11 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 		return nil
 	}
 
+	// assess has already persisted per-resource health onto the ReleaseInventory
+	// (the controller rolls it up for the sync-wave gate). Here we only publish the
+	// aggregate Healthy condition + summary on the Release.
 	status, reason, message := conditionFor(result)
 	if err := c.writeHealth(ctx, rel, status, reason, message, result.Summarize()); err != nil {
-		return err
-	}
-	if err := c.writeWaveHealth(ctx, rel, waveHealthRollup(rel, c.store.entries(key))); err != nil {
 		return err
 	}
 	c.scheduleRecheck(key, rel)
@@ -178,30 +171,9 @@ func appliedWaves(rel *corev1alpha1.Release) map[int64]bool {
 	return out
 }
 
-// waveHealthRollup computes per-wave health for the applied waves: a wave is
-// healthy iff every one of its assessed objects is Healthy. Waves not yet applied
-// are omitted (their health is not written).
-func waveHealthRollup(rel *corev1alpha1.Release, entries []healthEntry) map[int64]bool {
-	applied := appliedWaves(rel)
-	// Seed every applied wave healthy=true; a single non-Healthy object flips it.
-	rollup := map[int64]bool{}
-	for n := range applied {
-		rollup[n] = true
-	}
-	for _, e := range entries {
-		n := int64(e.wave)
-		if !applied[n] {
-			continue
-		}
-		if e.state != corev1alpha1.ResourceStateHealthy {
-			rollup[n] = false
-		}
-	}
-	return rollup
-}
-
-// assess renders the Release's desired objects, reads them live, and evaluates
-// each against the applicable rules, updating the store and returning the result.
+// assess renders the Release's desired objects, reads them live, evaluates each
+// against the applicable rules, persists per-resource health onto the
+// ReleaseInventory, and returns the aggregate result.
 func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release) (*healthresult.Result, error) {
 	rules, err := c.collectRules(rel)
 	if err != nil {
@@ -240,14 +212,18 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 		deadline = &dd
 	}
 	now := c.now().Time
-	releaseKey := rel.Namespace + "/" + rel.Name
+
+	// Prior progress anchors come from the durable ReleaseInventory (they survive a
+	// restart, so an in-flight progress clock isn't reset). appliedWaves bounds
+	// which resources get their health persisted: only resources in an applied wave
+	// are in the cluster and co-owned with the controller's inventory entry.
+	anchors := c.inventoryAnchors(rel)
+	applied := appliedWaves(rel)
 
 	result := &healthresult.Result{Objects: make([]healthresult.ObjectHealth, 0, len(objects))}
-	entries := make(map[string]healthEntry, len(objects))
+	var writes []healthEntry
 	for _, obj := range objects {
-		entry := c.assessObject(ctx, evaluator, dyn, mapper, releaseKey, obj, deadline, now)
-		entry.wave = waves.WaveOf(obj)
-		entries[entry.ref.key()] = entry
+		entry := c.assessObject(ctx, evaluator, dyn, mapper, obj, anchors, deadline, now)
 		result.Objects = append(result.Objects, healthresult.ObjectHealth{
 			Group:     entry.ref.gvk.Group,
 			Version:   entry.ref.gvk.Version,
@@ -257,29 +233,41 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 			State:     healthresult.State(entry.state),
 			Message:   entry.message,
 		})
+		if applied[int64(waves.WaveOf(obj))] {
+			writes = append(writes, entry)
+		}
 	}
-	c.store.replace(releaseKey, entries)
+	if err := c.writeInventoryHealth(ctx, rel, writes); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
-// assessObject evaluates a single managed object's health.
-func (c *HealthController) assessObject(ctx context.Context, evaluator *health.Evaluator, dyn dynamic.Interface, mapper meta.RESTMapper, releaseKey string, obj *unstructured.Unstructured, deadline *time.Duration, now time.Time) healthEntry {
+// assessObject evaluates a single managed object's health. The returned ref
+// carries the resolved namespace (defaulted for namespaced kinds) so its identity
+// matches the controller's ReleaseInventory entry for co-ownership.
+func (c *HealthController) assessObject(ctx context.Context, evaluator *health.Evaluator, dyn dynamic.Interface, mapper meta.RESTMapper, obj *unstructured.Unstructured, anchors map[string]time.Time, deadline *time.Duration, now time.Time) healthEntry {
 	gvk := obj.GroupVersionKind()
-	ref := objectRef{gvk: gvk, namespace: obj.GetNamespace(), name: obj.GetName()}
 
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
+		ref := objectRef{gvk: gvk, namespace: obj.GetNamespace(), name: obj.GetName()}
 		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("cannot resolve resource for %s: %v", gvk, err)}
 	}
 	resource := mapping.Resource.Resource
+
+	namespace := obj.GetNamespace()
+	if mapping.Scope.Name() == meta.RESTScopeNameNamespace && namespace == "" {
+		namespace = metav1.NamespaceDefault
+	}
+	ref := objectRef{gvk: gvk, namespace: namespace, name: obj.GetName()}
 
 	// No applicable rule → Healthy without a live read.
 	if !evaluator.HasRules(obj.GetAPIVersion(), []string{resource}) {
 		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateHealthy, message: "no applicable health rules"}
 	}
 
-	ri := resourceClient(dyn, mapping, obj.GetNamespace())
-	live, err := ri.Get(ctx, obj.GetName(), metav1.GetOptions{})
+	live, err := resourceClient(dyn, mapping, namespace).Get(ctx, obj.GetName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: "resource not found in cluster"}
 	}
@@ -288,7 +276,7 @@ func (c *HealthController) assessObject(ctx context.Context, evaluator *health.E
 	}
 
 	assessment := evaluator.Assess(live, []string{resource})
-	state, anchor := health.DeriveState(assessment.Passed, assessment.Err, c.store.anchor(releaseKey, ref.key()), deadline, now)
+	state, anchor := health.DeriveState(assessment.Passed, assessment.Err, anchors[ref.identityID()], deadline, now)
 	message := assessment.Message
 	if assessment.Err != nil {
 		message = assessment.Err.Error()
@@ -338,9 +326,19 @@ func (c *HealthController) scheduleRecheck(key string, rel *corev1alpha1.Release
 }
 
 // HealthResult returns the last assessed per-object health for a Release, for the
-// /health subresource, or nil if it has not been assessed.
+// /health subresource, or nil if it has not been assessed. It is served from the
+// durable ReleaseInventory, so it survives a restart and reflects the applied
+// resource set.
 func (c *HealthController) HealthResult(releaseKey string) *healthresult.Result {
-	return c.store.result(releaseKey)
+	namespace, name, err := cache.SplitMetaNamespaceKey(releaseKey)
+	if err != nil {
+		return nil
+	}
+	inv, err := c.inventoryLister.ReleaseInventories(namespace).Get(name)
+	if err != nil {
+		return nil
+	}
+	return resultFromInventory(inv)
 }
 
 // resourceClient returns the dynamic client for a mapping, namespaced per the

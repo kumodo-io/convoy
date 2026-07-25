@@ -33,6 +33,12 @@ rules:
   - apiGroups: ["core.convoy.kumodo.io"]
     resources: ["releases/status"]
     verbs: ["get", "update", "patch"]
+  # Durable per-Release applied-resource inventory (prune record + wave/health
+  # rollup). The controller owns its lifecycle: creates/updates it via SSA on
+  # apply, reads it to prune (surviving restarts), and deletes it on finalize.
+  - apiGroups: ["core.convoy.kumodo.io"]
+    resources: ["releaseinventories"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   # Resolve credential material referenced by a Cluster's auth spec (e.g. the
   # kubeconfig Secret for agentless connection). Cluster-wide because Cluster
   # objects — and their referenced Secrets — may live in any namespace.

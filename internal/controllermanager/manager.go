@@ -20,6 +20,7 @@ package controllermanager
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -116,6 +117,9 @@ func (o *Options) Run(ctx context.Context) error {
 	// target cluster (reached through the same connector the cluster controller
 	// probes with).
 	releaseInformer := factory.Core().V1alpha1().Releases()
+	// ReleaseInventory records each Release's applied resource set durably, so the
+	// controller can prune after a restart; the informer feeds Store reads.
+	releaseInventoryInformer := factory.Core().V1alpha1().ReleaseInventories()
 
 	resolver := auth.NewSecretResolver(kube)
 	// Registry of agentless auth types. cfg is the controller's own config, used
@@ -181,9 +185,19 @@ func (o *Options) Run(ctx context.Context) error {
 		return err
 	}
 	deployer := releasecontroller.NewDeployer(connector)
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventory.NewMemoryStore(), deployer)
+	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister())
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer)
 
 	factory.Start(ctx.Done())
+
+	// The release controller reads the ReleaseInventory cache during reconcile
+	// (including the delete/prune path) but does not watch it, so base.Run won't
+	// wait for it. Block here until it has synced — otherwise a delete processed
+	// before the cache populates would read an empty inventory and orphan
+	// resources (the very restart bug the durable inventory fixes).
+	if !cache.WaitForCacheSync(ctx.Done(), releaseInventoryInformer.Informer().HasSynced) {
+		return fmt.Errorf("timed out waiting for release inventory cache to sync")
+	}
 
 	errGroup := errgroup.Group{}
 	errGroup.Go(func() error { return clusterController.Run(ctx, o.Workers) })

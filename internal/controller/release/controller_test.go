@@ -205,7 +205,57 @@ func TestSyncRequeueAfter(t *testing.T) {
 }
 
 func cmRef(name string) inventory.Ref {
-	return inventory.Ref{Version: "v1", Kind: "ConfigMap", Name: name}
+	return inventory.Ref{Version: "v1", Kind: configMapKind, Name: name}
+}
+
+// putInv seeds the controller's inventory for release ns/r1 (the fixture used
+// across these tests). The store is in-memory in tests, so writes never fail.
+func putInv(t *testing.T, c *Controller, refs ...inventory.Ref) {
+	t.Helper()
+	if err := c.inventory.Put(context.Background(), "ns", "r1", refs); err != nil {
+		t.Fatalf("seeding inventory: %v", err)
+	}
+}
+
+// getInv reads the controller's inventory for release ns/r1.
+func getInv(t *testing.T, c *Controller) []inventory.Ref {
+	t.Helper()
+	refs, _, err := c.inventory.Get(context.Background(), "ns", "r1")
+	if err != nil {
+		t.Fatalf("reading inventory: %v", err)
+	}
+	return refs
+}
+
+func TestUnionByID(t *testing.T) {
+	// base carries a prior-generation-only ref ("old") plus a "shared" ref that the
+	// current apply re-covers at a newer wave. applied wins on identity collision.
+	base := []inventory.Ref{
+		{Version: "v1", Kind: configMapKind, Name: "old", Wave: 0},
+		{Version: "v1", Kind: configMapKind, Name: "shared", Wave: 0},
+	}
+	applied := []inventory.Ref{
+		{Version: "v1", Kind: configMapKind, Name: "shared", Wave: 3},
+		{Version: "v1", Kind: configMapKind, Name: "new", Wave: 3},
+	}
+
+	got := unionByID(base, applied)
+	byName := map[string]inventory.Ref{}
+	for _, r := range got {
+		byName[r.Name] = r
+	}
+	if len(got) != 3 {
+		t.Fatalf("union = %+v, want 3 refs (shared deduped)", got)
+	}
+	if byName["shared"].Wave != 3 {
+		t.Errorf("shared wave = %d, want 3 (applied wins on collision)", byName["shared"].Wave)
+	}
+	if _, ok := byName["old"]; !ok {
+		t.Error("prior-only ref 'old' dropped, want carried through the rollout")
+	}
+	if _, ok := byName["new"]; !ok {
+		t.Error("current ref 'new' missing")
+	}
 }
 
 func TestProtectedFilter(t *testing.T) {
@@ -234,7 +284,7 @@ func TestSyncHandler_PrunesOrphan(t *testing.T) {
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
 	// Prior render managed cm (still rendered) + old (now orphaned).
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+	putInv(t, c, cmRef("cm"), cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -242,7 +292,7 @@ func TestSyncHandler_PrunesOrphan(t *testing.T) {
 	if len(deployer.pruned) != 1 || deployer.pruned[0].Name != "old" {
 		t.Errorf("pruned = %+v, want [old]", deployer.pruned)
 	}
-	if got, _ := c.inventory.Get("ns/r1"); len(got) != 1 || got[0].Name != "cm" {
+	if got := getInv(t, c); len(got) != 1 || got[0].Name != "cm" {
 		t.Errorf("inventory = %+v, want [cm]", got)
 	}
 }
@@ -288,8 +338,10 @@ func TestSyncHandler_AppliesInWaveOrder(t *testing.T) {
 		if !ok || w.Applied == nil || !*w.Applied {
 			t.Errorf("wave %d = %+v, want applied=true", n, w)
 		}
-		if w.Healthy != nil {
-			t.Errorf("wave %d healthy = %v, want nil (controller must not own healthy)", n, *w.Healthy)
+		// This release has no health assessment, so every wave is healthy by
+		// default and the controller (now the sole writer of the field) records it.
+		if w.Healthy == nil || !*w.Healthy {
+			t.Errorf("wave %d healthy = %v, want true (no health assessment → healthy)", n, w.Healthy)
 		}
 	}
 }
@@ -310,7 +362,19 @@ func gatedCoordinator(wave1Ann string) *fakeCoordinator {
 func gatedRelease() *corev1alpha1.Release {
 	rel := manifestsRelease()
 	rel.Spec.Content = manifestsContent("w0.yaml", "w1.yaml")
+	// A health bar only applies when the release has a health assessment; without
+	// one there is nothing to wait for, so the controller advances immediately.
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{}
 	return rel
+}
+
+// healthyRef is a ConfigMap ref pre-marked Healthy, for seeding the inventory
+// store so the wave gate sees a predecessor wave as healthy.
+func healthyRef(name string) inventory.Ref {
+	r := cmRef(name)
+	healthy := corev1alpha1.ResourceStateHealthy
+	r.State = &healthy
+	return r
 }
 
 func TestSyncHandler_HoldsAtHealthGate(t *testing.T) {
@@ -329,18 +393,28 @@ func TestSyncHandler_HoldsAtHealthGate(t *testing.T) {
 	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaitingForWaveHealth {
 		t.Errorf("condition = %v/%s, want False/WaitingForWaveHealth", s, r)
 	}
+	// The inventory is written incrementally: wave 0's resource is recorded even
+	// though the rollout is holding at the gate (not only on full success), so the
+	// observer can assess it and a partial rollout has a prune record.
+	inv := getInv(t, c)
+	if len(inv) != 1 || inv[0].Name != "gate" {
+		t.Errorf("inventory = %+v, want [gate] recorded despite the hold", inv)
+	}
 }
 
 func TestSyncHandler_AdvancesWhenPredecessorHealthy(t *testing.T) {
 	rel := gatedRelease()
-	// Observer already marked wave 0 healthy, applied earlier (seeded pre-construction).
+	// Wave 0 applied earlier, timestamps preserved in status.waves.
 	firstApply := metav1.NewTime(time.Date(2026, 6, 25, 11, 30, 0, 0, time.UTC))
 	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{
-		{Number: 0, Applied: new(true), Healthy: new(true), StartedAt: &firstApply, CompletedAt: &firstApply},
+		{Number: 0, Applied: new(true), StartedAt: &firstApply, CompletedAt: &firstApply},
 	}
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, rel, reachableCluster(),
 		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	// The observer marked wave 0's resource ("gate") Healthy on the ReleaseInventory;
+	// the gate rolls that up to advance wave 1.
+	putInv(t, c, healthyRef("gate"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -392,7 +466,7 @@ func TestSyncHandler_CRDProtectedFromPrune(t *testing.T) {
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
 	crd := inventory.Ref{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "widgets.example.com"}
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), crd})
+	putInv(t, c, cmRef("cm"), crd)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -407,7 +481,7 @@ func TestSyncHandler_PruneDisabledUntracks(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+	putInv(t, c, cmRef("cm"), cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -416,7 +490,7 @@ func TestSyncHandler_PruneDisabledUntracks(t *testing.T) {
 		t.Errorf("pruned = %+v, want no prune when disabled", deployer.pruned)
 	}
 	// Orphan is untracked: inventory advances to the current render.
-	if got, _ := c.inventory.Get("ns/r1"); len(got) != 1 || got[0].Name != "cm" {
+	if got := getInv(t, c); len(got) != 1 || got[0].Name != "cm" {
 		t.Errorf("inventory = %+v, want [cm] (orphan untracked)", got)
 	}
 }
@@ -427,12 +501,12 @@ func TestSyncHandler_PruneFailureRequeuesAndKeepsInventory(t *testing.T) {
 	deployer := &fakeDeployer{pruneErr: errors.New("delete forbidden")}
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+	putInv(t, c, cmRef("cm"), cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
 		t.Fatalf("syncHandler returned nil, want error so it requeues")
 	}
-	if got, _ := c.inventory.Get("ns/r1"); len(got) != 2 {
+	if got := getInv(t, c); len(got) != 2 {
 		t.Errorf("inventory = %+v, want unchanged (2 refs) on prune failure", got)
 	}
 	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonPruneFailed {
@@ -445,7 +519,7 @@ func TestSyncHandler_NoPruneOnDeployFailure(t *testing.T) {
 	rel.Spec.SyncPolicy.Prune.Orphaned = true
 	deployer := &fakeDeployer{err: errors.New("apply failed")}
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("old")})
+	putInv(t, c, cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
 		t.Fatalf("syncHandler returned nil, want error from failed deploy")

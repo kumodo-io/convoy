@@ -16,37 +16,55 @@ limitations under the License.
 
 package inventory
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
+
+const (
+	kindDeployment = "Deployment"
+	kindConfigMap  = "ConfigMap"
+	groupApps      = "apps"
+	nameAPI        = "api"
+)
 
 func TestMemoryStore_PutGetDelete(t *testing.T) {
+	ctx := context.Background()
 	s := NewMemoryStore()
 
-	if _, ok := s.Get("ns/r"); ok {
+	if _, ok, _ := s.Get(ctx, "ns", "r"); ok {
 		t.Errorf("empty store returned ok for missing key")
 	}
 
-	refs := []Ref{{Version: "v1", Kind: "ConfigMap", Namespace: "ns", Name: "a"}}
-	s.Put("ns/r", refs)
+	refs := []Ref{{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: "a"}}
+	if err := s.Put(ctx, "ns", "r", refs); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
 
-	got, ok := s.Get("ns/r")
+	got, ok, err := s.Get(ctx, "ns", "r")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
 	if !ok || len(got) != 1 || got[0].Name != "a" {
 		t.Errorf("Get after Put = %+v, ok=%v; want [a]", got, ok)
 	}
 
-	s.Delete("ns/r")
-	if _, ok := s.Get("ns/r"); ok {
+	if err := s.Delete(ctx, "ns", "r"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, ok, _ := s.Get(ctx, "ns", "r"); ok {
 		t.Errorf("Get after Delete returned ok")
 	}
 }
 
 func TestDiff_IgnoresVersion(t *testing.T) {
 	old := []Ref{
-		{Group: "apps", Version: "v1", Kind: "Deployment", Namespace: "x", Name: "a"},
-		{Version: "v1", Kind: "ConfigMap", Namespace: "x", Name: "gone"},
+		{Group: groupApps, Version: "v1", Kind: kindDeployment, Namespace: "x", Name: "a"},
+		{Version: "v1", Kind: kindConfigMap, Namespace: "x", Name: "gone"},
 	}
 	current := []Ref{
 		// Same Deployment, apiVersion "bumped" — must NOT count as an orphan.
-		{Group: "apps", Version: "v1beta1", Kind: "Deployment", Namespace: "x", Name: "a"},
+		{Group: groupApps, Version: "v1beta1", Kind: kindDeployment, Namespace: "x", Name: "a"},
 	}
 
 	orphans := Diff(old, current)
