@@ -51,6 +51,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
 	"github.com/kumodo-io/convoy/internal/render"
+	"github.com/kumodo-io/convoy/internal/waves"
 )
 
 const (
@@ -175,6 +176,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	if outcome.handledSyncAt != nil {
 		newStatus.LastHandledSyncAt = outcome.handledSyncAt
 	}
+	newStatus.Waves = outcome.waves
 
 	if statusChanged(rel, newStatus) {
 		newStatus.ReconciledAt = new(c.now())
@@ -284,6 +286,37 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 	}
 	if s.LastHandledSyncAt != nil {
 		statusAC.WithLastHandledSyncAt(*s.LastHandledSyncAt)
+	}
+
+	// waves is a listType=map keyed by number, co-owned with the observer: the
+	// controller owns `applied` (+ the descriptive fields it sets), the observer
+	// owns `healthy`. Each entry is built field by field and deliberately omits
+	// Healthy so this manager never asserts (and thus clobbers) the observer's field.
+	for i := range s.Waves {
+		w := s.Waves[i]
+		waveAC := corev1alpha1ac.ResourceWaveStatus().WithNumber(w.Number)
+		if w.Applied != nil {
+			waveAC.WithApplied(*w.Applied)
+		}
+		if w.Resources != 0 {
+			waveAC.WithResources(w.Resources)
+		}
+		if w.State != "" {
+			waveAC.WithState(w.State)
+		}
+		if w.StartedAt != nil {
+			waveAC.WithStartedAt(*w.StartedAt)
+		}
+		if w.CompletedAt != nil {
+			waveAC.WithCompletedAt(*w.CompletedAt)
+		}
+		if w.FailedAt != nil {
+			waveAC.WithFailedAt(*w.FailedAt)
+		}
+		if w.Message != "" {
+			waveAC.WithMessage(w.Message)
+		}
+		statusAC.WithWaves(waveAC)
 	}
 
 	return corev1alpha1ac.Release(rel.Name, rel.Namespace).WithStatus(statusAC), nil
@@ -403,6 +436,9 @@ type reconcileOutcome struct {
 	// handledSyncAt, when set, is the /sync request time this reconcile satisfied;
 	// the caller records it in status.lastHandledSyncAt.
 	handledSyncAt *metav1.Time
+	// waves is the per-wave apply progress for status.waves (controller owns the
+	// `applied` field; the observer owns `healthy`).
+	waves []corev1alpha1.ResourceWaveStatus
 }
 
 // reconcile runs fetch → render → apply → prune, building an attempt record. In
@@ -521,18 +557,55 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		}, nil
 	}
 
-	applied, err := c.deployer.Deploy(ctx, cluster, objects)
-	if err != nil {
-		if errors.Is(err, render.ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
-			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+	// Apply in ascending sync-wave order. Each wave applies fully before the next
+	// begins. A wave that requires a health bar (waitForHealthy*) can only gate the
+	// next wave once health is known — which the observer assesses, not this
+	// controller — so A2a applies through the first such wave and then halts,
+	// surfacing a non-ready condition rather than silently applying later waves
+	// before the health gate is satisfied. (Health-gated advancement is A2b.)
+	relKey := rel.Namespace + "/" + rel.Name
+	waveGroups := waves.Group(objects)
+	var applied []inventory.Ref
+	waveStatuses := make([]corev1alpha1.ResourceWaveStatus, 0, len(waveGroups))
+	haltedForHealth := false
+	for i := range waveGroups {
+		w := waveGroups[i]
+		waveApplied, err := c.deployer.Deploy(ctx, cluster, w.Objects)
+		if err != nil {
+			if errors.Is(err, render.ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
+				return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+			}
+			return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 		}
-		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+		applied = append(applied, waveApplied...)
+		waveStatuses = append(waveStatuses, corev1alpha1.ResourceWaveStatus{
+			Number:      int64(w.Number),
+			Applied:     new(true),
+			Resources:   len(w.Objects),
+			State:       corev1alpha1.ResourceWaveStateCompleted,
+			StartedAt:   &now,
+			CompletedAt: &now,
+		})
+		if w.NeedsHealth {
+			haltedForHealth = true
+			break
+		}
+	}
+
+	if haltedForHealth {
+		// Partial rollout: do NOT prune (would delete still-rendered objects in
+		// unapplied waves) and do NOT advance lastSuccessful.
+		return reconcileOutcome{
+			reason:  conditionReasonWaitingForWaveHealth,
+			message: "waiting on health-gated sync wave; health-gated wave advancement is not supported yet",
+			attempt: attempt,
+			waves:   waveStatuses,
+		}, nil
 	}
 
 	// Steady-state prune: apply succeeded, so anything this Release managed last
 	// time but no longer renders is an orphan. Only reached on the success path,
 	// so we never prune from a failed/partial render.
-	relKey := rel.Namespace + "/" + rel.Name
 	if err := c.prune(ctx, cluster, relKey, applied, rel.Spec.SyncPolicy.Prune); err != nil {
 		return fail(conditionReasonPruneFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 	}
@@ -547,6 +620,7 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		reason:  conditionReasonApplied,
 		message: fmt.Sprintf("applied %d object(s) from revision %s", len(applied), art.Revision),
 		attempt: attempt,
+		waves:   waveStatuses,
 	}
 	// In manual mode, record which /sync request this apply satisfied so it isn't
 	// re-applied on the next reconcile; a failed apply above returns early, leaving

@@ -52,16 +52,18 @@ const (
 )
 
 type fakeDeployer struct {
-	got      []*unstructured.Unstructured
-	called   bool
-	err      error
-	pruned   []inventory.Ref
-	pruneErr error
+	got       []*unstructured.Unstructured
+	waveCalls [][]*unstructured.Unstructured
+	called    bool
+	err       error
+	pruned    []inventory.Ref
+	pruneErr  error
 }
 
 func (d *fakeDeployer) Deploy(_ context.Context, _ *corev1alpha1.Cluster, objects []*unstructured.Unstructured) ([]inventory.Ref, error) {
 	d.called = true
 	d.got = objects
+	d.waveCalls = append(d.waveCalls, objects)
 	if d.err != nil {
 		return nil, d.err
 	}
@@ -242,6 +244,53 @@ func TestSyncHandler_PrunesOrphan(t *testing.T) {
 	}
 	if got, _ := c.inventory.Get("ns/r1"); len(got) != 1 || got[0].Name != "cm" {
 		t.Errorf("inventory = %+v, want [cm]", got)
+	}
+}
+
+func TestSyncHandler_AppliesInWaveOrder(t *testing.T) {
+	// Two manifests with sync-wave annotations: "late" at wave 10, "early" at -5.
+	// They must apply early-before-late regardless of file order.
+	early := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: early\n  annotations:\n    convoy.kumodo.io/sync-wave: \"-5\"\n"
+	late := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: late\n  annotations:\n    convoy.kumodo.io/sync-wave: \"10\"\n"
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: "rev1",
+		Artifact: artifact.Artifact{Files: map[string][]byte{"late.yaml": []byte(late), "early.yaml": []byte(early)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent("late.yaml", "early.yaml")
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+
+	// One Deploy call per wave, in ascending order: -5 (early) then 10 (late).
+	if len(deployer.waveCalls) != 2 {
+		t.Fatalf("Deploy called %d times, want 2 (one per wave)", len(deployer.waveCalls))
+	}
+	if deployer.waveCalls[0][0].GetName() != "early" || deployer.waveCalls[1][0].GetName() != "late" {
+		t.Errorf("wave order = [%s, %s], want [early, late]", deployer.waveCalls[0][0].GetName(), deployer.waveCalls[1][0].GetName())
+	}
+
+	// status.waves reflects both waves, applied.
+	waves := statusUpdate(client.Actions()).Status.Waves
+	if len(waves) != 2 {
+		t.Fatalf("status.waves = %d entries, want 2", len(waves))
+	}
+	byNum := map[int64]corev1alpha1.ResourceWaveStatus{}
+	for _, w := range waves {
+		byNum[w.Number] = w
+	}
+	for _, n := range []int64{-5, 10} {
+		w, ok := byNum[n]
+		if !ok || w.Applied == nil || !*w.Applied {
+			t.Errorf("wave %d = %+v, want applied=true", n, w)
+		}
+		if w.Healthy != nil {
+			t.Errorf("wave %d healthy = %v, want nil (controller must not own healthy)", n, *w.Healthy)
+		}
 	}
 }
 

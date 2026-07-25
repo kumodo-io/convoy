@@ -32,15 +32,16 @@ const (
 	// signal has a single writer (see docs/architecture/00-overview.md).
 	conditionApplied = "Applied"
 
-	conditionReasonApplied         = "Applied"
-	conditionReasonSourceNotReady  = "SourceNotReady"
-	conditionReasonValuesNotReady  = "ValuesNotReady"
-	conditionReasonClusterNotReady = "ClusterNotReady"
-	conditionReasonUnsupported     = "Unsupported"
-	conditionReasonDeployFailed    = "DeployFailed"
-	conditionReasonPruneFailed     = "PruneFailed"
-	conditionReasonPinned          = "Pinned"
-	conditionReasonWaitingForSync  = "WaitingForSync"
+	conditionReasonApplied              = "Applied"
+	conditionReasonSourceNotReady       = "SourceNotReady"
+	conditionReasonValuesNotReady       = "ValuesNotReady"
+	conditionReasonClusterNotReady      = "ClusterNotReady"
+	conditionReasonUnsupported          = "Unsupported"
+	conditionReasonDeployFailed         = "DeployFailed"
+	conditionReasonPruneFailed          = "PruneFailed"
+	conditionReasonPinned               = "Pinned"
+	conditionReasonWaitingForSync       = "WaitingForSync"
+	conditionReasonWaitingForWaveHealth = "WaitingForWaveHealth"
 )
 
 // computeStatus derives the desired ReleaseStatus from the current object and a
