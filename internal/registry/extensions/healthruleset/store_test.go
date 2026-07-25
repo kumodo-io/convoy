@@ -28,14 +28,14 @@ import (
 	"github.com/kumodo-io/convoy/api/extensions"
 	extensionsinstall "github.com/kumodo-io/convoy/api/extensions/install"
 	extensionsv1alpha1 "github.com/kumodo-io/convoy/api/extensions/v1alpha1"
-	HealthRuleSetstorage "github.com/kumodo-io/convoy/internal/registry/extensions/healthruleset"
+	healthrulesetstorage "github.com/kumodo-io/convoy/internal/registry/extensions/healthruleset"
 	"github.com/kumodo-io/convoy/internal/registry/registrytest"
 )
 
 func newStorage(t *testing.T) (*genericregistry.Store, *etcd3testing.EtcdTestServer) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, extensionsinstall.Install, extensionsv1alpha1.SchemeGroupVersion, extensions.Resource("HealthRuleSets"))
 
-	restStorage, err := HealthRuleSetstorage.NewREST(scheme, restOptions)
+	restStorage, err := healthrulesetstorage.NewREST(scheme, restOptions)
 	if err != nil {
 		server.Terminate(t)
 		t.Fatalf("unexpected error from NewREST: %v", err)
