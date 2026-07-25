@@ -45,6 +45,15 @@ type Wave struct {
 	// NeedsHealth is true if any object requires a health bar (waitForHealthy or
 	// waitForHealthyWithTimeout) before later waves may proceed.
 	NeedsHealth bool
+	// Bounded is true if any object requires waitForHealthyWithTimeout — the wave's
+	// health wait is bounded; if it is not healthy within Timeout the wave fails.
+	// A wave mixing bounded and unbounded (waitForHealthy) resources is treated as
+	// bounded (fail-safe: never block a rollout indefinitely when a timeout was
+	// requested).
+	Bounded bool
+	// Timeout is the health-wait deadline for a bounded wave: the maximum
+	// sync-timeout among its waitForHealthyWithTimeout resources.
+	Timeout time.Duration
 }
 
 // WaveOf returns an object's wave number from the sync-wave annotation. A missing
@@ -89,12 +98,6 @@ func TimeoutOf(obj *unstructured.Unstructured) time.Duration {
 	return d
 }
 
-// requiresHealth reports whether a strategy gates later waves on health.
-func requiresHealth(s corev1alpha1.ReleaseWaveStrategy) bool {
-	return s == corev1alpha1.ReleaseWaveStrategyWaitForHealthy ||
-		s == corev1alpha1.ReleaseWaveStrategyWaitForHealthyWithTimeout
-}
-
 // Group buckets objects by wave number and returns the waves in ascending order.
 // Object order within a wave is preserved from the input.
 func Group(objects []*unstructured.Unstructured) []Wave {
@@ -109,8 +112,15 @@ func Group(objects []*unstructured.Unstructured) []Wave {
 			numbers = append(numbers, n)
 		}
 		w.Objects = append(w.Objects, obj)
-		if requiresHealth(StrategyOf(obj)) {
+		switch StrategyOf(obj) {
+		case corev1alpha1.ReleaseWaveStrategyWaitForHealthy:
 			w.NeedsHealth = true
+		case corev1alpha1.ReleaseWaveStrategyWaitForHealthyWithTimeout:
+			w.NeedsHealth = true
+			w.Bounded = true
+			if t := TimeoutOf(obj); t > w.Timeout {
+				w.Timeout = t
+			}
 		}
 	}
 	sort.Ints(numbers)

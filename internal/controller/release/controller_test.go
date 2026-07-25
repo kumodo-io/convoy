@@ -294,6 +294,97 @@ func TestSyncHandler_AppliesInWaveOrder(t *testing.T) {
 	}
 }
 
+// gatedCoordinator renders wave 0 (default, "gate") and wave 1 ("after") where
+// wave 1 carries the given strategy/timeout annotation block (indented 4 spaces
+// per line). Wave 1's strategy makes it wait for prior waves (wave 0) to be
+// healthy before it applies.
+func gatedCoordinator(wave1Ann string) *fakeCoordinator {
+	w0 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: gate\n  annotations:\n    convoy.kumodo.io/sync-wave: \"0\"\n"
+	w1 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: after\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n" + wave1Ann
+	return &fakeCoordinator{result: fetch.Result{
+		Ready: true, Revision: "rev1",
+		Artifact: artifact.Artifact{Files: map[string][]byte{"w0.yaml": []byte(w0), "w1.yaml": []byte(w1)}},
+	}}
+}
+
+func gatedRelease() *corev1alpha1.Release {
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent("w0.yaml", "w1.yaml")
+	return rel
+}
+
+func TestSyncHandler_HoldsAtHealthGate(t *testing.T) {
+	// Wave 0 is waitForHealthy; its healthy is unset → gate blocks wave 1.
+	rel := gatedRelease()
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 1 || deployer.waveCalls[0][0].GetName() != "gate" {
+		t.Fatalf("waveCalls = %v, want just [gate]", waveCallNames(deployer))
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaitingForWaveHealth {
+		t.Errorf("condition = %v/%s, want False/WaitingForWaveHealth", s, r)
+	}
+}
+
+func TestSyncHandler_AdvancesWhenPredecessorHealthy(t *testing.T) {
+	rel := gatedRelease()
+	// Observer already marked wave 0 healthy, applied earlier (seeded pre-construction).
+	firstApply := metav1.NewTime(time.Date(2026, 6, 25, 11, 30, 0, 0, time.UTC))
+	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{
+		{Number: 0, Applied: new(true), Healthy: new(true), StartedAt: &firstApply, CompletedAt: &firstApply},
+	}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 2 || deployer.waveCalls[1][0].GetName() != "after" {
+		t.Errorf("waveCalls = %v, want [gate, after]", waveCallNames(deployer))
+	}
+	// Wave 0's original timestamps are preserved across reconciles, not reset to now.
+	for _, w := range statusUpdate(client.Actions()).Status.Waves {
+		if w.Number == 0 {
+			if w.StartedAt == nil || !w.StartedAt.Equal(&firstApply) || w.CompletedAt == nil || !w.CompletedAt.Equal(&firstApply) {
+				t.Errorf("wave 0 timestamps = started %v completed %v, want both %v (preserved)", w.StartedAt, w.CompletedAt, firstApply)
+			}
+		}
+	}
+}
+
+func TestSyncHandler_HealthGateTimesOut(t *testing.T) {
+	rel := gatedRelease()
+	// Wave 0 applied an hour ago, still not healthy → bounded wait (1ms) has expired.
+	past := metav1.NewTime(time.Date(2026, 6, 25, 11, 0, 0, 0, time.UTC))
+	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{{Number: 0, Applied: new(true), StartedAt: &past}}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1ms\"\n"), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaveFailed {
+		t.Errorf("condition = %v/%s, want False/WaveFailed", s, r)
+	}
+}
+
+func waveCallNames(d *fakeDeployer) [][]string {
+	out := make([][]string, len(d.waveCalls))
+	for i, call := range d.waveCalls {
+		for _, o := range call {
+			out[i] = append(out[i], o.GetName())
+		}
+	}
+	return out
+}
+
 func TestSyncHandler_CRDProtectedFromPrune(t *testing.T) {
 	rel := manifestsRelease()
 	rel.Spec.SyncPolicy.Prune.Orphaned = true // IncludeCRDs stays false

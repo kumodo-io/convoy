@@ -42,6 +42,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/health"
 	"github.com/kumodo-io/convoy/internal/healthresult"
+	"github.com/kumodo-io/convoy/internal/waves"
 )
 
 // HealthController runs the health-assessment loop, keyed on Release. It is the
@@ -117,11 +118,20 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	}
 
 	// No assessment configured: report Healthy — everything applied, nothing to
-	// check. Drop any stale store entries.
+	// check. Drop any stale store entries. Per the "no applicable rules → healthy"
+	// rule, every applied wave is healthy too (nothing gates it), so wave gating
+	// still advances for a release using waitForHealthy* without health rules.
 	if rel.Spec.HealthAssessment == nil {
 		c.store.delete(key)
 		if err := c.writeHealth(ctx, rel, metav1.ConditionTrue, reasonNotConfigured,
 			"no health assessment configured", healthresult.Summary{}); err != nil {
+			return err
+		}
+		allHealthy := map[int64]bool{}
+		for n := range appliedWaves(rel) {
+			allHealthy[n] = true
+		}
+		if err := c.writeWaveHealth(ctx, rel, allHealthy); err != nil {
 			return err
 		}
 		c.scheduleRecheck(key, rel)
@@ -146,8 +156,48 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	if err := c.writeHealth(ctx, rel, status, reason, message, result.Summarize()); err != nil {
 		return err
 	}
+	if err := c.writeWaveHealth(ctx, rel, waveHealthRollup(rel, c.store.entries(key))); err != nil {
+		return err
+	}
 	c.scheduleRecheck(key, rel)
 	return nil
+}
+
+// appliedWaves returns the set of wave numbers the controller has marked applied
+// in status.waves. The observer assesses per-wave health only for applied waves;
+// an unapplied wave's objects aren't in the cluster yet, so its health is not
+// meaningful and is left unwritten.
+func appliedWaves(rel *corev1alpha1.Release) map[int64]bool {
+	out := map[int64]bool{}
+	for i := range rel.Status.Waves {
+		w := rel.Status.Waves[i]
+		if w.Applied != nil && *w.Applied {
+			out[w.Number] = true
+		}
+	}
+	return out
+}
+
+// waveHealthRollup computes per-wave health for the applied waves: a wave is
+// healthy iff every one of its assessed objects is Healthy. Waves not yet applied
+// are omitted (their health is not written).
+func waveHealthRollup(rel *corev1alpha1.Release, entries []healthEntry) map[int64]bool {
+	applied := appliedWaves(rel)
+	// Seed every applied wave healthy=true; a single non-Healthy object flips it.
+	rollup := map[int64]bool{}
+	for n := range applied {
+		rollup[n] = true
+	}
+	for _, e := range entries {
+		n := int64(e.wave)
+		if !applied[n] {
+			continue
+		}
+		if e.state != health.StateHealthy {
+			rollup[n] = false
+		}
+	}
+	return rollup
 }
 
 // assess renders the Release's desired objects, reads them live, and evaluates
@@ -196,6 +246,7 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 	entries := make(map[string]healthEntry, len(objects))
 	for _, obj := range objects {
 		entry := c.assessObject(ctx, evaluator, dyn, mapper, releaseKey, obj, deadline, now)
+		entry.wave = waves.WaveOf(obj)
 		entries[entry.ref.key()] = entry
 		result.Objects = append(result.Objects, healthresult.ObjectHealth{
 			Group:     entry.ref.gvk.Group,

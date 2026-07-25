@@ -35,6 +35,13 @@ const (
 	// loop's InSync condition and the release controller's fields.
 	healthFieldManager = "convoy-health"
 
+	// waveHealthFieldManager owns only status.waves[].healthy. It is separate from
+	// healthFieldManager because each SSA Apply is the complete desired state for
+	// its manager; a distinct manager lets the wave-health write and the condition
+	// write coexist, and lets a pass that has no fresh wave data simply skip the
+	// wave write (leaving prior healthy values untouched) rather than dropping them.
+	waveHealthFieldManager = "convoy-health-waves"
+
 	// conditionHealthy reports whether the Release's managed resources are healthy.
 	conditionHealthy = "Healthy"
 
@@ -85,6 +92,43 @@ func (c *HealthController) writeHealth(ctx context.Context, rel *corev1alpha1.Re
 	if _, err := c.client.CoreV1alpha1().Releases(rel.Namespace).
 		ApplyStatus(ctx, ac, metav1.ApplyOptions{FieldManager: healthFieldManager, Force: true}); err != nil {
 		return fmt.Errorf("applying Healthy condition: %w", err)
+	}
+	return nil
+}
+
+// writeWaveHealth applies status.waves[].healthy for the given waves under the
+// wave-health field manager. Each entry is built field by field with only number
+// (the list-map key) and healthy, so the observer co-owns wave entries with the
+// controller (which owns applied) without clobbering it. A no-op (values already
+// match) is skipped; an empty map writes nothing.
+func (c *HealthController) writeWaveHealth(ctx context.Context, rel *corev1alpha1.Release, waveHealthy map[int64]bool) error {
+	if len(waveHealthy) == 0 {
+		return nil
+	}
+	// Skip when every value already matches what's on the object.
+	existing := map[int64]*bool{}
+	for i := range rel.Status.Waves {
+		existing[rel.Status.Waves[i].Number] = rel.Status.Waves[i].Healthy
+	}
+	changed := false
+	for n, h := range waveHealthy {
+		if e := existing[n]; e == nil || *e != h {
+			changed = true
+			break
+		}
+	}
+	if !changed {
+		return nil
+	}
+
+	statusAC := corev1alpha1ac.ReleaseStatus()
+	for n, h := range waveHealthy {
+		statusAC.WithWaves(corev1alpha1ac.ResourceWaveStatus().WithNumber(n).WithHealthy(h))
+	}
+	ac := corev1alpha1ac.Release(rel.Name, rel.Namespace).WithStatus(statusAC)
+	if _, err := c.client.CoreV1alpha1().Releases(rel.Namespace).
+		ApplyStatus(ctx, ac, metav1.ApplyOptions{FieldManager: waveHealthFieldManager, Force: true}); err != nil {
+		return fmt.Errorf("applying wave health: %w", err)
 	}
 	return nil
 }

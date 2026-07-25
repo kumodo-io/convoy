@@ -558,18 +558,60 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	}
 
 	// Apply in ascending sync-wave order. Each wave applies fully before the next
-	// begins. A wave that requires a health bar (waitForHealthy*) can only gate the
-	// next wave once health is known — which the observer assesses, not this
-	// controller — so A2a applies through the first such wave and then halts,
-	// surfacing a non-ready condition rather than silently applying later waves
-	// before the health gate is satisfied. (Health-gated advancement is A2b.)
+	// begins. A wave with a health bar (waitForHealthy*) gates the *next* wave until
+	// it is healthy: health is assessed by the observer, which records
+	// status.waves[].healthy, so the controller gates on that persisted field and
+	// requeues while it is not yet true. waitForHealthyWithTimeout fails the wave
+	// once its timeout elapses. All waves are (idempotently) re-applied each
+	// reconcile, so drift is still corrected as the rollout progresses.
 	relKey := rel.Namespace + "/" + rel.Name
 	waveGroups := waves.Group(objects)
+	// Prior status.waves, to carry a wave's original StartedAt across reconciles and
+	// to read the observer-written healthy field for gating.
+	prior := map[int64]corev1alpha1.ResourceWaveStatus{}
+	for i := range rel.Status.Waves {
+		prior[rel.Status.Waves[i].Number] = rel.Status.Waves[i]
+	}
+
 	var applied []inventory.Ref
 	waveStatuses := make([]corev1alpha1.ResourceWaveStatus, 0, len(waveGroups))
-	haltedForHealth := false
 	for i := range waveGroups {
 		w := waveGroups[i]
+
+		// Gate: a wave whose resources declare waitForHealthy* waits for ALL prior
+		// waves to be healthy before it applies (the strategy is the bar the wave's
+		// predecessors must clear before it enters). Earlier waves are already
+		// applied by loop order; health is assessed by the observer, which records
+		// status.waves[].healthy, so the controller gates on that persisted field.
+		if i > 0 && waveGroups[i].NeedsHealth {
+			allHealthy := true
+			for j := 0; j < i; j++ {
+				ps := prior[int64(waveGroups[j].Number)]
+				if ps.Healthy == nil || !*ps.Healthy {
+					allHealthy = false
+					break
+				}
+			}
+			if !allHealthy {
+				// Anchor a bounded wait at the immediately-preceding wave's first apply.
+				prevStarted := prior[int64(waveGroups[i-1].Number)].StartedAt
+				if waveGroups[i].Bounded && prevStarted != nil && now.Time.Sub(prevStarted.Time) > waveGroups[i].Timeout {
+					out, _ := fail(conditionReasonWaveFailed, fmt.Sprintf("sync wave %d: prior waves not healthy within %s", w.Number, waveGroups[i].Timeout), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+					out.waves = waveStatuses
+					return out, nil
+				}
+				// Not healthy yet: hold. Partial rollout — do NOT prune or advance
+				// lastSuccessful. Requeues on the poll interval; the observer records
+				// prior waves' health in the meantime.
+				return reconcileOutcome{
+					reason:  conditionReasonWaitingForWaveHealth,
+					message: fmt.Sprintf("waiting for waves before %d to become healthy", w.Number),
+					attempt: attempt,
+					waves:   waveStatuses,
+				}, nil
+			}
+		}
+
 		waveApplied, err := c.deployer.Deploy(ctx, cluster, w.Objects)
 		if err != nil {
 			if errors.Is(err, render.ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
@@ -578,29 +620,28 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 			return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 		}
 		applied = append(applied, waveApplied...)
+
+		// Preserve the wave's original StartedAt/CompletedAt across reconciles: the
+		// wave applies once and is re-applied idempotently each reconcile, so its
+		// timestamps must reflect that first apply, not the current pass. (StartedAt
+		// also anchors a successor wave's bounded health wait.)
+		startedAt, completedAt := &now, &now
+		if p, ok := prior[int64(w.Number)]; ok {
+			if p.StartedAt != nil {
+				startedAt = p.StartedAt
+			}
+			if p.CompletedAt != nil {
+				completedAt = p.CompletedAt
+			}
+		}
 		waveStatuses = append(waveStatuses, corev1alpha1.ResourceWaveStatus{
 			Number:      int64(w.Number),
 			Applied:     new(true),
 			Resources:   len(w.Objects),
 			State:       corev1alpha1.ResourceWaveStateCompleted,
-			StartedAt:   &now,
-			CompletedAt: &now,
+			StartedAt:   startedAt,
+			CompletedAt: completedAt,
 		})
-		if w.NeedsHealth {
-			haltedForHealth = true
-			break
-		}
-	}
-
-	if haltedForHealth {
-		// Partial rollout: do NOT prune (would delete still-rendered objects in
-		// unapplied waves) and do NOT advance lastSuccessful.
-		return reconcileOutcome{
-			reason:  conditionReasonWaitingForWaveHealth,
-			message: "waiting on health-gated sync wave; health-gated wave advancement is not supported yet",
-			attempt: attempt,
-			waves:   waveStatuses,
-		}, nil
 	}
 
 	// Steady-state prune: apply succeeded, so anything this Release managed last

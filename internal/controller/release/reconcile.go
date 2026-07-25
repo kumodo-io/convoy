@@ -42,6 +42,7 @@ const (
 	conditionReasonPinned               = "Pinned"
 	conditionReasonWaitingForSync       = "WaitingForSync"
 	conditionReasonWaitingForWaveHealth = "WaitingForWaveHealth"
+	conditionReasonWaveFailed           = "WaveFailed"
 )
 
 // computeStatus derives the desired ReleaseStatus from the current object and a

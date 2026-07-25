@@ -43,6 +43,7 @@ func (r objectRef) key() string {
 // the current unhealthy streak); zero when Healthy.
 type healthEntry struct {
 	ref            objectRef
+	wave           int
 	state          health.State
 	message        string
 	firstUnhealthy time.Time
@@ -87,6 +88,19 @@ func (s *healthStore) delete(releaseKey string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.releases, releaseKey)
+}
+
+// entries returns a copy of a Release's stored per-object health entries, for
+// rolling up per-wave health.
+func (s *healthStore) entries(releaseKey string) []healthEntry {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	objs := s.releases[releaseKey]
+	out := make([]healthEntry, 0, len(objs))
+	for _, e := range objs {
+		out = append(out, e)
+	}
+	return out
 }
 
 // result builds the /health payload for a Release from the stored entries, or nil
