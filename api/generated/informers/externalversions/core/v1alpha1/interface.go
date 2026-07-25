@@ -28,6 +28,8 @@ type Interface interface {
 	Clusters() ClusterInformer
 	// Releases returns a ReleaseInformer.
 	Releases() ReleaseInformer
+	// ReleaseInventories returns a ReleaseInventoryInformer.
+	ReleaseInventories() ReleaseInventoryInformer
 }
 
 type version struct {
@@ -49,4 +51,9 @@ func (v *version) Clusters() ClusterInformer {
 // Releases returns a ReleaseInformer.
 func (v *version) Releases() ReleaseInformer {
 	return &releaseInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ReleaseInventories returns a ReleaseInventoryInformer.
+func (v *version) ReleaseInventories() ReleaseInventoryInformer {
+	return &releaseInventoryInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

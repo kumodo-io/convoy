@@ -446,6 +446,8 @@ type reconcileOutcome struct {
 // mode it renders and observes but applies only when a /sync is pending, so
 // status (pin, sync-state, later drift/health) stays fresh without mutating the
 // cluster. The returned error is a requeue signal (non-nil = transient).
+// todo: fix gocyclo
+// nolint:gocyclo
 func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (reconcileOutcome, error) {
 	now := c.now()
 	manual := !rel.Spec.SyncPolicy.Automatic
@@ -595,7 +597,7 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 			if !allHealthy {
 				// Anchor a bounded wait at the immediately-preceding wave's first apply.
 				prevStarted := prior[int64(waveGroups[i-1].Number)].StartedAt
-				if waveGroups[i].Bounded && prevStarted != nil && now.Time.Sub(prevStarted.Time) > waveGroups[i].Timeout {
+				if waveGroups[i].Bounded && prevStarted != nil && now.Sub(prevStarted.Time) > waveGroups[i].Timeout {
 					out, _ := fail(conditionReasonWaveFailed, fmt.Sprintf("sync wave %d: prior waves not healthy within %s", w.Number, waveGroups[i].Timeout), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
 					out.waves = waveStatuses
 					return out, nil

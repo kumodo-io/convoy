@@ -36,6 +36,10 @@ func (c *FakeCoreV1alpha1) Releases(namespace string) v1alpha1.ReleaseInterface 
 	return newFakeReleases(c, namespace)
 }
 
+func (c *FakeCoreV1alpha1) ReleaseInventories(namespace string) v1alpha1.ReleaseInventoryInterface {
+	return newFakeReleaseInventories(c, namespace)
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeCoreV1alpha1) RESTClient() rest.Interface {

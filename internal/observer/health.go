@@ -193,7 +193,7 @@ func waveHealthRollup(rel *corev1alpha1.Release, entries []healthEntry) map[int6
 		if !applied[n] {
 			continue
 		}
-		if e.state != health.StateHealthy {
+		if e.state != corev1alpha1.ResourceStateHealthy {
 			rollup[n] = false
 		}
 	}
@@ -269,22 +269,22 @@ func (c *HealthController) assessObject(ctx context.Context, evaluator *health.E
 
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
-		return healthEntry{ref: ref, state: health.StateUnknown, message: fmt.Sprintf("cannot resolve resource for %s: %v", gvk, err)}
+		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("cannot resolve resource for %s: %v", gvk, err)}
 	}
 	resource := mapping.Resource.Resource
 
 	// No applicable rule → Healthy without a live read.
 	if !evaluator.HasRules(obj.GetAPIVersion(), []string{resource}) {
-		return healthEntry{ref: ref, state: health.StateHealthy, message: "no applicable health rules"}
+		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateHealthy, message: "no applicable health rules"}
 	}
 
 	ri := resourceClient(dyn, mapping, obj.GetNamespace())
 	live, err := ri.Get(ctx, obj.GetName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return healthEntry{ref: ref, state: health.StateUnknown, message: "resource not found in cluster"}
+		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: "resource not found in cluster"}
 	}
 	if err != nil {
-		return healthEntry{ref: ref, state: health.StateUnknown, message: fmt.Sprintf("reading live resource: %v", err)}
+		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("reading live resource: %v", err)}
 	}
 
 	assessment := evaluator.Assess(live, []string{resource})

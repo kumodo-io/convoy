@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
-	"github.com/kumodo-io/convoy/internal/health"
 )
 
 func relWithWaves(waves ...corev1alpha1.ResourceWaveStatus) *corev1alpha1.Release {
@@ -36,7 +35,7 @@ func appliedWave(n int64) corev1alpha1.ResourceWaveStatus {
 	return corev1alpha1.ResourceWaveStatus{Number: n, Applied: new(true)}
 }
 
-func entry(wave int, state health.State) healthEntry {
+func entry(wave int, state corev1alpha1.ResourceState) healthEntry {
 	return healthEntry{wave: wave, state: state}
 }
 
@@ -52,11 +51,11 @@ func TestWaveHealthRollup(t *testing.T) {
 	// Waves 0 and 1 applied; wave 2 not applied.
 	rel := relWithWaves(appliedWave(0), appliedWave(1), corev1alpha1.ResourceWaveStatus{Number: 2})
 	entries := []healthEntry{
-		entry(0, health.StateHealthy),  // wave 0: all healthy
-		entry(0, health.StateHealthy),  //
-		entry(1, health.StateHealthy),  // wave 1: one degraded → not healthy
-		entry(1, health.StateDegraded), //
-		entry(2, health.StateUnknown),  // wave 2: not applied → excluded
+		entry(0, corev1alpha1.ResourceStateHealthy),  // wave 0: all healthy
+		entry(0, corev1alpha1.ResourceStateHealthy),  //
+		entry(1, corev1alpha1.ResourceStateHealthy),  // wave 1: one degraded → not healthy
+		entry(1, corev1alpha1.ResourceStateDegraded), //
+		entry(2, corev1alpha1.ResourceStateUnknown),  // wave 2: not applied → excluded
 	}
 	got := waveHealthRollup(rel, entries)
 

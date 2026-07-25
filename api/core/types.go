@@ -5,6 +5,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
@@ -626,4 +627,46 @@ type ReleaseList struct {
 	metav1.ListMeta
 
 	Items []Release
+}
+
+// ---------- ReleaseInventory types ----------
+
+type ResourceState string
+
+const (
+	ResourceStateHealthy     ResourceState = "Healthy"
+	ResourceStateProgressing ResourceState = "Progressing"
+	ResourceStateDegraded    ResourceState = "Degraded"
+	ResourceStateUnknown     ResourceState = "Unknown"
+)
+
+type ResourceInventoryItem struct {
+	Group          string
+	Version        string
+	Kind           string
+	Namespace      string
+	Name           string
+	UID            *types.UID
+	Wave           *int
+	State          *ResourceState
+	FirstUnhealthy *metav1.Time
+	Message        string
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ReleaseInventory struct {
+	metav1.TypeMeta
+	metav1.ObjectMeta
+
+	Inventory []ResourceInventoryItem
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ReleaseInventoryList struct {
+	metav1.TypeMeta
+	metav1.ListMeta
+	Items []ReleaseInventory
 }

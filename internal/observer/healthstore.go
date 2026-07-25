@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/kumodo-io/convoy/internal/health"
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
@@ -44,7 +44,7 @@ func (r objectRef) key() string {
 type healthEntry struct {
 	ref            objectRef
 	wave           int
-	state          health.State
+	state          corev1alpha1.ResourceState
 	message        string
 	firstUnhealthy time.Time
 }

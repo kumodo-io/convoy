@@ -128,6 +128,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseHelmRegistryChartSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseHelmRegistrySpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseHelmRegistrySpecApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseInventory"):
+		return &applyconfigurationcorev1alpha1.ReleaseInventoryApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseLifecycle"):
 		return &applyconfigurationcorev1alpha1.ReleaseLifecycleApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutation"):
@@ -170,6 +172,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ResolvedRetentionPolicyStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResolvedSource"):
 		return &applyconfigurationcorev1alpha1.ResolvedSourceApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ResourceInventoryItem"):
+		return &applyconfigurationcorev1alpha1.ResourceInventoryItemApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResourceWaveStatus"):
 		return &applyconfigurationcorev1alpha1.ResourceWaveStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ValuesSourceGitRepositorySpec"):

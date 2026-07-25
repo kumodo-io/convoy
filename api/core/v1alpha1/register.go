@@ -34,6 +34,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ClusterList{},
 		&Release{},
 		&ReleaseList{},
+		&ReleaseInventory{},
+		&ReleaseInventoryList{},
 	)
 
 	// Whitelist the fields a Release may be filtered on via --field-selector.
