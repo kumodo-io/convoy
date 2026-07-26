@@ -20,6 +20,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
 func TestDeriveState(t *testing.T) {
@@ -28,7 +30,7 @@ func TestDeriveState(t *testing.T) {
 
 	t.Run("passed clears anchor", func(t *testing.T) {
 		s, anchor := DeriveState(true, nil, now.Add(-time.Minute), &deadline, now)
-		if s != StateHealthy || !anchor.IsZero() {
+		if s != corev1alpha1.ResourceStateHealthy || !anchor.IsZero() {
 			t.Errorf("= %s,%v want Healthy, zero anchor", s, anchor)
 		}
 	})
@@ -36,14 +38,14 @@ func TestDeriveState(t *testing.T) {
 	t.Run("eval error is unknown and preserves anchor", func(t *testing.T) {
 		prev := now.Add(-time.Minute)
 		s, anchor := DeriveState(false, errors.New("boom"), prev, &deadline, now)
-		if s != StateUnknown || !anchor.Equal(prev) {
+		if s != corev1alpha1.ResourceStateUnknown || !anchor.Equal(prev) {
 			t.Errorf("= %s,%v want Unknown, preserved anchor %v", s, anchor, prev)
 		}
 	})
 
 	t.Run("first failure sets anchor and is progressing", func(t *testing.T) {
 		s, anchor := DeriveState(false, nil, time.Time{}, &deadline, now)
-		if s != StateProgressing || !anchor.Equal(now) {
+		if s != corev1alpha1.ResourceStateProgressing || !anchor.Equal(now) {
 			t.Errorf("= %s,%v want Progressing, anchor now", s, anchor)
 		}
 	})
@@ -51,7 +53,7 @@ func TestDeriveState(t *testing.T) {
 	t.Run("failing past deadline is degraded", func(t *testing.T) {
 		first := now.Add(-31 * time.Second)
 		s, anchor := DeriveState(false, nil, first, &deadline, now)
-		if s != StateDegraded || !anchor.Equal(first) {
+		if s != corev1alpha1.ResourceStateDegraded || !anchor.Equal(first) {
 			t.Errorf("= %s,%v want Degraded, kept anchor", s, anchor)
 		}
 	})
@@ -59,7 +61,7 @@ func TestDeriveState(t *testing.T) {
 	t.Run("no deadline never escalates", func(t *testing.T) {
 		first := now.Add(-time.Hour)
 		s, anchor := DeriveState(false, nil, first, nil, now)
-		if s != StateProgressing || !anchor.Equal(first) {
+		if s != corev1alpha1.ResourceStateProgressing || !anchor.Equal(first) {
 			t.Errorf("= %s,%v want Progressing (no deadline), kept anchor", s, anchor)
 		}
 	})

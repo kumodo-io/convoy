@@ -28,6 +28,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ClusterList{},
 		&Release{},
 		&ReleaseList{},
+		&ReleaseInventory{},
+		&ReleaseInventoryList{},
 	)
 
 	return nil

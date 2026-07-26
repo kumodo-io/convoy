@@ -3,6 +3,15 @@ kind: Release
 metadata:
   name: podinfo-in-cluster-helm
   namespace: default
+mutations:
+  - type: syncWave
+    waveStrategy:
+      strategy: waitForHealthy
+      wave: 1
+    target:
+      group: ""
+      version: v1
+      kind: Service
 spec:
   clusterRef:
     name: dev-local

@@ -25,7 +25,6 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
-	"github.com/kumodo-io/convoy/internal/inventory"
 )
 
 // deletingRelease is a Release mid-deletion (finalizer + deletionTimestamp set),
@@ -66,7 +65,7 @@ func hasReleaseFinalizer(finalizers []string) bool {
 func TestFinalize_PrunesWorkloadsAndRemovesFinalizer(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, deletingRelease(false, false), reachableCluster(), readyCoordinator(), deployer)
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm")})
+	putInv(t, c, cmRef("cm"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -83,7 +82,7 @@ func TestFinalize_PrunesWorkloadsAndRemovesFinalizer(t *testing.T) {
 func TestFinalize_KeepWorkloads_RemovesFinalizerWithoutPruning(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, deletingRelease(true, false), reachableCluster(), readyCoordinator(), deployer)
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm")})
+	putInv(t, c, cmRef("cm"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -100,7 +99,7 @@ func TestFinalize_KeepWorkloads_RemovesFinalizerWithoutPruning(t *testing.T) {
 func TestFinalize_UnreachableCluster_BlocksWhenConfigured(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, deletingRelease(false, true), unreachableCluster(), readyCoordinator(), deployer)
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm")})
+	putInv(t, c, cmRef("cm"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
 		t.Fatalf("syncHandler returned nil, want a blocking error (cluster unreachable)")
@@ -116,7 +115,7 @@ func TestFinalize_UnreachableCluster_BlocksWhenConfigured(t *testing.T) {
 func TestFinalize_UnreachableCluster_GivesUpWhenNotBlocking(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, deletingRelease(false, false), unreachableCluster(), readyCoordinator(), deployer)
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm")})
+	putInv(t, c, cmRef("cm"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -134,7 +133,7 @@ func TestFinalize_ClusterGone_GivesUp(t *testing.T) {
 	deployer := &fakeDeployer{}
 	// No cluster seeded → clusterLister returns NotFound.
 	c, client := newTestController(t, deletingRelease(false, true), nil, readyCoordinator(), deployer)
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm")})
+	putInv(t, c, cmRef("cm"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)

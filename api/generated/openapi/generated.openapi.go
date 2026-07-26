@@ -85,6 +85,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
 		v1alpha1.ReleaseHelmRegistryChartSpec{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleaseHelmRegistryChartSpec(ref),
 		v1alpha1.ReleaseHelmRegistrySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseHelmRegistrySpec(ref),
+		v1alpha1.ReleaseInventory{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseInventory(ref),
+		v1alpha1.ReleaseInventoryList{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseInventoryList(ref),
 		v1alpha1.ReleaseLifecycle{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
 		v1alpha1.ReleaseList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ReleaseList(ref),
 		v1alpha1.ReleaseMutation{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
@@ -107,6 +109,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ResolvedMutation{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ResolvedMutation(ref),
 		v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref),
 		v1alpha1.ResolvedSource{}.OpenAPIModelName():                              schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
+		v1alpha1.ResourceInventoryItem{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ResourceInventoryItem(ref),
 		v1alpha1.ResourceWaveStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
 		v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ValuesSourceGitRepositorySpec(ref),
 		v1alpha1.ValuesSourceSpec{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref),
@@ -2649,6 +2652,112 @@ func schema_convoy_api_core_v1alpha1_ReleaseHelmRegistrySpec(ref common.Referenc
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ReleaseInventory(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref(metav1.ObjectMeta{}.OpenAPIModelName()),
+						},
+					},
+					"inventory": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"group",
+									"kind",
+									"namespace",
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref(v1alpha1.ResourceInventoryItem{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.ResourceInventoryItem{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseInventoryList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref(metav1.ListMeta{}.OpenAPIModelName()),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref(v1alpha1.ReleaseInventory{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.ReleaseInventory{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2854,11 +2963,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 				Properties: map[string]spec.Schema{
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.\n - `\"syncWave\"` is a special mutation type which is used to set the sync-related annotations on the rendered resources. These annotations could still be set using other mutation types, but it's typos-prone approach which is hard to debug. Dedicated mutation type in opposite provides the validated, targeted and typed way to produce those annotations.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch", "syncWave"},
 						},
 					},
 					"target": {
@@ -2913,12 +3022,18 @@ func schema_convoy_api_core_v1alpha1_ReleaseMutation(ref common.ReferenceCallbac
 							},
 						},
 					},
+					"waveStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WaveStrategy is the sync-wave configuration applied as annotations to the defined target. Only applicable for \"syncWave\" mutation type.",
+							Ref:         ref(v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"type", "target"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName()},
+			v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName(), v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName(), v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName()},
 	}
 }
 
@@ -3511,7 +3626,10 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 					"waves": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
+								"x-kubernetes-list-map-keys": []interface{}{
+									"number",
+								},
+								"x-kubernetes-list-type": "map",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
@@ -3637,6 +3755,14 @@ func schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref common.Referenc
 							Enum:        []interface{}{"waitForApplied", "waitForHealthy", "waitForHealthyWithTimeout"},
 						},
 					},
+					"wave": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wave is the wave number.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timeout is the timeout for the wave strategy. If not set, controller will wait indefinitely.",
@@ -3644,7 +3770,7 @@ func schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref common.Referenc
 						},
 					},
 				},
-				Required: []string{"strategy"},
+				Required: []string{"strategy", "wave"},
 			},
 		},
 		Dependencies: []string{
@@ -3738,11 +3864,11 @@ func schema_convoy_api_core_v1alpha1_ResolvedMutation(ref common.ReferenceCallba
 					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.",
+							Description: "Type is the type of the mutation.\n\nPossible enum values:\n - `\"celTransform\"` is the mutation type that uses CEL as mutation source.\n - `\"goTemplate\"` is the mutation type that uses Go template as mutation source.\n - `\"jsonPatch\"` is the mutation type that uses JSON patch as mutation source.\n - `\"strategicMergePatch\"` is the mutation type that uses Strategic merge patch as mutation source.\n - `\"syncWave\"` is a special mutation type which is used to set the sync-related annotations on the rendered resources. These annotations could still be set using other mutation types, but it's typos-prone approach which is hard to debug. Dedicated mutation type in opposite provides the validated, targeted and typed way to produce those annotations.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch"},
+							Enum:        []interface{}{"celTransform", "goTemplate", "jsonPatch", "strategicMergePatch", "syncWave"},
 						},
 					},
 					"sourceRef": {
@@ -3899,6 +4025,96 @@ func schema_convoy_api_core_v1alpha1_ResolvedSource(ref common.ReferenceCallback
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ResourceInventoryItem(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResourceInventoryItem defines the inventoried resource.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"group": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Group reflects the API group of the inventoried resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version reflects the API version of the inventoried resource.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind reflects the kind of the inventoried resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace reflects the namespace of the inventoried resource if any.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name reflects the name of the inventoried resource.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"uid": {
+						SchemaProps: spec.SchemaProps{
+							Description: "UID reflects the uid of the inventoried resource.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"wave": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Wave reflects the sync wave inventoried resource belongs to.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Description: "State reflects the state of the inventoried resource.\n\nPossible enum values:\n - `\"Degraded\"` — a rule fails and the deadline has elapsed.\n - `\"Healthy\"` — all applicable rules pass (or none apply).\n - `\"Progressing\"` — a rule fails but the deadline has not elapsed.\n - `\"Unknown\"` — the resource could not be assessed (unreachable / eval error).",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Degraded", "Healthy", "Progressing", "Unknown"},
+						},
+					},
+					"firstUnhealthy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FirstUnhealthy contains the timestamp inventoried resource entered unhealthy state for the first time.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message contains the message explaining the inventoried resource state (if applicable).",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"group", "kind", "namespace", "name"},
+			},
+		},
+		Dependencies: []string{
+			metav1.Time{}.OpenAPIModelName()},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3914,10 +4130,23 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 							Format:      "int64",
 						},
 					},
+					"applied": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Applied reflects whether all resources within the wave are applied.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"healthy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Healthy reflects whether all resources within the wave are healthy.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"resources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Resources is the number of resources in the wave.",
-							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
 						},
@@ -3925,7 +4154,6 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 					"state": {
 						SchemaProps: spec.SchemaProps{
 							Description: "State is the state of the wave.\n\nPossible enum values:\n - `\"Completed\"` is the state of a resource wave that has been completed.\n - `\"Failed\"` is the state of a resource wave that has failed.\n - `\"InProgress\"` is the state of a resource wave that is in progress.\n - `\"Pending\"` is the state of a resource wave that is pending.\n - `\"TimedOut\"` is the state of a resource wave that has timed out.",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 							Enum:        []interface{}{"Completed", "Failed", "InProgress", "Pending", "TimedOut"},
@@ -3957,7 +4185,7 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"number", "resources", "state"},
+				Required: []string{"number"},
 			},
 		},
 		Dependencies: []string{

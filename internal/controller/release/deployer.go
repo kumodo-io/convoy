@@ -124,12 +124,14 @@ func apply(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, o
 	if err != nil {
 		return inventory.Ref{}, fmt.Errorf("marshaling object: %w", err)
 	}
-	if _, err := ri.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{
+	applied, err := ri.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{
 		FieldManager: fieldManager,
 		Force:        new(true),
-	}); err != nil {
+	})
+	if err != nil {
 		return inventory.Ref{}, err
 	}
+	ref.UID = applied.GetUID()
 	return ref, nil
 }
 

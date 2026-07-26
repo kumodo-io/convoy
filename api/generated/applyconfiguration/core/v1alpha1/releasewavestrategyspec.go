@@ -30,6 +30,8 @@ import (
 type ReleaseWaveStrategySpecApplyConfiguration struct {
 	// Strategy is the wave strategy.
 	Strategy *corev1alpha1.ReleaseWaveStrategy `json:"strategy,omitempty"`
+	// Wave is the wave number.
+	Wave *int `json:"wave,omitempty"`
 	// Timeout is the timeout for the wave strategy. If not set, controller will wait indefinitely.
 	Timeout *v1.Duration `json:"timeout,omitempty"`
 }
@@ -45,6 +47,14 @@ func ReleaseWaveStrategySpec() *ReleaseWaveStrategySpecApplyConfiguration {
 // If called multiple times, the Strategy field is set to the value of the last call.
 func (b *ReleaseWaveStrategySpecApplyConfiguration) WithStrategy(value corev1alpha1.ReleaseWaveStrategy) *ReleaseWaveStrategySpecApplyConfiguration {
 	b.Strategy = &value
+	return b
+}
+
+// WithWave sets the Wave field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Wave field is set to the value of the last call.
+func (b *ReleaseWaveStrategySpecApplyConfiguration) WithWave(value int) *ReleaseWaveStrategySpecApplyConfiguration {
+	b.Wave = &value
 	return b
 }
 

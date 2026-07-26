@@ -35,6 +35,7 @@ import (
 	sourceinstall "github.com/kumodo-io/convoy/api/source/install"
 	clusterstorage "github.com/kumodo-io/convoy/internal/registry/core/cluster"
 	releasestorage "github.com/kumodo-io/convoy/internal/registry/core/release"
+	releaseinventorystorage "github.com/kumodo-io/convoy/internal/registry/core/releaseinventory"
 	globalhealthrulesetstorage "github.com/kumodo-io/convoy/internal/registry/extensions/globalhealthruleset"
 	healthrulesetstorage "github.com/kumodo-io/convoy/internal/registry/extensions/healthruleset"
 	gitrepositorystorage "github.com/kumodo-io/convoy/internal/registry/source/gitrepository"
@@ -126,9 +127,14 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	if err != nil {
 		return nil, err
 	}
+	releaseInventoryREST, err := releaseinventorystorage.NewREST(Scheme, optsGetter)
+	if err != nil {
+		return nil, err
+	}
 	coreStorage := map[string]rest.Storage{
-		"clusters":        clusterREST,
-		"clusters/status": clusterStatusREST,
+		"clusters":           clusterREST,
+		"clusters/status":    clusterStatusREST,
+		"releaseinventories": releaseInventoryREST,
 	}
 	maps.Copy(coreStorage, releaseStorage.Map())
 	coreGroup.VersionedResourcesStorageMap["v1alpha1"] = coreStorage

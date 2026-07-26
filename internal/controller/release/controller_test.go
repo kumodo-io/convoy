@@ -52,16 +52,18 @@ const (
 )
 
 type fakeDeployer struct {
-	got      []*unstructured.Unstructured
-	called   bool
-	err      error
-	pruned   []inventory.Ref
-	pruneErr error
+	got       []*unstructured.Unstructured
+	waveCalls [][]*unstructured.Unstructured
+	called    bool
+	err       error
+	pruned    []inventory.Ref
+	pruneErr  error
 }
 
 func (d *fakeDeployer) Deploy(_ context.Context, _ *corev1alpha1.Cluster, objects []*unstructured.Unstructured) ([]inventory.Ref, error) {
 	d.called = true
 	d.got = objects
+	d.waveCalls = append(d.waveCalls, objects)
 	if d.err != nil {
 		return nil, d.err
 	}
@@ -203,7 +205,57 @@ func TestSyncRequeueAfter(t *testing.T) {
 }
 
 func cmRef(name string) inventory.Ref {
-	return inventory.Ref{Version: "v1", Kind: "ConfigMap", Name: name}
+	return inventory.Ref{Version: "v1", Kind: configMapKind, Name: name}
+}
+
+// putInv seeds the controller's inventory for release ns/r1 (the fixture used
+// across these tests). The store is in-memory in tests, so writes never fail.
+func putInv(t *testing.T, c *Controller, refs ...inventory.Ref) {
+	t.Helper()
+	if err := c.inventory.Put(context.Background(), "ns", "r1", refs); err != nil {
+		t.Fatalf("seeding inventory: %v", err)
+	}
+}
+
+// getInv reads the controller's inventory for release ns/r1.
+func getInv(t *testing.T, c *Controller) []inventory.Ref {
+	t.Helper()
+	refs, _, err := c.inventory.Get(context.Background(), "ns", "r1")
+	if err != nil {
+		t.Fatalf("reading inventory: %v", err)
+	}
+	return refs
+}
+
+func TestUnionByID(t *testing.T) {
+	// base carries a prior-generation-only ref ("old") plus a "shared" ref that the
+	// current apply re-covers at a newer wave. applied wins on identity collision.
+	base := []inventory.Ref{
+		{Version: "v1", Kind: configMapKind, Name: "old", Wave: 0},
+		{Version: "v1", Kind: configMapKind, Name: "shared", Wave: 0},
+	}
+	applied := []inventory.Ref{
+		{Version: "v1", Kind: configMapKind, Name: "shared", Wave: 3},
+		{Version: "v1", Kind: configMapKind, Name: "new", Wave: 3},
+	}
+
+	got := unionByID(base, applied)
+	byName := map[string]inventory.Ref{}
+	for _, r := range got {
+		byName[r.Name] = r
+	}
+	if len(got) != 3 {
+		t.Fatalf("union = %+v, want 3 refs (shared deduped)", got)
+	}
+	if byName["shared"].Wave != 3 {
+		t.Errorf("shared wave = %d, want 3 (applied wins on collision)", byName["shared"].Wave)
+	}
+	if _, ok := byName["old"]; !ok {
+		t.Error("prior-only ref 'old' dropped, want carried through the rollout")
+	}
+	if _, ok := byName["new"]; !ok {
+		t.Error("current ref 'new' missing")
+	}
 }
 
 func TestProtectedFilter(t *testing.T) {
@@ -232,7 +284,7 @@ func TestSyncHandler_PrunesOrphan(t *testing.T) {
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
 	// Prior render managed cm (still rendered) + old (now orphaned).
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+	putInv(t, c, cmRef("cm"), cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -240,9 +292,206 @@ func TestSyncHandler_PrunesOrphan(t *testing.T) {
 	if len(deployer.pruned) != 1 || deployer.pruned[0].Name != "old" {
 		t.Errorf("pruned = %+v, want [old]", deployer.pruned)
 	}
-	if got, _ := c.inventory.Get("ns/r1"); len(got) != 1 || got[0].Name != "cm" {
+	if got := getInv(t, c); len(got) != 1 || got[0].Name != "cm" {
 		t.Errorf("inventory = %+v, want [cm]", got)
 	}
+}
+
+func TestSyncHandler_AppliesInWaveOrder(t *testing.T) {
+	// Two manifests with sync-wave annotations: "late" at wave 10, "early" at -5.
+	// They must apply early-before-late regardless of file order.
+	early := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: early\n  annotations:\n    convoy.kumodo.io/sync-wave: \"-5\"\n"
+	late := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: late\n  annotations:\n    convoy.kumodo.io/sync-wave: \"10\"\n"
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: "rev1",
+		Artifact: artifact.Artifact{Files: map[string][]byte{"late.yaml": []byte(late), "early.yaml": []byte(early)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent("late.yaml", "early.yaml")
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler returned error: %v", err)
+	}
+
+	// One Deploy call per wave, in ascending order: -5 (early) then 10 (late).
+	if len(deployer.waveCalls) != 2 {
+		t.Fatalf("Deploy called %d times, want 2 (one per wave)", len(deployer.waveCalls))
+	}
+	if deployer.waveCalls[0][0].GetName() != "early" || deployer.waveCalls[1][0].GetName() != "late" {
+		t.Errorf("wave order = [%s, %s], want [early, late]", deployer.waveCalls[0][0].GetName(), deployer.waveCalls[1][0].GetName())
+	}
+
+	// status.waves reflects both waves, applied.
+	waves := statusUpdate(client.Actions()).Status.Waves
+	if len(waves) != 2 {
+		t.Fatalf("status.waves = %d entries, want 2", len(waves))
+	}
+	byNum := map[int64]corev1alpha1.ResourceWaveStatus{}
+	for _, w := range waves {
+		byNum[w.Number] = w
+	}
+	for _, n := range []int64{-5, 10} {
+		w, ok := byNum[n]
+		if !ok || w.Applied == nil || !*w.Applied {
+			t.Errorf("wave %d = %+v, want applied=true", n, w)
+		}
+		// This release has no health assessment, so every wave is healthy by
+		// default and the controller (now the sole writer of the field) records it.
+		if w.Healthy == nil || !*w.Healthy {
+			t.Errorf("wave %d healthy = %v, want true (no health assessment → healthy)", n, w.Healthy)
+		}
+	}
+}
+
+// TestSyncHandler_StatusWriteOnlyAssertsAppliedCondition guards the SSA
+// field-manager boundary: the controller owns only the Applied condition, so its
+// status write must not carry the observer-owned InSync / Healthy conditions —
+// even though computeStatus deep-copies them from the current status. Asserting
+// them under the controller's field manager (with Force) would clobber the
+// observer's values.
+func TestSyncHandler_StatusWriteOnlyAssertsAppliedCondition(t *testing.T) {
+	const condInSync, condHealthy = "InSync", "Healthy"
+	rel := manifestsRelease()
+	// Seed observer-owned conditions as if the observer had already written them.
+	rel.Status.Conditions = []metav1.Condition{
+		{Type: conditionApplied, Status: metav1.ConditionFalse, Reason: "Stale"},
+		{Type: condInSync, Status: metav1.ConditionTrue, Reason: condInSync},
+		{Type: condHealthy, Status: metav1.ConditionTrue, Reason: condHealthy},
+	}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatal("no status write recorded")
+	}
+	if apimeta.FindStatusCondition(got.Status.Conditions, conditionApplied) == nil {
+		t.Error("status write missing the Applied condition (controller must assert it)")
+	}
+	for _, notOwned := range []string{condInSync, condHealthy} {
+		if c := apimeta.FindStatusCondition(got.Status.Conditions, notOwned); c != nil {
+			t.Errorf("status write asserts %s condition = %+v, want absent (observer-owned)", notOwned, c)
+		}
+	}
+}
+
+// gatedCoordinator renders wave 0 (default, "gate") and wave 1 ("after") where
+// wave 1 carries the given strategy/timeout annotation block (indented 4 spaces
+// per line). Wave 1's strategy makes it wait for prior waves (wave 0) to be
+// healthy before it applies.
+func gatedCoordinator(wave1Ann string) *fakeCoordinator {
+	w0 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: gate\n  annotations:\n    convoy.kumodo.io/sync-wave: \"0\"\n"
+	w1 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: after\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n" + wave1Ann
+	return &fakeCoordinator{result: fetch.Result{
+		Ready: true, Revision: "rev1",
+		Artifact: artifact.Artifact{Files: map[string][]byte{"w0.yaml": []byte(w0), "w1.yaml": []byte(w1)}},
+	}}
+}
+
+func gatedRelease() *corev1alpha1.Release {
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent("w0.yaml", "w1.yaml")
+	// A health bar only applies when the release has a health assessment; without
+	// one there is nothing to wait for, so the controller advances immediately.
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{}
+	return rel
+}
+
+// healthyRef is a ConfigMap ref pre-marked Healthy, for seeding the inventory
+// store so the wave gate sees a predecessor wave as healthy.
+func healthyRef(name string) inventory.Ref {
+	r := cmRef(name)
+	healthy := corev1alpha1.ResourceStateHealthy
+	r.State = &healthy
+	return r
+}
+
+func TestSyncHandler_HoldsAtHealthGate(t *testing.T) {
+	// Wave 0 is waitForHealthy; its healthy is unset → gate blocks wave 1.
+	rel := gatedRelease()
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 1 || deployer.waveCalls[0][0].GetName() != "gate" {
+		t.Fatalf("waveCalls = %v, want just [gate]", waveCallNames(deployer))
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaitingForWaveHealth {
+		t.Errorf("condition = %v/%s, want False/WaitingForWaveHealth", s, r)
+	}
+	// The inventory is written incrementally: wave 0's resource is recorded even
+	// though the rollout is holding at the gate (not only on full success), so the
+	// observer can assess it and a partial rollout has a prune record.
+	inv := getInv(t, c)
+	if len(inv) != 1 || inv[0].Name != "gate" {
+		t.Errorf("inventory = %+v, want [gate] recorded despite the hold", inv)
+	}
+}
+
+func TestSyncHandler_AdvancesWhenPredecessorHealthy(t *testing.T) {
+	rel := gatedRelease()
+	// Wave 0 applied earlier, timestamps preserved in status.waves.
+	firstApply := metav1.NewTime(time.Date(2026, 6, 25, 11, 30, 0, 0, time.UTC))
+	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{
+		{Number: 0, Applied: new(true), StartedAt: &firstApply, CompletedAt: &firstApply},
+	}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	// The observer marked wave 0's resource ("gate") Healthy on the ReleaseInventory;
+	// the gate rolls that up to advance wave 1.
+	putInv(t, c, healthyRef("gate"))
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 2 || deployer.waveCalls[1][0].GetName() != "after" {
+		t.Errorf("waveCalls = %v, want [gate, after]", waveCallNames(deployer))
+	}
+	// Wave 0's original timestamps are preserved across reconciles, not reset to now.
+	for _, w := range statusUpdate(client.Actions()).Status.Waves {
+		if w.Number == 0 {
+			if w.StartedAt == nil || !w.StartedAt.Equal(&firstApply) || w.CompletedAt == nil || !w.CompletedAt.Equal(&firstApply) {
+				t.Errorf("wave 0 timestamps = started %v completed %v, want both %v (preserved)", w.StartedAt, w.CompletedAt, firstApply)
+			}
+		}
+	}
+}
+
+func TestSyncHandler_HealthGateTimesOut(t *testing.T) {
+	rel := gatedRelease()
+	// Wave 0 applied an hour ago, still not healthy → bounded wait (1ms) has expired.
+	past := metav1.NewTime(time.Date(2026, 6, 25, 11, 0, 0, 0, time.UTC))
+	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{{Number: 0, Applied: new(true), StartedAt: &past}}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1ms\"\n"), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaveFailed {
+		t.Errorf("condition = %v/%s, want False/WaveFailed", s, r)
+	}
+}
+
+func waveCallNames(d *fakeDeployer) [][]string {
+	out := make([][]string, len(d.waveCalls))
+	for i, call := range d.waveCalls {
+		for _, o := range call {
+			out[i] = append(out[i], o.GetName())
+		}
+	}
+	return out
 }
 
 func TestSyncHandler_CRDProtectedFromPrune(t *testing.T) {
@@ -252,7 +501,7 @@ func TestSyncHandler_CRDProtectedFromPrune(t *testing.T) {
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
 	crd := inventory.Ref{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "widgets.example.com"}
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), crd})
+	putInv(t, c, cmRef("cm"), crd)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -267,7 +516,7 @@ func TestSyncHandler_PruneDisabledUntracks(t *testing.T) {
 	deployer := &fakeDeployer{}
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+	putInv(t, c, cmRef("cm"), cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler returned error: %v", err)
@@ -276,7 +525,7 @@ func TestSyncHandler_PruneDisabledUntracks(t *testing.T) {
 		t.Errorf("pruned = %+v, want no prune when disabled", deployer.pruned)
 	}
 	// Orphan is untracked: inventory advances to the current render.
-	if got, _ := c.inventory.Get("ns/r1"); len(got) != 1 || got[0].Name != "cm" {
+	if got := getInv(t, c); len(got) != 1 || got[0].Name != "cm" {
 		t.Errorf("inventory = %+v, want [cm] (orphan untracked)", got)
 	}
 }
@@ -287,12 +536,12 @@ func TestSyncHandler_PruneFailureRequeuesAndKeepsInventory(t *testing.T) {
 	deployer := &fakeDeployer{pruneErr: errors.New("delete forbidden")}
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
 
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("cm"), cmRef("old")})
+	putInv(t, c, cmRef("cm"), cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
 		t.Fatalf("syncHandler returned nil, want error so it requeues")
 	}
-	if got, _ := c.inventory.Get("ns/r1"); len(got) != 2 {
+	if got := getInv(t, c); len(got) != 2 {
 		t.Errorf("inventory = %+v, want unchanged (2 refs) on prune failure", got)
 	}
 	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonPruneFailed {
@@ -305,7 +554,7 @@ func TestSyncHandler_NoPruneOnDeployFailure(t *testing.T) {
 	rel.Spec.SyncPolicy.Prune.Orphaned = true
 	deployer := &fakeDeployer{err: errors.New("apply failed")}
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
-	c.inventory.Put("ns/r1", []inventory.Ref{cmRef("old")})
+	putInv(t, c, cmRef("old"))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err == nil {
 		t.Fatalf("syncHandler returned nil, want error from failed deploy")

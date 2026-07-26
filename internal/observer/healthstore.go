@@ -22,93 +22,58 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/kumodo-io/convoy/internal/health"
-	"github.com/kumodo-io/convoy/internal/healthresult"
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
-// objectRef identifies a managed object for the health store and /health payload.
+// objectRef identifies a managed object for the /health payload and for matching
+// its ReleaseInventory entry.
 type objectRef struct {
 	gvk       schema.GroupVersionKind
 	namespace string
 	name      string
 }
 
-// key is the stable per-object map key (GVK + namespace/name).
-func (r objectRef) key() string {
-	return r.gvk.String() + "|" + r.namespace + "/" + r.name
+// identityID is the version-independent identity key (group|kind|namespace|name),
+// matching inventory.Ref.ID() so a health entry lines up with the controller's
+// ReleaseInventory entry for the same object regardless of apiVersion.
+func (r objectRef) identityID() string {
+	return r.gvk.Group + "|" + r.gvk.Kind + "|" + r.namespace + "|" + r.name
 }
 
-// healthEntry is a single managed object's last assessed health, held in memory.
-// FirstUnhealthy anchors the progress deadline (when the object first failed in
-// the current unhealthy streak); zero when Healthy.
+// healthEntry is a single managed object's assessed health. FirstUnhealthy
+// anchors the progress deadline (when the object first failed in the current
+// unhealthy streak); zero when Healthy. wave is the sync wave the resource was
+// applied in (from its ReleaseInventory entry), used to roll up per-wave
+// completion for the gate-advance sync request.
 type healthEntry struct {
 	ref            objectRef
-	state          health.State
+	wave           int
+	state          corev1alpha1.ResourceState
 	message        string
 	firstUnhealthy time.Time
 }
 
-// healthStore is the observer's in-memory, health-extended inventory: per Release
-// key, the last assessed health of each managed object. It is the anchor for the
-// progress deadline (Progressing vs. Degraded) and the source for the /health
-// subresource. Ephemeral — lost on restart, which just restarts the progress
-// clocks.
-type healthStore struct {
-	mu       sync.RWMutex
-	releases map[string]map[string]healthEntry // releaseKey → objectKey → entry
+// backoffCounts is a concurrency-safe per-key consecutive-attempt counter, used
+// to drive the health loop's progress backoff (fast re-checks while a rollout is
+// still progressing). In-memory; a lost count on restart only resets the cadence.
+type backoffCounts struct {
+	mu sync.Mutex
+	n  map[string]int
 }
 
-func newHealthStore() *healthStore {
-	return &healthStore{releases: make(map[string]map[string]healthEntry)}
+func newBackoffCounts() *backoffCounts { return &backoffCounts{n: make(map[string]int)} }
+
+// inc increments and returns the attempt count for key.
+func (b *backoffCounts) inc(key string) int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.n[key]++
+	return b.n[key]
 }
 
-// anchor returns the stored first-unhealthy time for an object, or zero if none.
-func (s *healthStore) anchor(releaseKey, objectKey string) time.Time {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.releases[releaseKey][objectKey].firstUnhealthy
-}
-
-// replace swaps in a Release's freshly-assessed entries, discarding entries for
-// objects no longer managed (GC). An empty set removes the Release.
-func (s *healthStore) replace(releaseKey string, entries map[string]healthEntry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(entries) == 0 {
-		delete(s.releases, releaseKey)
-		return
-	}
-	s.releases[releaseKey] = entries
-}
-
-// delete removes a Release's entries entirely (on deletion or when assessment is
-// disabled).
-func (s *healthStore) delete(releaseKey string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.releases, releaseKey)
-}
-
-// result builds the /health payload for a Release from the stored entries, or nil
-// if the Release has not been assessed.
-func (s *healthStore) result(releaseKey string) *healthresult.Result {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	objs, ok := s.releases[releaseKey]
-	if !ok {
-		return nil
-	}
-	res := &healthresult.Result{Objects: make([]healthresult.ObjectHealth, 0, len(objs))}
-	for _, e := range objs {
-		res.Objects = append(res.Objects, healthresult.ObjectHealth{
-			Group:     e.ref.gvk.Group,
-			Version:   e.ref.gvk.Version,
-			Kind:      e.ref.gvk.Kind,
-			Namespace: e.ref.namespace,
-			Name:      e.ref.name,
-			State:     healthresult.State(e.state),
-			Message:   e.message,
-		})
-	}
-	return res
+// reset clears the attempt count for key (called once a Release is all-healthy).
+func (b *backoffCounts) reset(key string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.n, key)
 }

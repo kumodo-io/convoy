@@ -177,6 +177,16 @@ func (in ReleaseHelmRegistrySpec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseInventory) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseInventory"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseInventoryList) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseInventoryList"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseLifecycle) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseLifecycle"
 }
@@ -284,6 +294,11 @@ func (in ResolvedRetentionPolicyStatus) OpenAPIModelName() string {
 // OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ResolvedSource) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ResolvedSource"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ResourceInventoryItem) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ResourceInventoryItem"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.

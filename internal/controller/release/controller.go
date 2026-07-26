@@ -32,6 +32,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -51,6 +52,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
 	"github.com/kumodo-io/convoy/internal/render"
+	"github.com/kumodo-io/convoy/internal/waves"
 )
 
 const (
@@ -175,6 +177,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	if outcome.handledSyncAt != nil {
 		newStatus.LastHandledSyncAt = outcome.handledSyncAt
 	}
+	newStatus.Waves = outcome.waves
 
 	if statusChanged(rel, newStatus) {
 		newStatus.ReconciledAt = new(c.now())
@@ -247,9 +250,15 @@ func pendingSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
 func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseStatus) (*corev1alpha1ac.ReleaseApplyConfiguration, error) {
 	statusAC := corev1alpha1ac.ReleaseStatus().WithObservedGeneration(s.ObservedGeneration)
 
-	for i := range s.Conditions {
+	// Assert ONLY the Applied condition — the sole condition this controller owns.
+	// computeStatus deep-copies the whole status (carrying the observer-owned InSync
+	// and Healthy conditions), so writing every condition here would make this field
+	// manager co-own them and, with Force, clobber the observer's values back to a
+	// stale copy on each reconcile. conditions is a listType=map keyed by type, so
+	// asserting just Applied leaves the others untouched.
+	if applied := apimeta.FindStatusCondition(s.Conditions, conditionApplied); applied != nil {
 		condAC := &metav1ac.ConditionApplyConfiguration{}
-		if err := jsonRoundTrip(s.Conditions[i], condAC); err != nil {
+		if err := jsonRoundTrip(*applied, condAC); err != nil {
 			return nil, err
 		}
 		statusAC.WithConditions(condAC)
@@ -286,6 +295,40 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 		statusAC.WithLastHandledSyncAt(*s.LastHandledSyncAt)
 	}
 
+	// waves is a listType=map keyed by number, fully owned by this controller: it
+	// writes applied, healthy (rolled up from the observer-written ReleaseInventory,
+	// so there is no second writer on status), and the descriptive fields. Each
+	// entry is built field by field, asserting only the fields that are set.
+	for i := range s.Waves {
+		w := s.Waves[i]
+		waveAC := corev1alpha1ac.ResourceWaveStatus().WithNumber(w.Number)
+		if w.Applied != nil {
+			waveAC.WithApplied(*w.Applied)
+		}
+		if w.Healthy != nil {
+			waveAC.WithHealthy(*w.Healthy)
+		}
+		if w.Resources != 0 {
+			waveAC.WithResources(w.Resources)
+		}
+		if w.State != "" {
+			waveAC.WithState(w.State)
+		}
+		if w.StartedAt != nil {
+			waveAC.WithStartedAt(*w.StartedAt)
+		}
+		if w.CompletedAt != nil {
+			waveAC.WithCompletedAt(*w.CompletedAt)
+		}
+		if w.FailedAt != nil {
+			waveAC.WithFailedAt(*w.FailedAt)
+		}
+		if w.Message != "" {
+			waveAC.WithMessage(w.Message)
+		}
+		statusAC.WithWaves(waveAC)
+	}
+
 	return corev1alpha1ac.Release(rel.Name, rel.Namespace).WithStatus(statusAC), nil
 }
 
@@ -320,6 +363,14 @@ func (c *Controller) finalize(ctx context.Context, rel *corev1alpha1.Release) er
 		}
 	}
 
+	// Delete the durable inventory before dropping the finalizer: prune has
+	// succeeded (or was skipped), so the record's job is done. Doing it first
+	// means a failure here keeps the finalizer, and the delete is retried, rather
+	// than the Release vanishing and orphaning its ReleaseInventory.
+	if err := c.inventory.Delete(ctx, rel.Namespace, rel.Name); err != nil {
+		return fmt.Errorf("deleting inventory for %s/%s: %w", rel.Namespace, rel.Name, err)
+	}
+
 	// remove finalizer
 	updated := rel.DeepCopy()
 	updated.Finalizers = slices.DeleteFunc(rel.Finalizers, func(finalizer string) bool {
@@ -328,12 +379,14 @@ func (c *Controller) finalize(ctx context.Context, rel *corev1alpha1.Release) er
 	if _, err := c.client.CoreV1alpha1().Releases(rel.Namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("removing finalizer from %s/%s: %w", rel.Namespace, rel.Name, err)
 	}
-	c.inventory.Delete(rel.Namespace + "/" + rel.Name)
 	return nil
 }
 
 func (c *Controller) pruneAll(ctx context.Context, rel *corev1alpha1.Release) error {
-	refs, ok := c.inventory.Get(rel.Namespace + "/" + rel.Name)
+	refs, ok, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
+	if err != nil {
+		return err
+	}
 	if !ok || len(refs) == 0 {
 		return nil // never applied, or already pruned
 	}
@@ -403,6 +456,9 @@ type reconcileOutcome struct {
 	// handledSyncAt, when set, is the /sync request time this reconcile satisfied;
 	// the caller records it in status.lastHandledSyncAt.
 	handledSyncAt *metav1.Time
+	// waves is the per-wave apply progress for status.waves (controller owns the
+	// `applied` field; the observer owns `healthy`).
+	waves []corev1alpha1.ResourceWaveStatus
 }
 
 // reconcile runs fetch → render → apply → prune, building an attempt record. In
@@ -410,6 +466,8 @@ type reconcileOutcome struct {
 // mode it renders and observes but applies only when a /sync is pending, so
 // status (pin, sync-state, later drift/health) stays fresh without mutating the
 // cluster. The returned error is a requeue signal (non-nil = transient).
+// todo: fix gocyclo
+// nolint:gocyclo
 func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (reconcileOutcome, error) {
 	now := c.now()
 	manual := !rel.Spec.SyncPolicy.Automatic
@@ -521,22 +579,129 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		}, nil
 	}
 
-	applied, err := c.deployer.Deploy(ctx, cluster, objects)
+	// Apply in ascending sync-wave order. Each wave applies fully before the next
+	// begins. A wave with a health bar (waitForHealthy*) gates the *next* wave until
+	// every prior wave is healthy. Health is assessed by the observer, which records
+	// per-resource health on the ReleaseInventory; the controller rolls that up per
+	// wave (keyed by the exact refs it applied) rather than reading its own status,
+	// and requeues while a prior wave is not yet healthy. waitForHealthyWithTimeout
+	// fails the wave once its timeout elapses. All waves are (idempotently)
+	// re-applied each reconcile, so drift is still corrected as the rollout
+	// progresses.
+	waveGroups := waves.Group(objects)
+	// Prior status.waves carries a wave's original StartedAt/CompletedAt across
+	// reconciles (the controller's own progress timestamps).
+	prior := map[int64]corev1alpha1.ResourceWaveStatus{}
+	for i := range rel.Status.Waves {
+		prior[rel.Status.Waves[i].Number] = rel.Status.Waves[i]
+	}
+	// Per-resource health the observer persisted on the ReleaseInventory, keyed by
+	// identity, used to roll up per-wave health for the gate. A release with no
+	// health assessment has no bar to clear, so every wave counts as healthy.
+	invRefs, _, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
 	if err != nil {
-		if errors.Is(err, render.ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
-			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
-		}
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+	}
+	stateByID := make(map[string]*corev1alpha1.ResourceState, len(invRefs))
+	for _, r := range invRefs {
+		stateByID[r.ID()] = r.State
+	}
+	noHealthBar := rel.Spec.HealthAssessment == nil
+
+	var applied []inventory.Ref
+	waveStatuses := make([]corev1alpha1.ResourceWaveStatus, 0, len(waveGroups))
+	for i := range waveGroups {
+		w := waveGroups[i]
+
+		// Gate: a wave whose resources declare waitForHealthy* waits for ALL prior
+		// waves to be healthy before it applies (the strategy is the bar the wave's
+		// predecessors must clear before it enters). `applied` already holds exactly
+		// those prior waves' refs (deployed by loop order), so their persisted health
+		// is the roll-up — no dependency on this controller's own status.
+		if i > 0 && waveGroups[i].NeedsHealth && !priorWavesHealthy(applied, stateByID, noHealthBar) {
+			// Anchor a bounded wait at the immediately-preceding wave's first apply.
+			prevStarted := prior[int64(waveGroups[i-1].Number)].StartedAt
+			if waveGroups[i].Bounded && prevStarted != nil && now.Sub(prevStarted.Time) > waveGroups[i].Timeout {
+				out, _ := fail(conditionReasonWaveFailed, fmt.Sprintf("sync wave %d: prior waves not healthy within %s", w.Number, waveGroups[i].Timeout), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+				out.waves = waveStatuses
+				return out, nil
+			}
+			// Not healthy yet: hold. Partial rollout — do NOT prune or advance
+			// lastSuccessful. Requeues on the poll interval; the observer records
+			// prior waves' health in the meantime.
+			return reconcileOutcome{
+				reason:  conditionReasonWaitingForWaveHealth,
+				message: fmt.Sprintf("waiting for waves before %d to become healthy", w.Number),
+				attempt: attempt,
+				waves:   waveStatuses,
+			}, nil
+		}
+
+		waveApplied, err := c.deployer.Deploy(ctx, cluster, w.Objects)
+		if err != nil {
+			if errors.Is(err, render.ErrUnsupported) || errors.Is(err, clusterconn.ErrUnsupported) {
+				return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+			}
+			return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+		}
+		// Tag each ref with the wave it applied in, so the persisted inventory
+		// records per-resource wave membership (for observability) and the gate can
+		// attribute prior-wave refs.
+		for k := range waveApplied {
+			waveApplied[k].Wave = w.Number
+		}
+		applied = append(applied, waveApplied...)
+
+		// Persist the applied-so-far set right after each wave, not only on full
+		// success: the ReleaseInventory then exists as soon as the first wave lands
+		// (so the observer can start assessing health, and a gated rollout has a
+		// prune record even while it holds). Unioned with the prior inventory so a
+		// re-rollout doesn't drop the previous generation's entries that the
+		// success-path prune diff still needs; the final Put below writes the exact
+		// set. A wave-loop that returns early (gate hold/fail) leaves this record in
+		// place rather than the stale prior one.
+		if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, unionByID(invRefs, applied)); err != nil {
+			return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+		}
+
+		// Preserve the wave's original StartedAt/CompletedAt across reconciles: the
+		// wave applies once and is re-applied idempotently each reconcile, so its
+		// timestamps must reflect that first apply, not the current pass. (StartedAt
+		// also anchors a successor wave's bounded health wait.)
+		startedAt, completedAt := &now, &now
+		if p, ok := prior[int64(w.Number)]; ok {
+			if p.StartedAt != nil {
+				startedAt = p.StartedAt
+			}
+			if p.CompletedAt != nil {
+				completedAt = p.CompletedAt
+			}
+		}
+		waveStatuses = append(waveStatuses, corev1alpha1.ResourceWaveStatus{
+			Number:      int64(w.Number),
+			Applied:     new(true),
+			Healthy:     waveHealth(waveApplied, stateByID, noHealthBar),
+			Resources:   len(w.Objects),
+			State:       corev1alpha1.ResourceWaveStateCompleted,
+			StartedAt:   startedAt,
+			CompletedAt: completedAt,
+		})
 	}
 
 	// Steady-state prune: apply succeeded, so anything this Release managed last
 	// time but no longer renders is an orphan. Only reached on the success path,
 	// so we never prune from a failed/partial render.
-	relKey := rel.Namespace + "/" + rel.Name
-	if err := c.prune(ctx, cluster, relKey, applied, rel.Spec.SyncPolicy.Prune); err != nil {
+	if err := c.prune(ctx, cluster, rel.Namespace, rel.Name, applied, rel.Spec.SyncPolicy.Prune); err != nil {
 		return fail(conditionReasonPruneFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 	}
-	c.inventory.Put(relKey, applied)
+	// Persist the exact managed set durably (survives a controller restart, so the
+	// delete path can still prune after a bounce). The wave loop writes incremental
+	// (unioned) snapshots as it applies; this final write, reached only on the full
+	// success path after prune, replaces them with the precise current set — so any
+	// previous-generation entries that were carried through the rollout are dropped.
+	if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, applied); err != nil {
+		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+	}
 
 	attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseSucceeded
 	attempt.SyncedAt = &now
@@ -547,6 +712,7 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		reason:  conditionReasonApplied,
 		message: fmt.Sprintf("applied %d object(s) from revision %s", len(applied), art.Revision),
 		attempt: attempt,
+		waves:   waveStatuses,
 	}
 	// In manual mode, record which /sync request this apply satisfied so it isn't
 	// re-applied on the next reconcile; a failed apply above returns early, leaving
@@ -722,13 +888,16 @@ func renderRef(objects []*unstructured.Unstructured) string {
 // apply, honoring the prune policy. On prune failure the inventory is left
 // unchanged so the orphans are retried on the next reconcile. When pruning is
 // disabled the orphans are simply untracked (the caller advances the inventory).
-func (c *Controller) prune(ctx context.Context, cluster *corev1alpha1.Cluster, relKey string, applied []inventory.Ref, policy corev1alpha1.PruneSpec) error {
+func (c *Controller) prune(ctx context.Context, cluster *corev1alpha1.Cluster, namespace, name string, applied []inventory.Ref, policy corev1alpha1.PruneSpec) error {
 	if !policy.Orphaned {
 		return nil
 	}
-	old, ok := c.inventory.Get(relKey)
+	old, ok, err := c.inventory.Get(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
 	if !ok {
-		return nil // nothing tracked yet (first apply / post-restart)
+		return nil // nothing tracked yet (first apply)
 	}
 	orphans := protectedFilter(inventory.Diff(old, applied), policy)
 	return c.deployer.Prune(ctx, cluster, orphans)
@@ -756,6 +925,63 @@ func isCRD(r inventory.Ref) bool {
 
 func isNamespace(r inventory.Ref) bool {
 	return r.Kind == "Namespace" && r.Group == ""
+}
+
+// unionByID returns applied plus any base ref whose identity applied does not
+// already cover. applied wins on collision (its wave/uid/version are current).
+// Used to carry the previous inventory generation through an in-progress rollout,
+// so a partial (gated) rollout's prune record never drops resources the eventual
+// prune still needs to reconcile.
+func unionByID(base, applied []inventory.Ref) []inventory.Ref {
+	have := make(map[string]struct{}, len(applied))
+	for _, r := range applied {
+		have[r.ID()] = struct{}{}
+	}
+	out := append([]inventory.Ref(nil), applied...)
+	for _, r := range base {
+		if _, ok := have[r.ID()]; !ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// priorWavesHealthy reports whether every already-applied ref is Healthy per the
+// observer-written ReleaseInventory (stateByID). A missing or non-Healthy entry
+// means the roll-up is not yet satisfied, so a gated wave holds. noHealthBar
+// short-circuits to true: a release with no health assessment has no bar to clear.
+func priorWavesHealthy(applied []inventory.Ref, stateByID map[string]*corev1alpha1.ResourceState, noHealthBar bool) bool {
+	if noHealthBar {
+		return true
+	}
+	for _, r := range applied {
+		s := stateByID[r.ID()]
+		if s == nil || *s != corev1alpha1.ResourceStateHealthy {
+			return false
+		}
+	}
+	return true
+}
+
+// waveHealth rolls up a single wave's health from the persisted per-resource
+// health, for status.waves[].healthy: true when every ref is Healthy, false when
+// any is assessed but unhealthy, and nil (unknown) while any ref is not yet
+// assessed. A release with no health assessment (noHealthBar) is always healthy.
+func waveHealth(refs []inventory.Ref, stateByID map[string]*corev1alpha1.ResourceState, noHealthBar bool) *bool {
+	if noHealthBar {
+		return new(true)
+	}
+	healthy := true
+	for _, r := range refs {
+		s := stateByID[r.ID()]
+		if s == nil {
+			return nil // not yet assessed
+		}
+		if *s != corev1alpha1.ResourceStateHealthy {
+			healthy = false
+		}
+	}
+	return &healthy
 }
 
 // resolveValueLayers resolves the Helm values sources to ordered raw-YAML layers.

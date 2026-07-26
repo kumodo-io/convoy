@@ -21,3 +21,5 @@ package v1alpha1
 type ClusterExpansion interface{}
 
 type ReleaseExpansion interface{}
+
+type ReleaseInventoryExpansion interface{}

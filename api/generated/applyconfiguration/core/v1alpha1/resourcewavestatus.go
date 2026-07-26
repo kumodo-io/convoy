@@ -30,6 +30,10 @@ import (
 type ResourceWaveStatusApplyConfiguration struct {
 	// Number is the resources wave weight.
 	Number *int64 `json:"number,omitempty"`
+	// Applied reflects whether all resources within the wave are applied.
+	Applied *bool `json:"applied,omitempty"`
+	// Healthy reflects whether all resources within the wave are healthy.
+	Healthy *bool `json:"healthy,omitempty"`
 	// Resources is the number of resources in the wave.
 	Resources *int `json:"resources,omitempty"`
 	// State is the state of the wave.
@@ -55,6 +59,22 @@ func ResourceWaveStatus() *ResourceWaveStatusApplyConfiguration {
 // If called multiple times, the Number field is set to the value of the last call.
 func (b *ResourceWaveStatusApplyConfiguration) WithNumber(value int64) *ResourceWaveStatusApplyConfiguration {
 	b.Number = &value
+	return b
+}
+
+// WithApplied sets the Applied field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Applied field is set to the value of the last call.
+func (b *ResourceWaveStatusApplyConfiguration) WithApplied(value bool) *ResourceWaveStatusApplyConfiguration {
+	b.Applied = &value
+	return b
+}
+
+// WithHealthy sets the Healthy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Healthy field is set to the value of the last call.
+func (b *ResourceWaveStatusApplyConfiguration) WithHealthy(value bool) *ResourceWaveStatusApplyConfiguration {
+	b.Healthy = &value
 	return b
 }
 
