@@ -49,6 +49,7 @@ const (
 	dummyCluster   = "target"
 	dummyRepoName  = "repo"
 	dummyFrozenSha = "sha256:frozen"
+	waveRevision   = "rev1"
 )
 
 type fakeDeployer struct {
@@ -306,7 +307,7 @@ func TestSyncHandler_AppliesInWaveOrder(t *testing.T) {
 	late := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: late\n  annotations:\n    convoy.kumodo.io/sync-wave: \"10\"\n"
 	coord := &fakeCoordinator{result: fetch.Result{
 		Ready:    true,
-		Revision: "rev1",
+		Revision: waveRevision,
 		Artifact: artifact.Artifact{Files: map[string][]byte{"late.yaml": []byte(late), "early.yaml": []byte(early)}},
 	}}
 	rel := manifestsRelease()
@@ -391,7 +392,7 @@ func gatedCoordinator(wave1Ann string) *fakeCoordinator {
 	w0 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: gate\n  annotations:\n    convoy.kumodo.io/sync-wave: \"0\"\n"
 	w1 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: after\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n" + wave1Ann
 	return &fakeCoordinator{result: fetch.Result{
-		Ready: true, Revision: "rev1",
+		Ready: true, Revision: waveRevision,
 		Artifact: artifact.Artifact{Files: map[string][]byte{"w0.yaml": []byte(w0), "w1.yaml": []byte(w1)}},
 	}}
 }
@@ -412,6 +413,79 @@ func healthyRef(name string) inventory.Ref {
 	healthy := corev1alpha1.ResourceStateHealthy
 	r.State = &healthy
 	return r
+}
+
+// degradedRef is a ConfigMap ref pre-marked Degraded, for seeding an unhealthy
+// wave in the inventory store.
+func degradedRef(name string) inventory.Ref {
+	r := cmRef(name)
+	degraded := corev1alpha1.ResourceStateDegraded
+	r.State = &degraded
+	return r
+}
+
+// threeWaveCoordinator renders wave 0 "w0", wave 1 "w1", and wave 2 "w2" where
+// wave 2 declares the given strategy annotation block (indented 4 spaces).
+func threeWaveCoordinator(wave2Ann string) *fakeCoordinator {
+	w0 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w0\n  annotations:\n    convoy.kumodo.io/sync-wave: \"0\"\n"
+	w1 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w1\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n"
+	w2 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w2\n  annotations:\n    convoy.kumodo.io/sync-wave: \"2\"\n" + wave2Ann
+	return &fakeCoordinator{result: fetch.Result{
+		Ready: true, Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{"w0.yaml": []byte(w0), "w1.yaml": []byte(w1), "w2.yaml": []byte(w2)}},
+	}}
+}
+
+func threeWaveRelease() *corev1alpha1.Release {
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent("w0.yaml", "w1.yaml", "w2.yaml")
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{}
+	return rel
+}
+
+// TestSyncHandler_GateChecksOnlyImmediatelyPrecedingWave locks in the N-1 gate
+// semantics: a waitForHealthy wave waits ONLY on the wave immediately before it,
+// not on every lower wave. Wave 2 (depending on wave 1) must apply once wave 1 is
+// healthy even though wave 0 is degraded.
+func TestSyncHandler_GateChecksOnlyImmediatelyPrecedingWave(t *testing.T) {
+	rel := threeWaveRelease()
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, rel, reachableCluster(),
+		threeWaveCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	// Observer state: wave 0 degraded, wave 1 healthy.
+	putInv(t, c, degradedRef("w0"), healthyRef("w1"))
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 3 {
+		t.Fatalf("Deploy called %d times, want 3 — wave 2 must proceed on wave 1's health despite degraded wave 0; calls=%v", len(deployer.waveCalls), waveCallNames(deployer))
+	}
+	if deployer.waveCalls[2][0].GetName() != "w2" {
+		t.Errorf("third wave = %s, want w2", deployer.waveCalls[2][0].GetName())
+	}
+}
+
+// TestSyncHandler_GateHoldsOnDegradedImmediatelyPrecedingWave is the inverse: a
+// degraded immediately-preceding wave holds the gate even when the earliest wave
+// is healthy.
+func TestSyncHandler_GateHoldsOnDegradedImmediatelyPrecedingWave(t *testing.T) {
+	rel := threeWaveRelease()
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		threeWaveCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	// Wave 0 healthy, wave 1 (the wave immediately before the gated wave 2) degraded.
+	putInv(t, c, healthyRef("w0"), degradedRef("w1"))
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 2 {
+		t.Fatalf("Deploy called %d times, want 2 — wave 2 must hold on degraded preceding wave 1; calls=%v", len(deployer.waveCalls), waveCallNames(deployer))
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaitingForWaveHealth {
+		t.Errorf("condition = %v/%s, want False/WaitingForWaveHealth", s, r)
+	}
 }
 
 func TestSyncHandler_HoldsAtHealthGate(t *testing.T) {

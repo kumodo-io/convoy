@@ -601,14 +601,15 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	}
 
 	// Apply in ascending sync-wave order. Each wave applies fully before the next
-	// begins. A wave with a health bar (waitForHealthy*) gates the *next* wave until
-	// every prior wave is healthy. Health is assessed by the observer, which records
-	// per-resource health on the ReleaseInventory; the controller rolls that up per
-	// wave (keyed by the exact refs it applied) rather than reading its own status,
-	// and requeues while a prior wave is not yet healthy. waitForHealthyWithTimeout
-	// fails the wave once its timeout elapses. All waves are (idempotently)
-	// re-applied each reconcile, so drift is still corrected as the rollout
-	// progresses.
+	// begins. A wave with a health bar (waitForHealthy*) holds until the
+	// IMMEDIATELY-PRECEDING wave is healthy — a wave depends on the one directly
+	// before it, not transitively on all lower waves. Health is assessed by the
+	// observer, which records per-resource health on the ReleaseInventory; the
+	// controller rolls that up over the preceding wave's refs rather than reading
+	// its own status, and requeues while that wave is not yet healthy.
+	// waitForHealthyWithTimeout fails the wave once its timeout elapses. All waves
+	// are (idempotently) re-applied each reconcile, so drift is still corrected as
+	// the rollout progresses.
 	waveGroups := waves.Group(objects)
 	// Prior status.waves carries a wave's original StartedAt/CompletedAt across
 	// reconciles (the controller's own progress timestamps).
@@ -630,29 +631,35 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	noHealthBar := rel.Spec.HealthAssessment == nil
 
 	var applied []inventory.Ref
+	// prevWaveApplied holds the immediately-preceding wave's applied refs — the only
+	// wave a health-gated wave waits on. A wave depends on the wave directly before
+	// it, not transitively on every lower wave: e.g. wave 2 (waitForHealthy,
+	// depending on wave 1's Secret) must proceed once wave 1 is healthy even if
+	// wave 0 is still degraded.
+	var prevWaveApplied []inventory.Ref
 	waveStatuses := make([]corev1alpha1.ResourceWaveStatus, 0, len(waveGroups))
 	for i := range waveGroups {
 		w := waveGroups[i]
 
-		// Gate: a wave whose resources declare waitForHealthy* waits for ALL prior
-		// waves to be healthy before it applies (the strategy is the bar the wave's
-		// predecessors must clear before it enters). `applied` already holds exactly
-		// those prior waves' refs (deployed by loop order), so their persisted health
-		// is the roll-up — no dependency on this controller's own status.
-		if i > 0 && waveGroups[i].NeedsHealth && !priorWavesHealthy(applied, stateByID, noHealthBar) {
+		// Gate: a wave whose resources declare waitForHealthy* waits for the
+		// immediately-preceding wave to be healthy before it applies (the strategy is
+		// the bar that predecessor must clear before this wave enters). prevWaveApplied
+		// holds exactly that wave's refs; health is the observer-persisted rollup over
+		// them — no dependency on this controller's own status.
+		if i > 0 && waveGroups[i].NeedsHealth && !precedingWaveHealthy(prevWaveApplied, stateByID, noHealthBar) {
 			// Anchor a bounded wait at the immediately-preceding wave's first apply.
 			prevStarted := prior[int64(waveGroups[i-1].Number)].StartedAt
 			if waveGroups[i].Bounded && prevStarted != nil && now.Sub(prevStarted.Time) > waveGroups[i].Timeout {
-				out, _ := fail(conditionReasonWaveFailed, fmt.Sprintf("sync wave %d: prior waves not healthy within %s", w.Number, waveGroups[i].Timeout), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+				out, _ := fail(conditionReasonWaveFailed, fmt.Sprintf("sync wave %d: preceding wave %d not healthy within %s", w.Number, waveGroups[i-1].Number, waveGroups[i].Timeout), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
 				out.waves = waveStatuses
 				return out, nil
 			}
 			// Not healthy yet: hold. Partial rollout — do NOT prune or advance
-			// lastSuccessful. Requeues on the poll interval; the observer records
-			// prior waves' health in the meantime.
+			// lastSuccessful. Requeues on the poll interval; the observer records the
+			// preceding wave's health in the meantime.
 			return reconcileOutcome{
 				reason:  conditionReasonWaitingForWaveHealth,
-				message: fmt.Sprintf("waiting for waves before %d to become healthy", w.Number),
+				message: fmt.Sprintf("waiting for wave %d to become healthy before applying wave %d", waveGroups[i-1].Number, w.Number),
 				attempt: attempt,
 				waves:   waveStatuses,
 			}, nil
@@ -667,11 +674,12 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		}
 		// Tag each ref with the wave it applied in, so the persisted inventory
 		// records per-resource wave membership (for observability) and the gate can
-		// attribute prior-wave refs.
+		// attribute the preceding wave's refs.
 		for k := range waveApplied {
 			waveApplied[k].Wave = w.Number
 		}
 		applied = append(applied, waveApplied...)
+		prevWaveApplied = waveApplied // this wave becomes the next wave's gate target
 
 		// Persist the applied-so-far set right after each wave, not only on full
 		// success: the ReleaseInventory then exists as soon as the first wave lands
@@ -1065,15 +1073,17 @@ func conditionTransitionTime(rel *corev1alpha1.Release, condType string) metav1.
 	return metav1.Time{}
 }
 
-// priorWavesHealthy reports whether every already-applied ref is Healthy per the
-// observer-written ReleaseInventory (stateByID). A missing or non-Healthy entry
-// means the roll-up is not yet satisfied, so a gated wave holds. noHealthBar
+// precedingWaveHealthy reports whether every ref of the immediately-preceding
+// wave is Healthy per the observer-written ReleaseInventory (stateByID). A missing
+// or non-Healthy entry means the preceding wave is not yet healthy, so a gated
+// wave holds. Only the immediately-preceding wave is considered — a wave depends
+// on the one directly before it, not transitively on all lower waves. noHealthBar
 // short-circuits to true: a release with no health assessment has no bar to clear.
-func priorWavesHealthy(applied []inventory.Ref, stateByID map[string]*corev1alpha1.ResourceState, noHealthBar bool) bool {
+func precedingWaveHealthy(precedingRefs []inventory.Ref, stateByID map[string]*corev1alpha1.ResourceState, noHealthBar bool) bool {
 	if noHealthBar {
 		return true
 	}
-	for _, r := range applied {
+	for _, r := range precedingRefs {
 		s := stateByID[r.ID()]
 		if s == nil || *s != corev1alpha1.ResourceStateHealthy {
 			return false
