@@ -406,5 +406,16 @@ func validateReleaseSpec(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList
 		allErrs = append(allErrs, field.Required(fldPath.Child("clusterRef", "name"), ""))
 	}
 
+	// Axis B cluster-wave strategy (spec.syncPolicy.waveStrategy). Empty defaults to
+	// waitForApplied; any set value must be a known strategy.
+	if s := spec.SyncPolicy.WaveStrategy.Strategy; s != "" && !knownWaveStrategy(s) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("syncPolicy", "waveStrategy", "strategy"), s,
+			[]string{
+				string(ReleaseWaveStrategyWaitForApplied),
+				string(ReleaseWaveStrategyWaitForHealthy),
+				string(ReleaseWaveStrategyWaitForHealthyWithTimeout),
+			}))
+	}
+
 	return allErrs
 }

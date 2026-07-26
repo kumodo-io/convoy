@@ -27,3 +27,6 @@ spec:
       includeCRDs: false
       includeNamespaces: false
     interval: 1m
+    waveStrategy:
+      strategy: waitForApplied
+      wave: 1

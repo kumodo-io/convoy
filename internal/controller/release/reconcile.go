@@ -32,6 +32,10 @@ const (
 	// signal has a single writer (see docs/architecture/00-overview.md).
 	conditionApplied = "Applied"
 
+	// conditionHealthy is the observer-owned condition the controller READS (never
+	// writes) to gate Axis B cluster waves on a predecessor Release's health.
+	conditionHealthy = "Healthy"
+
 	conditionReasonApplied              = "Applied"
 	conditionReasonSourceNotReady       = "SourceNotReady"
 	conditionReasonValuesNotReady       = "ValuesNotReady"
@@ -43,6 +47,11 @@ const (
 	conditionReasonWaitingForSync       = "WaitingForSync"
 	conditionReasonWaitingForWaveHealth = "WaitingForWaveHealth"
 	conditionReasonWaveFailed           = "WaveFailed"
+	// Axis B (Release-within-cluster ordering): the Release is holding for
+	// predecessor Releases on the same cluster to clear their bar, or has given up
+	// on a bounded (waitForHealthyWithTimeout) wait.
+	conditionReasonWaitingForClusterWave = "WaitingForClusterWave"
+	conditionReasonClusterWaveFailed     = "ClusterWaveFailed"
 )
 
 // computeStatus derives the desired ReleaseStatus from the current object and a

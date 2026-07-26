@@ -43,6 +43,7 @@ import (
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
+	"github.com/kumodo-io/convoy/internal/waves"
 )
 
 // releaseByClusterIndex is the informer index keying Releases by the
@@ -186,7 +187,37 @@ func (o *Options) Run(ctx context.Context) error {
 	}
 	deployer := releasecontroller.NewDeployer(connector)
 	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister())
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, releasesForCluster)
+
+	// Axis B fan-out: when a Release's Applied/Healthy signal flips, re-enqueue its
+	// higher-wave successors on the same cluster so they re-evaluate the cluster-wave
+	// gate immediately instead of on their poll interval. It is only a wake — the
+	// gate itself decides whether a successor proceeds.
+	if _, err := releaseInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: func(oldObj, newObj any) {
+			oldRel, ok1 := oldObj.(*corev1alpha1.Release)
+			newRel, ok2 := newObj.(*corev1alpha1.Release)
+			if !ok1 || !ok2 || !releasecontroller.ClusterWaveSignalChanged(oldRel, newRel) {
+				return
+			}
+			clusterNs := newRel.Spec.ClusterRef.Namespace
+			if clusterNs == "" {
+				clusterNs = newRel.Namespace
+			}
+			siblings, err := releasesForCluster(clusterNs, newRel.Spec.ClusterRef.Name)
+			if err != nil {
+				return
+			}
+			changedWave := waves.ClusterWaveOf(newRel)
+			for _, s := range siblings {
+				if waves.ClusterWaveOf(s) > changedWave {
+					releaseController.EnqueueAfter(s.Namespace+"/"+s.Name, 0)
+				}
+			}
+		},
+	}); err != nil {
+		return err
+	}
 
 	factory.Start(ctx.Done())
 
