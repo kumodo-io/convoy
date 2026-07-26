@@ -28,6 +28,7 @@ const (
 	dummyReleaseNamespace = "team-a"
 	dummyInfraNamespace   = "infra"
 	deploymentKind        = "Deployment"
+	unknownValue          = "bogus"
 )
 
 // validRelease builds a Release in namespace "team-a" with a git source and
@@ -72,6 +73,28 @@ func TestValidateRelease_SameNamespaceRefsAllowed(t *testing.T) {
 	rel.Spec.Source.GitRepository.Namespace = dummyReleaseNamespace
 	if errs := ValidateRelease(rel); len(errs) != 0 {
 		t.Errorf("explicit same-namespace refs rejected: %v", errs)
+	}
+}
+
+func TestValidateRelease_ClusterWaveStrategy(t *testing.T) {
+	// A known strategy on spec.syncPolicy.waveStrategy is accepted.
+	rel := validRelease()
+	rel.Spec.SyncPolicy.WaveStrategy.Strategy = ReleaseWaveStrategyWaitForHealthy
+	if errs := ValidateRelease(rel); len(errs) != 0 {
+		t.Errorf("known cluster-wave strategy rejected: %v", errs)
+	}
+
+	// An unknown strategy is rejected on the syncPolicy.waveStrategy.strategy path.
+	rel.Spec.SyncPolicy.WaveStrategy.Strategy = unknownValue
+	errs := ValidateRelease(rel)
+	found := false
+	for _, e := range errs {
+		if strings.HasSuffix(e.Field, "syncPolicy.waveStrategy.strategy") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("unknown cluster-wave strategy not rejected: %v", errs)
 	}
 }
 
@@ -153,7 +176,7 @@ func TestValidateReleaseMutations_JsonPatchRequiresPatches(t *testing.T) {
 
 func TestValidateReleaseMutations_UnknownTypeRejected(t *testing.T) {
 	rel := validRelease()
-	rel.Mutations = []ReleaseMutation{{Type: "bogus", Target: ReleaseMutationTarget{Kind: deploymentKind}}}
+	rel.Mutations = []ReleaseMutation{{Type: unknownValue, Target: ReleaseMutationTarget{Kind: deploymentKind}}}
 	errs := ValidateReleaseMutations(rel)
 	if len(errs) == 0 {
 		t.Error("unknown mutation type not rejected")
@@ -185,7 +208,7 @@ func TestValidateReleaseMutations_SyncWaveUnknownStrategy(t *testing.T) {
 	rel.Mutations = []ReleaseMutation{{
 		Type:         MutationTypeSyncWave,
 		Target:       ReleaseMutationTarget{Kind: deploymentKind},
-		WaveStrategy: &ReleaseWaveStrategySpec{Strategy: "bogus"},
+		WaveStrategy: &ReleaseWaveStrategySpec{Strategy: unknownValue},
 	}}
 	if errs := ValidateReleaseMutations(rel); len(errs) == 0 {
 		t.Error("syncWave with unknown strategy not rejected")

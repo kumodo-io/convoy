@@ -1039,6 +1039,25 @@ func conditionIsTrue(rel *corev1alpha1.Release, condType string) bool {
 	return c != nil && c.Status == metav1.ConditionTrue
 }
 
+// ClusterWaveSignalChanged reports whether a Release's Applied or Healthy
+// condition status changed between two revisions — the signals an Axis B
+// successor gates on. The controller-manager uses it to fan out: when a
+// predecessor's signal flips, re-enqueue its higher-wave successors on the same
+// cluster so they advance promptly instead of waiting for the poll interval. It
+// is only a wake; correctness lives in clusterWaveGate, which each woken
+// successor re-evaluates.
+func ClusterWaveSignalChanged(oldRel, newRel *corev1alpha1.Release) bool {
+	return conditionStatusOf(oldRel, conditionApplied) != conditionStatusOf(newRel, conditionApplied) ||
+		conditionStatusOf(oldRel, conditionHealthy) != conditionStatusOf(newRel, conditionHealthy)
+}
+
+func conditionStatusOf(rel *corev1alpha1.Release, condType string) metav1.ConditionStatus {
+	if c := apimeta.FindStatusCondition(rel.Status.Conditions, condType); c != nil {
+		return c.Status
+	}
+	return ""
+}
+
 func conditionTransitionTime(rel *corev1alpha1.Release, condType string) metav1.Time {
 	if c := apimeta.FindStatusCondition(rel.Status.Conditions, condType); c != nil {
 		return c.LastTransitionTime

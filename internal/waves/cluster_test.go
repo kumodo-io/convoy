@@ -66,11 +66,11 @@ func TestClusterWaveBound(t *testing.T) {
 func TestClusterPredecessors(t *testing.T) {
 	me := clusterRel("ns", "app", 5, corev1alpha1.ReleaseWaveStrategyWaitForApplied, nil)
 	siblings := []*corev1alpha1.Release{
-		clusterRel("infra", "db", 0, "", nil),      // lower wave, other ns → predecessor
-		clusterRel("ns", "cache", 3, "", nil),       // lower wave → predecessor
-		clusterRel("ns", "app", 5, "", nil),         // self → excluded
-		clusterRel("ns", "peer", 5, "", nil),        // same wave → not a predecessor
-		clusterRel("ns", "frontend", 9, "", nil),    // higher wave → not a predecessor
+		clusterRel("infra", "db", 0, "", nil),    // lower wave, other ns → predecessor
+		clusterRel("ns", "cache", 3, "", nil),    // lower wave → predecessor
+		clusterRel("ns", "app", 5, "", nil),      // self → excluded
+		clusterRel("ns", "peer", 5, "", nil),     // same wave → not a predecessor
+		clusterRel("ns", "frontend", 9, "", nil), // higher wave → not a predecessor
 	}
 	preds := ClusterPredecessors(me, siblings)
 	if len(preds) != 2 {
