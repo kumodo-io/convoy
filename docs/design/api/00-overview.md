@@ -60,7 +60,7 @@ flowchart TD
     HR -->|"spec.source (immutable)"| REL
     OR -->|"spec.source (immutable)"| REL
     REL -->|"spec.cluster (immutable)"| CL
-    REL -->|"Server-Side Apply<br/>(waves + lifecycle hooks)"| MR
+    REL -->|"Server-Side Apply<br/>(sync waves)"| MR
     MR -.->|"hosted by"| CL
     KHR -.->|"matched by (apiGroup, kind)"| MR
     RHR -.->|"matched by instance"| MR
@@ -77,7 +77,7 @@ flowchart TD
 
 1. A **Source** (`GitRepository` / `HelmRegistry` / `OCIRegistry`) verifies the upstream endpoint is reachable and that its credentials are accepted (on its interval, or via a `/webhooks` push). Content for a specific ref/version is fetched on demand when a `Release` references it.
 2. A **Release** resolves its `spec.source` (the endpoint + coordinate, e.g. `spec.source.gitRepository.ref`) + `spec.content` (how to render), fetches the artifact at that coordinate, and runs the **mutation pipeline** (`helmValues`, `goTemplate`, `jsonPatch`, `strategicMergePatch`, …) to produce the final manifest set.
-3. The Release applies that set to its **Cluster** via Server-Side Apply, ordered by **sync waves**, running **lifecycle hooks** at the configured phases.
+3. The Release applies that set to its **Cluster** via Server-Side Apply, ordered by **sync waves** (both resource-within-Release and Release-within-cluster). Lifecycle hooks at configured phases are planned.
 4. The controller assesses **health** of the managed resources — built-in rules first, then `KindHealthRule` / `ResourceHealthRule` overrides, then `kstatus` fallback — and aggregates the verdict into the Release's `Healthy` condition (per-resource detail via `/health`).
 5. A drift/sync loop keeps the Cluster converged on the rendered state; `/diff`, `/preview`, `/pin`, and `/history` support inspection and control.
 

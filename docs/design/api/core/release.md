@@ -21,8 +21,7 @@
       * [Applied](#applied)
       * [InSync](#insync)
       * [Healthy](#healthy)
-    * [Composite Condition](#composite-condition)
-      * [Ready](#ready)
+    * [Reading the Three Signals Together](#reading-the-three-signals-together)
     * [Why Three Signals, Not One](#why-three-signals-not-one)
     * [Why These Names](#why-these-names)
     * [Example Status Block](#example-status-block)
@@ -116,13 +115,12 @@
     * [Wave Specification via Annotations](#wave-specification-via-annotations)
       * [Wave Numbering](#wave-numbering)
       * [Annotations Recognized](#annotations-recognized)
-      * [Helm Hook Compatibility](#helm-hook-compatibility)
     * [Wave Transition Strategies](#wave-transition-strategies)
       * [Why Wave Strategies Matter](#why-wave-strategies-matter)
     * [Status Reflection](#status-reflection-1)
     * [Resource Selection by Wave](#resource-selection-by-wave)
-    * [Interaction with `/preview` and `/diff`](#interaction-with-preview-and-diff)
     * [Mutation Pipeline Interaction](#mutation-pipeline-interaction-1)
+  * [Release-within-Cluster Ordering (Axis B)](#release-within-cluster-ordering-axis-b)
     * [What's Not Addressed Here](#whats-not-addressed-here)
     * [Summary Table](#summary-table-1)
 <!-- TOC -->
@@ -286,11 +284,15 @@ spec:
       max: 10m
       factor: 2
 
-    # Defines the order in which resources are applied and their health monitoring strategy.
+    # Axis B — this Release's ordering relative to other Releases on the SAME cluster.
+    # (Resource ordering WITHIN a Release is Axis A, set via per-manifest
+    # convoy.kumodo.io/sync-* annotations — see Sync Waves.)
     waveStrategy:
-      # strategy: waitForApplied | waitForHealthy
+      # This Release's cluster-wave; it waits for lower-wave Releases on the cluster. Default 0.
+      wave: 0
+      # strategy: waitForApplied | waitForHealthy | waitForHealthyWithTimeout
       strategy: waitForApplied
-      # the timeout for the wave strategy. If not set, controller will wait indefinitely.
+      # timeout for waitForHealthyWithTimeout. If not set, the controller waits indefinitely.
       timeout: 10m
   
   # How many historical (rendered, applied) records to retain in S3.
@@ -382,21 +384,11 @@ pin:
 status:
   observedGeneration: 42
   
+  # Exactly three conditions are written (see Conditions). Render-pipeline progress
+  # is in lastAttempted; pin state is in status.pin (and surfaced as the Applied
+  # condition's reason). A composite Ready and dedicated SourceResolved/
+  # MutationsResolved/Rendered/Pinned conditions are planned, not implemented.
   conditions:
-    - type: Ready
-      status: "False"
-      lastTransitionTime: 2026-04-29T10:01:15Z
-      reason: NotHealthy
-      message: "Release is applied and in-sync but workloads are not healthy"
-    - type: SourceResolved
-      status: "True"
-      lastTransitionTime: 2026-04-29T10:00:01Z
-    - type: MutationsResolved
-      status: "True"
-      lastTransitionTime: 2026-04-29T10:00:02Z
-    - type: Rendered
-      status: "True"
-      lastTransitionTime: 2026-04-29T10:00:03Z
     - type: Applied
       status: "True"
       lastTransitionTime: 2026-04-29T10:00:05Z
@@ -412,13 +404,6 @@ status:
       lastTransitionTime: 2026-04-29T10:01:15Z
       reason: WorkloadsDegraded
       message: "1 of 14 resources degraded: Deployment payments-api has 0/3 ready replicas (image pull failed)"
-
-    # Dedicated condition making the pinned state loudly visible.
-    - type: Pinned
-      status: "True"
-      lastTransitionTime: 2026-04-29T10:00:00Z
-      reason: Frozen | Rollback
-      message: "Release is pinned to render sha256:abc123… since 2026-04-29T10:00:00Z. Spec/mutation changes will not be applied until unpin (DELETE /pin)."
 
     # If the user has edited spec or mutations since pinning, this condition appears
     # to warn that there's pending intent not yet applied because of the active pin.
@@ -546,26 +531,24 @@ status:
     #   hookName: "my-hook"
     #   hookPhase: PreRender
 
-  # Waves reflects the order in which resources were applied and their health status.
-  # Each wave entry represents a group of resources applied together, with a state indicating
-  # whether they have been fully applied and healthy, are in progress, or have failed.
+  # Per-wave apply progress (Axis A). listType=map keyed by number. The controller
+  # owns `applied`; `healthy` is rolled up from the observer-written ReleaseInventory.
   waves:
     - number: -10
       resources: 1                      # CRD
+      applied: true
+      healthy: true
       state: Completed
       startedAt: 2026-04-29T10:00:00Z
       completedAt: 2026-04-29T10:00:15Z
 
     - number: 0
       resources: 12                     # most resources
+      applied: true
+      healthy: false                    # applied; health still rolling up
       state: Completed
       startedAt: 2026-04-29T10:00:15Z
-      completedAt: 2026-04-29T10:00:45Z
-
-    - number: 10
-      resources: 1                      # Certificate (CR of the CRD above)
-      state: InProgress
-      startedAt: 2026-04-29T10:00:45Z
+      completedAt: 2026-04-29T10:00:15Z
   
   # Last reconciliation timestamp, even when nothing changed.
   # Distinct from lastAttempted (which only updates on actual change attempts).
@@ -790,23 +773,24 @@ mutations:
 
 ## Conditions
 
-`Release` reports the following conditions in `status.conditions`. The three core signals (`Applied`, `InSync`, `Healthy`) and the composite `Ready` are detailed in [Release State Model](#release-state-model) below.
+`Release` reports **three** conditions in `status.conditions`, each with a single writer (there is intentionally no composite condition — see [Release State Model](#release-state-model)):
 
-| Condition           | What `True` means                                                                                                                         |
-|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| `SourceResolved`    | The referenced `Source` resolved to a concrete revision and its content was fetched.                                                      |
-| `MutationsResolved` | All mutation inputs (values files, patches, templates) were resolved/fetched.                                                             |
-| `Rendered`          | The post-mutation manifest set rendered successfully.                                                                                     |
-| `Applied`           | The most recent apply to the cluster succeeded (kube-apiserver accepted every resource). See [State Model](#applied).                     |
-| `InSync`            | The live cluster state matches the rendered manifest set (no drift). See [State Model](#insync).                                          |
-| `Healthy`           | Every managed resource reached its intended runtime state. `Unknown` while progressing. See [State Model](#healthy).                      |
-| `Ready`             | Composite: `Applied` ∧ `InSync` ∧ `Healthy`. The signal most tooling should watch. See [State Model](#ready).                             |
-| `Pinned`            | The Release is pinned to a fixed render (`reason: Frozen \| Rollback`); spec/mutation changes will not apply until unpin (`DELETE /pin`). |
-| `SpecDriftFromPin`  | Spec or mutations were edited since the pin was set; the pending intent will apply on unpin.                                              |
+| Condition | Writer                | What `True` means                                                                                                    |
+|-----------|-----------------------|----------------------------------------------------------------------------------------------------------------------|
+| `Applied` | release controller    | The most recent apply to the cluster succeeded (kube-apiserver accepted every resource). See [State Model](#applied). |
+| `InSync`  | observer (drift loop) | The live cluster state matches the rendered manifest set (no drift). See [State Model](#insync).                     |
+| `Healthy` | observer (health loop)| Every managed resource reached its intended runtime state. `Unknown` while progressing. See [State Model](#healthy). |
+
+Progress that is *not* a condition:
+
+- **Render pipeline stages** (source resolution, mutation resolution, rendering) are reported through `status.lastAttempted.phase` and, on failure, `status.lastAttempted.failure.stage` — not as separate conditions.
+- **Pin state** is reported in `status.pin`; while a pin holds, the `Applied` condition carries `reason: Pinned`.
+
+> **Planned (not implemented).** The following are design intent and are **not** currently written: a composite **`Ready`** condition (`Applied ∧ InSync ∧ Healthy`), and dedicated **`SourceResolved`** / **`MutationsResolved`** / **`Rendered`** / **`Pinned`** / **`SpecDriftFromPin`** conditions. Today the render stages and pin state are surfaced via `status.lastAttempted` / `status.pin` as described above.
 
 ## Release State Model
 
-A deployed `Release` has three orthogonal state signals reflecting different aspects of the deployment. They are reported as separate conditions in `Release.status.conditions`, and aggregated into a composite `Ready` condition.
+A deployed `Release` has three orthogonal state signals reflecting different aspects of the deployment. They are reported as separate conditions in `Release.status.conditions`, each with a single writer. There is **intentionally no composite `Ready` condition** — collapsing the signals would require a single writer to own all three (they are produced by different components) and would lose the diagnostic split below. Tooling watches the three signals directly.
 
 ### The Three Signals
 
@@ -863,21 +847,19 @@ Drift may be transient (the controller will re-apply on next reconciliation) or 
 
 `Healthy` is independent of `Applied` and `InSync`. A Release can be applied, in-sync, and unhealthy (manifest is correct, workloads aren't working). A Release can be unapplied (apply failed) but its previously-deployed workloads are still healthy (cluster still has the prior version running).
 
-### Composite Condition
+### Reading the Three Signals Together
 
-#### Ready
+There is no `Ready` condition; consumers combine the three signals themselves. The common combinations:
 
-`Ready: True` requires all three:
+| `Applied` | `InSync` | `Healthy` | Meaning                                                         |
+|-----------|----------|-----------|-----------------------------------------------------------------|
+| `True`    | `True`   | `True`    | Steady state — deployed and working                             |
+| `True`    | `True`   | `Unknown` | Progressing — workloads coming up                               |
+| `True`    | `True`   | `False`   | Deployment broken — manifests applied but workloads not working |
+| `True`    | `False`  | *         | Drift — cluster has diverged from desired                       |
+| `False`   | *        | *         | Apply failed (or a wave/cluster-wave hold) — see the `Applied` reason |
 
-| `Applied` | `InSync` | `Healthy` | `Ready` | Meaning                                                         |
-|-----------|----------|-----------|---------|-----------------------------------------------------------------|
-| `True`    | `True`   | `True`    | `True`  | Steady state — deployed and working                             |
-| `True`    | `True`   | `Unknown` | `False` | Progressing — workloads coming up                               |
-| `True`    | `True`   | `False`   | `False` | Deployment broken — manifests applied but workloads not working |
-| `True`    | `False`  | *         | `False` | Drift — cluster has diverged from desired                       |
-| `False`   | *        | *         | `False` | Apply failed — manifests not in cluster                         |
-
-`Ready` is the signal most tooling and dashboards should watch. The three underlying conditions provide diagnostic detail when `Ready: False`.
+> **Planned.** A composite `Ready` (`Applied ∧ InSync ∧ Healthy`) may be added later as a convenience for dashboards. It is not written today.
 
 ### Why Three Signals, Not One
 
@@ -921,13 +903,9 @@ status:
       lastTransitionTime: 2026-04-29T10:01:15Z
       reason: WorkloadsDegraded
       message: "1 of 14 resources degraded: Deployment payments-api has 0/3 ready replicas (image pull failed)"
-    
-    - type: Ready
-      status: "False"
-      lastTransitionTime: 2026-04-29T10:01:15Z
-      reason: NotHealthy
-      message: "Release is applied and in-sync but workloads are not healthy"
 ```
+
+Here the Release is applied and in-sync but not healthy — a consumer reads that directly from the three signals; there is no aggregate condition.
 
 ### Vocabulary Mapping for Users Coming from Other Tools
 
@@ -936,9 +914,9 @@ status:
 | Manifests successfully applied | `Applied` | `Synced`               | (implicit; not a separate condition)     |
 | Cluster matches desired state  | `InSync`  | (implicit in `Synced`) | `Ready` (partial — also includes health) |
 | Workloads running correctly    | `Healthy` | `Healthy`              | (folded into `Ready`)                    |
-| Aggregate "all good"           | `Ready`   | `Synced + Healthy`     | `Ready`                                  |
+| Aggregate "all good"           | — (combine the three) | `Synced + Healthy` | `Ready`                          |
 
-ArgoCD users will recognize `Healthy`. The split between `Applied` and `InSync` is more granular than ArgoCD's `Synced` (which conflates "applied" with "matches" — fine in practice but loses signal during drift events). Flux users will find the three-way split more granular than Flux's combined `Ready`.
+ArgoCD users will recognize `Healthy`. The split between `Applied` and `InSync` is more granular than ArgoCD's `Synced` (which conflates "applied" with "matches" — fine in practice but loses signal during drift events). Flux users will find the three-way split more granular than Flux's combined `Ready` — convoy has no single aggregate condition; consumers combine the three.
 
 ### Field Reference
 
@@ -946,7 +924,7 @@ These three conditions appear in `Release.status.conditions` as standard k8s `Co
 
 | Field                | Description                                                                                                                             |
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
-| `type`               | One of `Applied`, `InSync`, `Healthy`, `Ready`.                                                                                         |
+| `type`               | One of `Applied`, `InSync`, `Healthy`.                                                                                                  |
 | `status`             | `True`, `False`, or `Unknown`. `Unknown` is meaningful for `Healthy` (progressing) and for `Applied`/`InSync` before any apply attempt. |
 | `lastTransitionTime` | When the status last changed.                                                                                                           |
 | `reason`             | Standardized machine-readable code (e.g., `ApplySucceeded`, `DriftDetected`, `WorkloadsDegraded`).                                      |
@@ -2142,7 +2120,12 @@ Without ordering, users hit these problems repeatedly and resort to splitting de
 
 ### Scope
 
-Sync waves are **resource-level ordering within a single Release**. Cross-Release ordering (e.g., "deploy infra Release before app Release") is a separate concern handled at the fleet level (`ReleaseSet`) and is not addressed here.
+Convoy orders on **two independent axes**:
+
+- **Axis A — resources within a single Release.** Ordering of the rendered manifests of one Release, driven by per-manifest annotations. This is the primary subject of this section.
+- **Axis B — Releases within a cluster.** Ordering of whole Releases that target the same cluster (e.g., "the infra Release must be healthy before the app Release applies"), driven by `spec.syncPolicy.waveStrategy` on each Release. See [Release-within-Cluster Ordering](#release-within-cluster-ordering-axis-b) below.
+
+Broader fleet-level ordering across many clusters remains a separate concern for a future `ReleaseSet`/fleet design.
 
 ### Wave Specification via Annotations
 
@@ -2168,108 +2151,104 @@ metadata:
 spec: ...
 ```
 
+A second annotation sets the resource's **readiness strategy**, and a third an optional timeout:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-operator
+  annotations:
+    convoy.kumodo.io/sync-wave: "0"
+    convoy.kumodo.io/sync-strategy: "waitForHealthyWithTimeout"  # bar the NEXT wave must clear
+    convoy.kumodo.io/sync-timeout: "5m"                          # only for waitForHealthyWithTimeout
+spec: ...
+```
+
 #### Wave Numbering
 
 - Wave numbers are signed integers
 - Lower numbers apply earlier; higher numbers apply later
 - Negative numbers are valid and commonly used for "bootstrap" resources
 - Default wave (no annotation) is `0`
-- Resources within the same wave apply in parallel
-- Between waves: the next wave begins only after the current wave's transition condition is met (see Wave Transition Strategies below)
+- Resources within the same wave are applied **sequentially** (in render order) as a group; the group's readiness bar is then evaluated before the next wave begins (see Wave Transition Strategies below)
 
 #### Annotations Recognized
 
-| Annotation                     | Purpose                                                                                                                                                                      |
-|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `convoy.kumodo.io/sync-wave`   | Native annotation. Always preferred when set.                                                                                                                                |
-| `argocd.argoproj.io/sync-wave` | Recognized for ecosystem compatibility. Used when the native annotation is absent. Allows Helm charts and bundles already annotated for ArgoCD to work without modification. |
-| `helm.sh/hook-weight`          | Recognized **only** for resources also marked with `helm.sh/hook` (see Helm Hook Compatibility below). Maps Helm's hook ordering into the wave system.                       |
+Only the convoy-native annotations are recognized. There is no ArgoCD (`argocd.argoproj.io/sync-wave`) or Helm-hook (`helm.sh/hook`, `helm.sh/hook-weight`) translation — those are not implemented.
 
-When multiple annotations are present, precedence is: `convoy.kumodo.io/sync-wave` > `argocd.argoproj.io/sync-wave`. Helm hook annotations apply only to Helm-marked hook resources and don't conflict with the wave annotations on regular resources.
+| Annotation                       | Purpose                                                                                                        |
+|----------------------------------|----------------------------------------------------------------------------------------------------------------|
+| `convoy.kumodo.io/sync-wave`     | Wave number (signed integer). Absent → wave `0`.                                                               |
+| `convoy.kumodo.io/sync-strategy` | Readiness strategy: `waitForApplied` (default), `waitForHealthy`, `waitForHealthyWithTimeout`.                 |
+| `convoy.kumodo.io/sync-timeout`  | Health-wait deadline (duration) for `waitForHealthyWithTimeout`. Absent → `30s`. Ignored for other strategies. |
 
-#### Helm Hook Compatibility
-
-Helm charts use `helm.sh/hook` annotations to mark resources as hooks (e.g., `pre-install`, `post-install`, `pre-upgrade`). The sync engine recognizes these and translates them into wave behavior:
-
-| Helm hook                              | Treated as                           | Notes                                                             |
-|----------------------------------------|--------------------------------------|-------------------------------------------------------------------|
-| `pre-install`, `pre-upgrade`           | Pre-sync hook (negative early waves) | Runs before regular manifests                                     |
-| `post-install`, `post-upgrade`         | Post-sync hook (positive late waves) | Runs after regular manifests                                      |
-| `pre-delete`, `post-delete`            | Currently ignored                    | Helm-specific; not yet integrated with Release deletion semantics |
-| `test`, `test-success`, `test-failure` | Currently ignored                    | Helm test framework; not part of sync semantics                   |
-
-Resources with `helm.sh/hook` annotations are processed as hooks; their `helm.sh/hook-weight` controls ordering within the hook phase. Resources without `helm.sh/hook` go through the regular wave pipeline.
-
-This means standard Helm charts using hook annotations work without modification when deployed via this tool.
+These annotations can be written directly in source, or produced by a `syncWave` [mutation](#mutations) (validated authoring that stamps them onto matched resources). By apply time they are just annotations on the rendered manifests, read by the sync engine.
 
 ### Wave Transition Strategies
 
-When a wave finishes, the sync engine decides when to start the next wave. The strategy is configured per-Release:
+The readiness strategy is a **per-resource** annotation (`convoy.kumodo.io/sync-strategy`), not a per-Release setting. It is the **bar a resource's wave imposes on the wave that follows it**: a wave whose resources declare a health strategy holds the *next* wave until this wave is healthy. A wave aggregates its resources' strategies — if any resource in the wave requires health, the wave carries a health bar; if any requires `waitForHealthyWithTimeout`, the wave's wait is bounded (timeout = the largest `sync-timeout` among them).
 
-```yaml
-spec:
-  syncPolicy:
-    waveStrategy:
-      strategy: waitForApplied      # | waitForHealthy | waitForHealthyWithTimeout
-      waveTimeout: 10m              # used only with waitForHealthyWithTimeout
-```
+| Strategy                    | The following wave may start when …                                                                                                                                                       |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `waitForApplied`            | Every resource in this wave has been accepted by the kube-apiserver. Default. Fast; appropriate when the next wave has no runtime dependency on this one.                                  |
+| `waitForHealthy`            | Every resource in this wave has reached `Healthy` per the health-assessment rules. Waits indefinitely. Necessary when the next wave depends on runtime state (operator Running before its CRs; CRD established before its CRs). |
+| `waitForHealthyWithTimeout` | Same as `waitForHealthy`, but if `sync-timeout` elapses first, the **next wave fails** (`reason: WaveFailed`) rather than proceeding — the rollout stops with the failure recorded in status. |
 
-| Strategy                    | Wave transition condition                                                                                                                                                                                                                                                                  |
-|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `waitForApplied`            | All resources in the wave have been accepted by the kube-apiserver. Default. Fast; appropriate when resources don't have meaningful runtime dependencies between waves.                                                                                                                    |
-| `waitForHealthy`            | All resources in the wave have reached `Healthy` (or `Suspended`) per the health assessment rules. Necessary when subsequent waves depend on runtime state — e.g., CRD must be fully registered before CRs of that kind can apply, operator must be Running before its CRs are reconciled. |
-| `waitForHealthyWithTimeout` | Same as `waitForHealthy`, but if `waveTimeout` elapses without the wave reaching healthy, sync proceeds to the next wave with a warning recorded in status. Fallback for slow-starting workloads where waiting indefinitely would block deploys.                                           |
+**Which wave a health bar gates.** A wave that carries a health bar waits on the **immediately-preceding wave only** — the wave directly before it in ascending order — not transitively on every lower wave. For example, with wave 0 (a degraded Deployment), wave 1 (a healthy Secret), and wave 2 (`waitForHealthy`, depending on the Secret), wave 2 proceeds once wave 1 is healthy; a still-degraded wave 0 does not block it. Health itself is assessed by the observer, which persists per-resource health on the `ReleaseInventory`; the controller rolls that up over the preceding wave's resources.
 
 #### Why Wave Strategies Matter
 
 `waitForApplied` is fast but insufficient for ordering that depends on runtime readiness. A common failure: applying a CRD then immediately applying a CR of that kind — the CR application can fail because the API server hasn't yet finished registering the CRD's API. `waitForHealthy` is necessary for these cases.
 
-`waitForHealthyWithTimeout` is the practical compromise for production deploys where some workloads (databases, slow init containers) might legitimately take 10+ minutes to be healthy but blocking deploys indefinitely is unacceptable.
+`waitForHealthyWithTimeout` bounds the wait for slow-starting workloads. Note the convoy semantics: on timeout the rollout **fails** (it does not silently skip ahead), so a stuck dependency surfaces as a failure rather than a partially-applied deploy.
 
 ### Status Reflection
 
-Per-wave progress is reported in `Release.status.waves`:
+Per-wave progress is reported in `Release.status.waves` (a `listType=map` keyed by `number`). The controller owns `applied` (and the descriptive fields); `healthy` is rolled up from the observer-written per-resource health:
 
 ```yaml
 status:
   waves:
-    - number: -10
-      resources: 1                      # CRD
+    - number: -10                        # CRD, applied and healthy
+      resources: 1
+      applied: true
+      healthy: true
       state: Completed
       startedAt: 2026-04-29T10:00:00Z
       completedAt: 2026-04-29T10:00:15Z
-    
-    - number: 0
-      resources: 12                     # most resources
+
+    - number: 0                          # applied; health still rolling up
+      resources: 12
+      applied: true
+      healthy: false
       state: Completed
       startedAt: 2026-04-29T10:00:15Z
-      completedAt: 2026-04-29T10:00:45Z
-    
-    - number: 10
-      resources: 1                      # Certificate (CR of the CRD above)
-      state: Failed
-      startedAt: 2026-04-29T10:00:45Z
-      failedAt: 2026-04-29T10:00:55Z
-      message: "failed to apply"
-  
+      completedAt: 2026-04-29T10:00:15Z
+
   conditions:
+    # While a health-gated wave holds, the controller-owned Applied condition is
+    # False with reason WaitingForWaveHealth (not Unknown). A bounded-wait timeout
+    # sets reason WaveFailed.
     - type: Applied
-      status: "Unknown"
-      reason: WaveInProgress
-      message: "Wave 10 of 10 in progress (1 resource)"
+      status: "False"
+      reason: WaitingForWaveHealth
+      message: "waiting for wave -10 to become healthy before applying wave 0"
 ```
 
-| Field         | Description                                                        |
-|---------------|--------------------------------------------------------------------|
-| `number`      | Wave number from manifest annotation.                              |
-| `resources`   | Count of manifests in this wave.                                   |
-| `state`       | `Pending`, `InProgress`, `Completed`, `Failed`, `TimedOut`.        |
-| `startedAt`   | When the wave's first resource was applied.                        |
-| `completedAt` | When the wave's resources are successfully synced and healthy.     |
-| `failedAt`    | When the wave's resources are not successfully synced and healthy. |
-| `message`     | A human-readable message describing the failure reason.            |
+| Field         | Description                                                                                                  |
+|---------------|--------------------------------------------------------------------------------------------------------------|
+| `number`      | Wave number from the manifest annotation (the list-map key).                                                 |
+| `applied`     | Whether every resource in the wave has been applied (controller-owned).                                      |
+| `healthy`     | Whether every resource in the wave is Healthy, rolled up from the `ReleaseInventory`. `null` until assessed. |
+| `resources`   | Count of manifests in this wave.                                                                             |
+| `state`       | Enum `Pending`/`InProgress`/`Completed`/`Failed`/`TimedOut`. In the current implementation applied waves are recorded as `Completed`; the other values are reserved. |
+| `startedAt`   | When the wave was first applied (preserved across reconciles).                                               |
+| `completedAt` | When the wave was applied (preserved across reconciles).                                                     |
+| `failedAt`    | Reserved for a failed wave.                                                                                  |
+| `message`     | Human-readable detail.                                                                                       |
 
-While a sync is in progress, the relevant `Applied` and `Healthy` conditions reflect intermediate state — `status: "Unknown"` rather than `True` or `False` — making clear that the verdict is pending wave completion.
+The `Applied` condition is controller-owned; `Healthy` is observer-owned (`Unknown` while resources are still progressing). There is no per-wave `Unknown`/`WaveInProgress` on `Applied` — a hold is `Applied: False` with reason `WaitingForWaveHealth`.
 
 ### Resource Selection by Wave
 
@@ -2278,17 +2257,11 @@ Resources without an explicit wave annotation default to wave `0`. A Release wit
 A Release with annotated resources runs through waves in order:
 
 1. Sort waves ascending by number
-2. For each wave: apply all resources in parallel; wait for transition condition
+2. For each wave: apply its resources sequentially, then (if the wave carries a health bar) hold until it is healthy before the next wave
 3. Move to next wave; repeat
-4. After last wave: report final sync state
+4. After last wave: prune orphans and report final sync state
 
-If any resource in a wave fails to apply, the wave fails. By default, this fails the whole sync — subsequent waves don't run, status reflects the failure. Future enhancement: configurable `continueOnWaveFailure` — not in v1.
-
-### Interaction with `/preview` and `/diff`
-
-The `/preview` subresource (when implemented) shows the rendered manifest set with wave annotations preserved. Tooling can group resources by wave for display.
-
-The `/diff` subresource shows wave-by-wave diff when both sides have wave annotations, allowing operators to see "what's in wave 0 that's changing" rather than a single flat diff.
+If any resource in a wave fails to apply, the sync fails — subsequent waves don't run, nothing is pruned, `lastSuccessful` is not advanced, and status reflects the failure. Configurable `continueOnWaveFailure` is a possible future enhancement.
 
 ### Mutation Pipeline Interaction
 
@@ -2297,29 +2270,48 @@ Wave annotations are part of the rendered manifest set. They flow through the mu
 - A `goTemplate` mutation could add wave annotations based on cluster metadata
 - A `jsonPatch` mutation could override a chart's default wave for a specific resource
 - A `strategicMergePatch` mutation could add wave annotations to resources that don't have them
+- The dedicated `syncWave` mutation is validated authoring for exactly this — it stamps the three `convoy.kumodo.io/sync-*` annotations onto matched resources
 
 This means waves are not a separate concept layered on top of the rendering pipeline — they're a property of rendered manifests, set by whatever combination of source content and mutations produced the final output. The sync engine reads them at the end, after all rendering is complete.
 
+## Release-within-Cluster Ordering (Axis B)
+
+Axis A (above) orders resources inside one Release. **Axis B** orders whole Releases that target the **same cluster**, so an infrastructure Release can gate an application Release without a fleet-level object. It is configured per Release under `spec.syncPolicy.waveStrategy`:
+
+```yaml
+spec:
+  syncPolicy:
+    waveStrategy:
+      wave: 1                              # this Release's cluster-wave (default 0)
+      strategy: waitForHealthy             # waitForApplied | waitForHealthy | waitForHealthyWithTimeout
+      timeout: 10m                         # only waitForHealthyWithTimeout; unset ⇒ wait indefinitely
+```
+
+Semantics mirror Axis A — the strategy is the bar a Release's **predecessors** must clear:
+
+- A Release at cluster-wave *N* holds its apply until every **existing** Release targeting the same cluster with a **lower** wave clears the bar: `waitForApplied` → the predecessor's `Applied` condition is `True`; `waitForHealthy*` → its `Healthy` condition is `True`.
+- Predecessors may live in **other namespaces** (a shared cluster is ordered cluster-wide). Same-wave Releases do not gate each other, so ordering is acyclic.
+- While holding, the Release reports `Applied: False` with reason `WaitingForClusterWave`. A bounded (`waitForHealthyWithTimeout` with an explicit `timeout`) wait that elapses fails with reason `ClusterWaveFailed`; the deadline is measured from the predecessors' apply time.
+- When a predecessor's `Applied`/`Healthy` flips, its higher-wave successors on the same cluster are re-reconciled promptly (rather than waiting for the next poll); the periodic reconcile is the fallback.
+
+Only Releases that already exist are considered — a wave cannot wait for a Release that has not been created.
+
 ### What's Not Addressed Here
 
-Three related concepts are deliberately out of scope for sync waves and will be designed separately:
-
-- **Pre-sync, post-sync, sync-fail hooks** — actions (typically Jobs) that run at specific points in the sync lifecycle. Helm's `pre-install`/`post-install` hooks map to the wave system as described above; the broader hook concept (with explicit hook resource definitions, hook success criteria, hook timeout) is a future enhancement.
-- **Cross-Release ordering** — fleet-level deployment dependencies. Belongs to the `ReleaseSet` design.
-- **Conditional waves** — running a wave only if a condition is met (e.g., "run migration wave only on first deploy, not on updates"). Future enhancement.
+- **Pre-sync, post-sync, sync-fail hooks** — actions (typically Jobs) at specific points in the sync lifecycle, configured via the `/lifecycle` subresource. Planned; not implemented. There is no Helm-hook (`helm.sh/hook`) translation.
+- **Fleet-level ordering across clusters** — deployment dependencies spanning many clusters. Belongs to a future `ReleaseSet`/fleet design; Axis B covers only Releases on one shared cluster.
+- **Conditional waves** — running a wave only if a condition is met (e.g., "run migration wave only on first deploy"). Future enhancement.
 
 ### Summary Table
 
-| Aspect                | Decision                                                                              |
-|-----------------------|---------------------------------------------------------------------------------------|
-| Ordering scope        | Within a single Release (resource-level)                                              |
-| Specification         | Annotation on individual manifests                                                    |
-| Native annotation     | `convoy.kumodo.io/sync-wave`                                                          |
-| Recognized aliases    | `argocd.argoproj.io/sync-wave` (compatibility)                                        |
-| Helm compatibility    | `helm.sh/hook` annotations recognized; `helm.sh/hook-weight` orders within hook phase |
-| Default wave          | `0`                                                                                   |
-| Within-wave behavior  | Parallel application                                                                  |
-| Between-wave behavior | Strategy-controlled: `waitForApplied`, `waitForHealthy`, `waitForHealthyWithTimeout`  |
-| Default strategy      | `waitForApplied`                                                                      |
-| Status                | Per-wave progress in `status.waves[]`                                                 |
-| Failure handling      | Wave failure fails the sync (no subsequent waves)                                     |
+| Aspect                    | Axis A — resources within a Release                                           | Axis B — Releases within a cluster                        |
+|---------------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------|
+| Specification             | Per-manifest `convoy.kumodo.io/sync-{wave,strategy,timeout}` annotations       | Per-Release `spec.syncPolicy.waveStrategy{wave,strategy,timeout}` |
+| Aliases                   | None (no ArgoCD / Helm-hook translation)                                       | —                                                         |
+| Default wave              | `0`                                                                            | `0`                                                       |
+| Within-group behavior     | Resources applied sequentially                                                 | Each Release reconciles independently                     |
+| Gating                    | A health-gated wave waits on the **immediately-preceding** wave                | A Release waits on **lower-wave** Releases on the cluster |
+| Strategies                | `waitForApplied` (default) / `waitForHealthy` / `waitForHealthyWithTimeout`    | same                                                      |
+| Timeout                   | `sync-timeout` annotation, default `30s`                                       | `waveStrategy.timeout`; unset ⇒ indefinite                |
+| Failure handling          | `waitForHealthyWithTimeout` elapsed → sync fails (`WaveFailed`)                | bounded wait elapsed → `ClusterWaveFailed`                |
+| Status                    | `status.waves[]`                                                               | `Applied` condition reason (`WaitingForClusterWave`)      |
