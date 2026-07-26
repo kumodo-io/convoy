@@ -142,11 +142,11 @@ The delivery path. Embedding the harness, it holds the fetch coordinator, a secr
 4. **Manual-sync gate** — in `syncPolicy.automatic: false` mode, apply only when a `/sync` is pending; otherwise observe (render, project `status.pin`, update status) without applying.
 5. **Apply** via Server-Side Apply (field manager `convoy`) through the cluster connection.
 6. **Prune** orphans — resources dropped since the last successful apply, tracked in the in-memory inventory; CRDs and Namespaces are protected unless opted in. Prune failure requeues and leaves the inventory unchanged (fails safe: under-prune, never over-delete).
-7. **Record status** — `status.lastAttempted`/`lastSuccessful`, the `Ready` condition and reason, `status.pin`, and `lastHandledSyncAt`.
+7. **Record status** — `status.lastAttempted`/`lastSuccessful`, the `Applied` condition and reason, `status.pin`, `status.waves`, and `lastHandledSyncAt`. (`InSync` and `Healthy` are written by the observer.)
 
 Deletion is handled via a finalizer honoring `Release.deletionPolicy.{keepWorkloads,blockOnClusterUnreachable}`. Transient failures retry with a per-Release backoff; `syncPolicy.interval` drives the next drift re-check via `EnqueueAfter`.
 
-_Status: implemented for `manifests` and `helm` (vendored deps) content. The mutation pipeline, S3 artifact/state storage, sync-wave ordering, lifecycle hooks, and health evaluation are planned._
+_Status: implemented for `manifests` and `helm` (vendored deps) content, including the mutation pipeline, sync-wave ordering (both axes), and health evaluation. S3 artifact/state storage and lifecycle hooks are planned._
 
 ### Target evolution *(planned)*
 
@@ -247,26 +247,29 @@ See [`docs/architecture/01-health-assessment.md`](docs/architecture/01-health-as
 
 ## Sync Waves
 
-_Status: planned. Wave ordering is not implemented — rendered objects are applied without ordering._
+_Status: implemented (both axes). See [Release design → Sync Waves](../design/api/core/release.md#sync-waves)._
 
-Resources within a Release can be ordered using wave annotations:
+Convoy orders on two axes.
+
+**Axis A — resources within a Release.** Rendered manifests are ordered by convoy-native annotations (no ArgoCD or Helm-hook translation):
 
 ```yaml
 metadata:
   annotations:
-    convoy.kumodo.io/sync-wave: "-10"   # apply early (e.g., CRDs)
-    # convoy.kumodo.io/sync-wave: "10"    # apply late (e.g., CRs of the above CRD)
+    convoy.kumodo.io/sync-wave: "-10"                # apply early (e.g., CRDs); default 0
+    convoy.kumodo.io/sync-strategy: "waitForHealthy" # readiness bar for the next wave
+    convoy.kumodo.io/sync-timeout: "5m"              # only for waitForHealthyWithTimeout (default 30s)
 ```
 
-Resources within the same wave apply in parallel. Between waves, the Release controller waits based on the configured transition strategy in `Release.spec.syncPolicy.waveStrategy`:
+A wave's resources apply sequentially. A wave carrying a health strategy holds the next wave until the **immediately-preceding** wave is healthy (not transitively all lower waves); health is assessed by the observer and persisted on the `ReleaseInventory`, which the controller rolls up.
 
-| Strategy                    | Transition condition                               |
-|-----------------------------|----------------------------------------------------|
-| `waitForApplied`            | All resources accepted by the API server (default) |
-| `waitForHealthy`            | All resources reach `Healthy` per health rules     |
-| `waitForHealthyWithTimeout` | `waitForHealthy` with a timeout fallback           |
+| Strategy                    | The following wave may start when …                                         |
+|-----------------------------|------------------------------------------------------------------------------|
+| `waitForApplied`            | Every resource in this wave is accepted by the API server (default)          |
+| `waitForHealthy`            | Every resource in this wave is `Healthy` per health rules (waits indefinitely)|
+| `waitForHealthyWithTimeout` | As above, but the rollout **fails** if the timeout elapses first             |
 
-ArgoCD's `argocd.argoproj.io/sync-wave` annotation is recognized for ecosystem compatibility. Helm `helm.sh/hook` annotations are translated into wave behavior automatically.
+**Axis B — Releases within a cluster.** `Release.spec.syncPolicy.waveStrategy{wave, strategy, timeout}` orders whole Releases on a shared cluster: a Release holds until lower-wave Releases on that cluster clear its bar (applied / healthy), then applies. Predecessors may be in other namespaces; a bounded wait failing sets `ClusterWaveFailed`.
 
 ---
 

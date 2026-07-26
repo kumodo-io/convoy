@@ -93,6 +93,13 @@ Each has a `/status` subresource reporting reachability.
 - **Sync policy**: automatic or **manual** mode, re-sync interval, failure
   backoff, and inventory-based **prune** of resources dropped from the render
   (CRDs/Namespaces protected by default).
+- **Sync waves** on two axes — resources within a Release (per-manifest
+  `convoy.kumodo.io/sync-{wave,strategy,timeout}` annotations) and Releases within
+  a cluster (`spec.syncPolicy.waveStrategy`) — with `waitForApplied` /
+  `waitForHealthy` / `waitForHealthyWithTimeout` health gating.
+- **Durable inventory** (`ReleaseInventory`) recording each Release's applied
+  resources + per-resource health; survives restarts so prune and wave gating are
+  correct after a bounce.
 - **Deletion policy** with finalizers (keep-workloads, block-on-unreachable;
   cascade vs. orphan Releases on Cluster delete).
 
@@ -133,8 +140,8 @@ Each has a `/status` subresource reporting reachability.
 
 Designed and/or scoped, not yet built:
 
-- **Sync waves & `/lifecycle` hooks** — ordered, health-gated resource rollout
-  within a Release; pre/post lifecycle hooks.
+- **`/lifecycle` hooks** — pre/post-sync (and render/delete) hooks run as Jobs/Pods
+  at configured phases. (Sync waves are implemented — see above.)
 - **`Fleet` + `ReleaseTemplate`** — fan-out that generates one `Release` per
   (template × cluster), with cluster-metadata templating, fleet-wide common
   mutations (with conditional `if`), and cross-cluster rollout strategies.
