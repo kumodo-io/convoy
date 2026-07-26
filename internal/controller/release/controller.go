@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,17 +72,23 @@ const (
 	statusFieldManager = "convoy-release"
 )
 
+// ReleasesForClusterFunc returns the Releases targeting a given cluster
+// (namespace/name), used to order Releases within a cluster (Axis B sync waves).
+// It is backed by the releaseByCluster informer index.
+type ReleasesForClusterFunc func(clusterNamespace, clusterName string) ([]*corev1alpha1.Release, error)
+
 // Controller reconciles Release objects: fetch source content → render → apply
 // to the target cluster → record status.
 type Controller struct {
 	*base.Controller
-	client        clientset.Interface
-	releaseLister corelisters.ReleaseLister
-	clusterLister corelisters.ClusterLister
-	coordinator   fetch.Coordinator
-	resolver      auth.SecretResolver
-	inventory     inventory.Store
-	deployer      Deployer
+	client             clientset.Interface
+	releaseLister      corelisters.ReleaseLister
+	clusterLister      corelisters.ClusterLister
+	coordinator        fetch.Coordinator
+	resolver           auth.SecretResolver
+	inventory          inventory.Store
+	deployer           Deployer
+	releasesForCluster ReleasesForClusterFunc
 	// failures tracks consecutive transient reconcile failures per Release, to
 	// drive per-Release retry backoff. In-memory; reset on a terminal outcome.
 	failures *failureCounts
@@ -114,8 +121,9 @@ func (f *failureCounts) reset(key string) {
 
 // NewController wires a Controller to a Release informer. It fetches source
 // content via the coordinator, resolves Helm value sources (ConfigMaps/Secrets)
-// via resolver, tracks applied resources in inventory (for pruning), and
-// resolves target clusters from clusterLister.
+// via resolver, tracks applied resources in inventory (for pruning), resolves
+// target clusters from clusterLister, and orders Releases within a cluster
+// (Axis B) via releasesForCluster (nil disables cluster-wave ordering).
 func NewController(
 	client clientset.Interface,
 	informer coreinformers.ReleaseInformer,
@@ -124,17 +132,19 @@ func NewController(
 	resolver auth.SecretResolver,
 	inv inventory.Store,
 	deployer Deployer,
+	releasesForCluster ReleasesForClusterFunc,
 ) *Controller {
 	c := &Controller{
-		client:        client,
-		releaseLister: informer.Lister(),
-		clusterLister: clusterLister,
-		coordinator:   coordinator,
-		resolver:      resolver,
-		inventory:     inv,
-		deployer:      deployer,
-		failures:      newFailureCounts(),
-		now:           metav1.Now,
+		client:             client,
+		releaseLister:      informer.Lister(),
+		clusterLister:      clusterLister,
+		coordinator:        coordinator,
+		resolver:           resolver,
+		inventory:          inv,
+		deployer:           deployer,
+		releasesForCluster: releasesForCluster,
+		failures:           newFailureCounts(),
+		now:                metav1.Now,
 	}
 	c.Controller = base.NewController("release", c.syncHandler,
 		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation))
@@ -579,6 +589,17 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		}, nil
 	}
 
+	// Axis B — Release-within-cluster ordering. Before applying anything, hold until
+	// the predecessor Releases on this cluster (lower spec.syncPolicy.waveStrategy.
+	// wave) clear this Release's bar (applied / healthy). A bounded
+	// (waitForHealthyWithTimeout) wait fails once its deadline elapses. This gates
+	// the whole Release; Axis A below then orders resources within it.
+	if hold, err := c.clusterWaveGate(rel, attempt, now); err != nil {
+		return reconcileOutcome{attempt: attempt}, err
+	} else if hold != nil {
+		return *hold, nil
+	}
+
 	// Apply in ascending sync-wave order. Each wave applies fully before the next
 	// begins. A wave with a health bar (waitForHealthy*) gates the *next* wave until
 	// every prior wave is healthy. Health is assessed by the observer, which records
@@ -944,6 +965,85 @@ func unionByID(base, applied []inventory.Ref) []inventory.Ref {
 		}
 	}
 	return out
+}
+
+// clusterWaveGate implements Axis B: it holds this Release until the predecessor
+// Releases on its target cluster (those with a lower spec.syncPolicy.waveStrategy.
+// wave) clear its bar. Returns (nil, nil) to proceed; a non-nil outcome to hold
+// (WaitingForClusterWave) or fail (ClusterWaveFailed, for a bounded wait that
+// timed out); a non-nil error for a transient lookup failure (requeue). The bar
+// is this Release's strategy — waitForApplied checks each predecessor's Applied
+// condition, waitForHealthy* checks Healthy. The bounded deadline is measured
+// from the predecessors' apply time (their Applied condition's transition time),
+// so no extra "waiting since" state is needed.
+func (c *Controller) clusterWaveGate(rel *corev1alpha1.Release, attempt corev1alpha1.ReleaseAttemptedRenderStatus, now metav1.Time) (*reconcileOutcome, error) {
+	if c.releasesForCluster == nil {
+		return nil, nil // cluster-wave ordering not wired (e.g. unit tests)
+	}
+	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
+	siblings, err := c.releasesForCluster(clusterNamespace, rel.Spec.ClusterRef.Name)
+	if err != nil {
+		return nil, fmt.Errorf("listing releases for cluster %s/%s: %w", clusterNamespace, rel.Spec.ClusterRef.Name, err)
+	}
+	preds := waves.ClusterPredecessors(rel, siblings)
+	if len(preds) == 0 {
+		return nil, nil // nothing ahead of us on this cluster
+	}
+
+	healthBar := waves.NeedsHealthBar(waves.ClusterStrategyOf(rel))
+	var unmet []string
+	var anchor metav1.Time
+	for _, p := range preds {
+		if a := conditionTransitionTime(p, conditionApplied); a.After(anchor.Time) {
+			anchor = a
+		}
+		if !predecessorClears(p, healthBar) {
+			unmet = append(unmet, p.Namespace+"/"+p.Name)
+		}
+	}
+	if len(unmet) == 0 {
+		return nil, nil // all predecessors cleared → proceed to apply
+	}
+	slices.Sort(unmet) // deterministic message
+
+	// Bounded wait (waitForHealthyWithTimeout + explicit timeout): give up once the
+	// deadline, measured from the predecessors' apply time, elapses.
+	if timeout, bounded := waves.ClusterWaveBound(rel); bounded && !anchor.IsZero() && now.Sub(anchor.Time) > timeout {
+		msg := fmt.Sprintf("cluster wave %d: predecessor release(s) %s not healthy within %s", waves.ClusterWaveOf(rel), strings.Join(unmet, ", "), timeout)
+		attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseFailed
+		attempt.Failure = &corev1alpha1.ReleaseAttemptedRenderFailureStatus{Stage: corev1alpha1.ReleaseRenderAttemptStageSyncing, Message: msg}
+		return &reconcileOutcome{reason: conditionReasonClusterWaveFailed, message: msg, attempt: attempt}, nil
+	}
+
+	// Hold: predecessors not yet ready. No apply, no prune, no lastSuccessful
+	// advance. Requeues on the poll interval; the fan-out handler re-enqueues this
+	// Release promptly when a predecessor's Applied/Healthy flips.
+	return &reconcileOutcome{
+		reason:  conditionReasonWaitingForClusterWave,
+		message: fmt.Sprintf("waiting for predecessor release(s) on cluster: %s", strings.Join(unmet, ", ")),
+		attempt: attempt,
+	}, nil
+}
+
+// predecessorClears reports whether a predecessor Release meets this Release's
+// cluster-wave bar: Healthy when healthBar is set (waitForHealthy*), else Applied.
+func predecessorClears(pred *corev1alpha1.Release, healthBar bool) bool {
+	if healthBar {
+		return conditionIsTrue(pred, conditionHealthy)
+	}
+	return conditionIsTrue(pred, conditionApplied)
+}
+
+func conditionIsTrue(rel *corev1alpha1.Release, condType string) bool {
+	c := apimeta.FindStatusCondition(rel.Status.Conditions, condType)
+	return c != nil && c.Status == metav1.ConditionTrue
+}
+
+func conditionTransitionTime(rel *corev1alpha1.Release, condType string) metav1.Time {
+	if c := apimeta.FindStatusCondition(rel.Status.Conditions, condType); c != nil {
+		return c.LastTransitionTime
+	}
+	return metav1.Time{}
 }
 
 // priorWavesHealthy reports whether every already-applied ref is Healthy per the

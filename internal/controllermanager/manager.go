@@ -186,7 +186,7 @@ func (o *Options) Run(ctx context.Context) error {
 	}
 	deployer := releasecontroller.NewDeployer(connector)
 	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister())
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, releasesForCluster)
 
 	factory.Start(ctx.Done())
 
