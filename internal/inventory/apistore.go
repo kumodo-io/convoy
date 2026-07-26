@@ -92,6 +92,34 @@ func (s *apiStore) Delete(ctx context.Context, namespace, name string) error {
 	return nil
 }
 
+// MembershipChanged reports whether the controller-owned membership of a
+// ReleaseInventory changed between two revisions — i.e. the set of entry
+// identities (group|kind|namespace|name) differs. It ignores the observer's
+// health-field updates on existing entries, so the observer's health loop can
+// watch the inventory for "a resource was applied" and wake on that, without
+// re-waking on its own health writes.
+func MembershipChanged(oldInv, newInv *corev1alpha1.ReleaseInventory) bool {
+	if len(oldInv.Inventory) != len(newInv.Inventory) {
+		return true
+	}
+	seen := make(map[string]struct{}, len(oldInv.Inventory))
+	for i := range oldInv.Inventory {
+		seen[itemIdentityID(oldInv.Inventory[i])] = struct{}{}
+	}
+	for i := range newInv.Inventory {
+		if _, ok := seen[itemIdentityID(newInv.Inventory[i])]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+// itemIdentityID is the version-independent identity key (group|kind|namespace|name)
+// of an inventory entry, matching Ref.ID().
+func itemIdentityID(it corev1alpha1.ResourceInventoryItem) string {
+	return it.Group + "|" + it.Kind + "|" + it.Namespace + "|" + it.Name
+}
+
 // refsFromItems projects the persisted inventory entries back to refs. The
 // observer-owned State is carried through so the controller can roll up per-wave
 // health for the sync-wave gate; the other health fields (firstUnhealthy,

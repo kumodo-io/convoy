@@ -24,8 +24,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -36,36 +37,40 @@ import (
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
 	extensionslisters "github.com/kumodo-io/convoy/api/generated/listers/extensions/v1alpha1"
-	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
-	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/health"
 	"github.com/kumodo-io/convoy/internal/healthresult"
-	"github.com/kumodo-io/convoy/internal/waves"
 )
 
 // HealthController runs the health-assessment loop, keyed on Release. It is the
 // observer's second loop, running alongside the drift Controller in the same
-// process and sharing the render + cluster-connection paths. It evaluates each
-// Release's managed objects against the health rule sets its selectors pick, and
-// records the Healthy condition + health summary.
+// process. It assesses the resources the release controller recorded on the
+// ReleaseInventory (the durable applied set) against the health rule sets the
+// Release's selectors pick, records per-resource health back on the
+// ReleaseInventory, publishes the Healthy condition + summary on the Release, and
+// — when a sync wave completes — requests a sync so the controller advances the
+// gate promptly instead of on its poll interval.
 type HealthController struct {
 	*base.Controller
 	client              clientset.Interface
 	releaseLister       corelisters.ReleaseLister
 	clusterLister       corelisters.ClusterLister
-	coordinator         fetch.Coordinator
-	resolver            auth.SecretResolver
 	connector           *clusterconn.Connector
 	globalRuleSetLister extensionslisters.GlobalHealthRuleSetLister
 	ruleSetLister       extensionslisters.HealthRuleSetLister
 	inventoryLister     corelisters.ReleaseInventoryLister
+	// progress tracks the consecutive not-yet-healthy assessment count per Release,
+	// to drive exponential backoff of re-checks while a rollout is progressing.
+	progress *backoffCounts
 	// now is injectable for tests.
 	now func() metav1.Time
 	// assessFn is a seam: it defaults to the real assessment and is stubbed in
 	// tests so syncHandler can be exercised without a live cluster.
-	assessFn func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error)
+	assessFn func(context.Context, *corev1alpha1.Release) (*assessment, error)
+	// syncFn requests a Release reconcile (POST /sync); a seam for tests. It is how
+	// the health loop tells the controller a wave became healthy.
+	syncFn func(context.Context, *corev1alpha1.Release) error
 }
 
 // NewHealthController wires the observer's health loop.
@@ -73,8 +78,6 @@ func NewHealthController(
 	client clientset.Interface,
 	informer coreinformers.ReleaseInformer,
 	clusterLister corelisters.ClusterLister,
-	coordinator fetch.Coordinator,
-	resolver auth.SecretResolver,
 	connector *clusterconn.Connector,
 	globalRuleSetLister extensionslisters.GlobalHealthRuleSetLister,
 	ruleSetLister extensionslisters.HealthRuleSetLister,
@@ -84,15 +87,15 @@ func NewHealthController(
 		client:              client,
 		releaseLister:       informer.Lister(),
 		clusterLister:       clusterLister,
-		coordinator:         coordinator,
-		resolver:            resolver,
 		connector:           connector,
 		globalRuleSetLister: globalRuleSetLister,
 		ruleSetLister:       ruleSetLister,
 		inventoryLister:     inventoryLister,
+		progress:            newBackoffCounts(),
 		now:                 metav1.Now,
 	}
 	c.assessFn = c.assess
+	c.syncFn = c.requestSync
 	c.Controller = base.NewController("health", c.syncHandler)
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
@@ -118,10 +121,9 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	}
 
 	// No assessment configured: report Healthy — everything applied, nothing to
-	// check. Per the "no applicable rules → healthy" rule, every applied wave is
-	// healthy too (nothing gates it); the controller treats a release without a
-	// health assessment as satisfying every wave's health bar, so gating still
-	// advances without the observer writing per-resource health.
+	// check. The controller treats a release without a health assessment as
+	// satisfying every wave's health bar, so gating still advances without the
+	// observer writing per-resource health or requesting a sync.
 	if rel.Spec.HealthAssessment == nil {
 		if err := c.writeHealth(ctx, rel, metav1.ConditionTrue, reasonNotConfigured,
 			"no health assessment configured", healthresult.Summary{}); err != nil {
@@ -131,11 +133,11 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 		return nil
 	}
 
-	result, recErr := c.assessFn(ctx, rel)
+	a, recErr := c.assessFn(ctx, rel)
 	if recErr != nil {
-		// Couldn't assess (source/cluster unreachable, invalid rules): report
-		// Healthy=Unknown and re-check later, preserving the persisted anchors. Not
-		// a controller error — best-effort, like the drift loop.
+		// Couldn't assess (cluster unreachable, invalid rules): report Healthy=Unknown
+		// and re-check later, preserving the persisted anchors. Not a controller error
+		// — best-effort, like the drift loop.
 		klog.V(4).InfoS("health undetermined", "release", key, "reason", recErr.Error())
 		if err := c.writeHealth(ctx, rel, metav1.ConditionUnknown, reasonUnknown, recErr.Error(),
 			toWireSummary(rel.Status.HealthSummary)); err != nil {
@@ -146,35 +148,93 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	}
 
 	// assess has already persisted per-resource health onto the ReleaseInventory
-	// (the controller rolls it up for the sync-wave gate). Here we only publish the
-	// aggregate Healthy condition + summary on the Release.
-	status, reason, message := conditionFor(result)
-	if err := c.writeHealth(ctx, rel, status, reason, message, result.Summarize()); err != nil {
+	// (the controller rolls it up for the sync-wave gate). Publish the aggregate
+	// Healthy condition + summary on the Release.
+	status, reason, message := conditionFor(a.result)
+	if err := c.writeHealth(ctx, rel, status, reason, message, a.result.Summarize()); err != nil {
 		return err
 	}
-	c.scheduleRecheck(key, rel)
+
+	// Advance the sync-wave gate the moment the frontier wave completes: request a
+	// sync so the controller applies the next wave without waiting for its poll
+	// interval. Edge-triggered (only on the transition to fully-healthy), so it does
+	// not re-fire on steady-state re-assessments. The controller's own periodic
+	// reconcile remains the safety net if this poke is ever missed.
+	if frontierWaveCompleted(a.entries, a.prior) {
+		if err := c.syncFn(ctx, rel); err != nil {
+			return fmt.Errorf("requesting sync on wave completion for %s: %w", key, err)
+		}
+		klog.V(4).InfoS("requested sync on wave completion", "release", key)
+	}
+
+	// Re-check cadence: while any resource is still Progressing/Unknown, retry with
+	// exponential backoff (bounded by the poll interval) so a resource becoming
+	// healthy is noticed within seconds rather than a full interval; once all are
+	// healthy, fall back to the normal interval.
+	c.scheduleHealthRecheck(key, rel, allHealthy(a.entries))
 	return nil
 }
 
-// appliedWaves returns the set of wave numbers the controller has marked applied
-// in status.waves. The observer assesses per-wave health only for applied waves;
-// an unapplied wave's objects aren't in the cluster yet, so its health is not
-// meaningful and is left unwritten.
-func appliedWaves(rel *corev1alpha1.Release) map[int64]bool {
-	out := map[int64]bool{}
-	for i := range rel.Status.Waves {
-		w := rel.Status.Waves[i]
-		if w.Applied != nil && *w.Applied {
-			out[w.Number] = true
-		}
-	}
-	return out
+// assessment is the outcome of one health pass: the aggregate result, the
+// freshly-assessed per-resource entries (with wave), and the prior per-resource
+// states (read from the ReleaseInventory before this pass) used to detect the
+// transition that completes a wave.
+type assessment struct {
+	result  *healthresult.Result
+	entries []healthEntry
+	prior   map[string]corev1alpha1.ResourceState
 }
 
-// assess renders the Release's desired objects, reads them live, evaluates each
-// against the applicable rules, persists per-resource health onto the
-// ReleaseInventory, and returns the aggregate result.
-func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release) (*healthresult.Result, error) {
+// allHealthy reports whether every assessed entry is Healthy. An empty set is
+// healthy (nothing is unhealthy).
+func allHealthy(entries []healthEntry) bool {
+	for _, e := range entries {
+		if e.state != corev1alpha1.ResourceStateHealthy {
+			return false
+		}
+	}
+	return true
+}
+
+// frontierWaveCompleted reports whether the highest wave present in the inventory
+// (the gate frontier) is now fully Healthy AND at least one of its resources
+// transitioned to Healthy this pass (per prior). This is the edge trigger to
+// advance the gate: the frontier wave just completed, so the controller should
+// apply the next wave, if any. Because it keys off the highest *inventoried* wave,
+// it stops firing for a wave once the controller applies a later one (that later
+// wave becomes the frontier). prior maps identity → previous state.
+func frontierWaveCompleted(entries []healthEntry, prior map[string]corev1alpha1.ResourceState) bool {
+	if len(entries) == 0 {
+		return false
+	}
+	maxWave := entries[0].wave
+	for _, e := range entries {
+		if e.wave > maxWave {
+			maxWave = e.wave
+		}
+	}
+	transitioned := false
+	for _, e := range entries {
+		if e.wave != maxWave {
+			continue
+		}
+		if e.state != corev1alpha1.ResourceStateHealthy {
+			return false // frontier not fully healthy yet
+		}
+		if old := prior[e.ref.identityID()]; old != corev1alpha1.ResourceStateHealthy {
+			transitioned = true
+		}
+	}
+	return transitioned
+}
+
+// assess evaluates the resources recorded on the Release's ReleaseInventory (the
+// durable applied set) against the applicable rules, reading each live from the
+// target cluster, persists per-resource health back onto the ReleaseInventory,
+// and returns the aggregate result plus the entries and prior states needed to
+// detect a completed wave. It does NOT render — the inventory is the source of
+// truth for what to assess, so a resource is assessed as soon as it is applied.
+func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release) (*assessment, error) {
 	rules, err := c.collectRules(rel)
 	if err != nil {
 		return nil, err
@@ -182,6 +242,17 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 	evaluator, err := health.NewEvaluator(rules)
 	if err != nil {
 		return nil, fmt.Errorf("compiling health rules: %w", err)
+	}
+
+	inv, err := c.inventoryLister.ReleaseInventories(rel.Namespace).Get(rel.Name)
+	if apierrors.IsNotFound(err) {
+		return &assessment{result: &healthresult.Result{}}, nil // nothing applied yet
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading release inventory: %w", err)
+	}
+	if len(inv.Inventory) == 0 {
+		return &assessment{result: &healthresult.Result{}}, nil
 	}
 
 	clusterNamespace := rel.Spec.ClusterRef.Namespace
@@ -196,11 +267,6 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 		return nil, fmt.Errorf("target cluster %s is not reachable", cluster.Name)
 	}
 
-	objects, err := renderReleaseObjects(ctx, c.coordinator, c.resolver, rel, cluster)
-	if err != nil {
-		return nil, err
-	}
-
 	dyn, mapper, err := c.connector.DynamicClients(ctx, cluster)
 	if err != nil {
 		return nil, err
@@ -213,17 +279,17 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 	}
 	now := c.now().Time
 
-	// Prior progress anchors come from the durable ReleaseInventory (they survive a
-	// restart, so an in-flight progress clock isn't reset). appliedWaves bounds
-	// which resources get their health persisted: only resources in an applied wave
-	// are in the cluster and co-owned with the controller's inventory entry.
-	anchors := c.inventoryAnchors(rel)
-	applied := appliedWaves(rel)
+	// Snapshot prior per-resource state + progress anchors from the durable
+	// inventory BEFORE writing this pass: prior states detect the wave-completing
+	// transition, and anchors (firstUnhealthy) survive a restart so an in-flight
+	// progress clock isn't reset.
+	prior, anchors := priorAndAnchors(inv)
 
-	result := &healthresult.Result{Objects: make([]healthresult.ObjectHealth, 0, len(objects))}
-	var writes []healthEntry
-	for _, obj := range objects {
-		entry := c.assessObject(ctx, evaluator, dyn, mapper, obj, anchors, deadline, now)
+	result := &healthresult.Result{Objects: make([]healthresult.ObjectHealth, 0, len(inv.Inventory))}
+	entries := make([]healthEntry, 0, len(inv.Inventory))
+	for i := range inv.Inventory {
+		entry := c.assessItem(ctx, evaluator, dyn, mapper, inv.Inventory[i], anchors, deadline, now)
+		entries = append(entries, entry)
 		result.Objects = append(result.Objects, healthresult.ObjectHealth{
 			Group:     entry.ref.gvk.Group,
 			Version:   entry.ref.gvk.Version,
@@ -233,55 +299,51 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 			State:     healthresult.State(entry.state),
 			Message:   entry.message,
 		})
-		if applied[int64(waves.WaveOf(obj))] {
-			writes = append(writes, entry)
-		}
 	}
-	if err := c.writeInventoryHealth(ctx, rel, writes); err != nil {
+	if err := c.writeInventoryHealth(ctx, rel, entries); err != nil {
 		return nil, err
 	}
-	return result, nil
+	return &assessment{result: result, entries: entries, prior: prior}, nil
 }
 
-// assessObject evaluates a single managed object's health. The returned ref
-// carries the resolved namespace (defaulted for namespaced kinds) so its identity
-// matches the controller's ReleaseInventory entry for co-ownership.
-func (c *HealthController) assessObject(ctx context.Context, evaluator *health.Evaluator, dyn dynamic.Interface, mapper meta.RESTMapper, obj *unstructured.Unstructured, anchors map[string]time.Time, deadline *time.Duration, now time.Time) healthEntry {
-	gvk := obj.GroupVersionKind()
+// assessItem evaluates a single inventoried resource's health, reading it live
+// from the target cluster. Identity (GVK + namespace) comes straight from the
+// inventory entry (the controller stored the resolved namespace), so the entry
+// this produces lines up with the controller-owned ReleaseInventory entry.
+func (c *HealthController) assessItem(ctx context.Context, evaluator *health.Evaluator, dyn dynamic.Interface, mapper meta.RESTMapper, it corev1alpha1.ResourceInventoryItem, anchors map[string]time.Time, deadline *time.Duration, now time.Time) healthEntry {
+	gvk := schema.GroupVersionKind{Group: it.Group, Version: it.Version, Kind: it.Kind}
+	ref := objectRef{gvk: gvk, namespace: it.Namespace, name: it.Name}
+	wave := 0
+	if it.Wave != nil {
+		wave = *it.Wave
+	}
 
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
-		ref := objectRef{gvk: gvk, namespace: obj.GetNamespace(), name: obj.GetName()}
-		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("cannot resolve resource for %s: %v", gvk, err)}
+		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("cannot resolve resource for %s: %v", gvk, err)}
 	}
 	resource := mapping.Resource.Resource
 
-	namespace := obj.GetNamespace()
-	if mapping.Scope.Name() == meta.RESTScopeNameNamespace && namespace == "" {
-		namespace = metav1.NamespaceDefault
-	}
-	ref := objectRef{gvk: gvk, namespace: namespace, name: obj.GetName()}
-
 	// No applicable rule → Healthy without a live read.
-	if !evaluator.HasRules(obj.GetAPIVersion(), []string{resource}) {
-		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateHealthy, message: "no applicable health rules"}
+	if !evaluator.HasRules(gvk.GroupVersion().String(), []string{resource}) {
+		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateHealthy, message: "no applicable health rules"}
 	}
 
-	live, err := resourceClient(dyn, mapping, namespace).Get(ctx, obj.GetName(), metav1.GetOptions{})
+	live, err := resourceClient(dyn, mapping, it.Namespace).Get(ctx, it.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: "resource not found in cluster"}
+		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: "resource not found in cluster"}
 	}
 	if err != nil {
-		return healthEntry{ref: ref, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("reading live resource: %v", err)}
+		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("reading live resource: %v", err)}
 	}
 
-	assessment := evaluator.Assess(live, []string{resource})
-	state, anchor := health.DeriveState(assessment.Passed, assessment.Err, anchors[ref.identityID()], deadline, now)
-	message := assessment.Message
-	if assessment.Err != nil {
-		message = assessment.Err.Error()
+	assessed := evaluator.Assess(live, []string{resource})
+	state, anchor := health.DeriveState(assessed.Passed, assessed.Err, anchors[ref.identityID()], deadline, now)
+	message := assessed.Message
+	if assessed.Err != nil {
+		message = assessed.Err.Error()
 	}
-	return healthEntry{ref: ref, state: state, message: message, firstUnhealthy: anchor}
+	return healthEntry{ref: ref, wave: wave, state: state, message: message, firstUnhealthy: anchor}
 }
 
 // collectRules gathers the RuleSpecs of the rule sets the Release's selectors
@@ -318,11 +380,75 @@ func (c *HealthController) collectRules(rel *corev1alpha1.Release) ([]extensions
 }
 
 // scheduleRecheck schedules the next health re-check at the Release's sync
-// interval, if set; otherwise the informer resync drives re-checks.
+// interval, if set; otherwise the informer resync drives re-checks. Used on the
+// steady paths (no assessment, undetermined) where progress backoff doesn't apply.
 func (c *HealthController) scheduleRecheck(key string, rel *corev1alpha1.Release) {
 	if d := rel.Spec.SyncPolicy.Interval.Duration; d > 0 {
 		c.EnqueueAfter(key, d)
 	}
+}
+
+// progress backoff tuning: start at 2s and double each not-yet-healthy pass,
+// capped at the poll interval (or defaultProgressBackoffMax when none is set),
+// with jitter to avoid synchronized re-assessments across many Releases.
+const (
+	progressBackoffBase       = 2 * time.Second
+	defaultProgressBackoffMax = 30 * time.Second
+	progressBackoffJitter     = 0.2
+)
+
+// scheduleHealthRecheck schedules the next health pass. Once every resource is
+// healthy it resets the backoff and re-checks at the normal poll interval;
+// otherwise it re-checks sooner, with exponential backoff bounded by the interval,
+// so a resource turning healthy (e.g. a Deployment finishing its rollout) is
+// noticed within seconds instead of a whole interval — which is what lets the
+// sync-wave gate advance promptly.
+func (c *HealthController) scheduleHealthRecheck(key string, rel *corev1alpha1.Release, healthy bool) {
+	interval := rel.Spec.SyncPolicy.Interval.Duration
+	if healthy {
+		c.progress.reset(key)
+		if interval > 0 {
+			c.EnqueueAfter(key, interval)
+		}
+		return
+	}
+	capDelay := interval
+	if capDelay <= 0 {
+		capDelay = defaultProgressBackoffMax
+	}
+	n := c.progress.inc(key)
+	c.EnqueueAfter(key, wait.Jitter(progressBackoff(n, capDelay), progressBackoffJitter))
+}
+
+// progressBackoff returns the base (un-jittered) re-check delay for the attempt-th
+// consecutive not-yet-healthy pass (1-based): progressBackoffBase * 2^(attempt-1),
+// capped at capDelay.
+func progressBackoff(attempt int, capDelay time.Duration) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	if attempt > 30 { // guard the shift; long past the cap anyway
+		return capDelay
+	}
+	d := progressBackoffBase << uint(attempt-1)
+	if d <= 0 || d > capDelay {
+		return capDelay
+	}
+	return d
+}
+
+// requestSync triggers a reconcile of the Release by POSTing its /sync
+// subresource — the same channel the drift loop, CLI, and users use. Here it tells
+// the release controller a sync wave became healthy so it advances the gate.
+func (c *HealthController) requestSync(ctx context.Context, rel *corev1alpha1.Release) error {
+	return c.client.CoreV1alpha1().RESTClient().
+		Post().
+		Namespace(rel.Namespace).
+		Resource("releases").
+		Name(rel.Name).
+		SubResource("sync").
+		Do(ctx).
+		Error()
 }
 
 // HealthResult returns the last assessed per-object health for a Release, for the

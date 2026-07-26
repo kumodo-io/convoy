@@ -28,31 +28,32 @@ import (
 	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
+// priorAndAnchors snapshots, from a ReleaseInventory, each entry's prior health
+// State and its first-unhealthy anchor, both keyed by version-independent
+// identity. prior detects the transition that completes a wave; anchors are the
+// progress-deadline clocks (Progressing vs. Degraded) — read from the persisted
+// object so an in-flight clock survives an observer restart instead of resetting.
+func priorAndAnchors(inv *corev1alpha1.ReleaseInventory) (map[string]corev1alpha1.ResourceState, map[string]time.Time) {
+	prior := make(map[string]corev1alpha1.ResourceState, len(inv.Inventory))
+	anchors := make(map[string]time.Time, len(inv.Inventory))
+	for i := range inv.Inventory {
+		it := inv.Inventory[i]
+		id := itemIdentityID(it)
+		if it.State != nil {
+			prior[id] = *it.State
+		}
+		if it.FirstUnhealthy != nil && !it.FirstUnhealthy.IsZero() {
+			anchors[id] = it.FirstUnhealthy.Time
+		}
+	}
+	return prior, anchors
+}
+
 // inventoryHealthFieldManager is the Server-Side Apply field manager the health
 // loop owns on a ReleaseInventory. It writes only each entry's health fields
 // (state/firstUnhealthy/message); the release controller owns identity/wave/uid
 // under its own manager, so the two co-own each entry without clobbering.
 const inventoryHealthFieldManager = "convoy-health-inventory"
-
-// inventoryAnchors reads the durable ReleaseInventory and returns each entry's
-// first-unhealthy anchor keyed by version-independent identity. The anchors are
-// the progress-deadline clocks (Progressing vs. Degraded); reading them from the
-// persisted object means an in-flight clock survives an observer restart instead
-// of resetting. A missing inventory yields an empty map (fresh clocks).
-func (c *HealthController) inventoryAnchors(rel *corev1alpha1.Release) map[string]time.Time {
-	inv, err := c.inventoryLister.ReleaseInventories(rel.Namespace).Get(rel.Name)
-	if err != nil {
-		return map[string]time.Time{}
-	}
-	anchors := make(map[string]time.Time, len(inv.Inventory))
-	for i := range inv.Inventory {
-		it := inv.Inventory[i]
-		if it.FirstUnhealthy != nil && !it.FirstUnhealthy.IsZero() {
-			anchors[itemIdentityID(it)] = it.FirstUnhealthy.Time
-		}
-	}
-	return anchors
-}
 
 // writeInventoryHealth persists the assessed per-resource health onto the
 // ReleaseInventory via Server-Side Apply under the health field manager. Each

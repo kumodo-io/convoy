@@ -48,7 +48,7 @@ func newTestHealthController(t *testing.T, rel *corev1alpha1.Release) (*HealthCo
 	if err := relInformer.Informer().GetStore().Add(rel); err != nil {
 		t.Fatalf("seeding release store: %v", err)
 	}
-	c := NewHealthController(client, relInformer, clInformer.Lister(), nil, nil, nil,
+	c := NewHealthController(client, relInformer, clInformer.Lister(), nil,
 		globalRuleSets.Lister(), ruleSets.Lister(), inventoryInformer.Lister())
 	fixed := metav1.NewTime(time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
@@ -92,10 +92,10 @@ func TestHealth_NoConfigReportsHealthy(t *testing.T) {
 
 func TestHealth_AllHealthy(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
-	c.assessFn = func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error) {
-		return &healthresult.Result{Objects: []healthresult.ObjectHealth{
-			{Kind: deploymentKind, Name: "app", State: healthresult.StateHealthy},
-		}}, nil
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
+		return stubAssessment(
+			healthresult.ObjectHealth{Kind: deploymentKind, Name: "app", State: healthresult.StateHealthy},
+		), nil
 	}
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
@@ -107,15 +107,22 @@ func TestHealth_AllHealthy(t *testing.T) {
 	}
 }
 
+// stubAssessment builds an *assessment carrying only the aggregate result, for
+// the condition-focused tests that stub assessFn (no entries → no wave-complete
+// sync, no backoff change).
+func stubAssessment(objs ...healthresult.ObjectHealth) *assessment {
+	return &assessment{result: &healthresult.Result{Objects: objs}}
+}
+
 func TestHealth_DegradedWorstStateWins(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
-	c.assessFn = func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error) {
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
 		// A mix: progressing + degraded + unknown → Degraded is the worst.
-		return &healthresult.Result{Objects: []healthresult.ObjectHealth{
-			{Kind: deploymentKind, Name: "a", State: healthresult.StateProgressing},
-			{Kind: deploymentKind, Name: "b", State: healthresult.StateDegraded},
-			{Kind: deploymentKind, Name: "c", State: healthresult.StateUnknown},
-		}}, nil
+		return stubAssessment(
+			healthresult.ObjectHealth{Kind: deploymentKind, Name: "a", State: healthresult.StateProgressing},
+			healthresult.ObjectHealth{Kind: deploymentKind, Name: "b", State: healthresult.StateDegraded},
+			healthresult.ObjectHealth{Kind: deploymentKind, Name: "c", State: healthresult.StateUnknown},
+		), nil
 	}
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
@@ -129,7 +136,7 @@ func TestHealth_DegradedWorstStateWins(t *testing.T) {
 
 func TestHealth_AssessErrorIsUnknown(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
-	c.assessFn = func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error) {
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
 		return nil, errors.New("cluster unreachable")
 	}
 
@@ -143,13 +150,55 @@ func TestHealth_AssessErrorIsUnknown(t *testing.T) {
 	}
 }
 
+func TestHealth_RequestsSyncOnWaveComplete(t *testing.T) {
+	c, _ := newTestHealthController(t, withAssessment(testRelease(true)))
+	progressing := corev1alpha1.ResourceStateProgressing
+	// Frontier wave (1) is now fully healthy, having transitioned from progressing.
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
+		return &assessment{
+			result:  &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: "svc", State: healthresult.StateHealthy}}},
+			entries: []healthEntry{waveEntry("gate", 0, corev1alpha1.ResourceStateHealthy), waveEntry("svc", 1, corev1alpha1.ResourceStateHealthy)},
+			prior:   map[string]corev1alpha1.ResourceState{waveEntry("gate", 0, "").ref.identityID(): corev1alpha1.ResourceStateHealthy, waveEntry("svc", 1, "").ref.identityID(): progressing},
+		}, nil
+	}
+	var synced int
+	c.syncFn = func(context.Context, *corev1alpha1.Release) error { synced++; return nil }
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if synced != 1 {
+		t.Errorf("requestSync called %d times, want 1 (frontier wave completed)", synced)
+	}
+}
+
+func TestHealth_NoSyncWhileFrontierProgressing(t *testing.T) {
+	c, _ := newTestHealthController(t, withAssessment(testRelease(true)))
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
+		return &assessment{
+			result:  &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: "svc", State: healthresult.StateProgressing}}},
+			entries: []healthEntry{waveEntry("gate", 0, corev1alpha1.ResourceStateHealthy), waveEntry("svc", 1, corev1alpha1.ResourceStateProgressing)},
+			prior:   map[string]corev1alpha1.ResourceState{},
+		}, nil
+	}
+	var synced int
+	c.syncFn = func(context.Context, *corev1alpha1.Release) error { synced++; return nil }
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if synced != 0 {
+		t.Errorf("requestSync called %d times, want 0 (frontier still progressing)", synced)
+	}
+}
+
 func TestHealth_ProgressingWhenNoWorse(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
-	c.assessFn = func(context.Context, *corev1alpha1.Release) (*healthresult.Result, error) {
-		return &healthresult.Result{Objects: []healthresult.ObjectHealth{
-			{Kind: deploymentKind, Name: "a", State: healthresult.StateHealthy},
-			{Kind: deploymentKind, Name: "b", State: healthresult.StateProgressing},
-		}}, nil
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
+		return stubAssessment(
+			healthresult.ObjectHealth{Kind: deploymentKind, Name: "a", State: healthresult.StateHealthy},
+			healthresult.ObjectHealth{Kind: deploymentKind, Name: "b", State: healthresult.StateProgressing},
+		), nil
 	}
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {

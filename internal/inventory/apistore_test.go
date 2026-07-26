@@ -110,3 +110,38 @@ func TestAPIStore_DeleteMissingIsNoError(t *testing.T) {
 		t.Errorf("Delete of missing inventory = %v, want nil", err)
 	}
 }
+
+func TestMembershipChanged(t *testing.T) {
+	healthy := corev1alpha1.ResourceStateHealthy
+	degraded := corev1alpha1.ResourceStateDegraded
+	dep := corev1alpha1.ResourceInventoryItem{Group: groupApps, Kind: kindDeployment, Namespace: "ns", Name: nameAPI}
+	cfg := corev1alpha1.ResourceInventoryItem{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: "cfg"}
+
+	inv := func(items ...corev1alpha1.ResourceInventoryItem) *corev1alpha1.ReleaseInventory {
+		return &corev1alpha1.ReleaseInventory{Inventory: items}
+	}
+
+	tests := []struct {
+		name     string
+		old, new *corev1alpha1.ReleaseInventory
+		want     bool
+	}{
+		{"identical", inv(dep), inv(dep), false},
+		{"item added", inv(dep), inv(dep, cfg), true},
+		{"item removed", inv(dep, cfg), inv(dep), true},
+		{"identity swapped, same count", inv(dep), inv(cfg), true},
+		{
+			name: "health-only change is not membership",
+			old:  inv(func() corev1alpha1.ResourceInventoryItem { d := dep; d.State = &degraded; return d }()),
+			new:  inv(func() corev1alpha1.ResourceInventoryItem { d := dep; d.State = &healthy; return d }()),
+			want: false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := MembershipChanged(tc.old, tc.new); got != tc.want {
+				t.Errorf("MembershipChanged = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

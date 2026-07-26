@@ -28,6 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -40,8 +41,20 @@ import (
 	helmregistrycontroller "github.com/kumodo-io/convoy/internal/controller/helmregistry"
 	ociregistrycontroller "github.com/kumodo-io/convoy/internal/controller/ociregistry"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/inventory"
 	"github.com/kumodo-io/convoy/internal/observer"
 )
+
+// releaseInventoryKey extracts the namespace/name cache key from a
+// ReleaseInventory informer object (handling the tombstone on delete). The key
+// equals the Release key, since the two share a name and namespace.
+func releaseInventoryKey(obj any) (string, bool) {
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		return "", false
+	}
+	return key, true
+}
 
 // Options configures the observer.
 type Options struct {
@@ -126,11 +139,35 @@ func (o *Options) Run(ctx context.Context) error {
 	})
 
 	obs := observer.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector)
-	healthCtl := observer.NewHealthController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector,
+	healthCtl := observer.NewHealthController(client, releaseInformer, clusterInformer.Lister(), connector,
 		globalRuleSetInformer.Lister(), ruleSetInformer.Lister(), releaseInventoryInformer.Lister())
 	// The drift loop hosts the HTTP server; wire the /health lookup to the health
-	// loop's store so /preview, /diff, and /health are served from one endpoint.
+	// loop so /preview, /diff, and /health are served from one endpoint.
 	obs.SetHealthResults(healthCtl.HealthResult)
+
+	// Wake the health loop when a Release's ReleaseInventory membership changes — a
+	// resource was just applied (or pruned). The RI is named after its Release and
+	// shares its namespace, so its cache key is the Release key. This is what lets
+	// the observer assess a resource the moment it appears, rather than on the poll
+	// interval. Health-only updates (the observer's own writes) are filtered out.
+	if _, err := releaseInventoryInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj any) {
+			if key, ok := releaseInventoryKey(obj); ok {
+				healthCtl.EnqueueAfter(key, 0)
+			}
+		},
+		UpdateFunc: func(oldObj, newObj any) {
+			oldInv, ok1 := oldObj.(*corev1alpha1.ReleaseInventory)
+			newInv, ok2 := newObj.(*corev1alpha1.ReleaseInventory)
+			if ok1 && ok2 && inventory.MembershipChanged(oldInv, newInv) {
+				if key, ok := releaseInventoryKey(newObj); ok {
+					healthCtl.EnqueueAfter(key, 0)
+				}
+			}
+		},
+	}); err != nil {
+		return err
+	}
 
 	factory.Start(ctx.Done())
 	// The observer only *watches* Releases, so base.Controller.Run waits for the

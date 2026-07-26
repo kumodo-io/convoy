@@ -346,6 +346,41 @@ func TestSyncHandler_AppliesInWaveOrder(t *testing.T) {
 	}
 }
 
+// TestSyncHandler_StatusWriteOnlyAssertsAppliedCondition guards the SSA
+// field-manager boundary: the controller owns only the Applied condition, so its
+// status write must not carry the observer-owned InSync / Healthy conditions —
+// even though computeStatus deep-copies them from the current status. Asserting
+// them under the controller's field manager (with Force) would clobber the
+// observer's values.
+func TestSyncHandler_StatusWriteOnlyAssertsAppliedCondition(t *testing.T) {
+	const condInSync, condHealthy = "InSync", "Healthy"
+	rel := manifestsRelease()
+	// Seed observer-owned conditions as if the observer had already written them.
+	rel.Status.Conditions = []metav1.Condition{
+		{Type: conditionApplied, Status: metav1.ConditionFalse, Reason: "Stale"},
+		{Type: condInSync, Status: metav1.ConditionTrue, Reason: condInSync},
+		{Type: condHealthy, Status: metav1.ConditionTrue, Reason: condHealthy},
+	}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatal("no status write recorded")
+	}
+	if apimeta.FindStatusCondition(got.Status.Conditions, conditionApplied) == nil {
+		t.Error("status write missing the Applied condition (controller must assert it)")
+	}
+	for _, notOwned := range []string{condInSync, condHealthy} {
+		if c := apimeta.FindStatusCondition(got.Status.Conditions, notOwned); c != nil {
+			t.Errorf("status write asserts %s condition = %+v, want absent (observer-owned)", notOwned, c)
+		}
+	}
+}
+
 // gatedCoordinator renders wave 0 (default, "gate") and wave 1 ("after") where
 // wave 1 carries the given strategy/timeout annotation block (indented 4 spaces
 // per line). Wave 1's strategy makes it wait for prior waves (wave 0) to be

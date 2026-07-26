@@ -32,6 +32,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -249,9 +250,15 @@ func pendingSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
 func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseStatus) (*corev1alpha1ac.ReleaseApplyConfiguration, error) {
 	statusAC := corev1alpha1ac.ReleaseStatus().WithObservedGeneration(s.ObservedGeneration)
 
-	for i := range s.Conditions {
+	// Assert ONLY the Applied condition — the sole condition this controller owns.
+	// computeStatus deep-copies the whole status (carrying the observer-owned InSync
+	// and Healthy conditions), so writing every condition here would make this field
+	// manager co-own them and, with Force, clobber the observer's values back to a
+	// stale copy on each reconcile. conditions is a listType=map keyed by type, so
+	// asserting just Applied leaves the others untouched.
+	if applied := apimeta.FindStatusCondition(s.Conditions, conditionApplied); applied != nil {
 		condAC := &metav1ac.ConditionApplyConfiguration{}
-		if err := jsonRoundTrip(s.Conditions[i], condAC); err != nil {
+		if err := jsonRoundTrip(*applied, condAC); err != nil {
 			return nil, err
 		}
 		statusAC.WithConditions(condAC)

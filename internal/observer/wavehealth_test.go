@@ -18,31 +18,118 @@ package observer
 
 import (
 	"testing"
+	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
-func relWithWaves(waves ...corev1alpha1.ResourceWaveStatus) *corev1alpha1.Release {
-	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
-		Status:     corev1alpha1.ReleaseStatus{Waves: waves},
+// waveEntry builds a healthEntry at a given wave/state with an identity derived
+// from its name (group apps, kind Deployment) for prior-state lookups.
+func waveEntry(name string, wave int, state corev1alpha1.ResourceState) healthEntry {
+	return healthEntry{
+		ref:   objectRef{gvk: schema.GroupVersionKind{Group: "apps", Kind: deploymentKind}, namespace: "ns", name: name},
+		wave:  wave,
+		state: state,
 	}
 }
 
-func appliedWave(n int64) corev1alpha1.ResourceWaveStatus {
-	return corev1alpha1.ResourceWaveStatus{Number: n, Applied: new(true)}
+func TestAllHealthy(t *testing.T) {
+	healthy := []healthEntry{
+		waveEntry("a", 0, corev1alpha1.ResourceStateHealthy),
+		waveEntry("b", 1, corev1alpha1.ResourceStateHealthy),
+	}
+	if !allHealthy(healthy) {
+		t.Error("allHealthy = false, want true (all healthy)")
+	}
+	if !allHealthy(nil) {
+		t.Error("allHealthy(nil) = false, want true (nothing unhealthy)")
+	}
+	mixed := []healthEntry{
+		waveEntry("a", 0, corev1alpha1.ResourceStateHealthy),
+		waveEntry("c", 1, corev1alpha1.ResourceStateProgressing),
+	}
+	if allHealthy(mixed) {
+		t.Error("allHealthy = true, want false (one progressing)")
+	}
 }
 
-// TestAppliedWaves covers which waves the observer treats as applied — only
-// those the controller marked applied in status.waves. The observer persists
-// per-resource health onto the ReleaseInventory only for these waves (an
-// unapplied wave's objects aren't in the cluster yet).
-func TestAppliedWaves(t *testing.T) {
-	rel := relWithWaves(appliedWave(0), appliedWave(1), corev1alpha1.ResourceWaveStatus{Number: 2}) // wave 2 not applied
-	got := appliedWaves(rel)
-	if len(got) != 2 || !got[0] || !got[1] || got[2] {
-		t.Errorf("appliedWaves = %v, want {0,1}", got)
+func TestFrontierWaveCompleted(t *testing.T) {
+	id := func(name string) string {
+		return (objectRef{gvk: schema.GroupVersionKind{Group: "apps", Kind: deploymentKind}, namespace: "ns", name: name}).identityID()
+	}
+	healthy := corev1alpha1.ResourceStateHealthy
+	progressing := corev1alpha1.ResourceStateProgressing
+
+	tests := []struct {
+		name    string
+		entries []healthEntry
+		prior   map[string]corev1alpha1.ResourceState
+		want    bool
+	}{
+		{
+			name:    "frontier just became healthy",
+			entries: []healthEntry{waveEntry("gate", 0, healthy), waveEntry("svc", 1, healthy)},
+			prior:   map[string]corev1alpha1.ResourceState{id("gate"): healthy, id("svc"): progressing},
+			want:    true, // svc (wave 1, the frontier) transitioned to healthy
+		},
+		{
+			name:    "frontier not fully healthy",
+			entries: []healthEntry{waveEntry("gate", 0, healthy), waveEntry("svc", 1, progressing)},
+			prior:   map[string]corev1alpha1.ResourceState{id("gate"): healthy},
+			want:    false,
+		},
+		{
+			name:    "frontier steady healthy, no transition",
+			entries: []healthEntry{waveEntry("svc", 1, healthy)},
+			prior:   map[string]corev1alpha1.ResourceState{id("svc"): healthy},
+			want:    false, // already healthy last pass — don't re-fire
+		},
+		{
+			name:    "newly-appeared already-healthy frontier",
+			entries: []healthEntry{waveEntry("gate", 0, healthy), waveEntry("svc", 1, healthy)},
+			prior:   map[string]corev1alpha1.ResourceState{id("gate"): healthy}, // svc absent before
+			want:    true,
+		},
+		{
+			name:    "lower wave healthy but frontier progressing",
+			entries: []healthEntry{waveEntry("gate", 0, healthy), waveEntry("svc", 1, progressing)},
+			prior:   map[string]corev1alpha1.ResourceState{id("gate"): progressing},
+			want:    false, // gate transitioned but it's not the frontier
+		},
+		{
+			name:    "empty",
+			entries: nil,
+			want:    false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := frontierWaveCompleted(tc.entries, tc.prior); got != tc.want {
+				t.Errorf("frontierWaveCompleted = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestProgressBackoff(t *testing.T) {
+	const cap = 30 * time.Second
+	tests := []struct {
+		attempt int
+		want    time.Duration
+	}{
+		{0, 2 * time.Second},  // clamped to 1
+		{1, 2 * time.Second},  // base
+		{2, 4 * time.Second},  // ×2
+		{3, 8 * time.Second},  // ×2
+		{4, 16 * time.Second}, // ×2
+		{5, cap},              // 32s → capped at 30s
+		{99, cap},             // far past cap (shift guard)
+	}
+	for _, tc := range tests {
+		if got := progressBackoff(tc.attempt, cap); got != tc.want {
+			t.Errorf("progressBackoff(%d) = %s, want %s", tc.attempt, got, tc.want)
+		}
 	}
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package observer
 
 import (
+	"sync"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -41,10 +42,38 @@ func (r objectRef) identityID() string {
 
 // healthEntry is a single managed object's assessed health. FirstUnhealthy
 // anchors the progress deadline (when the object first failed in the current
-// unhealthy streak); zero when Healthy.
+// unhealthy streak); zero when Healthy. wave is the sync wave the resource was
+// applied in (from its ReleaseInventory entry), used to roll up per-wave
+// completion for the gate-advance sync request.
 type healthEntry struct {
 	ref            objectRef
+	wave           int
 	state          corev1alpha1.ResourceState
 	message        string
 	firstUnhealthy time.Time
+}
+
+// backoffCounts is a concurrency-safe per-key consecutive-attempt counter, used
+// to drive the health loop's progress backoff (fast re-checks while a rollout is
+// still progressing). In-memory; a lost count on restart only resets the cadence.
+type backoffCounts struct {
+	mu sync.Mutex
+	n  map[string]int
+}
+
+func newBackoffCounts() *backoffCounts { return &backoffCounts{n: make(map[string]int)} }
+
+// inc increments and returns the attempt count for key.
+func (b *backoffCounts) inc(key string) int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.n[key]++
+	return b.n[key]
+}
+
+// reset clears the attempt count for key (called once a Release is all-healthy).
+func (b *backoffCounts) reset(key string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.n, key)
 }

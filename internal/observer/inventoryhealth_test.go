@@ -113,24 +113,32 @@ func TestWriteInventoryHealth(t *testing.T) {
 	}
 }
 
-// TestInventoryAnchors reads back the persisted progress anchors keyed by
-// version-independent identity, so an in-flight progress clock survives a restart.
-func TestInventoryAnchors(t *testing.T) {
+// TestPriorAndAnchors reads back the persisted prior states + progress anchors
+// keyed by version-independent identity, so an in-flight progress clock survives
+// a restart (and the wave-complete transition can be detected).
+func TestPriorAndAnchors(t *testing.T) {
 	first := metav1.NewTime(time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC))
-	c, _ := inventoryHealthController(t, &corev1alpha1.ReleaseInventory{
+	degraded := corev1alpha1.ResourceStateDegraded
+	inv := &corev1alpha1.ReleaseInventory{
 		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
 		Inventory: []corev1alpha1.ResourceInventoryItem{
-			{Group: groupApps, Kind: deploymentKind, Namespace: "ns", Name: depName, FirstUnhealthy: &first},
-			{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: "cfg"}, // no anchor
+			{Group: groupApps, Kind: deploymentKind, Namespace: "ns", Name: depName, State: &degraded, FirstUnhealthy: &first},
+			{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: "cfg"}, // no state, no anchor
 		},
-	})
+	}
 
-	anchors := c.inventoryAnchors(&corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"}})
+	prior, anchors := priorAndAnchors(inv)
 	if got, ok := anchors["apps|Deployment|ns|api"]; !ok || !got.Equal(first.Time) {
 		t.Errorf("api anchor = %v ok=%v, want %v", got, ok, first.Time)
 	}
+	if prior["apps|Deployment|ns|api"] != degraded {
+		t.Errorf("api prior state = %v, want Degraded", prior["apps|Deployment|ns|api"])
+	}
 	if _, ok := anchors["|ConfigMap|ns|cfg"]; ok {
 		t.Errorf("cfg has an anchor, want none (never unhealthy)")
+	}
+	if _, ok := prior["|ConfigMap|ns|cfg"]; ok {
+		t.Errorf("cfg has a prior state, want none (unassessed)")
 	}
 }
 
