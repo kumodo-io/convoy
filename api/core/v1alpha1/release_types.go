@@ -1058,31 +1058,38 @@ type ResourceWaveStatus struct {
 
 type LifecycleStatus struct {
 	// PreRender are the pre-render hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PreRender []LifecycleHookStatus `json:"preRender,omitempty"`
 
 	// PostRender are the post-render hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PostRender []LifecycleHookStatus `json:"postRender,omitempty"`
 
 	// PreSync are the pre-sync hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PreSync []LifecycleHookStatus `json:"preSync,omitempty"`
 
 	// SyncFailed are the sync-failed hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	SyncFailed []LifecycleHookStatus `json:"syncFailed,omitempty"`
 
 	// PostSync are the post-sync hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PostSync []LifecycleHookStatus `json:"postSync,omitempty"`
 
 	// PreDelete are the pre-delete hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PreDelete []LifecycleHookStatus `json:"preDelete,omitempty"`
 
 	// PostDelete are the post-delete hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PostDelete []LifecycleHookStatus `json:"postDelete,omitempty"`
 }
 
