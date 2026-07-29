@@ -88,6 +88,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseInventory{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseInventory(ref),
 		v1alpha1.ReleaseInventoryList{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseInventoryList(ref),
 		v1alpha1.ReleaseLifecycle{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
+		v1alpha1.ReleaseLifecycleHookItem{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseLifecycleHookItem(ref),
 		v1alpha1.ReleaseList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ReleaseList(ref),
 		v1alpha1.ReleaseMutation{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
 		v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
@@ -2723,11 +2724,33 @@ func schema_convoy_api_core_v1alpha1_ReleaseInventory(ref common.ReferenceCallba
 							},
 						},
 					},
+					"hooks": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+									"phase",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref(v1alpha1.ReleaseLifecycleHookItem{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ResourceInventoryItem{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
+			v1alpha1.ReleaseLifecycleHookItem{}.OpenAPIModelName(), v1alpha1.ResourceInventoryItem{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2924,6 +2947,126 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 		},
 		Dependencies: []string{
 			v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_ReleaseLifecycleHookItem(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseLifecycleHookItem defines the inventoried lifecycle hook.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the lifecycle hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase is the lifecycle hook phase.\n\nPossible enum values:\n - `\"PostDelete\"` is the phase of a lifecycle hook that runs after the delete.\n - `\"PostRender\"` is the phase of a lifecycle hook that runs after the render.\n - `\"PostSync\"` is the phase of a lifecycle hook that runs after the sync.\n - `\"PreDelete\"` is the phase of a lifecycle hook that runs before the delete.\n - `\"PreRender\"` is the phase of a lifecycle hook that runs before the render.\n - `\"PreSync\"` is the phase of a lifecycle hook that runs before the sync.\n - `\"SyncFailed\"` is the phase of a lifecycle hook that runs when the sync fails.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"PostDelete", "PostRender", "PostSync", "PreDelete", "PreRender", "PreSync", "SyncFailed"},
+						},
+					},
+					"renderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderRef is the hash of the release render. This is used as a gate for decision whether to re-run hook.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"weight": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Weight is the weight of the hook.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timeout is the timeout for the hook.",
+							Ref:         ref(metav1.Duration{}.OpenAPIModelName()),
+						},
+					},
+					"group": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Group reflects the API group of the lifecycle hook workload.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Version reflects the API version of the lifecycle hook workload.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind reflects the kind of the lifecycle hook workload.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"workloadnamespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WorkloadNamespace reflects the namespace of the ilifecycle hook workload if any.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"workloadname": {
+						SchemaProps: spec.SchemaProps{
+							Description: "WorkloadName reflects the name of the lifecycle hook workload.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"createdAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CreatedAt is the timestamp when the lifecycle hook workload was created.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
+					"finishedAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FinishedAt is the timestamp when the lifecycle hook workload finished the job.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Description: "State is the lifecycle hook state.\n\nPossible enum values:\n - `\"Failed\"` is the state of a lifecycle hook that has failed.\n - `\"Running\"` is the state of a lifecycle hook that is running.\n - `\"Skipped\"` is the state of a lifecycle hook that has been skipped.\n - `\"Succeeded\"` is the state of a lifecycle hook that has succeeded.\n - `\"TimedOut\"` is the state of a lifecycle hook that has timed out.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Failed", "Running", "Skipped", "Succeeded", "TimedOut"},
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Message is the human-readable message containing the failure reason, if any.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "phase", "renderRef", "weight", "group", "kind", "workloadname"},
+			},
+		},
+		Dependencies: []string{
+			metav1.Duration{}.OpenAPIModelName(), metav1.Time{}.OpenAPIModelName()},
 	}
 }
 

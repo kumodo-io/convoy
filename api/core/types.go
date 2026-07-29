@@ -653,6 +653,23 @@ type ResourceInventoryItem struct {
 	Message        string
 }
 
+type ReleaseLifecycleHookItem struct {
+	Name              string
+	Phase             LifecycleHookPhase
+	RenderRef         string
+	Weight            int32
+	Timeout           *metav1.Duration
+	Group             string
+	Version           string
+	Kind              string
+	WorkloadNamespace string
+	WorkloadName      string
+	CreatedAt         *metav1.Time
+	FinishedAt        *metav1.Time
+	State             *LifecycleHookState
+	Message           string
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -661,6 +678,7 @@ type ReleaseInventory struct {
 	metav1.ObjectMeta
 
 	Inventory []ResourceInventoryItem
+	Hooks     []ReleaseLifecycleHookItem
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

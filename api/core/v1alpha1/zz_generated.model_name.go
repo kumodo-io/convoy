@@ -192,6 +192,11 @@ func (in ReleaseLifecycle) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseLifecycleHookItem) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseLifecycleHookItem"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseList) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseList"
 }

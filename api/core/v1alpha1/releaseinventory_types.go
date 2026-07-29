@@ -58,6 +58,52 @@ type ResourceInventoryItem struct {
 	Message string `json:"message,omitempty"`
 }
 
+// ReleaseLifecycleHookItem defines the inventoried lifecycle hook.
+type ReleaseLifecycleHookItem struct {
+	// Name is the name of the lifecycle hook.
+	Name string `json:"name"`
+
+	// Phase is the lifecycle hook phase.
+	Phase LifecycleHookPhase `json:"phase"`
+
+	// RenderRef is the hash of the release render. This is used
+	// as a gate for decision whether to re-run hook.
+	RenderRef string `json:"renderRef"`
+
+	// Weight is the weight of the hook.
+	Weight int32 `json:"weight"`
+
+	// Timeout is the timeout for the hook.
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// Group reflects the API group of the lifecycle hook workload.
+	Group string `json:"group"`
+
+	// Version reflects the API version of the lifecycle hook workload.
+	Version string `json:"version,omitempty"`
+
+	// Kind reflects the kind of the lifecycle hook workload.
+	Kind string `json:"kind"`
+
+	// WorkloadNamespace reflects the namespace of the ilifecycle hook workload if any.
+	WorkloadNamespace string `json:"workloadnamespace,omitempty"`
+
+	// WorkloadName reflects the name of the lifecycle hook workload.
+	WorkloadName string `json:"workloadname"`
+
+	// CreatedAt is the timestamp when the lifecycle hook workload was created.
+	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
+
+	// FinishedAt is the timestamp when the lifecycle hook workload finished the job.
+	FinishedAt *metav1.Time `json:"finishedAt,omitempty"`
+
+	// State is the lifecycle hook state.
+	State *LifecycleHookState `json:"state,omitempty"`
+
+	// Message is the human-readable message containing the failure reason, if any.
+	Message string `json:"message,omitempty"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:prerelease-lifecycle-gen:introduced=1.0
@@ -73,6 +119,11 @@ type ReleaseInventory struct {
 	// +listMapKey=namespace
 	// +listMapKey=name
 	Inventory []ResourceInventoryItem `json:"inventory,omitempty"`
+
+	// +listType=map
+	// +listMapKey=name
+	// +listMapKey=phase
+	Hooks []ReleaseLifecycleHookItem `json:"hooks,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

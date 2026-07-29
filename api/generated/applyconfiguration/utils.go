@@ -132,6 +132,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseInventoryApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseLifecycle"):
 		return &applyconfigurationcorev1alpha1.ReleaseLifecycleApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseLifecycleHookItem"):
+		return &applyconfigurationcorev1alpha1.ReleaseLifecycleHookItemApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutation"):
 		return &applyconfigurationcorev1alpha1.ReleaseMutationApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseMutationFromSpec"):

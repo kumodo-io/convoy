@@ -29,7 +29,8 @@ import (
 type ReleaseInventoryApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Inventory                        []ResourceInventoryItemApplyConfiguration `json:"inventory,omitempty"`
+	Inventory                        []ResourceInventoryItemApplyConfiguration    `json:"inventory,omitempty"`
+	Hooks                            []ReleaseLifecycleHookItemApplyConfiguration `json:"hooks,omitempty"`
 }
 
 // ReleaseInventory constructs a declarative configuration of the ReleaseInventory type for use with
@@ -212,6 +213,19 @@ func (b *ReleaseInventoryApplyConfiguration) WithInventory(values ...*ResourceIn
 			panic("nil value passed to WithInventory")
 		}
 		b.Inventory = append(b.Inventory, *values[i])
+	}
+	return b
+}
+
+// WithHooks adds the given value to the Hooks field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Hooks field.
+func (b *ReleaseInventoryApplyConfiguration) WithHooks(values ...*ReleaseLifecycleHookItemApplyConfiguration) *ReleaseInventoryApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithHooks")
+		}
+		b.Hooks = append(b.Hooks, *values[i])
 	}
 	return b
 }
