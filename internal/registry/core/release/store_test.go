@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -385,5 +386,56 @@ func TestMutationsSubresource(t *testing.T) {
 	invalid := []core.ReleaseMutation{{Type: core.MutationTypeJsonPatch, Target: core.ReleaseMutationTarget{Kind: "Deployment"}}}
 	if _, err := setMutations(invalid); !apierrors.IsInvalid(err) {
 		t.Fatalf("expected Invalid for a jsonPatch with no patches, got %v", err)
+	}
+}
+
+// TestLifecycleSubresource verifies /lifecycle replaces the hooks, stamps the
+// reconcile annotation, and rejects invalid hooks.
+func TestLifecycleSubresource(t *testing.T) {
+	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("releases"))
+	defer server.Terminate(t)
+	storage, err := releasestorage.NewREST(scheme, restOptions, "")
+	if err != nil {
+		t.Fatalf("NewREST: %v", err)
+	}
+
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	if _, err := storage.Release.Create(ctx, validNewRelease(metav1.NamespaceDefault), rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {
+		t.Fatalf("creating release: %v", err)
+	}
+
+	setLifecycle := func(lc *core.ReleaseLifecycle) (*core.Release, error) {
+		obj, err := storage.Lifecycle.Get(ctx, "foo", &metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		rel := obj.(*core.Release).DeepCopy()
+		rel.Lifecycle = lc
+		updated, _, err := storage.Lifecycle.Update(ctx, "foo", rest.DefaultUpdatedObjectInfo(rel),
+			rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return updated.(*core.Release), nil
+	}
+
+	valid := &core.ReleaseLifecycle{
+		PreSync: []core.LifecycleHookSpec{{Name: "migrate", Type: core.LifecycleHookTypeJob, JobTemplate: &batchv1.JobTemplateSpec{}}},
+	}
+	rel, err := setLifecycle(valid)
+	if err != nil {
+		t.Fatalf("setting lifecycle: %v", err)
+	}
+	if rel.Lifecycle == nil || len(rel.Lifecycle.PreSync) != 1 || rel.Lifecycle.PreSync[0].Name != "migrate" {
+		t.Errorf("lifecycle = %+v, want one preSync hook 'migrate'", rel.Lifecycle)
+	}
+	if _, ok := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]; !ok {
+		t.Errorf("expected %s annotation stamped by /lifecycle", corev1alpha1.SyncRequestedAtAnnotation)
+	}
+
+	// Invalid hook (Job type with no jobTemplate) is rejected.
+	invalid := &core.ReleaseLifecycle{PreSync: []core.LifecycleHookSpec{{Name: "bad", Type: core.LifecycleHookTypeJob}}}
+	if _, err := setLifecycle(invalid); !apierrors.IsInvalid(err) {
+		t.Fatalf("expected Invalid for a Job hook with no jobTemplate, got %v", err)
 	}
 }

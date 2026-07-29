@@ -272,6 +272,51 @@ func (MutationsStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Se
 	}
 }
 
+// LifecycleStrategy implements the behavior for the Release /lifecycle
+// subresource: only the top-level Lifecycle field is mutable. It is separately
+// addressable so lifecycle-hook edits can be RBAC-scoped independently of the rest
+// of the Release. A lifecycle change doesn't bump generation, so the strategy
+// stamps the reconcile-request annotation to wake the controller.
+type LifecycleStrategy struct {
+	Strategy
+}
+
+// NewLifecycleStrategy returns the strategy for the /lifecycle subresource.
+func NewLifecycleStrategy(strategy Strategy) LifecycleStrategy {
+	return LifecycleStrategy{strategy}
+}
+
+// PrepareForUpdate preserves everything except Lifecycle and stamps the
+// reconcile-request annotation.
+func (LifecycleStrategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
+	newRelease := obj.(*core.Release)
+	oldRelease := old.(*core.Release)
+	newRelease.Spec = oldRelease.Spec
+	newRelease.Status = oldRelease.Status
+	newRelease.Pin = oldRelease.Pin
+	newRelease.Mutations = oldRelease.Mutations
+	newRelease.Generation = oldRelease.Generation
+
+	metav1.SetMetaDataAnnotation(&newRelease.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
+}
+
+// ValidateUpdate validates the lifecycle hooks.
+func (LifecycleStrategy) ValidateUpdate(_ context.Context, obj, _ runtime.Object) field.ErrorList {
+	return core.ValidateReleaseLifecycle(obj.(*core.Release))
+}
+
+// GetResetFields declares that the lifecycle endpoint owns only lifecycle.
+func (LifecycleStrategy) GetResetFields() map[fieldpath.APIVersion]*fieldpath.Set {
+	return map[fieldpath.APIVersion]*fieldpath.Set{
+		v1alpha1Version: fieldpath.NewSet(
+			fieldpath.MakePathOrDie("spec"),
+			fieldpath.MakePathOrDie("status"),
+			fieldpath.MakePathOrDie("pin"),
+			fieldpath.MakePathOrDie("mutations"),
+		),
+	}
+}
+
 // GetAttrs returns the labels and fields of a Release for filtering/indexing.
 func GetAttrs(obj runtime.Object) (labels.Set, fields.Set, error) {
 	release, ok := obj.(*core.Release)

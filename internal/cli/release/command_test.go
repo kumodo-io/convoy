@@ -54,6 +54,8 @@ type fakeClient struct {
 	healthPayload  []byte
 	healthErr      error
 	setMutations   []corev1alpha1.ReleaseMutation
+	setLifecycle   *corev1alpha1.ReleaseLifecycle
+	setLifecycleOK bool
 }
 
 func (f *fakeClient) GetRelease(_ context.Context, _, _ string) (*corev1alpha1.Release, error) {
@@ -114,6 +116,14 @@ func (f *fakeClient) SetMutations(_ context.Context, _, _ string, mutations []co
 	f.setMutations = mutations
 	r := f.rel.DeepCopy()
 	r.Mutations = mutations
+	return r, nil
+}
+
+func (f *fakeClient) SetLifecycle(_ context.Context, _, _ string, lifecycle *corev1alpha1.ReleaseLifecycle) (*corev1alpha1.Release, error) {
+	f.setLifecycle = lifecycle
+	f.setLifecycleOK = true
+	r := f.rel.DeepCopy()
+	r.Lifecycle = lifecycle
 	return r, nil
 }
 
@@ -404,5 +414,55 @@ func TestRunMutationsWrite_Add(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "2 total") {
 		t.Errorf("output = %q, want it to report 2 total", out.String())
+	}
+}
+
+func TestReadLifecycle_MutualExclusion(t *testing.T) {
+	if _, err := readLifecycle("f.yaml", "inline", nil); err == nil {
+		t.Error("readLifecycle allowed both --file and --from-string, want error")
+	}
+}
+
+func TestReadLifecycle_NoInput(t *testing.T) {
+	if _, err := readLifecycle("", "", nil); err == nil {
+		t.Error("readLifecycle allowed no input, want error")
+	}
+}
+
+func TestReadLifecycle_FromString(t *testing.T) {
+	lc, err := readLifecycle("", "preSync:\n  - name: migrate\n    type: Job\n", nil)
+	if err != nil {
+		t.Fatalf("readLifecycle: %v", err)
+	}
+	if len(lc.PreSync) != 1 || lc.PreSync[0].Name != "migrate" || lc.PreSync[0].Type != corev1alpha1.LifecycleHookTypeJob {
+		t.Errorf("parsed = %+v, want one preSync Job named migrate", lc.PreSync)
+	}
+}
+
+func TestRunLifecycleGet_Empty(t *testing.T) {
+	f := &fakeClient{rel: releaseWithRender("sha256:cur")} // no lifecycle
+	var out bytes.Buffer
+	if err := runLifecycleGet(context.Background(), &out, f, "ns", "r1"); err != nil {
+		t.Fatalf("runLifecycleGet: %v", err)
+	}
+	if !strings.Contains(out.String(), "no lifecycle hooks") {
+		t.Errorf("output = %q, want 'no lifecycle hooks'", out.String())
+	}
+}
+
+func TestRunLifecycleSet(t *testing.T) {
+	f := &fakeClient{rel: releaseWithRender("sha256:cur")}
+	lc := &corev1alpha1.ReleaseLifecycle{
+		PreSync: []corev1alpha1.LifecycleHookSpec{{Name: "migrate", Type: corev1alpha1.LifecycleHookTypeJob}},
+	}
+	var out bytes.Buffer
+	if err := runLifecycleSet(context.Background(), &out, f, "ns", "r1", lc); err != nil {
+		t.Fatalf("runLifecycleSet: %v", err)
+	}
+	if !f.setLifecycleOK || f.setLifecycle == nil || len(f.setLifecycle.PreSync) != 1 {
+		t.Errorf("SetLifecycle sent %+v, want one preSync hook", f.setLifecycle)
+	}
+	if !strings.Contains(out.String(), "set lifecycle hooks on ns/r1") {
+		t.Errorf("output = %q, want confirmation", out.String())
 	}
 }

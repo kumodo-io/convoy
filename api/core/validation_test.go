@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -225,5 +227,74 @@ func TestValidateReleaseMutations_CrossNamespaceFromRejected(t *testing.T) {
 	errs := ValidateReleaseMutations(rel)
 	if !hasForbiddenOn(errs, "from.namespace") {
 		t.Errorf("cross-namespace mutation From not rejected: %v", errs)
+	}
+}
+
+func jobHook(name string) LifecycleHookSpec {
+	return LifecycleHookSpec{Name: name, Type: LifecycleHookTypeJob, JobTemplate: &batchv1.JobTemplateSpec{}}
+}
+
+func TestValidateReleaseLifecycle_Valid(t *testing.T) {
+	rel := validRelease()
+	rel.Lifecycle = &ReleaseLifecycle{
+		PreSync:  []LifecycleHookSpec{jobHook("migrate"), {Name: "warm", Type: LifecycleHookTypePod, PodTemplate: &corev1.PodTemplateSpec{}}},
+		PostSync: []LifecycleHookSpec{jobHook("smoke-test")},
+	}
+	if errs := ValidateReleaseLifecycle(rel); len(errs) != 0 {
+		t.Errorf("valid lifecycle rejected: %v", errs)
+	}
+}
+
+func TestValidateReleaseLifecycle_NilOK(t *testing.T) {
+	if errs := ValidateReleaseLifecycle(validRelease()); len(errs) != 0 {
+		t.Errorf("nil lifecycle rejected: %v", errs)
+	}
+}
+
+func TestValidateReleaseLifecycle_DuplicateNameInPhase(t *testing.T) {
+	rel := validRelease()
+	rel.Lifecycle = &ReleaseLifecycle{PreSync: []LifecycleHookSpec{jobHook("dup"), jobHook("dup")}}
+	errs := ValidateReleaseLifecycle(rel)
+	found := false
+	for _, e := range errs {
+		if e.Type == field.ErrorTypeDuplicate && strings.HasSuffix(e.Field, "preSync[1].name") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("duplicate hook name in a phase not rejected: %v", errs)
+	}
+}
+
+func TestValidateReleaseLifecycle_SameNameDifferentPhasesOK(t *testing.T) {
+	rel := validRelease()
+	rel.Lifecycle = &ReleaseLifecycle{
+		PreSync:  []LifecycleHookSpec{jobHook("check")},
+		PostSync: []LifecycleHookSpec{jobHook("check")}, // uniqueness is per-phase
+	}
+	if errs := ValidateReleaseLifecycle(rel); len(errs) != 0 {
+		t.Errorf("same name across phases rejected: %v", errs)
+	}
+}
+
+func TestValidateReleaseLifecycle_TypeTemplateMismatch(t *testing.T) {
+	// Job type but a podTemplate is set (and no jobTemplate).
+	rel := validRelease()
+	rel.Lifecycle = &ReleaseLifecycle{
+		PreSync: []LifecycleHookSpec{{Name: "bad", Type: LifecycleHookTypeJob, PodTemplate: &corev1.PodTemplateSpec{}}},
+	}
+	if errs := ValidateReleaseLifecycle(rel); len(errs) == 0 {
+		t.Error("Job hook with podTemplate (no jobTemplate) not rejected")
+	}
+}
+
+func TestValidateReleaseLifecycle_UnknownEnums(t *testing.T) {
+	rel := validRelease()
+	h := jobHook("h")
+	h.OnFailure = "Nope"
+	h.Cleanup = "Whenever"
+	rel.Lifecycle = &ReleaseLifecycle{PreSync: []LifecycleHookSpec{h}}
+	if errs := ValidateReleaseLifecycle(rel); len(errs) < 2 {
+		t.Errorf("unknown onFailure/cleanup not both rejected: %v", errs)
 	}
 }
