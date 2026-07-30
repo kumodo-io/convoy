@@ -19,6 +19,7 @@ package inventory
 import (
 	"context"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -141,6 +142,74 @@ func TestMembershipChanged(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := MembershipChanged(tc.old, tc.new); got != tc.want {
 				t.Errorf("MembershipChanged = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHooksArmChanged(t *testing.T) {
+	created := metav1.NewTime(time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC))
+	later := metav1.NewTime(created.Add(time.Minute))
+	running := corev1alpha1.LifecycleHookStateRunning
+	succeeded := corev1alpha1.LifecycleHookStateSucceeded
+
+	hook := func(mut func(*corev1alpha1.ReleaseLifecycleHookItem)) corev1alpha1.ReleaseLifecycleHookItem {
+		h := corev1alpha1.ReleaseLifecycleHookItem{
+			Name: "migrate", Phase: corev1alpha1.LifecycleHookPhasePreSync,
+			WorkloadName: "migrate-1", CreatedAt: &created, RenderRef: "sha256:a",
+		}
+		if mut != nil {
+			mut(&h)
+		}
+		return h
+	}
+	inv := func(hs ...corev1alpha1.ReleaseLifecycleHookItem) *corev1alpha1.ReleaseInventory {
+		return &corev1alpha1.ReleaseInventory{Hooks: hs}
+	}
+
+	base := hook(nil)
+	tests := []struct {
+		name     string
+		old, new *corev1alpha1.ReleaseInventory
+		want     bool
+	}{
+		{"identical", inv(base), inv(base), false},
+		{"hook added", inv(), inv(base), true},
+		{
+			name: "re-armed: workloadName changed",
+			old:  inv(base),
+			new:  inv(hook(func(h *corev1alpha1.ReleaseLifecycleHookItem) { h.WorkloadName = "migrate-2" })),
+			want: true,
+		},
+		{
+			name: "re-armed: createdAt bumped",
+			old:  inv(base),
+			new:  inv(hook(func(h *corev1alpha1.ReleaseLifecycleHookItem) { h.CreatedAt = &later })),
+			want: true,
+		},
+		{
+			name: "re-armed: renderRef changed (same workloadName+createdAt)",
+			old:  inv(base),
+			new:  inv(hook(func(h *corev1alpha1.ReleaseLifecycleHookItem) { h.RenderRef = "sha256:b" })),
+			want: true,
+		},
+		{
+			name: "observer status write is not arming",
+			old:  inv(hook(func(h *corev1alpha1.ReleaseLifecycleHookItem) { h.State = &running })),
+			new:  inv(hook(func(h *corev1alpha1.ReleaseLifecycleHookItem) { h.State = &succeeded; h.FinishedAt = &later })),
+			want: false,
+		},
+		{
+			name: "pure deletion does not wake",
+			old:  inv(base, hook(func(h *corev1alpha1.ReleaseLifecycleHookItem) { h.Name = "seed" })),
+			new:  inv(base),
+			want: false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := HooksArmChanged(tc.old, tc.new); got != tc.want {
+				t.Errorf("HooksArmChanged = %v, want %v", got, tc.want)
 			}
 		})
 	}

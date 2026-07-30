@@ -59,7 +59,7 @@ func healthCondition(actions []clienttesting.Action) *metav1.Condition {
 	var found *metav1.Condition
 	for _, a := range actions {
 		p, ok := a.(clienttesting.PatchAction)
-		if !ok || !a.Matches("patch", "releases") || a.GetSubresource() != "status" || p.GetPatchType() != types.ApplyPatchType {
+		if !ok || !a.Matches("patch", "releases") || a.GetSubresource() != statusFieldName || p.GetPatchType() != types.ApplyPatchType {
 			continue
 		}
 		rel := &corev1alpha1.Release{}

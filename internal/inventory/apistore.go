@@ -120,6 +120,46 @@ func itemIdentityID(it corev1alpha1.ResourceInventoryItem) string {
 	return it.Group + "|" + it.Kind + "|" + it.Namespace + "|" + it.Name
 }
 
+// HooksArmChanged reports whether the controller (re-)armed any lifecycle hook
+// between two ReleaseInventory revisions — i.e. a hook entry was added, or an
+// existing entry's arming (workloadName, createdAt, or renderRef) changed for a
+// new run. It ignores the observer's own state/finishedAt/message writes, so the
+// observer wakes on "a hook was armed" without re-waking on its own status writes
+// — the hook analog of MembershipChanged.
+//
+// A pure deletion does NOT wake: only new hooks are checked against the old set,
+// so a removed entry (nothing left to poll) is silent; the observer's existing
+// backoff tick reconciles any hook that vanished mid-run.
+func HooksArmChanged(oldInv, newInv *corev1alpha1.ReleaseInventory) bool {
+	old := make(map[string]string, len(oldInv.Hooks))
+	for i := range oldInv.Hooks {
+		old[hookKey(oldInv.Hooks[i])] = hookArmToken(oldInv.Hooks[i])
+	}
+	for i := range newInv.Hooks {
+		tok, ok := old[hookKey(newInv.Hooks[i])]
+		if !ok || tok != hookArmToken(newInv.Hooks[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+// hookKey is the composite identity of a hook entry (phase, name).
+func hookKey(h corev1alpha1.ReleaseLifecycleHookItem) string {
+	return string(h.Phase) + "|" + h.Name
+}
+
+// hookArmToken captures the controller-owned arming state of a hook: its workload
+// name, creation time, and render. A change to any means a fresh run the observer
+// must (re)poll.
+func hookArmToken(h corev1alpha1.ReleaseLifecycleHookItem) string {
+	created := ""
+	if h.CreatedAt != nil {
+		created = h.CreatedAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return h.WorkloadName + "@" + created + "@" + h.RenderRef
+}
+
 // refsFromItems projects the persisted inventory entries back to refs. The
 // observer-owned State is carried through so the controller can roll up per-wave
 // health for the sync-wave gate; the other health fields (firstUnhealthy,
