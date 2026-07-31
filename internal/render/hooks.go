@@ -34,7 +34,7 @@ import (
 // CEL expression consume this map.
 func HookContext(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) map[string]any {
 	clusterMeta, self := contextValues(rel, cluster)
-	return map[string]any{"cluster": clusterMeta, "release": self}
+	return map[string]any{ctxKeyCluster: clusterMeta, ctxKeyRelease: self}
 }
 
 // EvalHookWhen evaluates a hook's `when` CEL guard against the hook context. An
@@ -46,8 +46,8 @@ func EvalHookWhen(when string, ctx map[string]any) (bool, error) {
 		return true, nil
 	}
 	env, err := cel.NewEnv(
-		cel.Variable("cluster", cel.MapType(cel.StringType, cel.StringType)),
-		cel.Variable("release", cel.MapType(cel.StringType, cel.DynType)),
+		cel.Variable(ctxKeyCluster, cel.MapType(cel.StringType, cel.StringType)),
+		cel.Variable(ctxKeyRelease, cel.MapType(cel.StringType, cel.DynType)),
 	)
 	if err != nil {
 		return false, fmt.Errorf("building hook CEL env: %w", err)

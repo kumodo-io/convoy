@@ -43,6 +43,15 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 )
 
+// Templating/CEL context keys shared by the mutation pipeline and lifecycle hooks.
+// Both engines use these lowercase names for the same projections.
+const (
+	ctxKeyCluster = "cluster"
+	ctxKeySelf    = "self"
+	ctxKeyObject  = "object"
+	ctxKeyRelease = "release"
+)
+
 // MutationInput carries everything the post-render mutation pipeline needs: the
 // rendered objects, the pipeline, the target Release (for the .Self templating
 // context) and Cluster (for .Cluster), and the resolver/coordinator used to
@@ -346,7 +355,7 @@ func orEmpty(m map[string]string) map[string]string {
 // engines for consistency.
 func templateContext(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, obj *unstructured.Unstructured) map[string]any {
 	clusterMeta, self := contextValues(rel, cluster)
-	return map[string]any{"cluster": clusterMeta, "self": self, "object": obj.Object}
+	return map[string]any{ctxKeyCluster: clusterMeta, ctxKeySelf: self, ctxKeyObject: obj.Object}
 }
 
 // renderField renders a single template string (a From reference field) against
@@ -397,9 +406,9 @@ func applyCELTransform(ctx context.Context, objects []*unstructured.Unstructured
 		return nil, "", fmt.Errorf("celTransform has no expression content (set inline or from)")
 	}
 	env, err := cel.NewEnv(
-		cel.Variable("cluster", cel.MapType(cel.StringType, cel.StringType)),
-		cel.Variable("self", cel.MapType(cel.StringType, cel.DynType)),
-		cel.Variable("object", cel.DynType),
+		cel.Variable(ctxKeyCluster, cel.MapType(cel.StringType, cel.StringType)),
+		cel.Variable(ctxKeySelf, cel.MapType(cel.StringType, cel.DynType)),
+		cel.Variable(ctxKeyObject, cel.DynType),
 	)
 	if err != nil {
 		return nil, "", fmt.Errorf("building CEL env: %w", err)
@@ -529,7 +538,7 @@ func mutationDocs(ctx context.Context, m corev1alpha1.ReleaseMutation, in Mutati
 // same-namespace admission guard stays enforceable against a literal value.
 func resolveFrom(ctx context.Context, from *corev1alpha1.ReleaseMutationFromSpec, in MutationInput) ([]byte, error) {
 	clusterCtx, self := contextValues(in.Release, in.Cluster)
-	refCtx := map[string]any{"cluster": clusterCtx, "self": self}
+	refCtx := map[string]any{ctxKeyCluster: clusterCtx, ctxKeySelf: self}
 	name, err := renderField(from.Name, refCtx)
 	if err != nil {
 		return nil, fmt.Errorf("rendering from.name: %w", err)

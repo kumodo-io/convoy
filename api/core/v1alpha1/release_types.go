@@ -807,7 +807,7 @@ type LifecycleHookJobTemplate struct {
 	Spec batchv1.JobSpec `json:"spec"`
 }
 
-// LifecycleHookPodTemplate defines the tempalte for the lifecycle hook Pod.
+// LifecycleHookPodTemplate defines the template for the lifecycle hook Pod.
 type LifecycleHookPodTemplate struct {
 	// Metadata contains partial object metadata.
 	Metadata PartialMetadata `json:"metadata,omitempty"`

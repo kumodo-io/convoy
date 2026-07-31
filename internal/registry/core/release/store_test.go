@@ -22,7 +22,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -420,7 +419,7 @@ func TestLifecycleSubresource(t *testing.T) {
 	}
 
 	valid := &core.ReleaseLifecycle{
-		PreSync: []core.LifecycleHookSpec{{Name: "migrate", Type: core.LifecycleHookTypeJob, JobTemplate: &batchv1.JobTemplateSpec{}}},
+		PreSync: []core.LifecycleHookSpec{{Name: "migrate", Type: core.LifecycleHookTypeJob, JobTemplate: &core.LifecycleHookJobTemplate{}}},
 	}
 	rel, err := setLifecycle(valid)
 	if err != nil {

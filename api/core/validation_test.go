@@ -20,8 +20,6 @@ import (
 	"strings"
 	"testing"
 
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
@@ -231,13 +229,13 @@ func TestValidateReleaseMutations_CrossNamespaceFromRejected(t *testing.T) {
 }
 
 func jobHook(name string) LifecycleHookSpec {
-	return LifecycleHookSpec{Name: name, Type: LifecycleHookTypeJob, JobTemplate: &batchv1.JobTemplateSpec{}}
+	return LifecycleHookSpec{Name: name, Type: LifecycleHookTypeJob, JobTemplate: &LifecycleHookJobTemplate{}}
 }
 
 func TestValidateReleaseLifecycle_Valid(t *testing.T) {
 	rel := validRelease()
 	rel.Lifecycle = &ReleaseLifecycle{
-		PreSync:  []LifecycleHookSpec{jobHook("migrate"), {Name: "warm", Type: LifecycleHookTypePod, PodTemplate: &corev1.PodTemplateSpec{}}},
+		PreSync:  []LifecycleHookSpec{jobHook("migrate"), {Name: "warm", Type: LifecycleHookTypePod, PodTemplate: &LifecycleHookPodTemplate{}}},
 		PostSync: []LifecycleHookSpec{jobHook("smoke-test")},
 	}
 	if errs := ValidateReleaseLifecycle(rel); len(errs) != 0 {
@@ -281,7 +279,7 @@ func TestValidateReleaseLifecycle_TypeTemplateMismatch(t *testing.T) {
 	// Job type but a podTemplate is set (and no jobTemplate).
 	rel := validRelease()
 	rel.Lifecycle = &ReleaseLifecycle{
-		PreSync: []LifecycleHookSpec{{Name: "bad", Type: LifecycleHookTypeJob, PodTemplate: &corev1.PodTemplateSpec{}}},
+		PreSync: []LifecycleHookSpec{{Name: "bad", Type: LifecycleHookTypeJob, PodTemplate: &LifecycleHookPodTemplate{}}},
 	}
 	if errs := ValidateReleaseLifecycle(rel); len(errs) == 0 {
 		t.Error("Job hook with podTemplate (no jobTemplate) not rejected")

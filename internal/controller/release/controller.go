@@ -47,6 +47,7 @@ import (
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
@@ -476,64 +477,128 @@ type reconcileOutcome struct {
 // mode it renders and observes but applies only when a /sync is pending, so
 // status (pin, sync-state, later drift/health) stays fresh without mutating the
 // cluster. The returned error is a requeue signal (non-nil = transient).
-// todo: fix gocyclo
-// nolint:gocyclo
-func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (reconcileOutcome, error) {
+// reconcileState carries the values threaded across reconcile stages: the shared
+// attempt record (mutated in place), and the render-stage products (artifact,
+// target cluster, rendered objects) the sync stage consumes.
+type reconcileState struct {
+	rel         *corev1alpha1.Release
+	now         metav1.Time
+	manual      bool
+	pending     bool
+	requestedAt *metav1.Time
+	attempt     corev1alpha1.ReleaseAttemptedRenderStatus
+
+	// Produced by stageRender, consumed by stageGates/stageSync.
+	art     artifact.Artifact
+	cluster *corev1alpha1.Cluster
+	objects []*unstructured.Unstructured
+}
+
+// newReconcileState seeds the per-reconcile state (attempt timestamp, mode, pending
+// /sync) before any stage runs.
+func (c *Controller) newReconcileState(rel *corev1alpha1.Release) *reconcileState {
 	now := c.now()
-	manual := !rel.Spec.SyncPolicy.Automatic
 	requestedAt, pending := pendingSync(rel)
-	attempt := corev1alpha1.ReleaseAttemptedRenderStatus{
-		AttemptedAt:    &now,
-		ResolvedSource: resolvedSourceFrom(rel),
+	return &reconcileState{
+		rel:         rel,
+		now:         now,
+		manual:      !rel.Spec.SyncPolicy.Automatic,
+		pending:     pending,
+		requestedAt: requestedAt,
+		attempt: corev1alpha1.ReleaseAttemptedRenderStatus{
+			AttemptedAt:    &now,
+			ResolvedSource: resolvedSourceFrom(rel),
+		},
 	}
-	fail := func(reason, message string, stage corev1alpha1.ReleaseRenderAttemptStage, err error) (reconcileOutcome, error) {
-		attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseFailed
-		attempt.Failure = &corev1alpha1.ReleaseAttemptedRenderFailureStatus{Stage: stage, Message: message}
-		return reconcileOutcome{reason: reason, message: message, attempt: attempt}, err
+}
+
+// fail stamps the attempt as failed at the given stage and builds the failure
+// outcome. The error is the reconcile's requeue signal (non-nil = transient).
+func (st *reconcileState) fail(reason, message string, stage corev1alpha1.ReleaseRenderAttemptStage, err error) (reconcileOutcome, error) {
+	st.attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseFailed
+	st.attempt.Failure = &corev1alpha1.ReleaseAttemptedRenderFailureStatus{Stage: stage, Message: message}
+	return reconcileOutcome{reason: reason, message: message, attempt: st.attempt}, err
+}
+
+// stop wraps a terminal (reconcileOutcome, error) as a stage result that halts the
+// pipeline. done=true tells reconcile to return the outcome without running the
+// remaining stages.
+func stop(out reconcileOutcome, err error) (reconcileOutcome, bool, error) {
+	return out, true, err
+}
+
+// cont is the stage result that lets reconcile proceed to the next stage.
+func cont() (reconcileOutcome, bool, error) {
+	return reconcileOutcome{}, false, nil
+}
+
+// reconcile runs fetch → render → apply → prune as a small pipeline of stages,
+// building an attempt record. In automatic mode it applies on the success path
+// (drift correction); in manual mode it renders and observes but applies only when
+// a /sync is pending, so status (pin, sync-state, drift/health) stays fresh without
+// mutating the cluster. The returned error is a requeue signal (non-nil = transient).
+func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (reconcileOutcome, error) {
+	st := c.newReconcileState(rel)
+	if out, done, err := c.stageRender(ctx, st); done {
+		return out, err
 	}
+	if out, done, err := c.stageGates(st); done {
+		return out, err
+	}
+	return c.stageSync(ctx, st)
+}
+
+// stageRender fetches the source, resolves the target cluster, renders the content,
+// and runs the post-render mutation pipeline, recording the resolved coordinates on
+// the attempt. On any failure it returns a terminal outcome; on success it stores
+// the artifact, cluster, and rendered objects on the state and lets reconcile
+// proceed.
+func (c *Controller) stageRender(ctx context.Context, st *reconcileState) (reconcileOutcome, bool, error) {
+	rel := st.rel
 
 	// Ensure source content is fetched. A non-nil error is transient (requeue); a
 	// not-ready result with no error is a terminal config problem.
 	res, err := c.coordinator.Ensure(ctx, rel.Spec.Source, rel.Namespace)
 	if err != nil {
-		return fail(conditionReasonSourceNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSourceResolution, err)
+		return stop(st.fail(conditionReasonSourceNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSourceResolution, err))
 	}
 	if !res.Ready {
-		return fail(conditionReasonUnsupported, res.Message, corev1alpha1.ReleaseRenderAttemptStageSourceResolution, nil)
+		return stop(st.fail(conditionReasonUnsupported, res.Message, corev1alpha1.ReleaseRenderAttemptStageSourceResolution, nil))
 	}
-	attempt.ResolvedSource.Revision = res.Revision
-	attempt.ResolvedSource.URL = res.URL
-	attempt.ResolvedSource.UID = res.UID
-	attempt.ResolvedSource.ObservedGeneration = res.ObservedGeneration
-	art := res.Artifact
+	st.attempt.ResolvedSource.Revision = res.Revision
+	st.attempt.ResolvedSource.URL = res.URL
+	st.attempt.ResolvedSource.UID = res.UID
+	st.attempt.ResolvedSource.ObservedGeneration = res.ObservedGeneration
+	st.art = res.Artifact
 
 	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
 	cluster, err := c.clusterLister.Clusters(clusterNamespace).Get(rel.Spec.ClusterRef.Name)
 	if apierrors.IsNotFound(err) {
-		return fail(conditionReasonClusterNotReady, fmt.Sprintf("target cluster %s/%s not found", clusterNamespace, rel.Spec.ClusterRef.Name), corev1alpha1.ReleaseRenderAttemptStageClusterResolution, fmt.Errorf("cluster not found"))
+		return stop(st.fail(conditionReasonClusterNotReady, fmt.Sprintf("target cluster %s/%s not found", clusterNamespace, rel.Spec.ClusterRef.Name), corev1alpha1.ReleaseRenderAttemptStageClusterResolution, fmt.Errorf("cluster not found")))
 	}
 	if err != nil {
-		return fail(conditionReasonClusterNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageClusterResolution, err)
+		return stop(st.fail(conditionReasonClusterNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageClusterResolution, err))
 	}
 	if !cluster.Status.Reachable {
-		return fail(conditionReasonClusterNotReady, "target cluster is not reachable", corev1alpha1.ReleaseRenderAttemptStageClusterResolution, fmt.Errorf("cluster %s not reachable", cluster.Name))
+		return stop(st.fail(conditionReasonClusterNotReady, "target cluster is not reachable", corev1alpha1.ReleaseRenderAttemptStageClusterResolution, fmt.Errorf("cluster %s not reachable", cluster.Name)))
 	}
-	attempt.ResolvedCluster = resolvedClusterFrom(cluster)
+	st.cluster = cluster
+	st.attempt.ResolvedCluster = resolvedClusterFrom(cluster)
 
 	valueLayers, err := c.resolveValueLayers(ctx, rel)
 	if err != nil {
 		if errors.Is(err, render.ErrUnsupported) {
-			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
+			return stop(st.fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil))
 		}
-		return fail(conditionReasonValuesNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
+		return stop(st.fail(conditionReasonValuesNotReady, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err))
 	}
 
-	objects, err := render.Render(rel.Spec.Content, art, valueLayers)
+	objects, err := render.Render(rel.Spec.Content, st.art, valueLayers)
 	if err != nil {
 		if errors.Is(err, render.ErrUnsupported) {
-			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
+			return stop(st.fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil))
 		}
-		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
+		return stop(st.fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err))
 	}
 
 	// Post-render mutation pipeline. Runs here in the render path so the applied
@@ -549,23 +614,32 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	})
 	if err != nil {
 		if errors.Is(err, render.ErrUnsupported) {
-			return fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
+			return stop(st.fail(conditionReasonUnsupported, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, nil))
 		}
-		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err)
+		return stop(st.fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageRendering, err))
 	}
-	attempt.ResolvedMutations = resolvedMutations
-	attempt.RenderRef = renderRef(objects)
+	st.objects = objects
+	st.attempt.ResolvedMutations = resolvedMutations
+	st.attempt.RenderRef = renderRef(objects)
+	return cont()
+}
+
+// stageGates evaluates the pre-apply holds — freeze pin, manual-mode sync gate, and
+// the Axis-B cluster-wave gate — that withhold the apply without failing. It halts
+// the pipeline when any hold (or a bounded-wait failure) applies.
+func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, error) {
+	rel := st.rel
 
 	// Honor a freeze pin: hold (do not apply) when the current render differs from
 	// the pinned render — i.e. spec/source/values changed since the pin. Freezing
 	// to the current render (refs equal) applies normally (idempotent). Pinning to
 	// a *previous* render (rollback) is storage-gated and not handled here.
-	if p := rel.Pin; p != nil && p.RenderRef != "" && p.RenderRef != attempt.RenderRef {
-		return reconcileOutcome{
+	if p := rel.Pin; p != nil && p.RenderRef != "" && p.RenderRef != st.attempt.RenderRef {
+		return stop(reconcileOutcome{
 			reason:  conditionReasonPinned,
-			message: fmt.Sprintf("pinned to render %s; withholding current render %s", p.RenderRef, attempt.RenderRef),
-			attempt: attempt,
-		}, nil // terminal hold; resync/unpin re-checks
+			message: fmt.Sprintf("pinned to render %s; withholding current render %s", p.RenderRef, st.attempt.RenderRef),
+			attempt: st.attempt,
+		}, nil) // terminal hold; resync/unpin re-checks
 	}
 
 	// Manual-mode sync gate. In manual mode (syncPolicy.automatic=false) apply only
@@ -573,20 +647,20 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	// in-sync when the current render already matches the last applied one, else
 	// WaitingForSync (out of sync, or never synced). A spec change or resync alone
 	// never auto-applies in manual mode.
-	if manual && !pending {
-		if ls := rel.Status.LastSuccessful; ls != nil && ls.RenderRef == attempt.RenderRef {
-			return reconcileOutcome{
+	if st.manual && !st.pending {
+		if ls := rel.Status.LastSuccessful; ls != nil && ls.RenderRef == st.attempt.RenderRef {
+			return stop(reconcileOutcome{
 				ready:   true,
 				reason:  conditionReasonApplied,
 				message: "in sync; manual sync mode (apply withheld until /sync)",
-				attempt: attempt,
-			}, nil
+				attempt: st.attempt,
+			}, nil)
 		}
-		return reconcileOutcome{
+		return stop(reconcileOutcome{
 			reason:  conditionReasonWaitingForSync,
 			message: "manual sync mode: changes await a /sync request",
-			attempt: attempt,
-		}, nil
+			attempt: st.attempt,
+		}, nil)
 	}
 
 	// Axis B — Release-within-cluster ordering. Before applying anything, hold until
@@ -594,11 +668,25 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	// wave) clear this Release's bar (applied / healthy). A bounded
 	// (waitForHealthyWithTimeout) wait fails once its deadline elapses. This gates
 	// the whole Release; Axis A below then orders resources within it.
-	if hold, err := c.clusterWaveGate(rel, attempt, now); err != nil {
-		return reconcileOutcome{attempt: attempt}, err
+	if hold, err := c.clusterWaveGate(rel, st.attempt, st.now); err != nil {
+		return stop(reconcileOutcome{attempt: st.attempt}, err)
 	} else if hold != nil {
-		return *hold, nil
+		return stop(*hold, nil)
 	}
+	return cont()
+}
+
+// stageSync applies the rendered objects to the target cluster in ascending
+// sync-wave order, prunes orphans on the success path, and records the durable
+// inventory. It is the terminal stage: it always produces the reconcile outcome.
+func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconcileOutcome, error) {
+	rel, now, cluster, objects := st.rel, st.now, st.cluster, st.objects
+	art := st.art
+	manual, pending, requestedAt := st.manual, st.pending, st.requestedAt
+	fail := st.fail
+	// attempt is threaded by value here and updated on the success path; the fail
+	// helper stamps st.attempt, which equals this copy on every non-success path.
+	attempt := st.attempt
 
 	// Apply in ascending sync-wave order. Each wave applies fully before the next
 	// begins. A wave with a health bar (waitForHealthy*) holds until the
