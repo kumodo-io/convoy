@@ -792,10 +792,46 @@ type LifecycleHookSpec struct {
 	Cleanup LifecycleHookCleanup `json:"cleanup"`
 
 	// PodTemplate is the pod template for the hook. Mutual exclusive with JobTemplate.
-	PodTemplate *corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	PodTemplate *LifecycleHookPodTemplate `json:"podTemplate,omitempty"`
 
 	// JobTemplate is the job template for the hook. Mutual exclusive with PodTemplate.
-	JobTemplate *batchv1.JobTemplateSpec `json:"jobTemplate,omitempty"`
+	JobTemplate *LifecycleHookJobTemplate `json:"jobTemplate,omitempty"`
+}
+
+// LifecycleHookJobTemplate defines the template for the lifecycle hook Job.
+type LifecycleHookJobTemplate struct {
+	// Metadata contains partial object metadata.
+	Metadata PartialMetadata `json:"metadata,omitempty"`
+
+	// Spec contains the Job spec.
+	Spec batchv1.JobSpec `json:"spec"`
+}
+
+// LifecycleHookPodTemplate defines the tempalte for the lifecycle hook Pod.
+type LifecycleHookPodTemplate struct {
+	// Metadata contains partial object metadata.
+	Metadata PartialMetadata `json:"metadata,omitempty"`
+
+	// Spec contains the Pod spec.
+	Spec corev1.PodSpec `json:"spec"`
+}
+
+// PartialMetadata defines the partial kubernetes object metadata:
+// namespace, labels and annotations. These fields will be translated
+// to standard metav1.ObjectMeta during the lifecycle hook workload creation.
+type PartialMetadata struct {
+	// Namespace is the namespace where the lifecycle hook
+	// workload should run. Defaults to release target namespace
+	// if not set.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Labels is the labels that will be set on the
+	// lifecycle hook workload.
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// Annotations is the annotations that will be set on the
+	// lifecycle hook workload.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // ReleasePin defines the desired state of the ReleasePin.

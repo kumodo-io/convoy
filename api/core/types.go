@@ -461,8 +461,24 @@ type LifecycleHookSpec struct {
 	OnFailure            LifecycleHookOnFailureAction
 	DeleteBeforeCreation bool
 	Cleanup              LifecycleHookCleanup
-	PodTemplate          *corev1.PodTemplateSpec
-	JobTemplate          *batchv1.JobTemplateSpec
+	PodTemplate          *LifecycleHookPodTemplate
+	JobTemplate          *LifecycleHookJobTemplate
+}
+
+type LifecycleHookJobTemplate struct {
+	Metadata PartialMetadata
+	Spec     batchv1.JobSpec
+}
+
+type LifecycleHookPodTemplate struct {
+	Metadata PartialMetadata
+	Spec     corev1.PodSpec
+}
+
+type PartialMetadata struct {
+	Namespace   string
+	Labels      map[string]string
+	Annotations map[string]string
 }
 
 type ReleasePin struct {

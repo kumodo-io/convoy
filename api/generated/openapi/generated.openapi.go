@@ -65,9 +65,12 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ClusterList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterList(ref),
 		v1alpha1.ClusterSpec{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
 		v1alpha1.ClusterStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
+		v1alpha1.LifecycleHookJobTemplate{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_LifecycleHookJobTemplate(ref),
+		v1alpha1.LifecycleHookPodTemplate{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_LifecycleHookPodTemplate(ref),
 		v1alpha1.LifecycleHookSpec{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref),
 		v1alpha1.LifecycleHookStatus{}.OpenAPIModelName():                         schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref),
 		v1alpha1.LifecycleStatus{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_LifecycleStatus(ref),
+		v1alpha1.PartialMetadata{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_PartialMetadata(ref),
 		v1alpha1.PruneSpec{}.OpenAPIModelName():                                   schema_convoy_api_core_v1alpha1_PruneSpec(ref),
 		v1alpha1.Release{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_Release(ref),
 		v1alpha1.ReleaseAttemptedRenderFailureStatus{}.OpenAPIModelName():         schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
@@ -1510,6 +1513,66 @@ func schema_convoy_api_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback)
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_LifecycleHookJobTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "LifecycleHookJobTemplate defines the template for the lifecycle hook Job.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Metadata contains partial object metadata.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha1.PartialMetadata{}.OpenAPIModelName()),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Spec contains the Job spec.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1.JobSpec{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.PartialMetadata{}.OpenAPIModelName(), v1.JobSpec{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_LifecycleHookPodTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "LifecycleHookPodTemplate defines the tempalte for the lifecycle hook Pod.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Metadata contains partial object metadata.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha1.PartialMetadata{}.OpenAPIModelName()),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Spec contains the Pod spec.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(corev1.PodSpec{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha1.PartialMetadata{}.OpenAPIModelName(), corev1.PodSpec{}.OpenAPIModelName()},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1583,13 +1646,13 @@ func schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref common.ReferenceCallb
 					"podTemplate": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PodTemplate is the pod template for the hook. Mutual exclusive with JobTemplate.",
-							Ref:         ref(corev1.PodTemplateSpec{}.OpenAPIModelName()),
+							Ref:         ref(v1alpha1.LifecycleHookPodTemplate{}.OpenAPIModelName()),
 						},
 					},
 					"jobTemplate": {
 						SchemaProps: spec.SchemaProps{
 							Description: "JobTemplate is the job template for the hook. Mutual exclusive with PodTemplate.",
-							Ref:         ref(v1.JobTemplateSpec{}.OpenAPIModelName()),
+							Ref:         ref(v1alpha1.LifecycleHookJobTemplate{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -1597,7 +1660,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			v1.JobTemplateSpec{}.OpenAPIModelName(), corev1.PodTemplateSpec{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
+			v1alpha1.LifecycleHookJobTemplate{}.OpenAPIModelName(), v1alpha1.LifecycleHookPodTemplate{}.OpenAPIModelName(), metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -1881,6 +1944,58 @@ func schema_convoy_api_core_v1alpha1_LifecycleStatus(ref common.ReferenceCallbac
 		},
 		Dependencies: []string{
 			v1alpha1.LifecycleHookStatus{}.OpenAPIModelName()},
+	}
+}
+
+func schema_convoy_api_core_v1alpha1_PartialMetadata(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PartialMetadata defines the partial kubernetes object metadata: namespace, labels and annotations. These fields will be translated to standard metav1.ObjectMeta during the lifecycle hook workload creation.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"namespace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Namespace is the namespace where the lifecycle hook workload should run. Defaults to release target namespace if not set.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"labels": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Labels is the labels that will be set on the lifecycle hook workload.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"annotations": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Annotations is the annotations that will be set on the lifecycle hook workload.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 

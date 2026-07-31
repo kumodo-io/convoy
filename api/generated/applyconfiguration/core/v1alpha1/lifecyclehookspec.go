@@ -20,8 +20,6 @@ package v1alpha1
 
 import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -47,9 +45,9 @@ type LifecycleHookSpecApplyConfiguration struct {
 	// Cleanup is the action to take when the hook completes.
 	Cleanup *corev1alpha1.LifecycleHookCleanup `json:"cleanup,omitempty"`
 	// PodTemplate is the pod template for the hook. Mutual exclusive with JobTemplate.
-	PodTemplate *corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	PodTemplate *LifecycleHookPodTemplateApplyConfiguration `json:"podTemplate,omitempty"`
 	// JobTemplate is the job template for the hook. Mutual exclusive with PodTemplate.
-	JobTemplate *batchv1.JobTemplateSpec `json:"jobTemplate,omitempty"`
+	JobTemplate *LifecycleHookJobTemplateApplyConfiguration `json:"jobTemplate,omitempty"`
 }
 
 // LifecycleHookSpecApplyConfiguration constructs a declarative configuration of the LifecycleHookSpec type for use with
@@ -125,15 +123,15 @@ func (b *LifecycleHookSpecApplyConfiguration) WithCleanup(value corev1alpha1.Lif
 // WithPodTemplate sets the PodTemplate field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PodTemplate field is set to the value of the last call.
-func (b *LifecycleHookSpecApplyConfiguration) WithPodTemplate(value corev1.PodTemplateSpec) *LifecycleHookSpecApplyConfiguration {
-	b.PodTemplate = &value
+func (b *LifecycleHookSpecApplyConfiguration) WithPodTemplate(value *LifecycleHookPodTemplateApplyConfiguration) *LifecycleHookSpecApplyConfiguration {
+	b.PodTemplate = value
 	return b
 }
 
 // WithJobTemplate sets the JobTemplate field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the JobTemplate field is set to the value of the last call.
-func (b *LifecycleHookSpecApplyConfiguration) WithJobTemplate(value batchv1.JobTemplateSpec) *LifecycleHookSpecApplyConfiguration {
-	b.JobTemplate = &value
+func (b *LifecycleHookSpecApplyConfiguration) WithJobTemplate(value *LifecycleHookJobTemplateApplyConfiguration) *LifecycleHookSpecApplyConfiguration {
+	b.JobTemplate = value
 	return b
 }
