@@ -26,10 +26,10 @@ import (
 )
 
 func TestHookWorkloadName(t *testing.T) {
-	n := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, "migrate", "sha256:a")
+	n := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, hookNameMigrate, "sha256:a")
 
 	// Deterministic + stable within a render.
-	if n2 := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, "migrate", "sha256:a"); n != n2 {
+	if n2 := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, hookNameMigrate, "sha256:a"); n != n2 {
 		t.Errorf("name not stable: %q vs %q", n, n2)
 	}
 	// Phase-prefixed, lowercased.
@@ -41,15 +41,15 @@ func TestHookWorkloadName(t *testing.T) {
 		t.Errorf("name %q length %d exceeds 52", n, len(n))
 	}
 	// Varies by render (so deleteBeforeCreation=false can accumulate).
-	if nb := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, "migrate", "sha256:b"); nb == n {
+	if nb := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, hookNameMigrate, "sha256:b"); nb == n {
 		t.Error("name did not vary with renderRef")
 	}
 	// Varies by phase.
-	if np := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePostSync, "migrate", "sha256:a"); np == n {
+	if np := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePostSync, hookNameMigrate, "sha256:a"); np == n {
 		t.Error("name did not vary with phase")
 	}
 	// Varies by release (distinct hashes even in a shared namespace).
-	if nr := hookWorkloadName("other", corev1alpha1.LifecycleHookPhasePreSync, "migrate", "sha256:a"); nr == n {
+	if nr := hookWorkloadName("other", corev1alpha1.LifecycleHookPhasePreSync, hookNameMigrate, "sha256:a"); nr == n {
 		t.Error("name did not vary with release")
 	}
 }
@@ -94,7 +94,7 @@ func TestBuildHookWorkload_StampsIdentityAndLabels(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: "uid-9"},
 		Spec:       corev1alpha1.ReleaseSpec{Content: corev1alpha1.ReleaseContentSpec{Manifests: &corev1alpha1.ReleaseContentManifestsSpec{TargetNamespace: "app-ns"}}},
 	}
-	hook := podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
+	hook := podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
 	hook.PodTemplate.Metadata.Labels = map[string]string{"user": "label", labelManagedBy: "should-be-overridden"}
 
 	w, err := buildHookWorkload(rel, hookCluster, corev1alpha1.LifecycleHookPhasePreSync, hook, "sha256:a")
@@ -104,14 +104,14 @@ func TestBuildHookWorkload_StampsIdentityAndLabels(t *testing.T) {
 	if w.GetNamespace() != "app-ns" {
 		t.Errorf("namespace = %q, want app-ns (target)", w.GetNamespace())
 	}
-	if w.GetName() != hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, "migrate", "sha256:a") {
+	if w.GetName() != hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePreSync, hookNameMigrate, "sha256:a") {
 		t.Errorf("name = %q, want derived", w.GetName())
 	}
 	labels := w.GetLabels()
 	if labels[labelManagedBy] != managedByConvoy {
 		t.Errorf("managed-by = %q, want ownership label to win over user label", labels[labelManagedBy])
 	}
-	if labels[labelReleaseUID] != "uid-9" || labels[labelHookName] != "migrate" || labels[labelHookPhase] != "PreSync" {
+	if labels[labelReleaseUID] != "uid-9" || labels[labelHookName] != hookNameMigrate || labels[labelHookPhase] != "PreSync" {
 		t.Errorf("ownership labels missing/incorrect: %v", labels)
 	}
 	if labels["user"] != "label" {

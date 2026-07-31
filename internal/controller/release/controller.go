@@ -193,6 +193,12 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	newStatus.Waves = outcome.waves
 
+	// Roll up lifecycle-hook progress (status.lifecycle + LifecycleSucceeded) from the
+	// durable ReleaseInventory the gate maintains — controller-owned, parity with waves.
+	if err := c.applyLifecycleRollup(ctx, rel, &newStatus, c.now()); err != nil {
+		return err
+	}
+
 	if statusChanged(rel, newStatus) {
 		newStatus.ReconciledAt = new(c.now())
 		ac, err := ownedStatusApplyConfig(rel, newStatus)
@@ -264,18 +270,34 @@ func pendingSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
 func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseStatus) (*corev1alpha1ac.ReleaseApplyConfiguration, error) {
 	statusAC := corev1alpha1ac.ReleaseStatus().WithObservedGeneration(s.ObservedGeneration)
 
-	// Assert ONLY the Applied condition — the sole condition this controller owns.
-	// computeStatus deep-copies the whole status (carrying the observer-owned InSync
-	// and Healthy conditions), so writing every condition here would make this field
-	// manager co-own them and, with Force, clobber the observer's values back to a
-	// stale copy on each reconcile. conditions is a listType=map keyed by type, so
-	// asserting just Applied leaves the others untouched.
-	if applied := apimeta.FindStatusCondition(s.Conditions, conditionApplied); applied != nil {
+	// Assert ONLY the conditions this controller owns — Applied and (when the Release
+	// has hooks) LifecycleSucceeded. computeStatus deep-copies the whole status
+	// (carrying the observer-owned InSync and Healthy conditions), so writing every
+	// condition here would make this field manager co-own them and, with Force,
+	// clobber the observer's values back to a stale copy on each reconcile. conditions
+	// is a listType=map keyed by type, so asserting only ours leaves the others
+	// untouched; omitting LifecycleSucceeded when absent relinquishes it (no hooks).
+	for _, condType := range []string{conditionApplied, conditionLifecycleSucceeded} {
+		cond := apimeta.FindStatusCondition(s.Conditions, condType)
+		if cond == nil {
+			continue
+		}
 		condAC := &metav1ac.ConditionApplyConfiguration{}
-		if err := jsonRoundTrip(*applied, condAC); err != nil {
+		if err := jsonRoundTrip(*cond, condAC); err != nil {
 			return nil, err
 		}
 		statusAC.WithConditions(condAC)
+	}
+
+	// status.lifecycle is a controller-owned rollup (parity with waves). Its per-phase
+	// lists are all omitempty, so round-tripping the whole struct is safe. Omitting it
+	// when empty relinquishes ownership (hooks removed).
+	if !lifecycleStatusEmpty(s.Lifecycle) {
+		lcAC := &corev1alpha1ac.LifecycleStatusApplyConfiguration{}
+		if err := jsonRoundTrip(s.Lifecycle, lcAC); err != nil {
+			return nil, err
+		}
+		statusAC.WithLifecycle(lcAC)
 	}
 
 	// Only assert pin when set. Omitting it when nil is how SSA clears a pin this

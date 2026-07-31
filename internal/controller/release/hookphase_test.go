@@ -31,8 +31,9 @@ import (
 )
 
 const (
-	hookRenderRef = "sha256:hookrender"
-	appName       = "app"
+	hookRenderRef   = "sha256:hookrender"
+	appName         = "app"
+	hookNameMigrate = "migrate"
 )
 
 // fakeHookRunner records Create/Delete/DeleteMatching calls; Create stamps a
@@ -109,7 +110,7 @@ func armedItem(name string, renderRef string, state *corev1alpha1.LifecycleHookS
 		Name:              name,
 		Phase:             corev1alpha1.LifecycleHookPhasePreSync,
 		Version:           "v1",
-		Kind:              "Pod",
+		Kind:              kindPod,
 		WorkloadName:      "presync-" + name + "-abcd1234",
 		WorkloadNamespace: appName,
 		RenderRef:         renderRef,
@@ -152,7 +153,7 @@ func TestRunHookPhase_NoHooksAdvances(t *testing.T) {
 
 func TestRunHookPhase_NilRunnerAdvances(t *testing.T) {
 	c := newHookController(nil, &fakeHookStore{})
-	rel := relWithPreSync(podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
+	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
 	if res := runPreSync(t, c, rel); res.state != hookPhaseAdvance {
 		t.Errorf("nil runner: state = %v, want advance (hooks disabled)", res.state)
 	}
@@ -174,7 +175,7 @@ func TestRunHookPhase_ArmsAndHolds(t *testing.T) {
 	fr := &fakeHookRunner{resolveNS: appName}
 	fs := &fakeHookStore{}
 	c := newHookController(fr, fs)
-	rel := relWithPreSync(podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
+	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
 
 	res := runPreSync(t, c, rel)
 	if res.state != hookPhaseHold {
@@ -197,7 +198,7 @@ func TestRunHookPhase_ArmsAndHolds(t *testing.T) {
 func TestRunHookPhase_DeleteBeforeCreation(t *testing.T) {
 	fr := &fakeHookRunner{resolveNS: appName}
 	c := newHookController(fr, &fakeHookStore{})
-	hook := podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
+	hook := podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
 	hook.DeleteBeforeCreation = true
 	runPreSync(t, c, relWithPreSync(hook))
 	if len(fr.deletedSelectors) != 1 {
@@ -208,10 +209,10 @@ func TestRunHookPhase_DeleteBeforeCreation(t *testing.T) {
 func TestRunHookPhase_RunningHolds(t *testing.T) {
 	fr := &fakeHookRunner{}
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem("migrate", hookRenderRef, hookState(corev1alpha1.LifecycleHookStateRunning)),
+		armedItem(hookNameMigrate, hookRenderRef, hookState(corev1alpha1.LifecycleHookStateRunning)),
 	}}
 	c := newHookController(fr, fs)
-	rel := relWithPreSync(podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
+	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
 	if res := runPreSync(t, c, rel); res.state != hookPhaseHold {
 		t.Errorf("running hook: state = %v, want hold", res.state)
 	}
@@ -223,11 +224,11 @@ func TestRunHookPhase_RunningHolds(t *testing.T) {
 func TestRunHookPhase_SucceededAdvancesAndCleans(t *testing.T) {
 	fr := &fakeHookRunner{}
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem("migrate", hookRenderRef, hookState(corev1alpha1.LifecycleHookStateSucceeded)),
+		armedItem(hookNameMigrate, hookRenderRef, hookState(corev1alpha1.LifecycleHookStateSucceeded)),
 	}}
 	c := newHookController(fr, fs)
 	// cleanup=OnCompletion → the succeeded workload is deleted.
-	rel := relWithPreSync(podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupOnCompletion))
+	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupOnCompletion))
 	if res := runPreSync(t, c, rel); res.state != hookPhaseAdvance {
 		t.Errorf("succeeded hook: state = %v, want advance", res.state)
 	}
@@ -238,15 +239,15 @@ func TestRunHookPhase_SucceededAdvancesAndCleans(t *testing.T) {
 
 func TestRunHookPhase_FailedWithFailAborts(t *testing.T) {
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem("migrate", hookRenderRef, hookState(corev1alpha1.LifecycleHookStateFailed)),
+		armedItem(hookNameMigrate, hookRenderRef, hookState(corev1alpha1.LifecycleHookStateFailed)),
 	}}
 	c := newHookController(&fakeHookRunner{}, fs)
-	rel := relWithPreSync(podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
+	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
 	res := runPreSync(t, c, rel)
 	if res.state != hookPhaseFailed {
 		t.Fatalf("failed+Fail: state = %v, want failed", res.state)
 	}
-	if res.failedHook != "migrate" {
+	if res.failedHook != hookNameMigrate {
 		t.Errorf("failedHook = %q, want migrate", res.failedHook)
 	}
 }
@@ -266,10 +267,10 @@ func TestRunHookPhase_StaleRenderReArms(t *testing.T) {
 	fr := &fakeHookRunner{resolveNS: appName}
 	// Entry succeeded but for a PRIOR render → must re-arm for the current render.
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem("migrate", "sha256:oldrender", hookState(corev1alpha1.LifecycleHookStateSucceeded)),
+		armedItem(hookNameMigrate, "sha256:oldrender", hookState(corev1alpha1.LifecycleHookStateSucceeded)),
 	}}
 	c := newHookController(fr, fs)
-	rel := relWithPreSync(podHookSpec("migrate", 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
+	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
 	if res := runPreSync(t, c, rel); res.state != hookPhaseHold {
 		t.Errorf("stale render: state = %v, want hold (re-armed)", res.state)
 	}
