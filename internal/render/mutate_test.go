@@ -40,6 +40,8 @@ const (
 	metadataName      = "name"
 	metadataNamespace = "namespace"
 
+	appName = "app"
+
 	appsv1ApiVersion = "apps/v1"
 	deploymentKind   = "Deployment"
 

@@ -52,6 +52,10 @@ const (
 	// on a bounded (waitForHealthyWithTimeout) wait.
 	conditionReasonWaitingForClusterWave = "WaitingForClusterWave"
 	conditionReasonClusterWaveFailed     = "ClusterWaveFailed"
+	// Lifecycle hooks: the Release is holding for a hook phase's workloads to
+	// complete, or a hook with onFailure=Fail failed.
+	conditionReasonWaitingForHook = "WaitingForHook"
+	conditionReasonHookFailed     = "HookFailed"
 )
 
 // computeStatus derives the desired ReleaseStatus from the current object and a

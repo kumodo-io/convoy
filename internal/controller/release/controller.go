@@ -89,6 +89,7 @@ type Controller struct {
 	resolver           auth.SecretResolver
 	inventory          inventory.Store
 	deployer           Deployer
+	hookRunner         HookRunner
 	releasesForCluster ReleasesForClusterFunc
 	// failures tracks consecutive transient reconcile failures per Release, to
 	// drive per-Release retry backoff. In-memory; reset on a terminal outcome.
@@ -133,6 +134,7 @@ func NewController(
 	resolver auth.SecretResolver,
 	inv inventory.Store,
 	deployer Deployer,
+	hookRunner HookRunner,
 	releasesForCluster ReleasesForClusterFunc,
 ) *Controller {
 	c := &Controller{
@@ -143,6 +145,7 @@ func NewController(
 		resolver:           resolver,
 		inventory:          inv,
 		deployer:           deployer,
+		hookRunner:         hookRunner,
 		releasesForCluster: releasesForCluster,
 		failures:           newFailureCounts(),
 		now:                metav1.Now,
@@ -520,6 +523,21 @@ func (st *reconcileState) fail(reason, message string, stage corev1alpha1.Releas
 	return reconcileOutcome{reason: reason, message: message, attempt: st.attempt}, err
 }
 
+// failHook stamps the attempt as failed at a lifecycle-hook phase (recording the
+// offending hook) and builds the failure outcome. A hook failure is terminal for
+// this reconcile but not a transient error, so err is nil.
+func (st *reconcileState) failHook(phase corev1alpha1.LifecycleHookPhase, res hookPhaseResult) (reconcileOutcome, error) {
+	p := phase
+	st.attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseFailed
+	st.attempt.Failure = &corev1alpha1.ReleaseAttemptedRenderFailureStatus{
+		Stage:     corev1alpha1.ReleaseRenderAttemptStageHookFailed,
+		Message:   res.message,
+		HookName:  res.failedHook,
+		HookPhase: &p,
+	}
+	return reconcileOutcome{reason: conditionReasonHookFailed, message: res.message, attempt: st.attempt}, nil
+}
+
 // stop wraps a terminal (reconcileOutcome, error) as a stage result that halts the
 // pipeline. done=true tells reconcile to return the outcome without running the
 // remaining stages.
@@ -688,6 +706,21 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// helper stamps st.attempt, which equals this copy on every non-success path.
 	attempt := st.attempt
 
+	// PreSync hooks run before anything is applied. Hold (nothing applied) until the
+	// phase completes; a hook with onFailure=Fail aborts the sync. Advancing falls
+	// through to the wave loop.
+	if res, err := c.runHookPhase(ctx, rel, cluster, corev1alpha1.LifecycleHookPhasePreSync, attempt.RenderRef); err != nil {
+		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+	} else if res.state == hookPhaseHold {
+		return reconcileOutcome{
+			reason:  conditionReasonWaitingForHook,
+			message: "waiting for preSync lifecycle hook(s) to complete",
+			attempt: attempt,
+		}, nil
+	} else if res.state == hookPhaseFailed {
+		return st.failHook(corev1alpha1.LifecycleHookPhasePreSync, res)
+	}
+
 	// Apply in ascending sync-wave order. Each wave applies fully before the next
 	// begins. A wave with a health bar (waitForHealthy*) holds until the
 	// IMMEDIATELY-PRECEDING wave is healthy — a wave depends on the one directly
@@ -818,6 +851,18 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// previous-generation entries that were carried through the rollout are dropped.
 	if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, applied); err != nil {
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+	}
+
+	// PostSync hooks run after a successful apply + prune. The apply already
+	// happened, so the sync outcome stands regardless: a still-running phase is
+	// re-driven by the observer's completion poke + poll interval (the hooks are
+	// armed here), and a hook with onFailure=Fail stops further postSync groups but
+	// does not un-apply — its failure is surfaced via status.lifecycle. Only a
+	// transient arming/cleanup error requeues as a failure.
+	if res, err := c.runHookPhase(ctx, rel, cluster, corev1alpha1.LifecycleHookPhasePostSync, attempt.RenderRef); err != nil {
+		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+	} else if res.state == hookPhaseFailed {
+		klog.V(2).InfoS("postSync lifecycle hook failed", "release", rel.Name, "hook", res.failedHook, "message", res.message)
 	}
 
 	attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseSucceeded

@@ -155,7 +155,7 @@ func TestHooksArmChanged(t *testing.T) {
 
 	hook := func(mut func(*corev1alpha1.ReleaseLifecycleHookItem)) corev1alpha1.ReleaseLifecycleHookItem {
 		h := corev1alpha1.ReleaseLifecycleHookItem{
-			Name: "migrate", Phase: corev1alpha1.LifecycleHookPhasePreSync,
+			Name: hookNameMigrate, Phase: corev1alpha1.LifecycleHookPhasePreSync,
 			WorkloadName: "migrate-1", CreatedAt: &created, RenderRef: "sha256:a",
 		}
 		if mut != nil {

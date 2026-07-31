@@ -186,8 +186,9 @@ func (o *Options) Run(ctx context.Context) error {
 		return err
 	}
 	deployer := releasecontroller.NewDeployer(connector)
+	hookRunner := releasecontroller.NewHookRunner(connector)
 	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister())
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, releasesForCluster)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, hookRunner, releasesForCluster)
 
 	// Axis B fan-out: when a Release's Applied/Healthy signal flips, re-enqueue its
 	// higher-wave successors on the same cluster so they re-evaluate the cluster-wave
