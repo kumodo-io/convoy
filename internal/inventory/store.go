@@ -28,6 +28,7 @@ import (
 	"context"
 	"sync"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -57,6 +58,25 @@ func (r Ref) ID() string {
 	return r.Group + "|" + r.Kind + "|" + r.Namespace + "|" + r.Name
 }
 
+// HookRef is the controller-owned identity of one lifecycle-hook workload recorded
+// on the ReleaseInventory. The observer co-owns the runtime fields (state,
+// finishedAt, message) under a separate manager, so these are asserted without
+// clobbering the observer's writes. RenderRef ties the entry to the render it was
+// armed for, so a stale entry (previous render) is re-armed rather than reused.
+type HookRef struct {
+	Name              string
+	Phase             corev1alpha1.LifecycleHookPhase
+	Weight            int32
+	Timeout           *metav1.Duration
+	Group             string
+	Version           string
+	Kind              string
+	WorkloadNamespace string
+	WorkloadName      string
+	CreatedAt         *metav1.Time
+	RenderRef         string
+}
+
 // Store holds the managed-resource inventory for each Release, keyed by the
 // Release's namespace and name. Operations are context-aware and may fail
 // (the durable store talks to the API server).
@@ -67,16 +87,45 @@ type Store interface {
 	Put(ctx context.Context, namespace, name string, refs []Ref) error
 	// Delete removes the Release's inventory record.
 	Delete(ctx context.Context, namespace, name string) error
+	// PutHooks records the controller-owned identity of the given lifecycle hooks
+	// under a manager disjoint from the resource inventory, replacing the prior
+	// controller-owned hook set and leaving the observer's runtime fields untouched.
+	PutHooks(ctx context.Context, namespace, name string, hooks []HookRef) error
+	// GetHooks returns the recorded hook entries (controller identity + observer
+	// runtime), or nil when no inventory record exists.
+	GetHooks(ctx context.Context, namespace, name string) ([]corev1alpha1.ReleaseLifecycleHookItem, error)
+}
+
+// hookRefToItem projects a HookRef onto the controller-owned fields of a
+// ReleaseLifecycleHookItem (observer fields left zero).
+func hookRefToItem(h HookRef) corev1alpha1.ReleaseLifecycleHookItem {
+	return corev1alpha1.ReleaseLifecycleHookItem{
+		Name:              h.Name,
+		Phase:             h.Phase,
+		Weight:            h.Weight,
+		Timeout:           h.Timeout,
+		Group:             h.Group,
+		Version:           h.Version,
+		Kind:              h.Kind,
+		WorkloadNamespace: h.WorkloadNamespace,
+		WorkloadName:      h.WorkloadName,
+		CreatedAt:         h.CreatedAt,
+		RenderRef:         h.RenderRef,
+	}
 }
 
 type memoryStore struct {
 	mu    sync.RWMutex
 	items map[string][]Ref
+	hooks map[string][]corev1alpha1.ReleaseLifecycleHookItem
 }
 
 // NewMemoryStore returns an in-memory, concurrency-safe Store, used in tests.
 func NewMemoryStore() Store {
-	return &memoryStore{items: make(map[string][]Ref)}
+	return &memoryStore{
+		items: make(map[string][]Ref),
+		hooks: make(map[string][]corev1alpha1.ReleaseLifecycleHookItem),
+	}
 }
 
 func (s *memoryStore) Get(_ context.Context, namespace, name string) ([]Ref, bool, error) {
@@ -97,7 +146,36 @@ func (s *memoryStore) Delete(_ context.Context, namespace, name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.items, namespace+"/"+name)
+	delete(s.hooks, namespace+"/"+name)
 	return nil
+}
+
+func (s *memoryStore) PutHooks(_ context.Context, namespace, name string, hooks []HookRef) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	key := namespace + "/" + name
+	// Preserve observer-owned runtime fields (state/finishedAt/message) by (phase,
+	// name), modeling the SSA co-ownership the durable store gets for free.
+	prev := make(map[string]corev1alpha1.ReleaseLifecycleHookItem, len(s.hooks[key]))
+	for _, h := range s.hooks[key] {
+		prev[string(h.Phase)+"|"+h.Name] = h
+	}
+	items := make([]corev1alpha1.ReleaseLifecycleHookItem, 0, len(hooks))
+	for _, h := range hooks {
+		item := hookRefToItem(h)
+		if p, ok := prev[string(h.Phase)+"|"+h.Name]; ok {
+			item.State, item.FinishedAt, item.Message = p.State, p.FinishedAt, p.Message
+		}
+		items = append(items, item)
+	}
+	s.hooks[key] = items
+	return nil
+}
+
+func (s *memoryStore) GetHooks(_ context.Context, namespace, name string) ([]corev1alpha1.ReleaseLifecycleHookItem, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.hooks[namespace+"/"+name], nil
 }
 
 // Diff returns the refs in old whose identity is absent from current — i.e. the

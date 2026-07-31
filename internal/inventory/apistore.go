@@ -35,6 +35,14 @@ import (
 // separate manager, so the two writers co-own each entry without clobbering.
 const ControllerFieldManager = "convoy-release-inventory"
 
+// HookFieldManager is the Server-Side Apply field manager the release controller
+// owns for lifecycle-hook *identity* on a ReleaseInventory. It is deliberately
+// disjoint from ControllerFieldManager: the resource-inventory Put asserts
+// `inventory` without `hooks`, so sharing a manager would SSA-clobber the hook
+// entries. The observer's hook-status manager (convoy-hook-status) owns the
+// runtime fields, so all three co-own each hook entry by field.
+const HookFieldManager = "convoy-release-hooks"
+
 // apiStore is the durable Store backed by the ReleaseInventory aggregated API
 // object (one per Release, colocated in the Release's namespace, named after it).
 // Reads come from the informer cache; writes go straight to the API server via
@@ -90,6 +98,47 @@ func (s *apiStore) Delete(ctx context.Context, namespace, name string) error {
 		return fmt.Errorf("deleting release inventory %s/%s: %w", namespace, name, err)
 	}
 	return nil
+}
+
+func (s *apiStore) PutHooks(ctx context.Context, namespace, name string, hooks []HookRef) error {
+	ac := corev1alpha1ac.ReleaseInventory(name, namespace)
+	for _, h := range hooks {
+		item := corev1alpha1ac.ReleaseLifecycleHookItem().
+			WithName(h.Name).
+			WithPhase(h.Phase).
+			WithWeight(h.Weight).
+			WithGroup(h.Group).
+			WithVersion(h.Version).
+			WithKind(h.Kind).
+			WithWorkloadName(h.WorkloadName).
+			WithRenderRef(h.RenderRef)
+		if h.WorkloadNamespace != "" {
+			item.WithWorkloadNamespace(h.WorkloadNamespace)
+		}
+		if h.CreatedAt != nil {
+			item.WithCreatedAt(*h.CreatedAt)
+		}
+		if h.Timeout != nil {
+			item.WithTimeout(*h.Timeout)
+		}
+		ac.WithHooks(item)
+	}
+	if _, err := s.client.CoreV1alpha1().ReleaseInventories(namespace).
+		Apply(ctx, ac, metav1.ApplyOptions{FieldManager: HookFieldManager, Force: true}); err != nil {
+		return fmt.Errorf("applying release inventory hooks %s/%s: %w", namespace, name, err)
+	}
+	return nil
+}
+
+func (s *apiStore) GetHooks(_ context.Context, namespace, name string) ([]corev1alpha1.ReleaseLifecycleHookItem, error) {
+	inv, err := s.lister.ReleaseInventories(namespace).Get(name)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reading release inventory %s/%s: %w", namespace, name, err)
+	}
+	return inv.Hooks, nil
 }
 
 // MembershipChanged reports whether the controller-owned membership of a
