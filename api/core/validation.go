@@ -143,6 +143,7 @@ func ValidateRelease(release *Release) field.ErrorList {
 	allErrs = append(allErrs, validateReleaseSpec(&release.Spec, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateSameNamespaceRefs(release)...)
 	allErrs = append(allErrs, validateReleaseMutationList(release)...)
+	allErrs = append(allErrs, ValidateReleaseLifecycle(release)...)
 	return allErrs
 }
 
@@ -213,6 +214,7 @@ func ValidateReleaseUpdate(release, old *Release) field.ErrorList {
 	allErrs = append(allErrs, validateReleaseSpec(&release.Spec, field.NewPath("spec"))...)
 	allErrs = append(allErrs, validateSameNamespaceRefs(release)...)
 	allErrs = append(allErrs, validateReleaseMutationList(release)...)
+	allErrs = append(allErrs, ValidateReleaseLifecycle(release)...)
 
 	// source configuration validation
 	if release.Spec.Source.Type != old.Spec.Source.Type {
@@ -318,6 +320,110 @@ func knownJSONPatchOp(op JSONPatchOperation) bool {
 	switch op {
 	case JSONPatchOperationAdd, JSONPatchOperationRemove, JSONPatchOperationReplace,
 		JSONPatchOperationMove, JSONPatchOperationCopy, JSONPatchOperationTest:
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidateReleaseLifecycle validates the Release's lifecycle hooks (the top-level
+// lifecycle field, written via the /lifecycle subresource). It performs structural
+// validation only: hook name presence + per-phase uniqueness, type↔template
+// consistency, and known onFailure/cleanup enums. CEL `when` expressions are
+// compiled by the hook runner, not here.
+func ValidateReleaseLifecycle(release *Release) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if release.Lifecycle == nil {
+		return allErrs
+	}
+	lc := release.Lifecycle
+	base := field.NewPath("lifecycle")
+	phases := []struct {
+		name  string
+		hooks []LifecycleHookSpec
+	}{
+		{"preSync", lc.PreSync},
+		{"syncFailed", lc.SyncFailed},
+		{"postSync", lc.PostSync},
+		{"preDelete", lc.PreDelete},
+		{"postDelete", lc.PostDelete},
+	}
+	for _, p := range phases {
+		allErrs = append(allErrs, validateLifecyclePhase(p.hooks, base.Child(p.name))...)
+	}
+	return allErrs
+}
+
+// validateLifecyclePhase validates one phase's hook list: names are unique within
+// the phase, and each hook is individually valid.
+func validateLifecyclePhase(hooks []LifecycleHookSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	seen := make(map[string]struct{}, len(hooks))
+	for i := range hooks {
+		h := &hooks[i]
+		hookPath := fldPath.Index(i)
+		if h.Name == "" {
+			allErrs = append(allErrs, field.Required(hookPath.Child("name"), "hook name is required"))
+		} else if _, dup := seen[h.Name]; dup {
+			allErrs = append(allErrs, field.Duplicate(hookPath.Child("name"), h.Name))
+		} else {
+			seen[h.Name] = struct{}{}
+		}
+		allErrs = append(allErrs, validateLifecycleHook(h, hookPath)...)
+	}
+	return allErrs
+}
+
+// validateLifecycleHook validates a single hook's type↔template consistency and
+// its onFailure/cleanup enums.
+func validateLifecycleHook(h *LifecycleHookSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	// Exactly one template, matching the declared type.
+	switch h.Type {
+	case LifecycleHookTypePod:
+		if h.PodTemplate == nil {
+			allErrs = append(allErrs, field.Required(fldPath.Child("podTemplate"), `podTemplate is required when type is "Pod"`))
+		}
+		if h.JobTemplate != nil {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("jobTemplate"), `must not be set when type is "Pod"`))
+		}
+	case LifecycleHookTypeJob:
+		if h.JobTemplate == nil {
+			allErrs = append(allErrs, field.Required(fldPath.Child("jobTemplate"), `jobTemplate is required when type is "Job"`))
+		}
+		if h.PodTemplate != nil {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("podTemplate"), `must not be set when type is "Job"`))
+		}
+	default:
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), h.Type,
+			[]string{string(LifecycleHookTypePod), string(LifecycleHookTypeJob)}))
+	}
+
+	// Enums: empty is allowed (the runner defaults per phase); a set value must be known.
+	if s := h.OnFailure; s != "" && !knownHookOnFailure(s) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("onFailure"), s,
+			[]string{string(LifecycleHookOnFailureActionContinue), string(LifecycleHookOnFailureActionFail)}))
+	}
+	if c := h.Cleanup; c != "" && !knownHookCleanup(c) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("cleanup"), c,
+			[]string{string(LifecycleHookCleanupOnSuccess), string(LifecycleHookCleanupOnCompletion), string(LifecycleHookCleanupNever)}))
+	}
+	return allErrs
+}
+
+func knownHookOnFailure(a LifecycleHookOnFailureAction) bool {
+	switch a {
+	case LifecycleHookOnFailureActionContinue, LifecycleHookOnFailureActionFail:
+		return true
+	default:
+		return false
+	}
+}
+
+func knownHookCleanup(c LifecycleHookCleanup) bool {
+	switch c {
+	case LifecycleHookCleanupOnSuccess, LifecycleHookCleanupOnCompletion, LifecycleHookCleanupNever:
 		return true
 	default:
 		return false

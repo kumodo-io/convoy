@@ -262,12 +262,6 @@ const (
 
 	// LifecycleHookPhaseSyncFailed is the phase of a lifecycle hook that runs when the sync fails.
 	LifecycleHookPhaseSyncFailed LifecycleHookPhase = "SyncFailed"
-
-	// LifecycleHookPhasePreRender is the phase of a lifecycle hook that runs before the render.
-	LifecycleHookPhasePreRender LifecycleHookPhase = "PreRender"
-
-	// LifecycleHookPhasePostRender is the phase of a lifecycle hook that runs after the render.
-	LifecycleHookPhasePostRender LifecycleHookPhase = "PostRender"
 )
 
 // LifecycleHookType defines the type of a lifecycle hook.
@@ -736,14 +730,6 @@ type ReleaseMutationPatchSpec struct {
 
 // ReleaseLifecycle defines the desired state of the ReleaseLifecycle.
 type ReleaseLifecycle struct {
-	// PreRender are the pre-render hooks.
-	// +listType=atomic
-	PreRender []LifecycleHookSpec `json:"preRender,omitempty"`
-
-	// PostRender are the post-render hooks.
-	// +listType=atomic
-	PostRender []LifecycleHookSpec `json:"postRender,omitempty"`
-
 	// PreSync are the pre-sync hooks.
 	// +listType=atomic
 	PreSync []LifecycleHookSpec `json:"preSync,omitempty"`
@@ -792,10 +778,46 @@ type LifecycleHookSpec struct {
 	Cleanup LifecycleHookCleanup `json:"cleanup"`
 
 	// PodTemplate is the pod template for the hook. Mutual exclusive with JobTemplate.
-	PodTemplate *corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+	PodTemplate *LifecycleHookPodTemplate `json:"podTemplate,omitempty"`
 
 	// JobTemplate is the job template for the hook. Mutual exclusive with PodTemplate.
-	JobTemplate *batchv1.JobTemplateSpec `json:"jobTemplate,omitempty"`
+	JobTemplate *LifecycleHookJobTemplate `json:"jobTemplate,omitempty"`
+}
+
+// LifecycleHookJobTemplate defines the template for the lifecycle hook Job.
+type LifecycleHookJobTemplate struct {
+	// Metadata contains partial object metadata.
+	Metadata PartialMetadata `json:"metadata,omitempty"`
+
+	// Spec contains the Job spec.
+	Spec batchv1.JobSpec `json:"spec"`
+}
+
+// LifecycleHookPodTemplate defines the template for the lifecycle hook Pod.
+type LifecycleHookPodTemplate struct {
+	// Metadata contains partial object metadata.
+	Metadata PartialMetadata `json:"metadata,omitempty"`
+
+	// Spec contains the Pod spec.
+	Spec corev1.PodSpec `json:"spec"`
+}
+
+// PartialMetadata defines the partial kubernetes object metadata:
+// namespace, labels and annotations. These fields will be translated
+// to standard metav1.ObjectMeta during the lifecycle hook workload creation.
+type PartialMetadata struct {
+	// Namespace is the namespace where the lifecycle hook
+	// workload should run. Defaults to release target namespace
+	// if not set.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Labels is the labels that will be set on the
+	// lifecycle hook workload.
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// Annotations is the annotations that will be set on the
+	// lifecycle hook workload.
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
 // ReleasePin defines the desired state of the ReleasePin.
@@ -1058,31 +1080,38 @@ type ResourceWaveStatus struct {
 
 type LifecycleStatus struct {
 	// PreRender are the pre-render hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PreRender []LifecycleHookStatus `json:"preRender,omitempty"`
 
 	// PostRender are the post-render hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PostRender []LifecycleHookStatus `json:"postRender,omitempty"`
 
 	// PreSync are the pre-sync hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PreSync []LifecycleHookStatus `json:"preSync,omitempty"`
 
 	// SyncFailed are the sync-failed hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	SyncFailed []LifecycleHookStatus `json:"syncFailed,omitempty"`
 
 	// PostSync are the post-sync hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PostSync []LifecycleHookStatus `json:"postSync,omitempty"`
 
 	// PreDelete are the pre-delete hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PreDelete []LifecycleHookStatus `json:"preDelete,omitempty"`
 
 	// PostDelete are the post-delete hooks.
-	// +listType=atomic
+	// +listType=map
+	// +listMapKey=name
 	PostDelete []LifecycleHookStatus `json:"postDelete,omitempty"`
 }
 

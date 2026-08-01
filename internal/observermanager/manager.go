@@ -145,11 +145,13 @@ func (o *Options) Run(ctx context.Context) error {
 	// loop so /preview, /diff, and /health are served from one endpoint.
 	obs.SetHealthResults(healthCtl.HealthResult)
 
-	// Wake the health loop when a Release's ReleaseInventory membership changes — a
-	// resource was just applied (or pruned). The RI is named after its Release and
-	// shares its namespace, so its cache key is the Release key. This is what lets
-	// the observer assess a resource the moment it appears, rather than on the poll
-	// interval. Health-only updates (the observer's own writes) are filtered out.
+	// Wake the health loop when a Release's ReleaseInventory changes in a way the
+	// observer must react to: a resource was applied/pruned (membership), or a
+	// lifecycle hook was (re-)armed (workload created). The RI is named after its
+	// Release and shares its namespace, so its cache key is the Release key. This is
+	// what lets the observer assess a resource / poll a hook the moment it appears,
+	// rather than on the poll interval. The observer's own writes (health, hook
+	// status) are filtered out so they don't self-trigger.
 	if _, err := releaseInventoryInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if key, ok := releaseInventoryKey(obj); ok {
@@ -159,7 +161,7 @@ func (o *Options) Run(ctx context.Context) error {
 		UpdateFunc: func(oldObj, newObj any) {
 			oldInv, ok1 := oldObj.(*corev1alpha1.ReleaseInventory)
 			newInv, ok2 := newObj.(*corev1alpha1.ReleaseInventory)
-			if ok1 && ok2 && inventory.MembershipChanged(oldInv, newInv) {
+			if ok1 && ok2 && (inventory.MembershipChanged(oldInv, newInv) || inventory.HooksArmChanged(oldInv, newInv)) {
 				if key, ok := releaseInventoryKey(newObj); ok {
 					healthCtl.EnqueueAfter(key, 0)
 				}

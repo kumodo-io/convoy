@@ -224,8 +224,6 @@ const (
 	LifecycleHookPhasePreDelete  LifecycleHookPhase = "PreDelete"
 	LifecycleHookPhasePostDelete LifecycleHookPhase = "PostDelete"
 	LifecycleHookPhaseSyncFailed LifecycleHookPhase = "SyncFailed"
-	LifecycleHookPhasePreRender  LifecycleHookPhase = "PreRender"
-	LifecycleHookPhasePostRender LifecycleHookPhase = "PostRender"
 )
 
 type LifecycleHookType string
@@ -443,8 +441,6 @@ type ReleaseMutationPatchSpec struct {
 }
 
 type ReleaseLifecycle struct {
-	PreRender  []LifecycleHookSpec
-	PostRender []LifecycleHookSpec
 	PreSync    []LifecycleHookSpec
 	SyncFailed []LifecycleHookSpec
 	PostSync   []LifecycleHookSpec
@@ -461,8 +457,24 @@ type LifecycleHookSpec struct {
 	OnFailure            LifecycleHookOnFailureAction
 	DeleteBeforeCreation bool
 	Cleanup              LifecycleHookCleanup
-	PodTemplate          *corev1.PodTemplateSpec
-	JobTemplate          *batchv1.JobTemplateSpec
+	PodTemplate          *LifecycleHookPodTemplate
+	JobTemplate          *LifecycleHookJobTemplate
+}
+
+type LifecycleHookJobTemplate struct {
+	Metadata PartialMetadata
+	Spec     batchv1.JobSpec
+}
+
+type LifecycleHookPodTemplate struct {
+	Metadata PartialMetadata
+	Spec     corev1.PodSpec
+}
+
+type PartialMetadata struct {
+	Namespace   string
+	Labels      map[string]string
+	Annotations map[string]string
 }
 
 type ReleasePin struct {
@@ -653,6 +665,23 @@ type ResourceInventoryItem struct {
 	Message        string
 }
 
+type ReleaseLifecycleHookItem struct {
+	Name              string
+	Phase             LifecycleHookPhase
+	RenderRef         string
+	Weight            int32
+	Timeout           *metav1.Duration
+	Group             string
+	Version           string
+	Kind              string
+	WorkloadNamespace string
+	WorkloadName      string
+	CreatedAt         *metav1.Time
+	FinishedAt        *metav1.Time
+	State             *LifecycleHookState
+	Message           string
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -661,6 +690,7 @@ type ReleaseInventory struct {
 	metav1.ObjectMeta
 
 	Inventory []ResourceInventoryItem
+	Hooks     []ReleaseLifecycleHookItem
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

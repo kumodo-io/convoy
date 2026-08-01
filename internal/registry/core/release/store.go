@@ -47,6 +47,7 @@ type Storage struct {
 	Pin       *PinREST
 	Sync      *SyncREST
 	Mutations *MutationsREST
+	Lifecycle *LifecycleREST
 	Preview   *observerProxyREST
 	Diff      *observerProxyREST
 	Health    *observerProxyREST
@@ -62,6 +63,7 @@ func (s *Storage) Map() map[string]rest.Storage {
 		"releases/pin":       s.Pin,
 		"releases/sync":      s.Sync,
 		"releases/mutations": s.Mutations,
+		"releases/lifecycle": s.Lifecycle,
 		"releases/preview":   s.Preview,
 		"releases/diff":      s.Diff,
 		"releases/health":    s.Health,
@@ -109,12 +111,18 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, obser
 	mutationsStore.UpdateStrategy = mutationsStrategy
 	mutationsStore.ResetFieldsStrategy = mutationsStrategy
 
+	lifecycleStore := *store
+	lifecycleStrategy := NewLifecycleStrategy(strategy)
+	lifecycleStore.UpdateStrategy = lifecycleStrategy
+	lifecycleStore.ResetFieldsStrategy = lifecycleStrategy
+
 	return &Storage{
 		Release:   &registry.REST{Store: store},
 		Status:    &StatusREST{store: &statusStore},
 		Pin:       &PinREST{store: &pinStore},
 		Sync:      &SyncREST{store: store},
 		Mutations: &MutationsREST{store: &mutationsStore},
+		Lifecycle: &LifecycleREST{store: &lifecycleStore},
 		Preview:   &observerProxyREST{observerURL: observerURL, subresource: "preview"},
 		Diff:      &observerProxyREST{observerURL: observerURL, subresource: "diff"},
 		Health:    &observerProxyREST{observerURL: observerURL, subresource: "health"},
@@ -250,6 +258,49 @@ func (r *MutationsREST) Update(
 
 // ConvertToTable delegates to the store's table convertor.
 func (r *MutationsREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
+	return r.store.ConvertToTable(ctx, object, tableOptions)
+}
+
+// LifecycleREST implements the /lifecycle subresource: GET reads the Release, PUT
+// replaces its top-level Lifecycle hooks. Separately addressable so lifecycle
+// edits can be RBAC-scoped independently of the rest of the Release.
+type LifecycleREST struct {
+	store *genericregistry.Store
+}
+
+var (
+	_ rest.Storage        = &LifecycleREST{}
+	_ rest.Getter         = &LifecycleREST{}
+	_ rest.Updater        = &LifecycleREST{}
+	_ rest.TableConvertor = &LifecycleREST{}
+)
+
+// New returns an empty Release.
+func (r *LifecycleREST) New() runtime.Object { return &core.Release{} }
+
+// Destroy releases resources held by the store.
+func (r *LifecycleREST) Destroy() {}
+
+// Get retrieves the Release (including its lifecycle hooks).
+func (r *LifecycleREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	return r.store.Get(ctx, name, options)
+}
+
+// Update replaces the Release's lifecycle hooks.
+func (r *LifecycleREST) Update(
+	ctx context.Context,
+	name string,
+	objInfo rest.UpdatedObjectInfo,
+	createValidation rest.ValidateObjectFunc,
+	updateValidation rest.ValidateObjectUpdateFunc,
+	forceAllowCreate bool,
+	options *metav1.UpdateOptions,
+) (runtime.Object, bool, error) {
+	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation, forceAllowCreate, options)
+}
+
+// ConvertToTable delegates to the store's table convertor.
+func (r *LifecycleREST) ConvertToTable(ctx context.Context, object runtime.Object, tableOptions runtime.Object) (*metav1.Table, error) {
 	return r.store.ConvertToTable(ctx, object, tableOptions)
 }
 

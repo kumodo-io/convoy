@@ -50,6 +50,9 @@ type Client interface {
 	// SetMutations replaces the Release's mutation pipeline via the /mutations
 	// subresource.
 	SetMutations(ctx context.Context, namespace, name string, mutations []corev1alpha1.ReleaseMutation) (*corev1alpha1.Release, error)
+	// SetLifecycle replaces the Release's lifecycle hooks via the /lifecycle
+	// subresource.
+	SetLifecycle(ctx context.Context, namespace, name string, lifecycle *corev1alpha1.ReleaseLifecycle) (*corev1alpha1.Release, error)
 }
 
 // restClient talks to the convoy aggregated apiserver. The /pin and /sync
@@ -163,6 +166,30 @@ func (c *restClient) SetMutations(ctx context.Context, namespace, name string, m
 		Resource("releases").
 		Name(name).
 		SubResource("mutations").
+		Body(rel).
+		Do(ctx).
+		Into(result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// SetLifecycle GET-modify-PUTs the Release through the /lifecycle subresource. The
+// Updater there ignores everything but .lifecycle, so sending the whole object is
+// safe.
+func (c *restClient) SetLifecycle(ctx context.Context, namespace, name string, lifecycle *corev1alpha1.ReleaseLifecycle) (*corev1alpha1.Release, error) {
+	rel, err := c.GetRelease(ctx, namespace, name)
+	if err != nil {
+		return nil, err
+	}
+	rel.Lifecycle = lifecycle
+	result := &corev1alpha1.Release{}
+	err = c.rc.Put().
+		Namespace(namespace).
+		Resource("releases").
+		Name(name).
+		SubResource("lifecycle").
 		Body(rel).
 		Do(ctx).
 		Into(result)

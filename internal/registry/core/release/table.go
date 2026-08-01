@@ -47,6 +47,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			{Name: "Cluster", Type: helper.StringValueString, Description: "Target cluster"},
 			{Name: "Applied", Type: helper.StringValueString, Description: "Whether the release render is applied"},
 			{Name: "InSync", Type: helper.StringValueString, Description: "Whether the release is in sync"},
+			{Name: "Lifecycle", Type: helper.StringValueString, Description: "Lifecycle hook status"},
 			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the Release was created"},
 		},
 	}
@@ -71,7 +72,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			inSync = string(r.Status.Conditions[inSyncIdx].Status)
 		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, applied, inSync, age},
+			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, applied, inSync, lifecycleColumn(r), age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}
@@ -90,6 +91,52 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 	}
 
 	return table, nil
+}
+
+// lifecycleColumn summarizes a Release's lifecycle-hook status for the table:
+// "N/A" when it has no hooks, "Failed:<phase>" / "Running:<phase>" for the first
+// phase (in pipeline order) with a failing/running hook, else "Succeeded".
+func lifecycleColumn(r *core.Release) string {
+	phases := []struct {
+		name  string
+		hooks []core.LifecycleHookStatus
+	}{
+		{"PreRender", r.Status.Lifecycle.PreRender},
+		{"PostRender", r.Status.Lifecycle.PostRender},
+		{"PreSync", r.Status.Lifecycle.PreSync},
+		{"SyncFailed", r.Status.Lifecycle.SyncFailed},
+		{"PostSync", r.Status.Lifecycle.PostSync},
+		{"PreDelete", r.Status.Lifecycle.PreDelete},
+		{"PostDelete", r.Status.Lifecycle.PostDelete},
+	}
+	total, firstFailed, firstRunning := 0, "", ""
+	for _, p := range phases {
+		for i := range p.hooks {
+			total++
+			switch p.hooks[i].State {
+			case core.LifecycleHookStateFailed, core.LifecycleHookStateTimedOut:
+				if firstFailed == "" {
+					firstFailed = p.name
+				}
+			case core.LifecycleHookStateSucceeded, core.LifecycleHookStateSkipped:
+				// terminal-ok
+			default:
+				if firstRunning == "" {
+					firstRunning = p.name
+				}
+			}
+		}
+	}
+	switch {
+	case total == 0:
+		return "N/A"
+	case firstFailed != "":
+		return "Failed:" + firstFailed
+	case firstRunning != "":
+		return "Running:" + firstRunning
+	default:
+		return "Succeeded"
+	}
 }
 
 // sourceString renders a Release source as "type/name" using the per-type block

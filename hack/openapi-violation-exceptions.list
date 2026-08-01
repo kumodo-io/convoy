@@ -3,6 +3,8 @@ API rule violation: list_type_missing,github.com/kumodo-io/convoy/api/core/v1alp
 API rule violation: list_type_missing,github.com/kumodo-io/convoy/api/extensions/v1alpha1,GlobalHealthRuleSetSpec,Rules
 API rule violation: list_type_missing,github.com/kumodo-io/convoy/api/extensions/v1alpha1,HealthRuleSetSpec,Rules
 API rule violation: list_type_missing,github.com/kumodo-io/convoy/api/extensions/v1alpha1,RuleSpec,Resources
+API rule violation: names_match,github.com/kumodo-io/convoy/api/core/v1alpha1,ReleaseLifecycleHookItem,WorkloadName
+API rule violation: names_match,github.com/kumodo-io/convoy/api/core/v1alpha1,ReleaseLifecycleHookItem,WorkloadNamespace
 API rule violation: names_match,k8s.io/api/core/v1,AzureDiskVolumeSource,DataDiskURI
 API rule violation: names_match,k8s.io/api/core/v1,ContainerStatus,LastTerminationState
 API rule violation: names_match,k8s.io/api/core/v1,DaemonEndpoint,Port

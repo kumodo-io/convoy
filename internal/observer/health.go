@@ -71,6 +71,9 @@ type HealthController struct {
 	// syncFn requests a Release reconcile (POST /sync); a seam for tests. It is how
 	// the health loop tells the controller a wave became healthy.
 	syncFn func(context.Context, *corev1alpha1.Release) error
+	// pollHooksFn is a seam: it defaults to the real lifecycle-hook polling and is
+	// stubbed in tests so syncHandler can be exercised without a live cluster.
+	pollHooksFn func(context.Context, *corev1alpha1.Release) (*hookPollResult, error)
 }
 
 // NewHealthController wires the observer's health loop.
@@ -96,6 +99,7 @@ func NewHealthController(
 	}
 	c.assessFn = c.assess
 	c.syncFn = c.requestSync
+	c.pollHooksFn = c.pollHooks
 	c.Controller = base.NewController("health", c.syncHandler)
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
@@ -120,58 +124,67 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 		return nil
 	}
 
-	// No assessment configured: report Healthy — everything applied, nothing to
-	// check. The controller treats a release without a health assessment as
-	// satisfying every wave's health bar, so gating still advances without the
-	// observer writing per-resource health or requesting a sync.
-	if rel.Spec.HealthAssessment == nil {
+	// Lifecycle hooks: poll the armed hook workloads recorded on the
+	// ReleaseInventory and record their outcome, independent of health assessment
+	// (a release without a health assessment can still have hooks). Best-effort like
+	// the health/drift loops — a poll error is logged, not returned.
+	hookRes, hookErr := c.pollHooksFn(ctx, rel)
+	if hookErr != nil {
+		klog.V(4).InfoS("hook polling undetermined", "release", key, "reason", hookErr.Error())
+	}
+
+	// Health assessment. healthSettled stays true when there is nothing to wait for
+	// (no assessment, or an undetermined pass); waveDone marks the edge that should
+	// wake the controller.
+	healthSettled, waveDone := true, false
+	switch rel.Spec.HealthAssessment {
+	case nil:
+		// No assessment: report Healthy — everything applied, nothing to check. The
+		// controller treats such a release as satisfying every wave's health bar.
 		if err := c.writeHealth(ctx, rel, metav1.ConditionTrue, reasonNotConfigured,
 			"no health assessment configured", healthresult.Summary{}); err != nil {
 			return err
 		}
-		c.scheduleRecheck(key, rel)
-		return nil
-	}
-
-	a, recErr := c.assessFn(ctx, rel)
-	if recErr != nil {
-		// Couldn't assess (cluster unreachable, invalid rules): report Healthy=Unknown
-		// and re-check later, preserving the persisted anchors. Not a controller error
-		// — best-effort, like the drift loop.
-		klog.V(4).InfoS("health undetermined", "release", key, "reason", recErr.Error())
-		if err := c.writeHealth(ctx, rel, metav1.ConditionUnknown, reasonUnknown, recErr.Error(),
-			toWireSummary(rel.Status.HealthSummary)); err != nil {
-			return err
+	default:
+		a, recErr := c.assessFn(ctx, rel)
+		if recErr != nil {
+			// Couldn't assess (cluster unreachable, invalid rules): report
+			// Healthy=Unknown and re-check later, preserving the persisted anchors.
+			klog.V(4).InfoS("health undetermined", "release", key, "reason", recErr.Error())
+			if err := c.writeHealth(ctx, rel, metav1.ConditionUnknown, reasonUnknown, recErr.Error(),
+				toWireSummary(rel.Status.HealthSummary)); err != nil {
+				return err
+			}
+		} else {
+			// assess persisted per-resource health onto the ReleaseInventory (the
+			// controller rolls it up for the sync-wave gate). Publish the aggregate
+			// Healthy condition + summary on the Release.
+			status, reason, message := conditionFor(a.result)
+			if err := c.writeHealth(ctx, rel, status, reason, message, a.result.Summarize()); err != nil {
+				return err
+			}
+			healthSettled = allHealthy(a.entries)
+			waveDone = frontierWaveCompleted(a.entries, a.prior)
 		}
-		c.scheduleRecheck(key, rel)
-		return nil
 	}
 
-	// assess has already persisted per-resource health onto the ReleaseInventory
-	// (the controller rolls it up for the sync-wave gate). Publish the aggregate
-	// Healthy condition + summary on the Release.
-	status, reason, message := conditionFor(a.result)
-	if err := c.writeHealth(ctx, rel, status, reason, message, a.result.Summarize()); err != nil {
-		return err
-	}
-
-	// Advance the sync-wave gate the moment the frontier wave completes: request a
-	// sync so the controller applies the next wave without waiting for its poll
-	// interval. Edge-triggered (only on the transition to fully-healthy), so it does
-	// not re-fire on steady-state re-assessments. The controller's own periodic
-	// reconcile remains the safety net if this poke is ever missed.
-	if frontierWaveCompleted(a.entries, a.prior) {
+	// Wake the controller the moment a sync-wave frontier or a lifecycle-hook batch
+	// completes, so it advances promptly instead of on its poll interval.
+	// Edge-triggered (only on the transition to done), so it doesn't re-fire on
+	// steady-state passes. The controller's own periodic reconcile is the safety net.
+	if waveDone || (hookRes != nil && hookRes.batchCompleted) {
 		if err := c.syncFn(ctx, rel); err != nil {
-			return fmt.Errorf("requesting sync on wave completion for %s: %w", key, err)
+			return fmt.Errorf("requesting sync for %s: %w", key, err)
 		}
-		klog.V(4).InfoS("requested sync on wave completion", "release", key)
+		klog.V(4).InfoS("requested sync on wave/hook completion", "release", key)
 	}
 
-	// Re-check cadence: while any resource is still Progressing/Unknown, retry with
-	// exponential backoff (bounded by the poll interval) so a resource becoming
-	// healthy is noticed within seconds rather than a full interval; once all are
-	// healthy, fall back to the normal interval.
-	c.scheduleHealthRecheck(key, rel, allHealthy(a.entries))
+	// Re-check cadence: while any resource is still Progressing/Unknown or any hook
+	// is still Running, retry with exponential backoff (bounded by the poll interval)
+	// so completion is noticed within seconds; once everything is settled, fall back
+	// to the normal interval.
+	settled := healthSettled && (hookRes == nil || hookRes.allSettled)
+	c.scheduleHealthRecheck(key, rel, settled)
 	return nil
 }
 
@@ -377,15 +390,6 @@ func (c *HealthController) collectRules(rel *corev1alpha1.Release) ([]extensions
 		rules = append(rules, l.Spec.Rules...)
 	}
 	return rules, nil
-}
-
-// scheduleRecheck schedules the next health re-check at the Release's sync
-// interval, if set; otherwise the informer resync drives re-checks. Used on the
-// steady paths (no assessment, undetermined) where progress backoff doesn't apply.
-func (c *HealthController) scheduleRecheck(key string, rel *corev1alpha1.Release) {
-	if d := rel.Spec.SyncPolicy.Interval.Duration; d > 0 {
-		c.EnqueueAfter(key, d)
-	}
 }
 
 // progress backoff tuning: start at 2s and double each not-yet-healthy pass,

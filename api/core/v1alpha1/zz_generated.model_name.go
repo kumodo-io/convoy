@@ -77,6 +77,16 @@ func (in ClusterStatus) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in LifecycleHookJobTemplate) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.LifecycleHookJobTemplate"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in LifecycleHookPodTemplate) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.LifecycleHookPodTemplate"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in LifecycleHookSpec) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.LifecycleHookSpec"
 }
@@ -89,6 +99,11 @@ func (in LifecycleHookStatus) OpenAPIModelName() string {
 // OpenAPIModelName returns the OpenAPI model name for this type.
 func (in LifecycleStatus) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.LifecycleStatus"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in PartialMetadata) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.PartialMetadata"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
@@ -189,6 +204,11 @@ func (in ReleaseInventoryList) OpenAPIModelName() string {
 // OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseLifecycle) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseLifecycle"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseLifecycleHookItem) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseLifecycleHookItem"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.

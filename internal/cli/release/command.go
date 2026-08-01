@@ -32,7 +32,50 @@ func Command(f *cliclient.ConfigFlags) *cobra.Command {
 		newReleaseDiffCmd(f),
 		newReleaseHealthCmd(f),
 		newReleaseMutationsCmd(f),
+		newReleaseLifecycleCmd(f),
 	)
+	return cmd
+}
+
+func newReleaseLifecycleCmd(f *cliclient.ConfigFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "lifecycle",
+		Short: "View or edit a release's lifecycle hooks",
+	}
+	get := &cobra.Command{
+		Use:   "get <name>",
+		Short: "Print a release's lifecycle hooks as YAML",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, namespace, err := f.Client()
+			if err != nil {
+				return err
+			}
+			return runLifecycleGet(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0])
+		},
+	}
+
+	var file, fromString string
+	set := &cobra.Command{
+		Use:   "set <name>",
+		Short: "Replace a release's lifecycle hooks (from -f <file>, -f - for stdin, or --from-string)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, namespace, err := f.Client()
+			if err != nil {
+				return err
+			}
+			lifecycle, err := readLifecycle(file, fromString, cmd.InOrStdin())
+			if err != nil {
+				return err
+			}
+			return runLifecycleSet(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], lifecycle)
+		},
+	}
+	set.Flags().StringVarP(&file, "file", "f", "", "YAML/JSON file with the lifecycle hooks ('-' reads stdin)")
+	set.Flags().StringVar(&fromString, "from-string", "", "inline YAML/JSON lifecycle hooks")
+
+	cmd.AddCommand(get, set)
 	return cmd
 }
 
@@ -293,6 +336,59 @@ func runMutationsGet(ctx context.Context, out io.Writer, client cliclient.Client
 
 // readMutations resolves the mutation list from exactly one of: `--from-string`,
 // a file (`-f <path>`), or stdin (`-f -`).
+func runLifecycleGet(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name string) error {
+	rel, err := client.GetRelease(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	if rel.Lifecycle == nil {
+		_, err := fmt.Fprintln(out, "no lifecycle hooks")
+		return err
+	}
+	b, err := yaml.Marshal(rel.Lifecycle)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(b)
+	return err
+}
+
+func runLifecycleSet(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name string, lifecycle *corev1alpha1.ReleaseLifecycle) error {
+	if _, err := client.SetLifecycle(ctx, namespace, name, lifecycle); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(out, "set lifecycle hooks on %s/%s\n", namespace, name)
+	return err
+}
+
+// readLifecycle resolves the ReleaseLifecycle from exactly one of -f <file>,
+// -f - (stdin), or --from-string.
+func readLifecycle(file, fromString string, stdin io.Reader) (*corev1alpha1.ReleaseLifecycle, error) {
+	if fromString != "" && file != "" {
+		return nil, fmt.Errorf("--file and --from-string are mutually exclusive")
+	}
+	var raw []byte
+	var err error
+	switch {
+	case fromString != "":
+		raw = []byte(fromString)
+	case file == "-":
+		raw, err = io.ReadAll(stdin)
+	case file != "":
+		raw, err = os.ReadFile(file)
+	default:
+		return nil, fmt.Errorf("provide the lifecycle hooks via -f <file>, -f - (stdin), or --from-string")
+	}
+	if err != nil {
+		return nil, err
+	}
+	lifecycle := &corev1alpha1.ReleaseLifecycle{}
+	if err := yaml.Unmarshal(raw, lifecycle); err != nil {
+		return nil, fmt.Errorf("parsing lifecycle hooks: %w", err)
+	}
+	return lifecycle, nil
+}
+
 func readMutations(file, fromString string, stdin io.Reader) ([]corev1alpha1.ReleaseMutation, error) {
 	if fromString != "" && file != "" {
 		return nil, fmt.Errorf("--file and --from-string are mutually exclusive")
