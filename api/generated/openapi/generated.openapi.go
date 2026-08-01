@@ -1604,6 +1604,14 @@ func schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
+					"runAfter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RunAfter defines the Release condition that should be achieved before running the PostSync lifecycle hook(s).\n\nPossible enum values:\n - `\"Applied\"` defines the Release state equals to \"Applied\" to run the PostSync lifecycle hooks.\n - `\"Healthy\"` defines the Release state equals to \"Healthy\" to run the PostSync lifecycle hooks.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Applied", "Healthy"},
+						},
+					},
 					"weight": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Weight is the weight of the hook.",

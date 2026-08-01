@@ -34,6 +34,9 @@ type LifecycleHookSpecApplyConfiguration struct {
 	Type *corev1alpha1.LifecycleHookType `json:"type,omitempty"`
 	// If is the hook execution condition written in CEL expression format.
 	If *string `json:"if,omitempty"`
+	// RunAfter defines the Release condition that should be achieved before
+	// running the PostSync lifecycle hook(s).
+	RunAfter *corev1alpha1.LifecycleHookRunAfter `json:"runAfter,omitempty"`
 	// Weight is the weight of the hook.
 	Weight *int32 `json:"weight,omitempty"`
 	// Timeout is the timeout for the hook. If not set, controller will wait indefinitely.
@@ -77,6 +80,14 @@ func (b *LifecycleHookSpecApplyConfiguration) WithType(value corev1alpha1.Lifecy
 // If called multiple times, the If field is set to the value of the last call.
 func (b *LifecycleHookSpecApplyConfiguration) WithIf(value string) *LifecycleHookSpecApplyConfiguration {
 	b.If = &value
+	return b
+}
+
+// WithRunAfter sets the RunAfter field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RunAfter field is set to the value of the last call.
+func (b *LifecycleHookSpecApplyConfiguration) WithRunAfter(value corev1alpha1.LifecycleHookRunAfter) *LifecycleHookSpecApplyConfiguration {
+	b.RunAfter = &value
 	return b
 }
 

@@ -1028,6 +1028,7 @@ func autoConvert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in *Lifecy
 	out.Name = in.Name
 	out.Type = core.LifecycleHookType(in.Type)
 	out.If = in.If
+	out.RunAfter = (*core.LifecycleHookRunAfter)(unsafe.Pointer(in.RunAfter))
 	out.Weight = in.Weight
 	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
 	out.OnFailure = core.LifecycleHookOnFailureAction(in.OnFailure)
@@ -1047,6 +1048,7 @@ func autoConvert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(in *core.L
 	out.Name = in.Name
 	out.Type = LifecycleHookType(in.Type)
 	out.If = in.If
+	out.RunAfter = (*LifecycleHookRunAfter)(unsafe.Pointer(in.RunAfter))
 	out.Weight = in.Weight
 	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
 	out.OnFailure = LifecycleHookOnFailureAction(in.OnFailure)
