@@ -34,7 +34,7 @@ func relWithPostSync(ra *corev1alpha1.LifecycleHookRunAfter, withHealth bool) *c
 	hook := podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
 	hook.RunAfter = ra
 	rel := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: "uid-1"},
+		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: hookRelUID},
 		Lifecycle:  &corev1alpha1.ReleaseLifecycle{PostSync: []corev1alpha1.LifecycleHookSpec{hook}},
 	}
 	if withHealth {

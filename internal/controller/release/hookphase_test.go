@@ -34,6 +34,7 @@ const (
 	hookRenderRef   = "sha256:hookrender"
 	appName         = "app"
 	hookNameMigrate = "migrate"
+	hookRelUID      = "uid-1"
 )
 
 // fakeHookRunner records Create/Delete/DeleteMatching calls; Create stamps a
@@ -126,7 +127,7 @@ func newHookController(runner HookRunner, store inventory.Store) *Controller {
 
 func relWithPreSync(hooks ...corev1alpha1.LifecycleHookSpec) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: "uid-1"},
+		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: hookRelUID},
 		Lifecycle:  &corev1alpha1.ReleaseLifecycle{PreSync: hooks},
 	}
 }
