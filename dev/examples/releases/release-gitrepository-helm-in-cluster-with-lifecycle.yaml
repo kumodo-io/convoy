@@ -1,0 +1,81 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Release
+metadata:
+  name: podinfo-in-cluster-helm-with-lifecycle
+  namespace: default
+lifecycle:
+  preSync:
+    - name: pre-sleep
+      type: Job
+      timeout: 30s
+      onFailure: Continue
+      cleanup: Never
+      jobTemplate:
+        metadata:
+          labels:
+            test-label: "true"
+          annotations:
+            test-annotation: "true"
+        spec:
+          template:
+            spec:
+              restartPolicy: Never
+              containers:
+                - name: job-worker
+                  image: "busybox:1.38.0"
+                  command: ["sh", "-c", "sleep 10"]
+  postSync:
+    - name: post-sleep
+      type: Job
+      timeout: 30s
+      onFailure: Continue
+      cleanup: Never
+      jobTemplate:
+        metadata:
+          labels:
+            test-label: "true"
+          annotations:
+            test-annotation: "true"
+        spec:
+          template:
+            spec:
+              restartPolicy: Never
+              containers:
+                - name: job-worker
+                  image: "busybox:1.38.0"
+                  command: ["sh", "-c", "sleep 10"]
+spec:
+  clusterRef:
+    name: dev-local
+  source:
+    type: gitRepository
+    gitRepository:
+      name: podinfo
+      namespace: default
+      ref:
+        branch: master
+  content:
+    type: helm
+    helm:
+      path: charts/podinfo
+      releaseName: podinfo-helm
+      values:
+        - type: inline
+          inline:
+            probes:
+              readiness:
+                initialDelaySeconds: 30
+              liveness:
+                initialDelaySeconds: 30
+  syncPolicy:
+    automatic: true
+    prune:
+      orphaned: false
+      includeCRDs: false
+      includeNamespaces: false
+    interval: 1m
+  healthAssessment:
+    globalRuleSetSelector:
+      matchLabels:
+        convoy.kumodo.io/default: "true"
+    deadline: 1m
