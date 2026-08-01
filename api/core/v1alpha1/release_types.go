@@ -759,8 +759,8 @@ type LifecycleHookSpec struct {
 	// Type is the type of the hook.
 	Type LifecycleHookType `json:"type"`
 
-	// When is the hook execution condition written in CEL expression format.
-	When string `json:"when,omitempty"`
+	// If is the hook execution condition written in CEL expression format.
+	If string `json:"if,omitempty"`
 
 	// Weight is the weight of the hook.
 	Weight int32 `json:"weight"`

@@ -85,7 +85,7 @@ func (c *Controller) runHookPhase(ctx context.Context, rel *corev1alpha1.Release
 	for _, group := range groups {
 		groupDone := true
 		for _, hook := range group {
-			run, err := render.EvalHookWhen(hook.When, ctxVals)
+			run, err := render.EvalHookIf(hook.If, ctxVals)
 			if err != nil {
 				// A bad `when` is a config error: skip the hook (do not block the phase),
 				// mirroring celTransform's treat-as-skip. Surfaced as Skipped in status.

@@ -1597,9 +1597,9 @@ func schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref common.ReferenceCallb
 							Enum:        []interface{}{"Job", "Pod"},
 						},
 					},
-					"when": {
+					"if": {
 						SchemaProps: spec.SchemaProps{
-							Description: "When is the hook execution condition written in CEL expression format.",
+							Description: "If is the hook execution condition written in CEL expression format.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

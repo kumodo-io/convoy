@@ -451,7 +451,7 @@ type ReleaseLifecycle struct {
 type LifecycleHookSpec struct {
 	Name                 string
 	Type                 LifecycleHookType
-	When                 string
+	If                   string
 	Weight               int32
 	Timeout              *metav1.Duration
 	OnFailure            LifecycleHookOnFailureAction

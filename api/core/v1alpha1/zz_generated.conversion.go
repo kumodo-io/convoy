@@ -1027,7 +1027,7 @@ func Convert_core_LifecycleHookPodTemplate_To_v1alpha1_LifecycleHookPodTemplate(
 func autoConvert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in *LifecycleHookSpec, out *core.LifecycleHookSpec, s conversion.Scope) error {
 	out.Name = in.Name
 	out.Type = core.LifecycleHookType(in.Type)
-	out.When = in.When
+	out.If = in.If
 	out.Weight = in.Weight
 	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
 	out.OnFailure = core.LifecycleHookOnFailureAction(in.OnFailure)
@@ -1046,7 +1046,7 @@ func Convert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in *LifecycleH
 func autoConvert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(in *core.LifecycleHookSpec, out *LifecycleHookSpec, s conversion.Scope) error {
 	out.Name = in.Name
 	out.Type = LifecycleHookType(in.Type)
-	out.When = in.When
+	out.If = in.If
 	out.Weight = in.Weight
 	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
 	out.OnFailure = LifecycleHookOnFailureAction(in.OnFailure)
