@@ -99,34 +99,88 @@ func (c *HealthController) pollHooks(ctx context.Context, rel *corev1alpha1.Rele
 	}
 	now := c.now().Time
 
-	entries := make([]hookStatusEntry, 0, len(toPoll))
+	// Poll the armed-but-unfinished hooks and collect the fresh results by identity.
+	// A skip (workload gone, no new info) yields no fresh result, so the existing
+	// state is preserved below.
+	fresh := make(map[string]hookStatusEntry, len(toPoll))
 	batchCompleted, stillRunning := false, false
 	for i := range toPoll {
 		item := toPoll[i]
 		state, message := c.pollHookWorkload(ctx, dyn, mapper, item, now)
+		if state == hookStateSkip {
+			continue
+		}
 		terminal := isTerminalHookState(state)
 		if terminal {
 			batchCompleted = true
 		} else {
 			stillRunning = true
 		}
-		entries = append(entries, hookStatusEntry{
+		fresh[hookKey(item.Phase, item.Name)] = hookStatusEntry{
 			name:       item.Name,
 			phase:      item.Phase,
 			state:      state,
 			message:    message,
 			finishedAt: terminalTime(terminal, now),
-		})
+		}
 	}
-	if err := c.writeHookStatus(ctx, rel, entries); err != nil {
+
+	if err := c.writeHookStatus(ctx, rel, mergeHookEntries(inv.Hooks, fresh)); err != nil {
 		return nil, err
 	}
 	return &hookPollResult{batchCompleted: batchCompleted, allSettled: !stillRunning}, nil
 }
 
+// hookKey is the composite identity (phase, name) of a hook entry.
+func hookKey(phase corev1alpha1.LifecycleHookPhase, name string) string {
+	return string(phase) + "|" + name
+}
+
+// mergeHookEntries builds the status-write set covering EVERY assessed hook, not
+// just the freshly-polled subset. The observer field manager owns each hook entry's
+// state/finishedAt/message via a listType=map, so an apply that omits an entry makes
+// SSA prune that entry's observer-owned fields. Dropping a completed hook's
+// finishedAt would resurrect it (needsHookPoll sees finishedAt=nil) and re-poll a
+// since-cleaned-up workload — the bug this avoids. Freshly-polled hooks take their
+// new result; every other already-assessed hook (State != nil) preserves its
+// recorded state so its ownership is re-asserted unchanged.
+func mergeHookEntries(items []corev1alpha1.ReleaseLifecycleHookItem, fresh map[string]hookStatusEntry) []hookStatusEntry {
+	entries := make([]hookStatusEntry, 0, len(items))
+	for i := range items {
+		item := items[i]
+		if e, ok := fresh[hookKey(item.Phase, item.Name)]; ok {
+			entries = append(entries, e)
+			continue
+		}
+		if item.State != nil {
+			entries = append(entries, hookStatusEntry{
+				name:       item.Name,
+				phase:      item.Phase,
+				state:      *item.State,
+				message:    item.Message,
+				finishedAt: item.FinishedAt,
+			})
+		}
+	}
+	return entries
+}
+
+// hookStateSkip is the sentinel pollHookWorkload returns when a poll yields no new
+// information and the recorded outcome must be left untouched (an empty
+// LifecycleHookState). pollHooks excludes such entries from the status write.
+const hookStateSkip corev1alpha1.LifecycleHookState = ""
+
 // pollHookWorkload reads a hook workload live from the target and maps it to a
-// lifecycle-hook state. A missing workload (armed but gone) is a Failure; a
-// transient read error keeps it Running so a blip doesn't latch a false failure.
+// lifecycle-hook state. A workload that FAILED still exists (a Job's Failed
+// condition, a Pod's Failed phase), so absence (NotFound) is never a failure — it
+// means the workload was deleted: cleaned up after completing, or removed
+// externally. On NotFound we therefore leave the recorded outcome alone (skip),
+// which preserves the terminal state a prior poll already wrote and closes the
+// cache-lag race where a just-succeeded, just-cleaned-up hook would otherwise be
+// re-read as gone and clobbered to Failed. The one exception is an unfinished hook
+// past its timeout — that is a genuine TimedOut, so a vanished in-flight hook can't
+// hold the phase gate forever. A transient read error keeps it Running so a blip
+// doesn't latch a false state.
 func (c *HealthController) pollHookWorkload(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, item corev1alpha1.ReleaseLifecycleHookItem, now time.Time) (corev1alpha1.LifecycleHookState, string) {
 	gvk := schema.GroupVersionKind{Group: item.Group, Version: item.Version, Kind: item.Kind}
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
@@ -135,12 +189,21 @@ func (c *HealthController) pollHookWorkload(ctx context.Context, dyn dynamic.Int
 	}
 	live, err := resourceClient(dyn, mapping, item.WorkloadNamespace).Get(ctx, item.WorkloadName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return corev1alpha1.LifecycleHookStateFailed, "hook workload not found in cluster"
+		if item.FinishedAt == nil && hookTimedOut(item, now) {
+			return corev1alpha1.LifecycleHookStateTimedOut, "hook workload not found and timeout elapsed"
+		}
+		return hookStateSkip, ""
 	}
 	if err != nil {
 		return corev1alpha1.LifecycleHookStateRunning, fmt.Sprintf("reading hook workload: %v", err)
 	}
 	return hookWorkloadState(item, live, now)
+}
+
+// hookTimedOut reports whether a still-running hook has exceeded its timeout,
+// measured from its creation.
+func hookTimedOut(item corev1alpha1.ReleaseLifecycleHookItem, now time.Time) bool {
+	return item.Timeout != nil && item.CreatedAt != nil && now.Sub(item.CreatedAt.Time) > item.Timeout.Duration
 }
 
 // writeHookStatus applies the observed hook runtime fields onto the
@@ -227,10 +290,8 @@ func hookWorkloadState(item corev1alpha1.ReleaseLifecycleHookItem, live *unstruc
 	default: // Job (the only other validated type)
 		state, message = jobHookState(live)
 	}
-	if state == corev1alpha1.LifecycleHookStateRunning && item.Timeout != nil && item.CreatedAt != nil {
-		if now.Sub(item.CreatedAt.Time) > item.Timeout.Duration {
-			return corev1alpha1.LifecycleHookStateTimedOut, fmt.Sprintf("hook did not complete within %s", item.Timeout.Duration)
-		}
+	if state == corev1alpha1.LifecycleHookStateRunning && hookTimedOut(item, now) {
+		return corev1alpha1.LifecycleHookStateTimedOut, fmt.Sprintf("hook did not complete within %s", item.Timeout.Duration)
 	}
 	return state, message
 }
