@@ -1547,7 +1547,7 @@ func schema_convoy_api_core_v1alpha1_LifecycleHookPodTemplate(ref common.Referen
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "LifecycleHookPodTemplate defines the tempalte for the lifecycle hook Pod.",
+				Description: "LifecycleHookPodTemplate defines the template for the lifecycle hook Pod.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"metadata": {
@@ -2158,10 +2158,10 @@ func schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref com
 					},
 					"hookPhase": {
 						SchemaProps: spec.SchemaProps{
-							Description: "HookPhase is the phase of the hook that failed.\n\nPossible enum values:\n - `\"PostDelete\"` is the phase of a lifecycle hook that runs after the delete.\n - `\"PostRender\"` is the phase of a lifecycle hook that runs after the render.\n - `\"PostSync\"` is the phase of a lifecycle hook that runs after the sync.\n - `\"PreDelete\"` is the phase of a lifecycle hook that runs before the delete.\n - `\"PreRender\"` is the phase of a lifecycle hook that runs before the render.\n - `\"PreSync\"` is the phase of a lifecycle hook that runs before the sync.\n - `\"SyncFailed\"` is the phase of a lifecycle hook that runs when the sync fails.",
+							Description: "HookPhase is the phase of the hook that failed.\n\nPossible enum values:\n - `\"PostDelete\"` is the phase of a lifecycle hook that runs after the delete.\n - `\"PostSync\"` is the phase of a lifecycle hook that runs after the sync.\n - `\"PreDelete\"` is the phase of a lifecycle hook that runs before the delete.\n - `\"PreSync\"` is the phase of a lifecycle hook that runs before the sync.\n - `\"SyncFailed\"` is the phase of a lifecycle hook that runs when the sync fails.",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"PostDelete", "PostRender", "PostSync", "PreDelete", "PreRender", "PreSync", "SyncFailed"},
+							Enum:        []interface{}{"PostDelete", "PostSync", "PreDelete", "PreSync", "SyncFailed"},
 						},
 					},
 				},
@@ -2924,44 +2924,6 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref common.ReferenceCallba
 				Description: "ReleaseLifecycle defines the desired state of the ReleaseLifecycle.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"preRender": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "PreRender are the pre-render hooks.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
-									},
-								},
-							},
-						},
-					},
-					"postRender": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Description: "PostRender are the post-render hooks.",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: map[string]interface{}{},
-										Ref:     ref(v1alpha1.LifecycleHookSpec{}.OpenAPIModelName()),
-									},
-								},
-							},
-						},
-					},
 					"preSync": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -3082,11 +3044,11 @@ func schema_convoy_api_core_v1alpha1_ReleaseLifecycleHookItem(ref common.Referen
 					},
 					"phase": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Phase is the lifecycle hook phase.\n\nPossible enum values:\n - `\"PostDelete\"` is the phase of a lifecycle hook that runs after the delete.\n - `\"PostRender\"` is the phase of a lifecycle hook that runs after the render.\n - `\"PostSync\"` is the phase of a lifecycle hook that runs after the sync.\n - `\"PreDelete\"` is the phase of a lifecycle hook that runs before the delete.\n - `\"PreRender\"` is the phase of a lifecycle hook that runs before the render.\n - `\"PreSync\"` is the phase of a lifecycle hook that runs before the sync.\n - `\"SyncFailed\"` is the phase of a lifecycle hook that runs when the sync fails.",
+							Description: "Phase is the lifecycle hook phase.\n\nPossible enum values:\n - `\"PostDelete\"` is the phase of a lifecycle hook that runs after the delete.\n - `\"PostSync\"` is the phase of a lifecycle hook that runs after the sync.\n - `\"PreDelete\"` is the phase of a lifecycle hook that runs before the delete.\n - `\"PreSync\"` is the phase of a lifecycle hook that runs before the sync.\n - `\"SyncFailed\"` is the phase of a lifecycle hook that runs when the sync fails.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
-							Enum:        []interface{}{"PostDelete", "PostRender", "PostSync", "PreDelete", "PreRender", "PreSync", "SyncFailed"},
+							Enum:        []interface{}{"PostDelete", "PostSync", "PreDelete", "PreSync", "SyncFailed"},
 						},
 					},
 					"renderRef": {

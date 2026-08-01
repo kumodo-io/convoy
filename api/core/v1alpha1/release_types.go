@@ -262,12 +262,6 @@ const (
 
 	// LifecycleHookPhaseSyncFailed is the phase of a lifecycle hook that runs when the sync fails.
 	LifecycleHookPhaseSyncFailed LifecycleHookPhase = "SyncFailed"
-
-	// LifecycleHookPhasePreRender is the phase of a lifecycle hook that runs before the render.
-	LifecycleHookPhasePreRender LifecycleHookPhase = "PreRender"
-
-	// LifecycleHookPhasePostRender is the phase of a lifecycle hook that runs after the render.
-	LifecycleHookPhasePostRender LifecycleHookPhase = "PostRender"
 )
 
 // LifecycleHookType defines the type of a lifecycle hook.
@@ -736,14 +730,6 @@ type ReleaseMutationPatchSpec struct {
 
 // ReleaseLifecycle defines the desired state of the ReleaseLifecycle.
 type ReleaseLifecycle struct {
-	// PreRender are the pre-render hooks.
-	// +listType=atomic
-	PreRender []LifecycleHookSpec `json:"preRender,omitempty"`
-
-	// PostRender are the post-render hooks.
-	// +listType=atomic
-	PostRender []LifecycleHookSpec `json:"postRender,omitempty"`
-
 	// PreSync are the pre-sync hooks.
 	// +listType=atomic
 	PreSync []LifecycleHookSpec `json:"preSync,omitempty"`

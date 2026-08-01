@@ -25,7 +25,7 @@ import (
 // LifecycleHookPodTemplateApplyConfiguration represents a declarative configuration of the LifecycleHookPodTemplate type for use
 // with apply.
 //
-// LifecycleHookPodTemplate defines the tempalte for the lifecycle hook Pod.
+// LifecycleHookPodTemplate defines the template for the lifecycle hook Pod.
 type LifecycleHookPodTemplateApplyConfiguration struct {
 	// Metadata contains partial object metadata.
 	Metadata *PartialMetadataApplyConfiguration `json:"metadata,omitempty"`

@@ -1663,8 +1663,6 @@ func Convert_core_ReleaseInventoryList_To_v1alpha1_ReleaseInventoryList(in *core
 }
 
 func autoConvert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in *ReleaseLifecycle, out *core.ReleaseLifecycle, s conversion.Scope) error {
-	out.PreRender = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PreRender))
-	out.PostRender = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PostRender))
 	out.PreSync = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PreSync))
 	out.SyncFailed = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.SyncFailed))
 	out.PostSync = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PostSync))
@@ -1679,8 +1677,6 @@ func Convert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in *ReleaseLifec
 }
 
 func autoConvert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(in *core.ReleaseLifecycle, out *ReleaseLifecycle, s conversion.Scope) error {
-	out.PreRender = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PreRender))
-	out.PostRender = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PostRender))
 	out.PreSync = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PreSync))
 	out.SyncFailed = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.SyncFailed))
 	out.PostSync = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PostSync))

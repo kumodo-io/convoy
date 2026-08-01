@@ -203,10 +203,6 @@ func hooksForPhase(rel *corev1alpha1.Release, phase corev1alpha1.LifecycleHookPh
 		return nil
 	}
 	switch phase {
-	case corev1alpha1.LifecycleHookPhasePreRender:
-		return rel.Lifecycle.PreRender
-	case corev1alpha1.LifecycleHookPhasePostRender:
-		return rel.Lifecycle.PostRender
 	case corev1alpha1.LifecycleHookPhasePreSync:
 		return rel.Lifecycle.PreSync
 	case corev1alpha1.LifecycleHookPhaseSyncFailed:

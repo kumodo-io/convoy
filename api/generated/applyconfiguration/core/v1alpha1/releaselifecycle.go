@@ -23,10 +23,6 @@ package v1alpha1
 //
 // ReleaseLifecycle defines the desired state of the ReleaseLifecycle.
 type ReleaseLifecycleApplyConfiguration struct {
-	// PreRender are the pre-render hooks.
-	PreRender []LifecycleHookSpecApplyConfiguration `json:"preRender,omitempty"`
-	// PostRender are the post-render hooks.
-	PostRender []LifecycleHookSpecApplyConfiguration `json:"postRender,omitempty"`
 	// PreSync are the pre-sync hooks.
 	PreSync []LifecycleHookSpecApplyConfiguration `json:"preSync,omitempty"`
 	// SyncFailed are the sync-failed hooks.
@@ -43,32 +39,6 @@ type ReleaseLifecycleApplyConfiguration struct {
 // apply.
 func ReleaseLifecycle() *ReleaseLifecycleApplyConfiguration {
 	return &ReleaseLifecycleApplyConfiguration{}
-}
-
-// WithPreRender adds the given value to the PreRender field in the declarative configuration
-// and returns the receiver, so that objects can be build by chaining "With" function invocations.
-// If called multiple times, values provided by each call will be appended to the PreRender field.
-func (b *ReleaseLifecycleApplyConfiguration) WithPreRender(values ...*LifecycleHookSpecApplyConfiguration) *ReleaseLifecycleApplyConfiguration {
-	for i := range values {
-		if values[i] == nil {
-			panic("nil value passed to WithPreRender")
-		}
-		b.PreRender = append(b.PreRender, *values[i])
-	}
-	return b
-}
-
-// WithPostRender adds the given value to the PostRender field in the declarative configuration
-// and returns the receiver, so that objects can be build by chaining "With" function invocations.
-// If called multiple times, values provided by each call will be appended to the PostRender field.
-func (b *ReleaseLifecycleApplyConfiguration) WithPostRender(values ...*LifecycleHookSpecApplyConfiguration) *ReleaseLifecycleApplyConfiguration {
-	for i := range values {
-		if values[i] == nil {
-			panic("nil value passed to WithPostRender")
-		}
-		b.PostRender = append(b.PostRender, *values[i])
-	}
-	return b
 }
 
 // WithPreSync adds the given value to the PreSync field in the declarative configuration

@@ -56,13 +56,13 @@ func TestHookWorkloadName(t *testing.T) {
 
 func TestHookWorkloadName_LongHookNameCapped(t *testing.T) {
 	long := strings.Repeat("x", 100)
-	n := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePostRender, long, "sha256:a")
+	n := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePostDelete, long, "sha256:a")
 	if len(n) > 52 {
 		t.Errorf("name %q length %d exceeds 52 for a long hook name", n, len(n))
 	}
 	// Two different long names sharing a 32-char prefix still differ via the hash.
 	other := strings.Repeat("x", 90) + "different"
-	if n2 := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePostRender, other, "sha256:a"); n2 == n {
+	if n2 := hookWorkloadName(appName, corev1alpha1.LifecycleHookPhasePostDelete, other, "sha256:a"); n2 == n {
 		t.Error("distinct long hook names collided")
 	}
 }

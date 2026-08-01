@@ -224,8 +224,6 @@ const (
 	LifecycleHookPhasePreDelete  LifecycleHookPhase = "PreDelete"
 	LifecycleHookPhasePostDelete LifecycleHookPhase = "PostDelete"
 	LifecycleHookPhaseSyncFailed LifecycleHookPhase = "SyncFailed"
-	LifecycleHookPhasePreRender  LifecycleHookPhase = "PreRender"
-	LifecycleHookPhasePostRender LifecycleHookPhase = "PostRender"
 )
 
 type LifecycleHookType string
@@ -443,8 +441,6 @@ type ReleaseMutationPatchSpec struct {
 }
 
 type ReleaseLifecycle struct {
-	PreRender  []LifecycleHookSpec
-	PostRender []LifecycleHookSpec
 	PreSync    []LifecycleHookSpec
 	SyncFailed []LifecycleHookSpec
 	PostSync   []LifecycleHookSpec

@@ -342,8 +342,6 @@ func ValidateReleaseLifecycle(release *Release) field.ErrorList {
 		name  string
 		hooks []LifecycleHookSpec
 	}{
-		{"preRender", lc.PreRender},
-		{"postRender", lc.PostRender},
 		{"preSync", lc.PreSync},
 		{"syncFailed", lc.SyncFailed},
 		{"postSync", lc.PostSync},

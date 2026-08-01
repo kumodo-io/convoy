@@ -165,10 +165,6 @@ func apiVersionOf(group, version string) string {
 // appendHookStatus appends a hook status to the slice for its phase.
 func appendHookStatus(ls *corev1alpha1.LifecycleStatus, phase corev1alpha1.LifecycleHookPhase, hs corev1alpha1.LifecycleHookStatus) {
 	switch phase {
-	case corev1alpha1.LifecycleHookPhasePreRender:
-		ls.PreRender = append(ls.PreRender, hs)
-	case corev1alpha1.LifecycleHookPhasePostRender:
-		ls.PostRender = append(ls.PostRender, hs)
 	case corev1alpha1.LifecycleHookPhasePreSync:
 		ls.PreSync = append(ls.PreSync, hs)
 	case corev1alpha1.LifecycleHookPhaseSyncFailed:
@@ -197,8 +193,6 @@ func forEachHookStatus(ls corev1alpha1.LifecycleStatus, fn func(corev1alpha1.Lif
 			fn(phase, hss[i])
 		}
 	}
-	visit(corev1alpha1.LifecycleHookPhasePreRender, ls.PreRender)
-	visit(corev1alpha1.LifecycleHookPhasePostRender, ls.PostRender)
 	visit(corev1alpha1.LifecycleHookPhasePreSync, ls.PreSync)
 	visit(corev1alpha1.LifecycleHookPhaseSyncFailed, ls.SyncFailed)
 	visit(corev1alpha1.LifecycleHookPhasePostSync, ls.PostSync)
