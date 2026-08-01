@@ -296,3 +296,51 @@ func TestValidateReleaseLifecycle_UnknownEnums(t *testing.T) {
 		t.Errorf("unknown onFailure/cleanup not both rejected: %v", errs)
 	}
 }
+
+func runAfterPtr(v LifecycleHookRunAfter) *LifecycleHookRunAfter { return &v }
+
+func TestValidateReleaseLifecycle_RunAfterPostSyncOK(t *testing.T) {
+	rel := validRelease()
+	for _, ra := range []LifecycleHookRunAfter{LifecycleHookRunAfterApplied, LifecycleHookRunAfterHealthy} {
+		h := jobHook("h")
+		h.RunAfter = runAfterPtr(ra)
+		rel.Lifecycle = &ReleaseLifecycle{PostSync: []LifecycleHookSpec{h}}
+		if errs := ValidateReleaseLifecycle(rel); len(errs) != 0 {
+			t.Errorf("postSync runAfter=%s rejected: %v", ra, errs)
+		}
+	}
+}
+
+func TestValidateReleaseLifecycle_RunAfterForbiddenOffPostSync(t *testing.T) {
+	rel := validRelease()
+	h := jobHook("h")
+	h.RunAfter = runAfterPtr(LifecycleHookRunAfterHealthy)
+	rel.Lifecycle = &ReleaseLifecycle{PreSync: []LifecycleHookSpec{h}}
+	errs := ValidateReleaseLifecycle(rel)
+	found := false
+	for _, e := range errs {
+		if e.Type == field.ErrorTypeForbidden && strings.HasSuffix(e.Field, "preSync[0].runAfter") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("runAfter on a preSync hook not forbidden: %v", errs)
+	}
+}
+
+func TestValidateReleaseLifecycle_RunAfterUnknownValue(t *testing.T) {
+	rel := validRelease()
+	h := jobHook("h")
+	h.RunAfter = runAfterPtr("Whenever")
+	rel.Lifecycle = &ReleaseLifecycle{PostSync: []LifecycleHookSpec{h}}
+	errs := ValidateReleaseLifecycle(rel)
+	found := false
+	for _, e := range errs {
+		if e.Type == field.ErrorTypeNotSupported && strings.HasSuffix(e.Field, "postSync[0].runAfter") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("unknown runAfter value not rejected: %v", errs)
+	}
+}

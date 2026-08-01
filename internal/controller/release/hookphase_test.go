@@ -68,16 +68,17 @@ func (f *fakeHookRunner) DeleteMatching(_ context.Context, _ *corev1alpha1.Clust
 	return nil
 }
 
-// fakeHookStore serves seeded hook items from GetHooks and captures PutHooks; the
-// resource-inventory methods are unused by the gate.
+// fakeHookStore serves seeded hook items from GetHooks and captures PutHooks; Get
+// serves seeded resource refs (for the releaseHealthy runAfter gate).
 type fakeHookStore struct {
-	hooks   []corev1alpha1.ReleaseLifecycleHookItem
-	putLast []inventory.HookRef
-	putN    int
+	hooks     []corev1alpha1.ReleaseLifecycleHookItem
+	resources []inventory.Ref
+	putLast   []inventory.HookRef
+	putN      int
 }
 
 func (s *fakeHookStore) Get(context.Context, string, string) ([]inventory.Ref, bool, error) {
-	return nil, false, nil
+	return s.resources, len(s.resources) > 0, nil
 }
 func (s *fakeHookStore) Put(context.Context, string, string, []inventory.Ref) error { return nil }
 func (s *fakeHookStore) Delete(context.Context, string, string) error               { return nil }

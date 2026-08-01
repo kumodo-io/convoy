@@ -99,6 +99,17 @@ func (c *Controller) runHookPhase(ctx context.Context, rel *corev1alpha1.Release
 			key := hookItemKey(phase, hook.Name)
 			entry, isArmed := armed[key]
 			if !isArmed || entry.RenderRef != renderRef {
+				// runAfter trigger (postSync): hold until the target Release milestone is
+				// reached before arming. runAfter:Healthy waits for the WHOLE release (all
+				// waves, all resources) to be healthy; the default (Applied) fires now.
+				// Once armed, this is not re-checked — runAfter gates the start, not restart.
+				ok, err := c.runAfterSatisfied(ctx, rel, hook)
+				if err != nil {
+					return hookPhaseResult{}, err
+				}
+				if !ok {
+					return hookPhaseResult{state: hookPhaseHold}, nil
+				}
 				// Not armed for this render: (re)arm it. Deletes the prior workload if
 				// requested, creates the new one, records its identity. Holds afterward.
 				ref, err := c.armHook(ctx, rel, cluster, phase, hook, renderRef)
@@ -195,6 +206,42 @@ func (c *Controller) cleanupHook(ctx context.Context, cluster *corev1alpha1.Clus
 	}
 	gvk := schema.GroupVersionKind{Group: entry.Group, Version: entry.Version, Kind: entry.Kind}
 	return c.hookRunner.Delete(ctx, cluster, gvk, entry.WorkloadNamespace, entry.WorkloadName)
+}
+
+// runAfterSatisfied reports whether a hook's runAfter trigger is met. The default
+// (nil / Applied) is always satisfied — the hook fires as soon as its phase is
+// reached (for postSync, right after the apply). runAfter:Healthy holds until the
+// whole release is healthy.
+func (c *Controller) runAfterSatisfied(ctx context.Context, rel *corev1alpha1.Release, hook corev1alpha1.LifecycleHookSpec) (bool, error) {
+	if hook.RunAfter == nil || *hook.RunAfter == corev1alpha1.LifecycleHookRunAfterApplied {
+		return true, nil
+	}
+	return c.releaseHealthy(ctx, rel) // LifecycleHookRunAfterHealthy
+}
+
+// releaseHealthy reports whether every applied resource of the release — across ALL
+// sync waves — is Healthy per the observer-written ReleaseInventory. A release with
+// no health assessment has no health bar, so it is trivially healthy (runAfter:
+// Healthy then behaves like Applied). An empty/absent inventory is not healthy
+// (nothing assessed yet), so a health-gated hook holds until the observer populates
+// per-resource health.
+func (c *Controller) releaseHealthy(ctx context.Context, rel *corev1alpha1.Release) (bool, error) {
+	if rel.Spec.HealthAssessment == nil {
+		return true, nil
+	}
+	refs, ok, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
+	if err != nil {
+		return false, err
+	}
+	if !ok || len(refs) == 0 {
+		return false, nil
+	}
+	for _, r := range refs {
+		if r.State == nil || *r.State != corev1alpha1.ResourceStateHealthy {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // hooksForPhase returns the spec hooks declared for a phase (nil-safe).

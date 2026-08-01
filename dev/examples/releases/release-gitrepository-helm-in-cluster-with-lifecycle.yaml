@@ -27,6 +27,7 @@ lifecycle:
   postSync:
     - name: post-sleep
       type: Job
+      runAfter: Healthy
       timeout: 30s
       onFailure: Continue
       cleanup: Never

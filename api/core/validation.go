@@ -349,14 +349,18 @@ func ValidateReleaseLifecycle(release *Release) field.ErrorList {
 		{"postDelete", lc.PostDelete},
 	}
 	for _, p := range phases {
-		allErrs = append(allErrs, validateLifecyclePhase(p.hooks, base.Child(p.name))...)
+		allErrs = append(allErrs, validateLifecyclePhase(p.hooks, base.Child(p.name), p.name)...)
 	}
 	return allErrs
 }
 
+// lifecyclePhasePostSync is the field name of the postSync phase — the only phase
+// on which runAfter is allowed.
+const lifecyclePhasePostSync = "postSync"
+
 // validateLifecyclePhase validates one phase's hook list: names are unique within
 // the phase, and each hook is individually valid.
-func validateLifecyclePhase(hooks []LifecycleHookSpec, fldPath *field.Path) field.ErrorList {
+func validateLifecyclePhase(hooks []LifecycleHookSpec, fldPath *field.Path, phaseName string) field.ErrorList {
 	allErrs := field.ErrorList{}
 	seen := make(map[string]struct{}, len(hooks))
 	for i := range hooks {
@@ -369,14 +373,15 @@ func validateLifecyclePhase(hooks []LifecycleHookSpec, fldPath *field.Path) fiel
 		} else {
 			seen[h.Name] = struct{}{}
 		}
-		allErrs = append(allErrs, validateLifecycleHook(h, hookPath)...)
+		allErrs = append(allErrs, validateLifecycleHook(h, hookPath, phaseName)...)
 	}
 	return allErrs
 }
 
-// validateLifecycleHook validates a single hook's type↔template consistency and
-// its onFailure/cleanup enums.
-func validateLifecycleHook(h *LifecycleHookSpec, fldPath *field.Path) field.ErrorList {
+// validateLifecycleHook validates a single hook's type↔template consistency, its
+// onFailure/cleanup enums, and its runAfter (postSync-only). phaseName is the
+// phase's field name (e.g. "postSync").
+func validateLifecycleHook(h *LifecycleHookSpec, fldPath *field.Path, phaseName string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	// Exactly one template, matching the declared type.
@@ -409,7 +414,29 @@ func validateLifecycleHook(h *LifecycleHookSpec, fldPath *field.Path) field.Erro
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("cleanup"), c,
 			[]string{string(LifecycleHookCleanupOnSuccess), string(LifecycleHookCleanupOnCompletion), string(LifecycleHookCleanupNever)}))
 	}
+
+	// runAfter is a postSync-only trigger: it gates when the hook fires (after the
+	// release is Applied — the default — or Healthy). On any other phase it is
+	// meaningless (those phases have no post-apply health milestone to wait on).
+	if h.RunAfter != nil {
+		if phaseName != lifecyclePhasePostSync {
+			allErrs = append(allErrs, field.Forbidden(fldPath.Child("runAfter"), "runAfter is only allowed on postSync hooks"))
+		} else if !knownHookRunAfter(*h.RunAfter) {
+			allErrs = append(allErrs, field.NotSupported(fldPath.Child("runAfter"), *h.RunAfter,
+				[]string{string(LifecycleHookRunAfterApplied), string(LifecycleHookRunAfterHealthy)}))
+		}
+	}
 	return allErrs
+}
+
+// knownHookRunAfter reports whether a is a recognized runAfter value.
+func knownHookRunAfter(a LifecycleHookRunAfter) bool {
+	switch a {
+	case LifecycleHookRunAfterApplied, LifecycleHookRunAfterHealthy:
+		return true
+	default:
+		return false
+	}
 }
 
 func knownHookOnFailure(a LifecycleHookOnFailureAction) bool {
