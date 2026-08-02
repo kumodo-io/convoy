@@ -180,9 +180,8 @@ func appendHookStatus(ls *corev1alpha1.LifecycleStatus, phase corev1alpha1.Lifec
 
 // lifecycleStatusEmpty reports whether the rollup has no hook entries in any phase.
 func lifecycleStatusEmpty(ls corev1alpha1.LifecycleStatus) bool {
-	return len(ls.PreRender) == 0 && len(ls.PostRender) == 0 && len(ls.PreSync) == 0 &&
-		len(ls.SyncFailed) == 0 && len(ls.PostSync) == 0 && len(ls.PreDelete) == 0 &&
-		len(ls.PostDelete) == 0
+	return len(ls.PreSync) == 0 && len(ls.SyncFailed) == 0 &&
+		len(ls.PostSync) == 0 && len(ls.PreDelete) == 0 && len(ls.PostDelete) == 0
 }
 
 // forEachHookStatus visits every hook status in the rollup with its phase, in

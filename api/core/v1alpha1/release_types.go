@@ -1098,16 +1098,6 @@ type ResourceWaveStatus struct {
 }
 
 type LifecycleStatus struct {
-	// PreRender are the pre-render hooks.
-	// +listType=map
-	// +listMapKey=name
-	PreRender []LifecycleHookStatus `json:"preRender,omitempty"`
-
-	// PostRender are the post-render hooks.
-	// +listType=map
-	// +listMapKey=name
-	PostRender []LifecycleHookStatus `json:"postRender,omitempty"`
-
 	// PreSync are the pre-sync hooks.
 	// +listType=map
 	// +listMapKey=name

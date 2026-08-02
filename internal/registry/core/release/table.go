@@ -101,8 +101,6 @@ func lifecycleColumn(r *core.Release) string {
 		name  string
 		hooks []core.LifecycleHookStatus
 	}{
-		{"PreRender", r.Status.Lifecycle.PreRender},
-		{"PostRender", r.Status.Lifecycle.PostRender},
 		{"PreSync", r.Status.Lifecycle.PreSync},
 		{"SyncFailed", r.Status.Lifecycle.SyncFailed},
 		{"PostSync", r.Status.Lifecycle.PostSync},

@@ -1109,8 +1109,6 @@ func Convert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in *core.L
 }
 
 func autoConvert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(in *LifecycleStatus, out *core.LifecycleStatus, s conversion.Scope) error {
-	out.PreRender = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PreRender))
-	out.PostRender = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PostRender))
 	out.PreSync = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PreSync))
 	out.SyncFailed = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.SyncFailed))
 	out.PostSync = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PostSync))
@@ -1125,8 +1123,6 @@ func Convert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(in *LifecycleStatu
 }
 
 func autoConvert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(in *core.LifecycleStatus, out *LifecycleStatus, s conversion.Scope) error {
-	out.PreRender = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PreRender))
-	out.PostRender = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PostRender))
 	out.PreSync = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PreSync))
 	out.SyncFailed = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.SyncFailed))
 	out.PostSync = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PostSync))

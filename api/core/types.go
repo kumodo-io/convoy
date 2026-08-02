@@ -591,8 +591,6 @@ type ResourceWaveStatus struct {
 }
 
 type LifecycleStatus struct {
-	PreRender  []LifecycleHookStatus
-	PostRender []LifecycleHookStatus
 	PreSync    []LifecycleHookStatus
 	SyncFailed []LifecycleHookStatus
 	PostSync   []LifecycleHookStatus
