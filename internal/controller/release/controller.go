@@ -585,7 +585,36 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	if out, done, err := c.stageGates(st); done {
 		return out, err
 	}
-	return c.stageSync(ctx, st)
+	out, err := c.stageSync(ctx, st)
+	// SyncFailed hooks fire (fire-and-forget) when the sync itself failed — the render
+	// succeeded (so we have a cluster + renderRef) but an apply/wave/prune step failed.
+	// Not on a source/cluster/render failure (no target to run on), nor on a hold, nor
+	// on a preSync-hook abort (its own HookFailed stage). renderRef-keyed arming makes
+	// it fire once per failed render, not every requeue.
+	if isSyncingFailure(out) {
+		c.runSyncFailedHooks(ctx, st.rel, st.cluster, st.attempt.RenderRef)
+	}
+	return out, err
+}
+
+// isSyncingFailure reports whether an outcome is a terminal failure at the Syncing
+// stage (apply/wave/prune) — the trigger for SyncFailed hooks.
+func isSyncingFailure(out reconcileOutcome) bool {
+	f := out.attempt.Failure
+	return out.attempt.Phase == corev1alpha1.ReleaseRenderAttemptPhaseFailed &&
+		f != nil && f.Stage == corev1alpha1.ReleaseRenderAttemptStageSyncing
+}
+
+// runSyncFailedHooks arms the SyncFailed lifecycle hooks fire-and-forget: it records
+// and creates them but never blocks or changes the (already-failed) sync outcome.
+// The observer polls them and status.lifecycle reflects them like any other phase.
+func (c *Controller) runSyncFailedHooks(ctx context.Context, rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster, renderRef string) {
+	if cluster == nil || renderRef == "" {
+		return
+	}
+	if _, err := c.runHookPhase(ctx, rel, cluster, corev1alpha1.LifecycleHookPhaseSyncFailed, renderRef); err != nil {
+		klog.V(4).InfoS("syncFailed lifecycle hook error (ignored)", "release", rel.Name, "err", err.Error())
+	}
 }
 
 // stageRender fetches the source, resolves the target cluster, renders the content,

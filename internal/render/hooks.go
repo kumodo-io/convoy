@@ -37,11 +37,11 @@ func HookContext(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) map[s
 	return map[string]any{ctxKeyCluster: clusterMeta, ctxKeyRelease: self}
 }
 
-// EvalHookWhen evaluates a hook's `when` CEL guard against the hook context. An
+// EvalHookIf evaluates a hook's `when` CEL guard against the hook context. An
 // empty expression means "always run" (true). The expression must evaluate to a
 // bool; a compile or type error is returned so the caller can skip the hook (the
 // runner treats false/error as Skipped).
-func EvalHookWhen(when string, ctx map[string]any) (bool, error) {
+func EvalHookIf(when string, ctx map[string]any) (bool, error) {
 	if when == "" {
 		return true, nil
 	}

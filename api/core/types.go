@@ -265,6 +265,13 @@ const (
 	LifecycleHookStateTimedOut  LifecycleHookState = "TimedOut"
 )
 
+type LifecycleHookRunAfter string
+
+const (
+	LifecycleHookRunAfterApplied LifecycleHookRunAfter = "Applied"
+	LifecycleHookRunAfterHealthy LifecycleHookRunAfter = "Healthy"
+)
+
 type ReleaseSpec struct {
 	Source           ReleaseSourceSpec
 	Content          ReleaseContentSpec
@@ -451,7 +458,8 @@ type ReleaseLifecycle struct {
 type LifecycleHookSpec struct {
 	Name                 string
 	Type                 LifecycleHookType
-	When                 string
+	If                   string
+	RunAfter             *LifecycleHookRunAfter
 	Weight               int32
 	Timeout              *metav1.Duration
 	OnFailure            LifecycleHookOnFailureAction

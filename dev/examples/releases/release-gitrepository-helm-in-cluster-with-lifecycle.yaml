@@ -9,7 +9,7 @@ lifecycle:
       type: Job
       timeout: 30s
       onFailure: Continue
-      cleanup: Never
+      cleanup: OnSuccess
       jobTemplate:
         metadata:
           labels:
@@ -27,9 +27,10 @@ lifecycle:
   postSync:
     - name: post-sleep
       type: Job
+      runAfter: Healthy
       timeout: 30s
       onFailure: Continue
-      cleanup: Never
+      cleanup: OnSuccess
       jobTemplate:
         metadata:
           labels:

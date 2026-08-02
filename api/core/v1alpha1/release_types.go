@@ -341,6 +341,21 @@ const (
 	LifecycleHookStateTimedOut LifecycleHookState = "TimedOut"
 )
 
+// LifecycleHookRunAfter defines the state of the release to run the PostSync
+// lifecycle hooks. Controller will wait until the condition is met.
+// +enum
+type LifecycleHookRunAfter string
+
+const (
+	// LifecycleHookRunAfterApplied defines the Release state equals to "Applied"
+	// to run the PostSync lifecycle hooks.
+	LifecycleHookRunAfterApplied LifecycleHookRunAfter = "Applied"
+
+	// LifecycleHookRunAfterHealthy defines the Release state equals to "Healthy"
+	// to run the PostSync lifecycle hooks.
+	LifecycleHookRunAfterHealthy LifecycleHookRunAfter = "Healthy"
+)
+
 // ReleaseSpec defines the desired state of the Release.
 type ReleaseSpec struct {
 	// Source is the content source of the release.
@@ -759,8 +774,12 @@ type LifecycleHookSpec struct {
 	// Type is the type of the hook.
 	Type LifecycleHookType `json:"type"`
 
-	// When is the hook execution condition written in CEL expression format.
-	When string `json:"when,omitempty"`
+	// If is the hook execution condition written in CEL expression format.
+	If string `json:"if,omitempty"`
+
+	// RunAfter defines the Release condition that should be achieved before
+	// running the PostSync lifecycle hook(s).
+	RunAfter *LifecycleHookRunAfter `json:"runAfter,omitempty"`
 
 	// Weight is the weight of the hook.
 	Weight int32 `json:"weight"`

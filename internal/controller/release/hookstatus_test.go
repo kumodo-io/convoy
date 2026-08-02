@@ -33,7 +33,7 @@ func preSyncItem(name string, state *corev1alpha1.LifecycleHookState) corev1alph
 func TestBuildLifecycleStatus_ProjectsEntries(t *testing.T) {
 	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
 	created := metav1.NewTime(time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC))
-	it := preSyncItem(hookNameMigrate, hookState(corev1alpha1.LifecycleHookStateFailed))
+	it := preSyncItem(hookNameMigrate, new(corev1alpha1.LifecycleHookStateFailed))
 	it.CreatedAt = &created
 	it.Message = "boom"
 
@@ -79,7 +79,7 @@ func TestLifecycleCondition(t *testing.T) {
 	build := func(states ...corev1alpha1.LifecycleHookState) corev1alpha1.LifecycleStatus {
 		items := make([]corev1alpha1.ReleaseLifecycleHookItem, 0, len(states))
 		for i, s := range states {
-			items = append(items, preSyncItem(string(rune('a'+i)), hookState(s)))
+			items = append(items, preSyncItem(string(rune('a'+i)), new(s)))
 		}
 		return buildLifecycleStatus(rel, items)
 	}

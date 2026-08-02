@@ -51,31 +51,31 @@ func TestHookContext_FlattensClusterMetadata(t *testing.T) {
 	}
 }
 
-func TestEvalHookWhen(t *testing.T) {
+func TestEvalHookIf(t *testing.T) {
 	ctx := HookContext(hookTestRelease(), hookTestCluster())
 
 	// Empty → always run.
-	if ok, err := EvalHookWhen("", ctx); err != nil || !ok {
+	if ok, err := EvalHookIf("", ctx); err != nil || !ok {
 		t.Errorf("empty when = (%v,%v), want (true,nil)", ok, err)
 	}
 	// True condition on flattened cluster metadata.
-	if ok, err := EvalHookWhen(`cluster.tier == "production"`, ctx); err != nil || !ok {
+	if ok, err := EvalHookIf(`cluster.tier == "production"`, ctx); err != nil || !ok {
 		t.Errorf("prod match = (%v,%v), want (true,nil)", ok, err)
 	}
 	// False condition.
-	if ok, err := EvalHookWhen(`cluster.region == "us-east-1"`, ctx); err != nil || ok {
+	if ok, err := EvalHookIf(`cluster.region == "us-east-1"`, ctx); err != nil || ok {
 		t.Errorf("region mismatch = (%v,%v), want (false,nil)", ok, err)
 	}
 	// Release binding.
-	if ok, err := EvalHookWhen(`release.name == "app"`, ctx); err != nil || !ok {
+	if ok, err := EvalHookIf(`release.name == "app"`, ctx); err != nil || !ok {
 		t.Errorf("release match = (%v,%v), want (true,nil)", ok, err)
 	}
 	// Non-bool result is an error.
-	if _, err := EvalHookWhen(`cluster.region`, ctx); err == nil {
+	if _, err := EvalHookIf(`cluster.region`, ctx); err == nil {
 		t.Error("non-bool when did not error")
 	}
 	// Compile error surfaces.
-	if _, err := EvalHookWhen(`this is not cel`, ctx); err == nil {
+	if _, err := EvalHookIf(`this is not cel`, ctx); err == nil {
 		t.Error("invalid CEL did not error")
 	}
 }

@@ -34,6 +34,7 @@ const (
 	hookRenderRef   = "sha256:hookrender"
 	appName         = "app"
 	hookNameMigrate = "migrate"
+	hookRelUID      = "uid-1"
 )
 
 // fakeHookRunner records Create/Delete/DeleteMatching calls; Create stamps a
@@ -68,16 +69,17 @@ func (f *fakeHookRunner) DeleteMatching(_ context.Context, _ *corev1alpha1.Clust
 	return nil
 }
 
-// fakeHookStore serves seeded hook items from GetHooks and captures PutHooks; the
-// resource-inventory methods are unused by the gate.
+// fakeHookStore serves seeded hook items from GetHooks and captures PutHooks; Get
+// serves seeded resource refs (for the releaseHealthy runAfter gate).
 type fakeHookStore struct {
-	hooks   []corev1alpha1.ReleaseLifecycleHookItem
-	putLast []inventory.HookRef
-	putN    int
+	hooks     []corev1alpha1.ReleaseLifecycleHookItem
+	resources []inventory.Ref
+	putLast   []inventory.HookRef
+	putN      int
 }
 
 func (s *fakeHookStore) Get(context.Context, string, string) ([]inventory.Ref, bool, error) {
-	return nil, false, nil
+	return s.resources, len(s.resources) > 0, nil
 }
 func (s *fakeHookStore) Put(context.Context, string, string, []inventory.Ref) error { return nil }
 func (s *fakeHookStore) Delete(context.Context, string, string) error               { return nil }
@@ -91,11 +93,11 @@ func (s *fakeHookStore) GetHooks(context.Context, string, string) ([]corev1alpha
 	return s.hooks, nil
 }
 
-func podHookSpec(name string, weight int32, when string, onFail corev1alpha1.LifecycleHookOnFailureAction, cleanup corev1alpha1.LifecycleHookCleanup) corev1alpha1.LifecycleHookSpec {
+func podHookSpec(name string, weight int32, ifExpression string, onFail corev1alpha1.LifecycleHookOnFailureAction, cleanup corev1alpha1.LifecycleHookCleanup) corev1alpha1.LifecycleHookSpec {
 	return corev1alpha1.LifecycleHookSpec{
 		Name:      name,
 		Type:      corev1alpha1.LifecycleHookTypePod,
-		When:      when,
+		If:        ifExpression,
 		Weight:    weight,
 		OnFailure: onFail,
 		Cleanup:   cleanup,
@@ -118,8 +120,6 @@ func armedItem(name string, renderRef string, state *corev1alpha1.LifecycleHookS
 	}
 }
 
-func hookState(s corev1alpha1.LifecycleHookState) *corev1alpha1.LifecycleHookState { return &s }
-
 func newHookController(runner HookRunner, store inventory.Store) *Controller {
 	fixed := metav1.NewTime(time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC))
 	return &Controller{hookRunner: runner, inventory: store, now: func() metav1.Time { return fixed }}
@@ -127,7 +127,7 @@ func newHookController(runner HookRunner, store inventory.Store) *Controller {
 
 func relWithPreSync(hooks ...corev1alpha1.LifecycleHookSpec) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: "uid-1"},
+		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: hookRelUID},
 		Lifecycle:  &corev1alpha1.ReleaseLifecycle{PreSync: hooks},
 	}
 }
@@ -159,7 +159,7 @@ func TestRunHookPhase_NilRunnerAdvances(t *testing.T) {
 	}
 }
 
-func TestRunHookPhase_WhenFalseSkips(t *testing.T) {
+func TestRunHookPhase_IfFalseSkips(t *testing.T) {
 	fr := &fakeHookRunner{}
 	c := newHookController(fr, &fakeHookStore{})
 	rel := relWithPreSync(podHookSpec("prod-only", 0, "false", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
@@ -209,7 +209,7 @@ func TestRunHookPhase_DeleteBeforeCreation(t *testing.T) {
 func TestRunHookPhase_RunningHolds(t *testing.T) {
 	fr := &fakeHookRunner{}
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem(hookNameMigrate, hookRenderRef, hookState(corev1alpha1.LifecycleHookStateRunning)),
+		armedItem(hookNameMigrate, hookRenderRef, new(corev1alpha1.LifecycleHookStateRunning)),
 	}}
 	c := newHookController(fr, fs)
 	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
@@ -224,7 +224,7 @@ func TestRunHookPhase_RunningHolds(t *testing.T) {
 func TestRunHookPhase_SucceededAdvancesAndCleans(t *testing.T) {
 	fr := &fakeHookRunner{}
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem(hookNameMigrate, hookRenderRef, hookState(corev1alpha1.LifecycleHookStateSucceeded)),
+		armedItem(hookNameMigrate, hookRenderRef, new(corev1alpha1.LifecycleHookStateSucceeded)),
 	}}
 	c := newHookController(fr, fs)
 	// cleanup=OnCompletion → the succeeded workload is deleted.
@@ -239,7 +239,7 @@ func TestRunHookPhase_SucceededAdvancesAndCleans(t *testing.T) {
 
 func TestRunHookPhase_FailedWithFailAborts(t *testing.T) {
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem(hookNameMigrate, hookRenderRef, hookState(corev1alpha1.LifecycleHookStateFailed)),
+		armedItem(hookNameMigrate, hookRenderRef, new(corev1alpha1.LifecycleHookStateFailed)),
 	}}
 	c := newHookController(&fakeHookRunner{}, fs)
 	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
@@ -254,7 +254,7 @@ func TestRunHookPhase_FailedWithFailAborts(t *testing.T) {
 
 func TestRunHookPhase_FailedWithContinueAdvances(t *testing.T) {
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem("smoke", hookRenderRef, hookState(corev1alpha1.LifecycleHookStateFailed)),
+		armedItem("smoke", hookRenderRef, new(corev1alpha1.LifecycleHookStateFailed)),
 	}}
 	c := newHookController(&fakeHookRunner{}, fs)
 	rel := relWithPreSync(podHookSpec("smoke", 0, "", corev1alpha1.LifecycleHookOnFailureActionContinue, corev1alpha1.LifecycleHookCleanupNever))
@@ -267,7 +267,7 @@ func TestRunHookPhase_StaleRenderReArms(t *testing.T) {
 	fr := &fakeHookRunner{resolveNS: appName}
 	// Entry succeeded but for a PRIOR render → must re-arm for the current render.
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem(hookNameMigrate, "sha256:oldrender", hookState(corev1alpha1.LifecycleHookStateSucceeded)),
+		armedItem(hookNameMigrate, "sha256:oldrender", new(corev1alpha1.LifecycleHookStateSucceeded)),
 	}}
 	c := newHookController(fr, fs)
 	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
@@ -286,7 +286,7 @@ func TestRunHookPhase_WeightGroupsOrdered(t *testing.T) {
 	// Weight-0 still running → weight-1 must NOT be armed yet.
 	fr := &fakeHookRunner{}
 	fs := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem("first", hookRenderRef, hookState(corev1alpha1.LifecycleHookStateRunning)),
+		armedItem("first", hookRenderRef, new(corev1alpha1.LifecycleHookStateRunning)),
 	}}
 	c := newHookController(fr, fs)
 	if res := runPreSync(t, c, relWithPreSync(g0, g1)); res.state != hookPhaseHold {
@@ -299,7 +299,7 @@ func TestRunHookPhase_WeightGroupsOrdered(t *testing.T) {
 	// Weight-0 succeeded, weight-1 not armed → weight-1 gets armed now.
 	fr2 := &fakeHookRunner{resolveNS: appName}
 	fs2 := &fakeHookStore{hooks: []corev1alpha1.ReleaseLifecycleHookItem{
-		armedItem("first", hookRenderRef, hookState(corev1alpha1.LifecycleHookStateSucceeded)),
+		armedItem("first", hookRenderRef, new(corev1alpha1.LifecycleHookStateSucceeded)),
 	}}
 	c2 := newHookController(fr2, fs2)
 	if res := runPreSync(t, c2, relWithPreSync(g0, g1)); res.state != hookPhaseHold {
