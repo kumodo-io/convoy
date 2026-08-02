@@ -51,6 +51,13 @@ type Ref struct {
 	Wave      int
 	UID       types.UID
 	State     *corev1alpha1.ResourceState
+	// RenderRef is the render this resource was applied under (controller-owned).
+	RenderRef string
+	// AssessedRenderRef is the render the observer's last health assessment of this
+	// resource was against (observer-owned). Health is current for a render only when
+	// AssessedRenderRef equals it — so a gate can tell "healthy for the current render"
+	// from stale health left over from a prior render.
+	AssessedRenderRef string
 }
 
 // ID is the identity key used to compare refs across renders (Version-independent).

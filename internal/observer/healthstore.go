@@ -51,6 +51,12 @@ type healthEntry struct {
 	state          corev1alpha1.ResourceState
 	message        string
 	firstUnhealthy time.Time
+	// renderRef is the render this resource was applied under (the item's
+	// controller-owned RenderRef), echoed back as the assessed render so a gate can
+	// tell current-render health from stale prior-render health. It is the render of
+	// the resource ACTUALLY on the cluster — not the render the controller is
+	// currently attempting (which races ahead while a pre-apply hook gates the sync).
+	renderRef string
 }
 
 // backoffCounts drives the health loop's progress backoff: fast re-checks while a

@@ -78,6 +78,12 @@ func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1
 		if !e.firstUnhealthy.IsZero() {
 			item.WithFirstUnhealthy(metav1.NewTime(e.firstUnhealthy))
 		}
+		// Record the render this resource was assessed at — the render it was actually
+		// applied under (e.renderRef), so a gate can distinguish current-render health
+		// from stale health left over from a prior render.
+		if e.renderRef != "" {
+			item.WithAssessedRenderRef(e.renderRef)
+		}
 		ac.WithInventory(item)
 	}
 	if _, err := c.client.CoreV1alpha1().ReleaseInventories(rel.Namespace).

@@ -43,6 +43,11 @@ const (
 	reasonDegraded      = "Degraded"
 	reasonUnknown       = "Unknown"
 	reasonNotConfigured = "NotConfigured"
+	// reasonPending: a health assessment is configured but the current render is not
+	// yet reflected on the cluster — nothing deployed yet, or a re-render whose
+	// resources aren't applied/assessed yet — so the prior render's health does not
+	// count. Healthy is Unknown, not a vacuous or stale True.
+	reasonPending = "Pending"
 )
 
 // writeHealth applies the Healthy condition and health summary via Server-Side

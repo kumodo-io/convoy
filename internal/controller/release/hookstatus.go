@@ -87,6 +87,7 @@ func hookItemToStatus(rel *corev1alpha1.Release, it corev1alpha1.ReleaseLifecycl
 		ResourceNamespace: it.WorkloadNamespace,
 		State:             state,
 		Weight:            it.Weight,
+		RenderRef:         it.RenderRef,
 		StartedAt:         it.CreatedAt,
 		CompletedAt:       it.FinishedAt,
 		Message:           it.Message,

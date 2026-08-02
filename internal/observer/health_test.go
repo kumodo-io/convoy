@@ -34,7 +34,10 @@ import (
 	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
-const deploymentKind = "Deployment"
+const (
+	deploymentKind = "Deployment"
+	svcName        = "svc"
+)
 
 func newTestHealthController(t *testing.T, rel *corev1alpha1.Release) (*HealthController, *fakeclient.Clientset) {
 	t.Helper()
@@ -111,7 +114,7 @@ func TestHealth_AllHealthy(t *testing.T) {
 // the condition-focused tests that stub assessFn (no entries → no wave-complete
 // sync, no backoff change).
 func stubAssessment(objs ...healthresult.ObjectHealth) *assessment {
-	return &assessment{result: &healthresult.Result{Objects: objs}}
+	return &assessment{result: &healthresult.Result{Objects: objs}, renderCurrent: true}
 }
 
 func TestHealth_DegradedWorstStateWins(t *testing.T) {
@@ -156,9 +159,10 @@ func TestHealth_RequestsSyncOnWaveComplete(t *testing.T) {
 	// Frontier wave (1) is now fully healthy, having transitioned from progressing.
 	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
 		return &assessment{
-			result:  &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: "svc", State: healthresult.StateHealthy}}},
-			entries: []healthEntry{waveEntry("gate", 0, corev1alpha1.ResourceStateHealthy), waveEntry("svc", 1, corev1alpha1.ResourceStateHealthy)},
-			prior:   map[string]corev1alpha1.ResourceState{waveEntry("gate", 0, "").ref.identityID(): corev1alpha1.ResourceStateHealthy, waveEntry("svc", 1, "").ref.identityID(): progressing},
+			result:        &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: svcName, State: healthresult.StateHealthy}}},
+			entries:       []healthEntry{waveEntry("gate", 0, corev1alpha1.ResourceStateHealthy), waveEntry(svcName, 1, corev1alpha1.ResourceStateHealthy)},
+			prior:         map[string]corev1alpha1.ResourceState{waveEntry("gate", 0, "").ref.identityID(): corev1alpha1.ResourceStateHealthy, waveEntry(svcName, 1, "").ref.identityID(): progressing},
+			renderCurrent: true,
 		}, nil
 	}
 	var synced int
@@ -176,9 +180,10 @@ func TestHealth_NoSyncWhileFrontierProgressing(t *testing.T) {
 	c, _ := newTestHealthController(t, withAssessment(testRelease(true)))
 	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
 		return &assessment{
-			result:  &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: "svc", State: healthresult.StateProgressing}}},
-			entries: []healthEntry{waveEntry("gate", 0, corev1alpha1.ResourceStateHealthy), waveEntry("svc", 1, corev1alpha1.ResourceStateProgressing)},
-			prior:   map[string]corev1alpha1.ResourceState{},
+			result:        &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: svcName, State: healthresult.StateProgressing}}},
+			entries:       []healthEntry{waveEntry("gate", 0, corev1alpha1.ResourceStateHealthy), waveEntry(svcName, 1, corev1alpha1.ResourceStateProgressing)},
+			prior:         map[string]corev1alpha1.ResourceState{},
+			renderCurrent: true,
 		}, nil
 	}
 	var synced int
@@ -189,6 +194,27 @@ func TestHealth_NoSyncWhileFrontierProgressing(t *testing.T) {
 	}
 	if synced != 0 {
 		t.Errorf("requestSync called %d times, want 0 (frontier still progressing)", synced)
+	}
+}
+
+func TestHealth_PendingWhenRenderNotCurrent(t *testing.T) {
+	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
+	// Resources are Healthy but belong to a prior render (renderCurrent=false): a
+	// re-render is in flight, or nothing of the current render is deployed yet.
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
+		return &assessment{
+			result:        &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: svcName, State: healthresult.StateHealthy}}},
+			entries:       []healthEntry{waveEntry(svcName, 0, corev1alpha1.ResourceStateHealthy)},
+			renderCurrent: false,
+		}, nil
+	}
+	c.syncFn = func(context.Context, *corev1alpha1.Release) error { return nil }
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	cond := healthCondition(client.Actions())
+	if cond == nil || cond.Status != metav1.ConditionUnknown || cond.Reason != reasonPending {
+		t.Errorf("Healthy = %+v, want Unknown/Pending (render not current)", cond)
 	}
 }
 

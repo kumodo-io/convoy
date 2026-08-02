@@ -103,7 +103,7 @@ func (c *Controller) runHookPhase(ctx context.Context, rel *corev1alpha1.Release
 				// reached before arming. runAfter:Healthy waits for the WHOLE release (all
 				// waves, all resources) to be healthy; the default (Applied) fires now.
 				// Once armed, this is not re-checked — runAfter gates the start, not restart.
-				ok, err := c.runAfterSatisfied(ctx, rel, hook)
+				ok, err := c.runAfterSatisfied(ctx, rel, hook, renderRef)
 				if err != nil {
 					return hookPhaseResult{}, err
 				}
@@ -212,20 +212,23 @@ func (c *Controller) cleanupHook(ctx context.Context, cluster *corev1alpha1.Clus
 // (nil / Applied) is always satisfied — the hook fires as soon as its phase is
 // reached (for postSync, right after the apply). runAfter:Healthy holds until the
 // whole release is healthy.
-func (c *Controller) runAfterSatisfied(ctx context.Context, rel *corev1alpha1.Release, hook corev1alpha1.LifecycleHookSpec) (bool, error) {
+func (c *Controller) runAfterSatisfied(ctx context.Context, rel *corev1alpha1.Release, hook corev1alpha1.LifecycleHookSpec, renderRef string) (bool, error) {
 	if hook.RunAfter == nil || *hook.RunAfter == corev1alpha1.LifecycleHookRunAfterApplied {
 		return true, nil
 	}
-	return c.releaseHealthy(ctx, rel) // LifecycleHookRunAfterHealthy
+	return c.releaseHealthy(ctx, rel, renderRef) // LifecycleHookRunAfterHealthy
 }
 
 // releaseHealthy reports whether every applied resource of the release — across ALL
-// sync waves — is Healthy per the observer-written ReleaseInventory. A release with
-// no health assessment has no health bar, so it is trivially healthy (runAfter:
-// Healthy then behaves like Applied). An empty/absent inventory is not healthy
-// (nothing assessed yet), so a health-gated hook holds until the observer populates
-// per-resource health.
-func (c *Controller) releaseHealthy(ctx context.Context, rel *corev1alpha1.Release) (bool, error) {
+// sync waves — is Healthy per the observer-written ReleaseInventory, AND that health
+// was assessed against the CURRENT render (currentRenderRef). The render check is
+// what makes runAfter:Healthy correct across a re-render: right after a new render is
+// applied, the resources still carry the prior render's health (the observer has not
+// re-assessed yet), so their AssessedRenderRef lags — and the gate holds until the
+// observer re-assesses the new render and finds it healthy. A release with no health
+// assessment has no bar, so it is trivially healthy (runAfter:Healthy behaves like
+// Applied). An empty/absent inventory is not healthy (nothing assessed yet).
+func (c *Controller) releaseHealthy(ctx context.Context, rel *corev1alpha1.Release, currentRenderRef string) (bool, error) {
 	if rel.Spec.HealthAssessment == nil {
 		return true, nil
 	}
@@ -239,6 +242,9 @@ func (c *Controller) releaseHealthy(ctx context.Context, rel *corev1alpha1.Relea
 	for _, r := range refs {
 		if r.State == nil || *r.State != corev1alpha1.ResourceStateHealthy {
 			return false, nil
+		}
+		if r.AssessedRenderRef != currentRenderRef {
+			return false, nil // health is stale — not yet re-assessed for this render
 		}
 	}
 	return true, nil

@@ -179,7 +179,18 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 			// assess persisted per-resource health onto the ReleaseInventory (the
 			// controller rolls it up for the sync-wave gate). Publish the aggregate
 			// Healthy condition + summary on the Release.
-			status, reason, message := conditionFor(a.result)
+			// Report Pending until the current render is reflected on the cluster: with
+			// nothing deployed yet, or a re-render not yet applied/assessed, the prior
+			// render's health must not read as the new render's healthy.
+			var status metav1.ConditionStatus
+			var reason, message string
+			if a.renderCurrent {
+				status, reason, message = conditionFor(a.result)
+			} else {
+				status, reason, message = metav1.ConditionUnknown, reasonPending, "current render not yet applied and assessed"
+				// Not settled: keep re-checking fast until the render is reflected.
+				notSettled = append(notSettled, renderPendingTarget)
+			}
 			if err := c.writeHealth(ctx, rel, status, reason, message, a.result.Summarize()); err != nil {
 				return err
 			}
@@ -218,6 +229,34 @@ type assessment struct {
 	result  *healthresult.Result
 	entries []healthEntry
 	prior   map[string]corev1alpha1.ResourceState
+	// renderCurrent is true when every assessed resource belongs to the render the
+	// controller last targeted — i.e. the health reflects the CURRENT render, not a
+	// prior one still lingering. False when nothing is deployed yet, or a re-render's
+	// resources aren't applied/assessed yet; the aggregate Healthy is then Pending
+	// (the prior render's health must not read as the new render's).
+	renderCurrent bool
+}
+
+// lastAttemptedRender returns the render the controller last targeted, or "".
+func lastAttemptedRender(rel *corev1alpha1.Release) string {
+	if la := rel.Status.LastAttempted; la != nil {
+		return la.RenderRef
+	}
+	return ""
+}
+
+// entriesAllAtRender reports whether every assessed entry was applied under the
+// given render. An empty set is not "at" any render (nothing deployed yet).
+func entriesAllAtRender(entries []healthEntry, render string) bool {
+	if len(entries) == 0 {
+		return false
+	}
+	for _, e := range entries {
+		if e.renderRef != render {
+			return false
+		}
+	}
+	return true
 }
 
 // frontierWaveCompleted reports whether the highest wave present in the inventory
@@ -313,6 +352,9 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 	entries := make([]healthEntry, 0, len(inv.Inventory))
 	for i := range inv.Inventory {
 		entry := c.assessItem(ctx, evaluator, dyn, mapper, inv.Inventory[i], anchors, deadline, now)
+		// Tag the assessment with the render the resource was actually applied under
+		// (controller-owned), NOT the render the controller is currently attempting.
+		entry.renderRef = inv.Inventory[i].RenderRef
 		entries = append(entries, entry)
 		result.Objects = append(result.Objects, healthresult.ObjectHealth{
 			Group:     entry.ref.gvk.Group,
@@ -327,7 +369,12 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 	if err := c.writeInventoryHealth(ctx, rel, entries); err != nil {
 		return nil, err
 	}
-	return &assessment{result: result, entries: entries, prior: prior}, nil
+	return &assessment{
+		result:        result,
+		entries:       entries,
+		prior:         prior,
+		renderCurrent: entriesAllAtRender(entries, lastAttemptedRender(rel)),
+	}, nil
 }
 
 // assessItem evaluates a single inventoried resource's health, reading it live
@@ -404,6 +451,11 @@ func (c *HealthController) collectRules(rel *corev1alpha1.Release) ([]extensions
 }
 
 const progressBackoffJitter = 0.2
+
+// renderPendingTarget is a synthetic backoff target that keeps the observer
+// re-checking fast while the current render is not yet reflected on the cluster
+// (health Pending), so the transition out of Pending is noticed promptly.
+const renderPendingTarget = "render-pending"
 
 // progressBackoffLevels is the staircase re-check cadence for a not-yet-settled
 // release (any resource Progressing/Unknown, or any lifecycle hook still Running).
