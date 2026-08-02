@@ -173,7 +173,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 
 	// finalize Release on deletion according to deletion policy
 	if !rel.DeletionTimestamp.IsZero() {
-		return c.finalize(ctx, rel)
+		return c.finalize(ctx, key, rel)
 	}
 
 	rel, err = c.ensureFinalizer(ctx, rel)
@@ -388,18 +388,84 @@ func (c *Controller) ensureFinalizer(ctx context.Context, rel *corev1alpha1.Rele
 	return c.client.CoreV1alpha1().Releases(rel.Namespace).Update(ctx, updated, metav1.UpdateOptions{})
 }
 
-func (c *Controller) finalize(ctx context.Context, rel *corev1alpha1.Release) error {
+// deleteRenderRefNone is the delete-hook arming key when the Release never rendered.
+const deleteRenderRefNone = "N/A"
+
+// finalizeHoldRequeue is the safety-net requeue while a delete-phase hook runs; the
+// observer's /sync poke on hook completion is the primary wake.
+const finalizeHoldRequeue = 10 * time.Second
+
+// deleteRenderRef is the arming identity for a Release's delete-phase hooks. Deletion
+// happens once and has no render, so the last attempted render is a stable key (a
+// sentinel when the Release never rendered), giving arm-once semantics per deletion.
+func deleteRenderRef(rel *corev1alpha1.Release) string {
+	if la := rel.Status.LastAttempted; la != nil && la.RenderRef != "" {
+		return la.RenderRef
+	}
+	return deleteRenderRefNone
+}
+
+func (c *Controller) finalize(ctx context.Context, key string, rel *corev1alpha1.Release) error {
 	if !slices.Contains(rel.Finalizers, releaseFinalizer) {
 		return nil // no-op
 	}
 
-	if !rel.Spec.DeletionPolicy.KeepWorkloads {
-		if err := c.pruneAll(ctx, rel); err != nil {
+	prune := !rel.Spec.DeletionPolicy.KeepWorkloads
+	hasDeleteHooks := c.hookRunner != nil && rel.Lifecycle != nil &&
+		(len(rel.Lifecycle.PreDelete) > 0 || len(rel.Lifecycle.PostDelete) > 0)
+
+	// Resolve the target cluster once, only when the teardown needs it (to prune
+	// workloads or run delete-phase hooks). Unreachable/gone is governed by the
+	// deletion policy exactly as the prune path always has: block when
+	// BlockOnClusterUnreachable, else best-effort (skip hooks + prune, still delete).
+	var cluster *corev1alpha1.Cluster
+	if prune || hasDeleteHooks {
+		resolved, usable, err := c.clusterForFinalize(rel)
+		if err != nil {
+			return err // transient, or blocking on an unreachable cluster
+		}
+		if !usable {
+			prune, hasDeleteHooks = false, false // cluster gone/unreachable: best-effort
+		}
+		cluster = resolved
+	}
+
+	// PreDelete — gate teardown. A hold requeues; a Fail (onFailure=Fail) blocks the
+	// deletion (finalizer stays) until the hook succeeds or the finalizer is removed.
+	if hasDeleteHooks {
+		res, err := c.runHookPhase(ctx, rel, cluster, corev1alpha1.LifecycleHookPhasePreDelete, deleteRenderRef(rel))
+		if err != nil {
+			return err
+		}
+		if res.state == hookPhaseHold || res.state == hookPhaseFailed {
+			c.EnqueueAfter(key, finalizeHoldRequeue)
+			return nil
+		}
+	}
+
+	if prune {
+		if err := c.pruneRefs(ctx, cluster, rel); err != nil {
 			return fmt.Errorf("finalizing %s/%s: %w", rel.Namespace, rel.Name, err)
 		}
 	}
 
-	// Delete the durable inventory before dropping the finalizer: prune has
+	// PostDelete — after teardown. A hold requeues; a Fail is best-effort (logged),
+	// since the workloads are already gone.
+	if hasDeleteHooks {
+		res, err := c.runHookPhase(ctx, rel, cluster, corev1alpha1.LifecycleHookPhasePostDelete, deleteRenderRef(rel))
+		if err != nil {
+			return err
+		}
+		if res.state == hookPhaseHold {
+			c.EnqueueAfter(key, finalizeHoldRequeue)
+			return nil
+		}
+		if res.state == hookPhaseFailed {
+			klog.V(2).InfoS("postDelete lifecycle hook failed", "release", key, "hook", res.failedHook, "message", res.message)
+		}
+	}
+
+	// Delete the durable inventory before dropping the finalizer: teardown has
 	// succeeded (or was skipped), so the record's job is done. Doing it first
 	// means a failure here keeps the finalizer, and the delete is retried, rather
 	// than the Release vanishing and orphaning its ReleaseInventory.
@@ -418,7 +484,32 @@ func (c *Controller) finalize(ctx context.Context, rel *corev1alpha1.Release) er
 	return nil
 }
 
-func (c *Controller) pruneAll(ctx context.Context, rel *corev1alpha1.Release) error {
+// clusterForFinalize resolves the Release's target cluster for teardown. usable is
+// false (with a nil error) when the cluster is gone or unreachable-but-not-blocking,
+// signaling best-effort deletion (skip hooks + prune, still remove the finalizer). A
+// non-nil error blocks the deletion (transient, or an unreachable cluster under
+// BlockOnClusterUnreachable) so it retries.
+func (c *Controller) clusterForFinalize(rel *corev1alpha1.Release) (*corev1alpha1.Cluster, bool, error) {
+	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
+	cluster, err := c.clusterLister.Clusters(clusterNamespace).Get(rel.Spec.ClusterRef.Name)
+	if apierrors.IsNotFound(err) {
+		return nil, false, nil // cluster gone → nothing to tear down on it
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("resolving target cluster: %w", err)
+	}
+	if !cluster.Status.Reachable {
+		if rel.Spec.DeletionPolicy.BlockOnClusterUnreachable {
+			return nil, false, fmt.Errorf("cluster %s not reachable", cluster.Name) // blocks
+		}
+		return nil, false, nil // best-effort: give up cleanup, allow deletion
+	}
+	return cluster, true, nil
+}
+
+// pruneRefs deletes the Release's inventoried resources from the (resolved,
+// reachable) target cluster. NotFound resources are ignored by the deployer.
+func (c *Controller) pruneRefs(ctx context.Context, cluster *corev1alpha1.Cluster, rel *corev1alpha1.Release) error {
 	refs, ok, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
 	if err != nil {
 		return err
@@ -426,21 +517,7 @@ func (c *Controller) pruneAll(ctx context.Context, rel *corev1alpha1.Release) er
 	if !ok || len(refs) == 0 {
 		return nil // never applied, or already pruned
 	}
-	clusterNamespace := orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace)
-	cluster, err := c.clusterLister.Clusters(clusterNamespace).Get(rel.Spec.ClusterRef.Name)
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("resolving target cluster: %w", err)
-	}
-	if !cluster.Status.Reachable {
-		if rel.Spec.DeletionPolicy.BlockOnClusterUnreachable {
-			return fmt.Errorf("cluster %s not reachable", cluster.Name) // blocks
-		}
-		return nil // best-effort: give up cleanup, allow deletion (workloads orphaned)
-	}
-	return c.deployer.Prune(ctx, cluster, refs) // reuses the E2 delete path; ignores NotFound
+	return c.deployer.Prune(ctx, cluster, refs)
 }
 
 // syncRequeueAfter returns the per-Release drift re-check interval, or 0 when
