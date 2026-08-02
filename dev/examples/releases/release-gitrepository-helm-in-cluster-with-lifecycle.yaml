@@ -9,7 +9,8 @@ lifecycle:
       type: Job
       timeout: 30s
       onFailure: Continue
-      cleanup: OnSuccess
+      cleanup: Never
+      deleteBeforeCreation: true
       jobTemplate:
         metadata:
           labels:

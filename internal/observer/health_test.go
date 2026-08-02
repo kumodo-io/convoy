@@ -192,6 +192,59 @@ func TestHealth_NoSyncWhileFrontierProgressing(t *testing.T) {
 	}
 }
 
+func TestHealth_DuringDeletion_PollsHooksNotHealth(t *testing.T) {
+	rel := withAssessment(testRelease(true))
+	now := metav1.Now()
+	rel.DeletionTimestamp = &now
+	c, _ := newTestHealthController(t, rel)
+
+	assessed := false
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
+		assessed = true
+		return stubAssessment(), nil
+	}
+	polled := false
+	c.pollHooksFn = func(context.Context, *corev1alpha1.Release) (*hookPollResult, error) {
+		polled = true
+		return &hookPollResult{allSettled: true}, nil
+	}
+	var synced int
+	c.syncFn = func(context.Context, *corev1alpha1.Release) error { synced++; return nil }
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if assessed {
+		t.Error("assessed health during deletion; want health skipped")
+	}
+	if !polled {
+		t.Error("did not poll hooks during deletion; want hook polling")
+	}
+	if synced != 0 {
+		t.Errorf("requested sync %d times with no completed hook, want 0", synced)
+	}
+}
+
+func TestHealth_DuringDeletion_PokesSyncOnHookCompletion(t *testing.T) {
+	rel := withAssessment(testRelease(true))
+	now := metav1.Now()
+	rel.DeletionTimestamp = &now
+	c, _ := newTestHealthController(t, rel)
+
+	c.pollHooksFn = func(context.Context, *corev1alpha1.Release) (*hookPollResult, error) {
+		return &hookPollResult{batchCompleted: true, allSettled: true}, nil
+	}
+	var synced int
+	c.syncFn = func(context.Context, *corev1alpha1.Release) error { synced++; return nil }
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if synced != 1 {
+		t.Errorf("requested sync %d times on delete-hook completion, want 1", synced)
+	}
+}
+
 func TestHealth_ProgressingWhenNoWorse(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
 	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {

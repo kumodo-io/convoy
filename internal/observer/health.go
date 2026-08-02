@@ -121,6 +121,25 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 		return err
 	}
 	if !rel.DeletionTimestamp.IsZero() {
+		// During deletion keep polling delete-phase hooks so the controller's finalize
+		// gate can advance (PreDelete/PostDelete run to completion), but stop assessing
+		// resource health — they are being torn down. The finishedAt watermark makes
+		// this quiesce: once every armed hook is terminal, needsHookPoll is false for
+		// all, so pollHooks stops writing before the controller deletes the inventory.
+		hookRes, hookErr := c.pollHooksFn(ctx, rel)
+		if hookErr != nil {
+			klog.V(4).InfoS("hook polling undetermined (deleting)", "release", key, "reason", hookErr.Error())
+		}
+		if hookRes != nil && hookRes.batchCompleted {
+			if err := c.syncFn(ctx, rel); err != nil {
+				return fmt.Errorf("requesting sync on hook completion for %s: %w", key, err)
+			}
+		}
+		var notSettled []string
+		if hookRes != nil {
+			notSettled = hookRes.runningHooks
+		}
+		c.scheduleHealthRecheck(key, rel, notSettled)
 		return nil
 	}
 
