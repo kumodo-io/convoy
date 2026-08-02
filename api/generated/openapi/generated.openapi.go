@@ -4276,6 +4276,20 @@ func schema_convoy_api_core_v1alpha1_ResourceInventoryItem(ref common.ReferenceC
 							Format:      "",
 						},
 					},
+					"renderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderRef is the hash of the release render inventoried resource belongs to.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"assessedRenderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AssessedRenderRef is the hash of the release render that was assessed.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"uid": {
 						SchemaProps: spec.SchemaProps{
 							Description: "UID reflects the uid of the inventoried resource.",

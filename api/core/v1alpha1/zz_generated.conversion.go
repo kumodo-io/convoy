@@ -2370,6 +2370,8 @@ func autoConvert_v1alpha1_ResourceInventoryItem_To_core_ResourceInventoryItem(in
 	out.Kind = in.Kind
 	out.Namespace = in.Namespace
 	out.Name = in.Name
+	out.RenderRef = in.RenderRef
+	out.AssessedRenderRef = in.AssessedRenderRef
 	out.UID = (*types.UID)(unsafe.Pointer(in.UID))
 	out.Wave = (*int)(unsafe.Pointer(in.Wave))
 	out.State = (*core.ResourceState)(unsafe.Pointer(in.State))
@@ -2389,6 +2391,8 @@ func autoConvert_core_ResourceInventoryItem_To_v1alpha1_ResourceInventoryItem(in
 	out.Kind = in.Kind
 	out.Namespace = in.Namespace
 	out.Name = in.Name
+	out.RenderRef = in.RenderRef
+	out.AssessedRenderRef = in.AssessedRenderRef
 	out.UID = (*types.UID)(unsafe.Pointer(in.UID))
 	out.Wave = (*int)(unsafe.Pointer(in.Wave))
 	out.State = (*ResourceState)(unsafe.Pointer(in.State))

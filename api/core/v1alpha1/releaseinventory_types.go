@@ -40,6 +40,12 @@ type ResourceInventoryItem struct {
 	// Name reflects the name of the inventoried resource.
 	Name string `json:"name"`
 
+	// RenderRef is the hash of the release render inventoried resource belongs to.
+	RenderRef string `json:"renderRef,omitempty"`
+
+	// AssessedRenderRef is the hash of the release render that was assessed.
+	AssessedRenderRef string `json:"assessedRenderRef,omitempty"`
+
 	// UID reflects the uid of the inventoried resource.
 	UID *types.UID `json:"uid,omitempty"`
 

@@ -39,6 +39,10 @@ type ResourceInventoryItemApplyConfiguration struct {
 	Namespace *string `json:"namespace,omitempty"`
 	// Name reflects the name of the inventoried resource.
 	Name *string `json:"name,omitempty"`
+	// RenderRef is the hash of the release render inventoried resource belongs to.
+	RenderRef *string `json:"renderRef,omitempty"`
+	// AssessedRenderRef is the hash of the release render that was assessed.
+	AssessedRenderRef *string `json:"assessedRenderRef,omitempty"`
 	// UID reflects the uid of the inventoried resource.
 	UID *types.UID `json:"uid,omitempty"`
 	// Wave reflects the sync wave inventoried resource belongs to.
@@ -96,6 +100,22 @@ func (b *ResourceInventoryItemApplyConfiguration) WithNamespace(value string) *R
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *ResourceInventoryItemApplyConfiguration) WithName(value string) *ResourceInventoryItemApplyConfiguration {
 	b.Name = &value
+	return b
+}
+
+// WithRenderRef sets the RenderRef field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RenderRef field is set to the value of the last call.
+func (b *ResourceInventoryItemApplyConfiguration) WithRenderRef(value string) *ResourceInventoryItemApplyConfiguration {
+	b.RenderRef = &value
+	return b
+}
+
+// WithAssessedRenderRef sets the AssessedRenderRef field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the AssessedRenderRef field is set to the value of the last call.
+func (b *ResourceInventoryItemApplyConfiguration) WithAssessedRenderRef(value string) *ResourceInventoryItemApplyConfiguration {
+	b.AssessedRenderRef = &value
 	return b
 }
 
