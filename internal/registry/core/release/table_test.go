@@ -35,9 +35,17 @@ func TestLifecycleColumn(t *testing.T) {
 		t.Errorf("no hooks: %q, want N/A", got)
 	}
 
-	allOK := core.LifecycleStatus{PreSync: []core.LifecycleHookStatus{hs("a", core.LifecycleHookStateSucceeded), hs("b", core.LifecycleHookStateSkipped)}}
-	if got := lifecycleColumn(rel(allOK)); got != "Succeeded" {
-		t.Errorf("all ok: %q, want Succeeded", got)
+	singleOK := core.LifecycleStatus{PreSync: []core.LifecycleHookStatus{hs("a", core.LifecycleHookStateSucceeded), hs("b", core.LifecycleHookStateSkipped)}}
+	if got := lifecycleColumn(rel(singleOK)); got != "Completed:PreSync" {
+		t.Errorf("all ok: %q, want Completed:PreSync", got)
+	}
+
+	lastOKReported := core.LifecycleStatus{
+		PreSync:  []core.LifecycleHookStatus{hs("a", core.LifecycleHookStateSucceeded)},
+		PostSync: []core.LifecycleHookStatus{hs("b", core.LifecycleHookStateSucceeded)},
+	}
+	if got := lifecycleColumn(rel(lastOKReported)); got != "Completed:PostSync" {
+		t.Errorf("last ok: %q, want Completed:PostSync", got)
 	}
 
 	running := core.LifecycleStatus{PreSync: []core.LifecycleHookStatus{hs("a", core.LifecycleHookStateRunning)}}
