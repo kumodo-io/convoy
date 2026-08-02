@@ -53,27 +53,51 @@ type healthEntry struct {
 	firstUnhealthy time.Time
 }
 
-// backoffCounts is a concurrency-safe per-key consecutive-attempt counter, used
-// to drive the health loop's progress backoff (fast re-checks while a rollout is
-// still progressing). In-memory; a lost count on restart only resets the cadence.
+// backoffCounts drives the health loop's progress backoff: fast re-checks while a
+// target (a resource or a lifecycle hook) is still pending. Each release tracks a
+// per-target consecutive-attempt count, so a freshly-pending target backs off from
+// scratch (2s) while a chronically-slow one stays at its climbed cadence — and the
+// release polls as fast as its most-recently-active target needs. Concurrency-safe;
+// in-memory (a lost count on restart only resets the cadence).
 type backoffCounts struct {
 	mu sync.Mutex
-	n  map[string]int
+	n  map[string]map[string]int // releaseKey → targetID → attempts
 }
 
-func newBackoffCounts() *backoffCounts { return &backoffCounts{n: make(map[string]int)} }
-
-// inc increments and returns the attempt count for key.
-func (b *backoffCounts) inc(key string) int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.n[key]++
-	return b.n[key]
+func newBackoffCounts() *backoffCounts {
+	return &backoffCounts{n: make(map[string]map[string]int)}
 }
 
-// reset clears the attempt count for key (called once a Release is all-healthy).
-func (b *backoffCounts) reset(key string) {
+// advance increments the attempt count of every currently-pending target, drops the
+// counts of targets that are no longer pending (settled or vanished), and returns
+// the minimum staircase delay across the pending targets — so a target at attempt 1
+// (2s) pulls the whole release to a fast re-check regardless of what else is slow.
+// A pending set that is empty clears the release's counts and returns 0 (the caller
+// falls back to the steady interval).
+func (b *backoffCounts) advance(releaseKey string, targets []string, capDelay time.Duration) time.Duration {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	delete(b.n, key)
+	if len(targets) == 0 {
+		delete(b.n, releaseKey)
+		return 0
+	}
+	prev := b.n[releaseKey]
+	next := make(map[string]int, len(targets))
+	var minDelay time.Duration
+	for i, t := range targets {
+		c := prev[t] + 1 // prev[t] is 0 for a target seen the first time
+		next[t] = c
+		if d := progressBackoff(c, capDelay); i == 0 || d < minDelay {
+			minDelay = d
+		}
+	}
+	b.n[releaseKey] = next
+	return minDelay
+}
+
+// clear drops all per-target counts for a release (called once it is fully settled).
+func (b *backoffCounts) clear(releaseKey string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.n, releaseKey)
 }

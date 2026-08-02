@@ -62,6 +62,15 @@ type hookPollResult struct {
 	batchCompleted bool
 	// allSettled is true when no hook is still running — nothing left to wait for.
 	allSettled bool
+	// runningHooks are the backoff-target IDs of hooks still Running this pass, so the
+	// recheck cadence tracks each pending hook on its own staircase.
+	runningHooks []string
+}
+
+// hookTargetID is a hook's backoff-target identity, namespaced apart from resource
+// targets so the two never collide in the per-target backoff.
+func hookTargetID(phase corev1alpha1.LifecycleHookPhase, name string) string {
+	return "hook|" + hookKey(phase, name)
 }
 
 // pollHooks reads the lifecycle-hook workloads recorded on the Release's
@@ -103,7 +112,8 @@ func (c *HealthController) pollHooks(ctx context.Context, rel *corev1alpha1.Rele
 	// A skip (workload gone, no new info) yields no fresh result, so the existing
 	// state is preserved below.
 	fresh := make(map[string]hookStatusEntry, len(toPoll))
-	batchCompleted, stillRunning := false, false
+	batchCompleted := false
+	var runningHooks []string
 	for i := range toPoll {
 		item := toPoll[i]
 		state, message := c.pollHookWorkload(ctx, dyn, mapper, item, now)
@@ -114,7 +124,7 @@ func (c *HealthController) pollHooks(ctx context.Context, rel *corev1alpha1.Rele
 		if terminal {
 			batchCompleted = true
 		} else {
-			stillRunning = true
+			runningHooks = append(runningHooks, hookTargetID(item.Phase, item.Name))
 		}
 		fresh[hookKey(item.Phase, item.Name)] = hookStatusEntry{
 			name:       item.Name,
@@ -128,7 +138,11 @@ func (c *HealthController) pollHooks(ctx context.Context, rel *corev1alpha1.Rele
 	if err := c.writeHookStatus(ctx, rel, mergeHookEntries(inv.Hooks, fresh)); err != nil {
 		return nil, err
 	}
-	return &hookPollResult{batchCompleted: batchCompleted, allSettled: !stillRunning}, nil
+	return &hookPollResult{
+		batchCompleted: batchCompleted,
+		allSettled:     len(runningHooks) == 0,
+		runningHooks:   runningHooks,
+	}, nil
 }
 
 // hookKey is the composite identity (phase, name) of a hook entry.
