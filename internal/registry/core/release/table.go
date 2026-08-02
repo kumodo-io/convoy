@@ -47,6 +47,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			{Name: "Cluster", Type: helper.StringValueString, Description: "Target cluster"},
 			{Name: "Applied", Type: helper.StringValueString, Description: "Whether the release render is applied"},
 			{Name: "InSync", Type: helper.StringValueString, Description: "Whether the release is in sync"},
+			{Name: "Healthy", Type: helper.StringValueString, Description: "Whether the release is healthy"},
 			{Name: "Lifecycle", Type: helper.StringValueString, Description: "Lifecycle hook status"},
 			{Name: "Age", Type: helper.StringValueDate, Description: "Time since the Release was created"},
 		},
@@ -71,8 +72,15 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 		if inSyncIdx >= 0 {
 			inSync = string(r.Status.Conditions[inSyncIdx].Status)
 		}
+		healthy := unknownState
+		healthyIdx := slices.IndexFunc(r.Status.Conditions, func(c metav1.Condition) bool {
+			return c.Type == "Healthy"
+		})
+		if healthyIdx >= 0 {
+			healthy = string(r.Status.Conditions[healthyIdx].Status)
+		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, applied, inSync, lifecycleColumn(r), age},
+			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, applied, inSync, healthy, lifecycleColumn(r), age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}
@@ -101,15 +109,18 @@ func lifecycleColumn(r *core.Release) string {
 		name  string
 		hooks []core.LifecycleHookStatus
 	}{
-		{"PreRender", r.Status.Lifecycle.PreRender},
-		{"PostRender", r.Status.Lifecycle.PostRender},
 		{"PreSync", r.Status.Lifecycle.PreSync},
 		{"SyncFailed", r.Status.Lifecycle.SyncFailed},
 		{"PostSync", r.Status.Lifecycle.PostSync},
 		{"PreDelete", r.Status.Lifecycle.PreDelete},
 		{"PostDelete", r.Status.Lifecycle.PostDelete},
 	}
-	total, firstFailed, firstRunning := 0, "", ""
+	var (
+		total         int
+		firstFailed   string
+		firstRunning  string
+		lastCompleted string
+	)
 	for _, p := range phases {
 		for i := range p.hooks {
 			total++
@@ -119,7 +130,7 @@ func lifecycleColumn(r *core.Release) string {
 					firstFailed = p.name
 				}
 			case core.LifecycleHookStateSucceeded, core.LifecycleHookStateSkipped:
-				// terminal-ok
+				lastCompleted = p.name
 			default:
 				if firstRunning == "" {
 					firstRunning = p.name
@@ -135,7 +146,7 @@ func lifecycleColumn(r *core.Release) string {
 	case firstRunning != "":
 		return "Running:" + firstRunning
 	default:
-		return "Succeeded"
+		return "Completed:" + lastCompleted
 	}
 }
 
