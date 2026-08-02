@@ -114,22 +114,38 @@ func TestFrontierWaveCompleted(t *testing.T) {
 }
 
 func TestProgressBackoff(t *testing.T) {
-	const cap = 30 * time.Second
+	const cap = time.Minute // large enough not to clamp the staircase
+	// Staircase: 2s×5, 4s×4, 8s×3, 16s×2, 32s×∞ (attempts are 1-based, cumulative).
 	tests := []struct {
 		attempt int
 		want    time.Duration
 	}{
 		{0, 2 * time.Second},  // clamped to 1
-		{1, 2 * time.Second},  // base
-		{2, 4 * time.Second},  // ×2
-		{3, 8 * time.Second},  // ×2
-		{4, 16 * time.Second}, // ×2
-		{5, cap},              // 32s → capped at 30s
-		{99, cap},             // far past cap (shift guard)
+		{1, 2 * time.Second},  // level 0 (2s ×5): attempts 1..5
+		{5, 2 * time.Second},  // still level 0
+		{6, 4 * time.Second},  // level 1 (4s ×4): attempts 6..9
+		{9, 4 * time.Second},  // still level 1
+		{10, 8 * time.Second}, // level 2 (8s ×3): attempts 10..12
+		{12, 8 * time.Second},
+		{13, 16 * time.Second}, // level 3 (16s ×2): attempts 13..14
+		{14, 16 * time.Second},
+		{15, 32 * time.Second},  // level 4 (32s ×∞)
+		{999, 32 * time.Second}, // far tail
 	}
 	for _, tc := range tests {
 		if got := progressBackoff(tc.attempt, cap); got != tc.want {
 			t.Errorf("progressBackoff(%d) = %s, want %s", tc.attempt, got, tc.want)
 		}
+	}
+}
+
+func TestProgressBackoff_CappedAtInterval(t *testing.T) {
+	// A short interval caps the staircase so it never polls slower than steady state.
+	const cap = 10 * time.Second
+	if got := progressBackoff(1, cap); got != 2*time.Second {
+		t.Errorf("early attempt = %s, want 2s (under cap)", got)
+	}
+	if got := progressBackoff(99, cap); got != cap {
+		t.Errorf("tail attempt = %s, want %s (capped at interval)", got, cap)
 	}
 }
