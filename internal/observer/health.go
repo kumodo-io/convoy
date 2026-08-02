@@ -133,10 +133,11 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 		klog.V(4).InfoS("hook polling undetermined", "release", key, "reason", hookErr.Error())
 	}
 
-	// Health assessment. healthSettled stays true when there is nothing to wait for
-	// (no assessment, or an undetermined pass); waveDone marks the edge that should
-	// wake the controller.
-	healthSettled, waveDone := true, false
+	// Health assessment. notSettled accumulates the backoff-target IDs still pending
+	// (unhealthy resources + running hooks) so the recheck cadence tracks each on its
+	// own staircase; waveDone marks the edge that should wake the controller.
+	var notSettled []string
+	waveDone := false
 	switch rel.Spec.HealthAssessment {
 	case nil:
 		// No assessment: report Healthy — everything applied, nothing to check. The
@@ -163,9 +164,12 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 			if err := c.writeHealth(ctx, rel, status, reason, message, a.result.Summarize()); err != nil {
 				return err
 			}
-			healthSettled = allHealthy(a.entries)
+			notSettled = append(notSettled, unhealthyResourceTargets(a.entries)...)
 			waveDone = frontierWaveCompleted(a.entries, a.prior)
 		}
+	}
+	if hookRes != nil {
+		notSettled = append(notSettled, hookRes.runningHooks...)
 	}
 
 	// Wake the controller the moment a sync-wave frontier or a lifecycle-hook batch
@@ -179,12 +183,11 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 		klog.V(4).InfoS("requested sync on wave/hook completion", "release", key)
 	}
 
-	// Re-check cadence: while any resource is still Progressing/Unknown or any hook
-	// is still Running, retry with exponential backoff (bounded by the poll interval)
-	// so completion is noticed within seconds; once everything is settled, fall back
-	// to the normal interval.
-	settled := healthSettled && (hookRes == nil || hookRes.allSettled)
-	c.scheduleHealthRecheck(key, rel, settled)
+	// Re-check cadence: each still-pending target (unhealthy resource or running hook)
+	// drives its own staircase, and the release re-checks at the fastest of them — so
+	// a freshly-pending target is noticed within ~2s regardless of what else is slow;
+	// once nothing is pending, fall back to the normal interval.
+	c.scheduleHealthRecheck(key, rel, notSettled)
 	return nil
 }
 
@@ -196,17 +199,6 @@ type assessment struct {
 	result  *healthresult.Result
 	entries []healthEntry
 	prior   map[string]corev1alpha1.ResourceState
-}
-
-// allHealthy reports whether every assessed entry is Healthy. An empty set is
-// healthy (nothing is unhealthy).
-func allHealthy(entries []healthEntry) bool {
-	for _, e := range entries {
-		if e.state != corev1alpha1.ResourceStateHealthy {
-			return false
-		}
-	}
-	return true
 }
 
 // frontierWaveCompleted reports whether the highest wave present in the inventory
@@ -417,16 +409,29 @@ var progressBackoffLevels = []struct {
 // interval is set.
 const progressBackoffMax = 32 * time.Second
 
-// scheduleHealthRecheck schedules the next health pass. Once everything is settled
-// it resets the staircase and re-checks at the normal poll interval; otherwise it
-// re-checks on the staircase cadence (bounded by the interval so it never polls
-// slower than steady state), so a resource turning healthy or a hook completing is
-// noticed within seconds instead of a whole interval — which is what lets the
-// sync-wave gate advance and the status reflect completion promptly.
-func (c *HealthController) scheduleHealthRecheck(key string, rel *corev1alpha1.Release, settled bool) {
+// unhealthyResourceTargets returns the backoff-target IDs of the not-yet-Healthy
+// resources, namespaced apart from hook targets so the two never collide.
+func unhealthyResourceTargets(entries []healthEntry) []string {
+	var ids []string
+	for _, e := range entries {
+		if e.state != corev1alpha1.ResourceStateHealthy {
+			ids = append(ids, "res|"+e.ref.identityID())
+		}
+	}
+	return ids
+}
+
+// scheduleHealthRecheck schedules the next health pass. With nothing pending it
+// clears the per-target staircase and re-checks at the normal poll interval;
+// otherwise it re-checks at the fastest staircase across the pending targets
+// (bounded by the interval so it never polls slower than steady state), so a
+// resource turning healthy or a hook completing is noticed within seconds instead
+// of a whole interval — which is what lets the sync-wave gate advance and the status
+// reflect completion promptly.
+func (c *HealthController) scheduleHealthRecheck(key string, rel *corev1alpha1.Release, notSettled []string) {
 	interval := rel.Spec.SyncPolicy.Interval.Duration
-	if settled {
-		c.progress.reset(key)
+	if len(notSettled) == 0 {
+		c.progress.clear(key)
 		if interval > 0 {
 			c.EnqueueAfter(key, interval)
 		}
@@ -436,8 +441,7 @@ func (c *HealthController) scheduleHealthRecheck(key string, rel *corev1alpha1.R
 	if capDelay <= 0 {
 		capDelay = progressBackoffMax
 	}
-	n := c.progress.inc(key)
-	c.EnqueueAfter(key, wait.Jitter(progressBackoff(n, capDelay), progressBackoffJitter))
+	c.EnqueueAfter(key, wait.Jitter(c.progress.advance(key, notSettled, capDelay), progressBackoffJitter))
 }
 
 // progressBackoff returns the base (un-jittered) re-check delay for the attempt-th

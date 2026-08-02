@@ -35,23 +35,24 @@ func waveEntry(name string, wave int, state corev1alpha1.ResourceState) healthEn
 	}
 }
 
-func TestAllHealthy(t *testing.T) {
+func TestUnhealthyResourceTargets(t *testing.T) {
 	healthy := []healthEntry{
 		waveEntry("a", 0, corev1alpha1.ResourceStateHealthy),
 		waveEntry("b", 1, corev1alpha1.ResourceStateHealthy),
 	}
-	if !allHealthy(healthy) {
-		t.Error("allHealthy = false, want true (all healthy)")
+	if got := unhealthyResourceTargets(healthy); len(got) != 0 {
+		t.Errorf("all healthy → %v, want none pending", got)
 	}
-	if !allHealthy(nil) {
-		t.Error("allHealthy(nil) = false, want true (nothing unhealthy)")
+	if got := unhealthyResourceTargets(nil); len(got) != 0 {
+		t.Errorf("empty → %v, want none pending", got)
 	}
 	mixed := []healthEntry{
 		waveEntry("a", 0, corev1alpha1.ResourceStateHealthy),
 		waveEntry("c", 1, corev1alpha1.ResourceStateProgressing),
 	}
-	if allHealthy(mixed) {
-		t.Error("allHealthy = true, want false (one progressing)")
+	got := unhealthyResourceTargets(mixed)
+	if len(got) != 1 || got[0] != "res|apps|Deployment|ns|c" {
+		t.Errorf("mixed → %v, want [res|apps|Deployment|ns|c]", got)
 	}
 }
 
@@ -147,5 +148,42 @@ func TestProgressBackoff_CappedAtInterval(t *testing.T) {
 	}
 	if got := progressBackoff(99, cap); got != cap {
 		t.Errorf("tail attempt = %s, want %s (capped at interval)", got, cap)
+	}
+}
+
+func TestBackoffCounts_PerTarget(t *testing.T) {
+	const cap = time.Minute
+	const slow = "res|a" // a chronically-slow resource target
+	const relKey = "ns/r"
+	b := newBackoffCounts()
+
+	// One slow target climbs its own staircase across passes.
+	for i := 1; i <= 6; i++ {
+		b.advance(relKey, []string{slow}, cap)
+	}
+	// After 6 passes, slow is at attempt 6 → 4s. A freshly-added target starts at
+	// attempt 1 → 2s, and the release re-checks at the MIN (2s), not the slow 4s.
+	if d := b.advance(relKey, []string{slow, "hook|x"}, cap); d != 2*time.Second {
+		t.Errorf("min delay with a fresh target = %s, want 2s (fresh pulls the cadence)", d)
+	}
+
+	// The slow target keeps its climbed count: alone again, it is back to its own pace.
+	// (slow is now at attempt 8 → 4s; hook|x dropped since it's no longer pending.)
+	if d := b.advance(relKey, []string{slow}, cap); d != 4*time.Second {
+		t.Errorf("slow target alone = %s, want 4s (kept its climbed count)", d)
+	}
+
+	// A target that stops being pending is dropped, so it restarts fresh next time.
+	b.advance(relKey, []string{slow}, cap) // slow alone, still climbing
+	if d := b.advance(relKey, []string{"hook|x"}, cap); d != 2*time.Second {
+		t.Errorf("re-added target = %s, want 2s (dropped when not pending)", d)
+	}
+
+	// Nothing pending clears the release and returns 0.
+	if d := b.advance(relKey, nil, cap); d != 0 {
+		t.Errorf("empty pending = %s, want 0", d)
+	}
+	if _, ok := b.n[relKey]; ok {
+		t.Error("release counts not cleared when nothing pending")
 	}
 }
