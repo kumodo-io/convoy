@@ -1071,6 +1071,7 @@ func autoConvert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(in *Li
 	out.ApiVersion = in.ApiVersion
 	out.ResourceName = in.ResourceName
 	out.ResourceNamespace = in.ResourceNamespace
+	out.RenderRef = in.RenderRef
 	out.State = core.LifecycleHookState(in.State)
 	out.Weight = in.Weight
 	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
@@ -1093,6 +1094,7 @@ func autoConvert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in *co
 	out.ApiVersion = in.ApiVersion
 	out.ResourceName = in.ResourceName
 	out.ResourceNamespace = in.ResourceNamespace
+	out.RenderRef = in.RenderRef
 	out.State = LifecycleHookState(in.State)
 	out.Weight = in.Weight
 	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))

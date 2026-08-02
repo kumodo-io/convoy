@@ -1144,6 +1144,9 @@ type LifecycleHookStatus struct {
 	// ResourceNamespace is the namespace of the resource created by the hook.
 	ResourceNamespace string `json:"resourceNamespace"`
 
+	// RenderRef is the hash of the release render lifecycle hook was triggered by.
+	RenderRef string `json:"renderRef,omitempty"`
+
 	// State is the state of the hook.
 	State LifecycleHookState `json:"state"`
 

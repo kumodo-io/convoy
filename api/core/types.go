@@ -605,6 +605,7 @@ type LifecycleHookStatus struct {
 	ApiVersion        string
 	ResourceName      string
 	ResourceNamespace string
+	RenderRef         string
 	State             LifecycleHookState
 	Weight            int32
 	StartedAt         *metav1.Time

@@ -1728,6 +1728,13 @@ func schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"renderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderRef is the hash of the release render lifecycle hook was triggered by.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"state": {
 						SchemaProps: spec.SchemaProps{
 							Description: "State is the state of the hook.\n\nPossible enum values:\n - `\"Failed\"` is the state of a lifecycle hook that has failed.\n - `\"Running\"` is the state of a lifecycle hook that is running.\n - `\"Skipped\"` is the state of a lifecycle hook that has been skipped.\n - `\"Succeeded\"` is the state of a lifecycle hook that has succeeded.\n - `\"TimedOut\"` is the state of a lifecycle hook that has timed out.",
