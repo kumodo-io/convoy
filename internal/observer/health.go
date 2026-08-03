@@ -156,7 +156,7 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	// (unhealthy resources + running hooks) so the recheck cadence tracks each on its
 	// own staircase; waveDone marks the edge that should wake the controller.
 	var notSettled []string
-	waveDone := false
+	waveDone, renderAdvanced := false, false
 	switch rel.Spec.HealthAssessment {
 	case nil:
 		// No assessment: report Healthy — everything applied, nothing to check. The
@@ -196,21 +196,23 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 			}
 			notSettled = append(notSettled, unhealthyResourceTargets(a.entries)...)
 			waveDone = frontierWaveCompleted(a.entries, a.prior)
+			renderAdvanced = a.renderAdvanced
 		}
 	}
 	if hookRes != nil {
 		notSettled = append(notSettled, hookRes.runningHooks...)
 	}
 
-	// Wake the controller the moment a sync-wave frontier or a lifecycle-hook batch
-	// completes, so it advances promptly instead of on its poll interval.
-	// Edge-triggered (only on the transition to done), so it doesn't re-fire on
-	// steady-state passes. The controller's own periodic reconcile is the safety net.
-	if waveDone || (hookRes != nil && hookRes.batchCompleted) {
+	// Wake the controller the moment a sync-wave frontier completes, the assessment
+	// catches up to a newly-applied render, or a lifecycle-hook batch completes — so
+	// it advances (or arms a render-gated hook) promptly instead of on its poll
+	// interval. Edge-triggered, so it doesn't re-fire on steady-state passes. The
+	// controller's own periodic reconcile is the safety net.
+	if waveDone || renderAdvanced || (hookRes != nil && hookRes.batchCompleted) {
 		if err := c.syncFn(ctx, rel); err != nil {
 			return fmt.Errorf("requesting sync for %s: %w", key, err)
 		}
-		klog.V(4).InfoS("requested sync on wave/hook completion", "release", key)
+		klog.V(4).InfoS("requested sync on wave/render/hook completion", "release", key)
 	}
 
 	// Re-check cadence: each still-pending target (unhealthy resource or running hook)
@@ -235,6 +237,13 @@ type assessment struct {
 	// resources aren't applied/assessed yet; the aggregate Healthy is then Pending
 	// (the prior render's health must not read as the new render's).
 	renderCurrent bool
+	// renderAdvanced is true when this pass caught the assessment up to a render the
+	// controller had newly applied (some resource's applied RenderRef differed from
+	// the observer's last AssessedRenderRef). It is the edge trigger to poke the
+	// controller so a render-gated hook (postSync runAfter:Healthy) re-checks promptly
+	// — a render change that doesn't also flip a health STATE would otherwise be
+	// noticed only on the poll interval.
+	renderAdvanced bool
 }
 
 // lastAttemptedRender returns the render the controller last targeted, or "".
@@ -366,14 +375,27 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 			Message:   entry.message,
 		})
 	}
+	// Detect whether this pass advances the assessment to a newly-applied render: any
+	// item whose controller-applied RenderRef differs from the observer's last
+	// AssessedRenderRef is about to be updated below, so the render moved forward.
+	renderAdvanced := false
+	for i := range inv.Inventory {
+		it := inv.Inventory[i]
+		if it.RenderRef != "" && it.RenderRef != it.AssessedRenderRef {
+			renderAdvanced = true
+			break
+		}
+	}
+
 	if err := c.writeInventoryHealth(ctx, rel, entries); err != nil {
 		return nil, err
 	}
 	return &assessment{
-		result:        result,
-		entries:       entries,
-		prior:         prior,
-		renderCurrent: entriesAllAtRender(entries, lastAttemptedRender(rel)),
+		result:         result,
+		entries:        entries,
+		prior:          prior,
+		renderAdvanced: renderAdvanced,
+		renderCurrent:  entriesAllAtRender(entries, lastAttemptedRender(rel)),
 	}, nil
 }
 

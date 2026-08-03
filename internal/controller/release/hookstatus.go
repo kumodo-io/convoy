@@ -74,8 +74,12 @@ func buildLifecycleStatus(rel *corev1alpha1.Release, items []corev1alpha1.Releas
 // observer has not reported an outcome. FollowUpAction records the configured
 // onFailure only when the hook actually failed.
 func hookItemToStatus(rel *corev1alpha1.Release, it corev1alpha1.ReleaseLifecycleHookItem) corev1alpha1.LifecycleHookStatus {
+	// Only report a recorded terminal state when it applies to the current arming; a
+	// re-armed hook (createdAt after finishedAt) carries a stale terminal state from
+	// its prior run until the observer re-polls the new workload — show it as Running
+	// (pending), not prematurely Completed.
 	state := corev1alpha1.LifecycleHookStateRunning
-	if it.State != nil {
+	if hookTerminalForArming(it) {
 		state = *it.State
 	}
 	hs := corev1alpha1.LifecycleHookStatus{

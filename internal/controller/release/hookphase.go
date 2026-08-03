@@ -126,8 +126,8 @@ func (c *Controller) runHookPhase(ctx context.Context, rel *corev1alpha1.Release
 			// Armed for this render — carry its identity forward and inspect its state.
 			desired = append(desired, hookRefFromItem(entry))
 			switch {
-			case entry.State == nil || !isTerminalHookItemState(*entry.State):
-				groupDone = false // still running: hold below
+			case !hookTerminalForArming(entry):
+				groupDone = false // running (or re-armed, stale state): hold below
 			case *entry.State == corev1alpha1.LifecycleHookStateFailed || *entry.State == corev1alpha1.LifecycleHookStateTimedOut:
 				if hook.OnFailure == corev1alpha1.LifecycleHookOnFailureActionFail {
 					return hookPhaseResult{
@@ -334,4 +334,26 @@ func isTerminalHookItemState(s corev1alpha1.LifecycleHookState) bool {
 	default:
 		return false
 	}
+}
+
+// hookTerminalForArming reports whether the entry's recorded terminal State applies
+// to its CURRENT arming — i.e. the hook finished at or after its createdAt. A hook
+// re-armed since it last finished (createdAt after finishedAt, or not finished yet)
+// carries a stale terminal State from the prior arming until the observer re-polls
+// the new workload, so it must be treated as still pending — not done. This is the
+// hook analog of the observer's needsHookPoll re-poll predicate.
+func hookTerminalForArming(it corev1alpha1.ReleaseLifecycleHookItem) bool {
+	if it.State == nil {
+		return false
+	}
+	if *it.State == corev1alpha1.LifecycleHookStateSkipped {
+		return true // decided at the gate; no workload, no run to finish
+	}
+	if !isTerminalHookItemState(*it.State) {
+		return false
+	}
+	if it.FinishedAt == nil {
+		return false // armed, not yet finished for this arming
+	}
+	return it.CreatedAt == nil || !it.CreatedAt.After(it.FinishedAt.Time)
 }

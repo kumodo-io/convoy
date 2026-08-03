@@ -19,6 +19,9 @@ package release
 import (
 	"context"
 	"testing"
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
@@ -28,11 +31,19 @@ import (
 // deleteHookItem is a recorded delete-phase hook entry, keyed to the delete arming
 // render (deleteRenderRefNone, since the test release never rendered).
 func deleteHookItem(phase corev1alpha1.LifecycleHookPhase, name string, state *corev1alpha1.LifecycleHookState) corev1alpha1.ReleaseLifecycleHookItem {
-	return corev1alpha1.ReleaseLifecycleHookItem{
+	created := metav1.NewTime(time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC))
+	it := corev1alpha1.ReleaseLifecycleHookItem{
 		Name: name, Phase: phase, Version: "v1", Kind: kindPod,
 		WorkloadName: string(phase) + "-" + name, WorkloadNamespace: appName,
-		RenderRef: deleteRenderRefNone, State: state,
+		RenderRef: deleteRenderRefNone, CreatedAt: &created, State: state,
 	}
+	// A terminal state is finished for the current arming (observer writes State +
+	// FinishedAt together), so it counts as done rather than a stale prior run.
+	if state != nil && *state != corev1alpha1.LifecycleHookStateRunning {
+		fin := metav1.NewTime(created.Add(time.Minute))
+		it.FinishedAt = &fin
+	}
+	return it
 }
 
 // newDeleteHookController wires a deleting Release with the given delete-phase hooks,

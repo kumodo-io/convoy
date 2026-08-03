@@ -108,7 +108,8 @@ func podHookSpec(name string, weight int32, ifExpression string, onFail corev1al
 }
 
 func armedItem(name string, renderRef string, state *corev1alpha1.LifecycleHookState) corev1alpha1.ReleaseLifecycleHookItem {
-	return corev1alpha1.ReleaseLifecycleHookItem{
+	created := metav1.NewTime(time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC))
+	it := corev1alpha1.ReleaseLifecycleHookItem{
 		Name:              name,
 		Phase:             corev1alpha1.LifecycleHookPhasePreSync,
 		Version:           "v1",
@@ -116,8 +117,16 @@ func armedItem(name string, renderRef string, state *corev1alpha1.LifecycleHookS
 		WorkloadName:      "presync-" + name + "-abcd1234",
 		WorkloadNamespace: appName,
 		RenderRef:         renderRef,
+		CreatedAt:         &created,
 		State:             state,
 	}
+	// The observer writes State and FinishedAt together; a terminal state is finished
+	// for the current arming (finishedAt at/after createdAt), so it counts as done.
+	if state != nil && *state != corev1alpha1.LifecycleHookStateRunning {
+		fin := metav1.NewTime(created.Add(time.Minute))
+		it.FinishedAt = &fin
+	}
+	return it
 }
 
 func newHookController(runner HookRunner, store inventory.Store) *Controller {

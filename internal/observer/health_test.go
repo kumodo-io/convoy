@@ -197,6 +197,30 @@ func TestHealth_NoSyncWhileFrontierProgressing(t *testing.T) {
 	}
 }
 
+func TestHealth_PokesSyncOnRenderAdvance(t *testing.T) {
+	// The assessment catches up to a newly-applied render without any health-state
+	// transition (resource stays Healthy). The observer must still poke /sync so a
+	// render-gated postSync hook re-checks promptly instead of on the poll interval.
+	c, _ := newTestHealthController(t, withAssessment(testRelease(true)))
+	c.assessFn = func(context.Context, *corev1alpha1.Release) (*assessment, error) {
+		return &assessment{
+			result:         &healthresult.Result{Objects: []healthresult.ObjectHealth{{Kind: deploymentKind, Name: svcName, State: healthresult.StateHealthy}}},
+			entries:        []healthEntry{waveEntry(svcName, 0, corev1alpha1.ResourceStateHealthy)},
+			prior:          map[string]corev1alpha1.ResourceState{waveEntry(svcName, 0, "").ref.identityID(): corev1alpha1.ResourceStateHealthy},
+			renderCurrent:  true,
+			renderAdvanced: true, // caught up to a new render this pass
+		}, nil
+	}
+	var synced int
+	c.syncFn = func(context.Context, *corev1alpha1.Release) error { synced++; return nil }
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if synced != 1 {
+		t.Errorf("requestSync called %d times on render advance, want 1", synced)
+	}
+}
+
 func TestHealth_PendingWhenRenderNotCurrent(t *testing.T) {
 	c, client := newTestHealthController(t, withAssessment(testRelease(true)))
 	// Resources are Healthy but belong to a prior render (renderCurrent=false): a
