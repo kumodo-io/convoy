@@ -11,10 +11,10 @@ Kubernetes CD tools share a few recurring pain points that convoy is designed ar
 
 convoy's design responses (see [Implementation Status](#implementation-status) for what's built vs. planned):
 
-- A **composable rendering pipeline** — source, render (`manifests`/`helm` today; kustomize/jsonnet/cue planned), and an ordered **mutation** stage (planned) kept independent.
+- A **composable rendering pipeline** — source, render (`manifests`/`helm` today; kustomize/jsonnet/cue planned), and an ordered **mutation** stage (implemented) kept independent.
 - **Server-Side Apply** as the deploy mechanism (implemented); `ignoreFields` mapping to SSA field ownership (planned).
 - **External (S3) artifact/state storage** (planned) — no Helm release Secrets, with built-in history/versioning.
-- **First-class API subresources** for operations — `/pin` and `/sync` implemented; `/preview`, `/diff`, `/lifecycle` planned.
+- **First-class API subresources** for operations — `/pin`, `/sync`, `/mutations`, `/lifecycle`, `/preview`, `/diff`, and `/health` implemented; `/history` and source `/sync`/`/webhooks` planned.
 - A move toward **decoupled components** (apiserver / controller-manager / observer / agent-manager / agent); today all controllers run in the controller-manager with render and apply combined in the Release controller.
 
 > **Note:** this document describes the **target architecture**. Much of it is not built yet. See [Implementation Status](#implementation-status) for what exists today; sections describing unbuilt parts are marked _Status: planned_.
@@ -27,7 +27,7 @@ The core delivery path works end to end: Git, Helm, and OCI sources are fetched,
 
 **Implemented**
 
-- Kubernetes **aggregated API server** serving all seven kinds with the `/status` subresource, plus the `Release` `/pin` and `/sync` subresources.
+- Kubernetes **aggregated API server** serving all seven kinds with the `/status` subresource, plus the `Release` `/pin`, `/sync`, `/mutations`, `/lifecycle`, `/preview`, `/diff`, and `/health` subresources.
 - `convoy-controller-manager` running five controllers:
   - **Cluster** — connects to a target (`inCluster` self-management, or `agentless` + `kubeconfig`) and records reachability and discovered version in status.
   - **GitRepository**, **HelmRegistry**, **OCIRegistry** — fetch source content (auth `none` only today), resolve the tracked ref/version, and publish to an in-process artifact store.
@@ -38,14 +38,13 @@ The core delivery path works end to end: Git, Helm, and OCI sources are fetched,
 - `Release` status records the last attempted and last successful render (`status.lastAttempted`/`lastSuccessful`), and reflects the pin in `status.pin`.
 - `/pin` (freeze-current-render) and `/sync` (annotation-based reconcile request) subresources; the `kubectl-convoy` plugin exposes `release pin`/`unpin`/`sync`.
 - Release field selector (`spec.clusterRef.{name,namespace}`) and a `releaseByCluster` informer index.
-- **`convoy-observer`** — a standalone binary running the drift-detector loop: renders the desired state, SSA-dry-run-compares it to the live cluster, writes the `InSync` condition (field manager `convoy-observe`), and fires `/sync` to auto-correct in automatic mode. (In-cluster deployment is wired but not yet exercised end-to-end.)
+- **`convoy-observer`** — a standalone binary running two loops: the **drift-detector** (renders the desired state, SSA-dry-run-compares it to the live cluster, writes the `InSync` condition under field manager `convoy-observe`, and fires `/sync` to auto-correct in automatic mode) and the **health-assessor** (`Healthy` condition, per-resource health on the `ReleaseInventory`). (In-cluster deployment is wired but not yet exercised end-to-end.)
+- The **mutation pipeline**, **sync-wave ordering** (both axes), and **lifecycle hooks** (`PreSync`/`PostSync`/`SyncFailed`/`PreDelete`/`PostDelete`), plus the `/mutations`, `/lifecycle`, `/preview`, `/diff`, and `/health` subresources (`/preview`, `/diff`, `/health` proxy to the observer).
 
 **Planned (described below, not built yet)**
 
 - External (S3) state storage, history, and versioning — the artifact store is in-memory only today. This gates render **history**, **rollback**, and historical **diff**; it does **not** gate current-render diff/drift or freeze-pin (see [External State Storage](#external-state-storage)).
-- The mutation pipeline, sync waves, and lifecycle hooks.
-- The rest of the **observer**: the **health-assessor loop** (`Healthy` condition; rule *types* are served but nothing evaluates them) and the `/preview`+`/diff` serving endpoints.
-- The remaining subresources (`/webhooks`, `/mutations`, `/preview`, `/diff`, `/history`, `/lifecycle`).
+- The remaining subresources: `/history` on `Release`, and `/sync`/`/webhooks` on the source kinds.
 - The `agent` (pull) connection mode — delivery is control-plane **push** only today.
 - Source-fetch auth methods beyond `none` (token/basic/SSH/etc. are defined in the API but return `Unsupported`), and the `helm` `resolve` dependency mode, `kustomize`/`jsonnet`/`cue` content types.
 - Rollback (freeze-pin is built), the `Fleet`/`ReleaseTemplate` fleet-orchestration layer, and notifications.
@@ -146,7 +145,7 @@ The delivery path. Embedding the harness, it holds the fetch coordinator, a secr
 
 Deletion is handled via a finalizer honoring `Release.deletionPolicy.{keepWorkloads,blockOnClusterUnreachable}`. Transient failures retry with a per-Release backoff; `syncPolicy.interval` drives the next drift re-check via `EnqueueAfter`.
 
-_Status: implemented for `manifests` and `helm` (vendored deps) content, including the mutation pipeline, sync-wave ordering (both axes), and health evaluation. S3 artifact/state storage and lifecycle hooks are planned._
+_Status: implemented for `manifests` and `helm` (vendored deps) content, including the mutation pipeline, sync-wave ordering (both axes), health evaluation, and lifecycle hooks (sync + delete phases). S3 artifact/state storage is planned._
 
 ### Target evolution *(planned)*
 
@@ -166,12 +165,12 @@ Today all five per-kind controllers run in `convoy-controller-manager`, with ren
 
 **Status ownership.** A Release's status is written by several producers on **disjoint field groups**, reconciled with Server-Side Apply and per-writer field managers so no writer clobbers another. `connectionMode` selects which component plays *applier* and *observer*:
 
-| Status field group | push writer | pull writer |
-|---|---|---|
-| **render** — `renderRef`, resolved source, `lastAttempted`, `pin` | controller-manager | controller-manager |
-| **Applied** — `lastSuccessful`, synced | controller-manager | agent-manager |
-| **InSync** (drift) | observer (drift loop) | agent-manager |
-| **Healthy** (health) | observer (health loop) | agent-manager |
+| Status field group                                                | push writer            | pull writer        |
+|-------------------------------------------------------------------|------------------------|--------------------|
+| **render** — `renderRef`, resolved source, `lastAttempted`, `pin` | controller-manager     | controller-manager |
+| **Applied** — `lastSuccessful`, synced                            | controller-manager     | agent-manager      |
+| **InSync** (drift)                                                | observer (drift loop)  | agent-manager      |
+| **Healthy** (health)                                              | observer (health loop) | agent-manager      |
 
 The rule underneath: **`Applied` is owned by whoever applies, `InSync`/`Healthy` by whoever observes, and render is always the controller-manager** — which is exactly the `Applied`/`InSync`/`Healthy` split in [Release State Model](#release-state-model). Adopting SSA-of-own-fields for status (replacing the Release controller's current full-object `UpdateStatus`, which would clobber another writer's fields) is the enabling primitive to build first. A change to a cluster's `connectionMode` hands its Releases' apply/observe ownership between controller-manager and agent-manager, and is treated as a drain/hand-off rather than live migration.
 
@@ -263,11 +262,11 @@ metadata:
 
 A wave's resources apply sequentially. A wave carrying a health strategy holds the next wave until the **immediately-preceding** wave is healthy (not transitively all lower waves); health is assessed by the observer and persisted on the `ReleaseInventory`, which the controller rolls up.
 
-| Strategy                    | The following wave may start when …                                         |
-|-----------------------------|------------------------------------------------------------------------------|
-| `waitForApplied`            | Every resource in this wave is accepted by the API server (default)          |
-| `waitForHealthy`            | Every resource in this wave is `Healthy` per health rules (waits indefinitely)|
-| `waitForHealthyWithTimeout` | As above, but the rollout **fails** if the timeout elapses first             |
+| Strategy                    | The following wave may start when …                                            |
+|-----------------------------|--------------------------------------------------------------------------------|
+| `waitForApplied`            | Every resource in this wave is accepted by the API server (default)            |
+| `waitForHealthy`            | Every resource in this wave is `Healthy` per health rules (waits indefinitely) |
+| `waitForHealthyWithTimeout` | As above, but the rollout **fails** if the timeout elapses first               |
 
 **Axis B — Releases within a cluster.** `Release.spec.syncPolicy.waveStrategy{wave, strategy, timeout}` orders whole Releases on a shared cluster: a Release holds until lower-wave Releases on that cluster clear its bar (applied / healthy), then applies. Predecessors may be in other namespaces; a bounded wait failing sets `ClusterWaveFailed`.
 
@@ -275,23 +274,21 @@ A wave's resources apply sequentially. A wave carrying a health strategy holds t
 
 ## Lifecycle Hooks
 
-_Status: planned._
+_Status: implemented (`PreSync`, `PostSync`, `SyncFailed`, `PreDelete`, `PostDelete`)._
 
-Hooks extend the sync pipeline with side-effect operations (migrations, smoke tests, alerts, backups) configured via the `/lifecycle` subresource on each `Release`. They are decoupled from chart content — deploying teams own hooks independently of vendored charts.
+Hooks extend the sync pipeline with side-effect operations (migrations, smoke tests, alerts, backups) configured via the `/lifecycle` subresource on each `Release`. They are decoupled from chart content — deploying teams own hooks independently of vendored charts. A hook is a `Job` or `Pod` templated and created on the target cluster; the controller arms it and gates the flow, the observer polls it to completion, and execution state is surfaced in `status.lifecycle`, the `LifecycleSucceeded` condition, and a `Lifecycle` printer column.
 
 Phases:
 
-| Phase        | When                                            |
-|--------------|-------------------------------------------------|
-| `PreRender`  | Before mutations are applied                    |
-| `PostRender` | After rendering, before applying                |
-| `PreSync`    | Before any wave applies                         |
-| `PostSync`   | After all waves complete                        |
-| `SyncFail`   | When sync fails at any point                    |
-| `PreDelete`  | Before workloads are pruned on Release deletion |
-| `PostDelete` | After workloads are pruned                      |
+| Phase        | When                                                                |
+|--------------|---------------------------------------------------------------------|
+| `PreSync`    | Before any wave applies                                             |
+| `PostSync`   | After all waves complete (optionally after healthy, via `runAfter`) |
+| `SyncFailed` | After a sync failure at the apply stage                             |
+| `PreDelete`  | Before workloads are pruned on Release deletion                     |
+| `PostDelete` | After workloads are pruned                                          |
 
-Hook types: `Job`, `Pod`. Hooks support CEL `when` conditions and per-phase bindings (`.Release`, `.Cluster`, `.Source`, `.Sync`). Helm `helm.sh/hook` annotations are translated into lifecycle entries automatically.
+Hook types: `Job`, `Pod`. A hook's `if` (CEL) decides whether it runs; a postSync hook's `runAfter` (`Applied`/`Healthy`) decides when it fires. The template/`if` context is the same lowercase `{cluster, release}` projection the mutation pipeline uses. Automatic translation of Helm `helm.sh/hook` annotations into lifecycle entries is planned (today only Helm test hooks are excluded from the applied set).
 
 ---
 
@@ -299,7 +296,7 @@ Hook types: `Job`, `Pod`. Hooks support CEL `when` conditions and per-phase bind
 
 Clusters are registered as `Cluster` resources. `connectionMode` selects how convoy reaches the target — `inCluster` (self), `agentless` (remote, push), or `agent` (remote, pull; planned). In agentless mode the auth method is one of `kubeconfig`, `token`, `clientCert`, `execPlugin`, `oidc`, or `cloudIdentity` (cloud-provider workload identity).
 
-`Cluster.spec.metadata` holds free-form per-cluster metadata (region, tier, cloud, etc.) available in mutation templates and lifecycle hook conditions as `.Cluster.metadata.<key>`.
+`Cluster.spec.metadata` holds free-form per-cluster metadata (region, tier, cloud, etc.) available in mutation templates and lifecycle hook conditions as `cluster.<key>` (the keys are flattened directly under `cluster`, plus `cluster.name`).
 
 _Status: `inCluster` and `agentless` + `kubeconfig` auth are implemented. The remaining agentless auth methods, the `agent` mode, and per-cluster S3-namespaced state are planned._
 
@@ -327,19 +324,20 @@ _Status: every resource except `NotificationConfig`, `ReleaseTemplate`, and `Fle
 
 ### Subresources
 
-_Status: the `Release` `/status`, `/pin`, and `/sync` subresources are served. The rest are planned; `/preview` and `/diff` will proxy to the observer._
+_Status: the `Release` subresources `/status`, `/pin`, `/sync`, `/mutations`, `/lifecycle`, `/preview`, `/diff`, and `/health` are served. Release `/history` and the source `/sync` and `/webhooks` subresources are planned._
 
-| Resource                                       | Subresource  | Verbs                   | Purpose                                                       | Status  |
-|------------------------------------------------|--------------|-------------------------|---------------------------------------------------------------|---------|
-| `GitRepository`, `HelmRegistry`, `OCIRegistry` | `/sync`      | POST                    | Trigger source fetch + render                                 | planned |
-| `GitRepository`, `HelmRegistry`, `OCIRegistry` | `/webhooks`  | GET, PUT, PATCH, DELETE | Manage webhook registrations                                  | planned |
-| `Release`                                      | `/mutations` | GET, PUT, PATCH         | Manage the ordered mutation pipeline                          | planned |
-| `Release`                                      | `/sync`      | POST                    | Request a reconcile (drift correction; apply, in manual mode) | **built** |
-| `Release`                                      | `/pin`       | GET, PUT                | Freeze the current render (PUT empty to unpin)                | **built** |
-| `Release`                                      | `/preview`   | GET, POST               | Return rendered manifest set (what would deploy)              | planned |
-| `Release`                                      | `/diff`      | GET, POST               | Return diff between rendered and live/pinned/historical state | planned |
-| `Release`                                      | `/history`   | GET                     | Paginated list of past render records                         | planned |
-| `Release`                                      | `/lifecycle` | GET, PUT, PATCH, DELETE | Manage lifecycle hook configuration                           | planned |
+| Resource                                       | Subresource  | Verbs                   | Purpose                                                       | Status      |
+|------------------------------------------------|--------------|-------------------------|---------------------------------------------------------------|-------------|
+| `GitRepository`, `HelmRegistry`, `OCIRegistry` | `/sync`      | POST                    | Trigger source fetch + render                                 | planned     |
+| `GitRepository`, `HelmRegistry`, `OCIRegistry` | `/webhooks`  | GET, PUT, PATCH, DELETE | Manage webhook registrations                                  | planned     |
+| `Release`                                      | `/sync`      | POST                    | Request a reconcile (drift correction; apply, in manual mode) | implemented |
+| `Release`                                      | `/pin`       | GET, PUT                | Freeze the current render (PUT empty to unpin)                | implemented |
+| `Release`                                      | `/mutations` | GET, PUT, PATCH         | Manage the ordered mutation pipeline                          | implemented |
+| `Release`                                      | `/lifecycle` | GET, PUT, PATCH, DELETE | Manage lifecycle hook configuration                           | implemented |
+| `Release`                                      | `/preview`   | GET, POST               | Return rendered manifest set (what would deploy)              | implemented |
+| `Release`                                      | `/diff`      | GET, POST               | Return diff between rendered and live/pinned/historical state | implemented |
+| `Release`                                      | `/health`    | GET                     | Per-resource health of the applied set                        | implemented |
+| `Release`                                      | `/history`   | GET                     | Paginated list of past render records                         | planned     |
 
 See [Sync Signaling](#sync-signaling) for how `/sync` triggers a reconcile, and [Pin and Rollback](#pin-and-rollback) for the `/pin` semantics.
 
