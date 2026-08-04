@@ -59,6 +59,22 @@ func TestBuildLifecycleStatus_ProjectsEntries(t *testing.T) {
 	}
 }
 
+func TestBuildLifecycleStatus_ReArmedShowsRunning(t *testing.T) {
+	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
+	// Re-armed: createdAt is AFTER the recorded finishedAt, so the Succeeded state is
+	// stale (from the prior run) — the new workload hasn't completed yet.
+	finished := metav1.NewTime(time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC))
+	created := metav1.NewTime(finished.Add(time.Hour)) // re-armed an hour later
+	it := preSyncItem(hookNameMigrate, new(corev1alpha1.LifecycleHookStateSucceeded))
+	it.FinishedAt = &finished
+	it.CreatedAt = &created
+
+	ls := buildLifecycleStatus(rel, []corev1alpha1.ReleaseLifecycleHookItem{it})
+	if ls.PreSync[0].State != corev1alpha1.LifecycleHookStateRunning {
+		t.Errorf("re-armed hook = %s, want Running (stale terminal state must not show as done)", ls.PreSync[0].State)
+	}
+}
+
 func TestBuildLifecycleStatus_NilStateIsRunning(t *testing.T) {
 	rel := relWithPreSync(podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever))
 	ls := buildLifecycleStatus(rel, []corev1alpha1.ReleaseLifecycleHookItem{preSyncItem(hookNameMigrate, nil)})

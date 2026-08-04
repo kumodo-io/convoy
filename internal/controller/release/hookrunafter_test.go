@@ -93,10 +93,17 @@ func TestRunAfter_HealthyHoldsUntilHealthy(t *testing.T) {
 	}
 }
 
+// healthyAt is a Healthy resource whose health was assessed against renderRef.
+func healthyAt(name, renderRef string) inventory.Ref {
+	r := healthyRef(name)
+	r.AssessedRenderRef = renderRef
+	return r
+}
+
 func TestRunAfter_HealthyArmsWhenAllHealthy(t *testing.T) {
 	fr := &fakeHookRunner{resolveNS: appName}
-	// Every resource across the release is healthy → arm.
-	fs := &fakeHookStore{resources: []inventory.Ref{healthyRef("svc"), healthyRef("api")}}
+	// Every resource across the release is healthy AND assessed for the current render → arm.
+	fs := &fakeHookStore{resources: []inventory.Ref{healthyAt("svc", hookRenderRef), healthyAt("api", hookRenderRef)}}
 	c := newHookController(fr, fs)
 	rel := relWithPostSync(runAfter(corev1alpha1.LifecycleHookRunAfterHealthy), true)
 	if res := runPostSync(t, c, rel); res.state != hookPhaseHold {
@@ -104,6 +111,22 @@ func TestRunAfter_HealthyArmsWhenAllHealthy(t *testing.T) {
 	}
 	if len(fr.created) != 1 {
 		t.Errorf("runAfter=Healthy armed %d when all healthy, want 1", len(fr.created))
+	}
+}
+
+func TestRunAfter_HealthyHoldsOnStaleRender(t *testing.T) {
+	fr := &fakeHookRunner{resolveNS: appName}
+	// Resources are Healthy but assessed against a PRIOR render (the observer has not
+	// re-assessed the current render yet) → hold, do not arm. This is the bug-2 fix:
+	// stale-render health must not satisfy runAfter:Healthy.
+	fs := &fakeHookStore{resources: []inventory.Ref{healthyAt("svc", "sha256:oldrender"), healthyAt("api", "sha256:oldrender")}}
+	c := newHookController(fr, fs)
+	rel := relWithPostSync(runAfter(corev1alpha1.LifecycleHookRunAfterHealthy), true)
+	if res := runPostSync(t, c, rel); res.state != hookPhaseHold {
+		t.Fatalf("stale-render health: state = %v, want hold", res.state)
+	}
+	if len(fr.created) != 0 {
+		t.Errorf("armed %d on stale-render health, want 0 (must wait for re-assessment)", len(fr.created))
 	}
 }
 
@@ -123,6 +146,7 @@ func TestRunAfter_HealthyNoAssessmentIsTriviallyHealthy(t *testing.T) {
 
 func TestReleaseHealthy(t *testing.T) {
 	ctx := context.Background()
+	const render = "sha256:cur"
 	relNoHA := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns"}}
 	relHA := &corev1alpha1.Release{
 		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns"},
@@ -131,23 +155,29 @@ func TestReleaseHealthy(t *testing.T) {
 
 	// No assessment → trivially healthy regardless of inventory.
 	c := newHookController(&fakeHookRunner{}, &fakeHookStore{resources: []inventory.Ref{degradedRef("api")}})
-	if ok, _ := c.releaseHealthy(ctx, relNoHA); !ok {
+	if ok, _ := c.releaseHealthy(ctx, relNoHA, render); !ok {
 		t.Error("no assessment: want healthy=true")
 	}
 
 	// Empty inventory with an assessment → not healthy (nothing assessed yet).
 	c = newHookController(&fakeHookRunner{}, &fakeHookStore{})
-	if ok, _ := c.releaseHealthy(ctx, relHA); ok {
+	if ok, _ := c.releaseHealthy(ctx, relHA, render); ok {
 		t.Error("empty inventory: want healthy=false")
 	}
 
-	// All healthy → true; one progressing → false.
-	c = newHookController(&fakeHookRunner{}, &fakeHookStore{resources: []inventory.Ref{healthyRef("a"), healthyRef("b")}})
-	if ok, _ := c.releaseHealthy(ctx, relHA); !ok {
-		t.Error("all healthy: want true")
+	// All healthy AND assessed for the current render → true.
+	c = newHookController(&fakeHookRunner{}, &fakeHookStore{resources: []inventory.Ref{healthyAt("a", render), healthyAt("b", render)}})
+	if ok, _ := c.releaseHealthy(ctx, relHA, render); !ok {
+		t.Error("all healthy for current render: want true")
 	}
-	c = newHookController(&fakeHookRunner{}, &fakeHookStore{resources: []inventory.Ref{healthyRef("a"), degradedRef("b")}})
-	if ok, _ := c.releaseHealthy(ctx, relHA); ok {
+	// Healthy but assessed for a prior render → false (stale health).
+	c = newHookController(&fakeHookRunner{}, &fakeHookStore{resources: []inventory.Ref{healthyAt("a", render), healthyAt("b", "sha256:old")}})
+	if ok, _ := c.releaseHealthy(ctx, relHA, render); ok {
+		t.Error("stale-render health: want false")
+	}
+	// One unhealthy → false.
+	c = newHookController(&fakeHookRunner{}, &fakeHookStore{resources: []inventory.Ref{healthyAt("a", render), degradedRef("b")}})
+	if ok, _ := c.releaseHealthy(ctx, relHA, render); ok {
 		t.Error("one progressing: want false")
 	}
 }

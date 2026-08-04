@@ -62,3 +62,32 @@ func TestLifecycleColumn(t *testing.T) {
 		t.Errorf("failed: %q, want Failed:PostSync", got)
 	}
 }
+
+func hsAt(name string, state core.LifecycleHookState, renderRef string) core.LifecycleHookStatus {
+	return core.LifecycleHookStatus{Name: name, State: state, RenderRef: renderRef}
+}
+
+func TestLifecycleColumn_FiltersStaleRender(t *testing.T) {
+	// Current render is "B" (LastAttempted). preSync re-ran for B (Running); postSync
+	// still carries the PRIOR render "A" (Succeeded) because it hasn't re-armed yet.
+	// The column must reflect the current render only → Running:PreSync, not the stale
+	// Completed:PostSync.
+	r := &core.Release{
+		Status: core.ReleaseStatus{
+			LastAttempted: &core.ReleaseAttemptedRenderStatus{RenderRef: "B"},
+			Lifecycle: core.LifecycleStatus{
+				PreSync:  []core.LifecycleHookStatus{hsAt("migrate", core.LifecycleHookStateRunning, "B")},
+				PostSync: []core.LifecycleHookStatus{hsAt("smoke", core.LifecycleHookStateSucceeded, "A")},
+			},
+		},
+	}
+	if got := lifecycleColumn(r); got != "Running:PreSync" {
+		t.Errorf("stale postSync not filtered: %q, want Running:PreSync", got)
+	}
+
+	// Once every current-render hook is done, the column reflects that (not the stale one).
+	r.Status.Lifecycle.PreSync = []core.LifecycleHookStatus{hsAt("migrate", core.LifecycleHookStateSucceeded, "B")}
+	if got := lifecycleColumn(r); got != "Completed:PreSync" {
+		t.Errorf("current-render completion: %q, want Completed:PreSync", got)
+	}
+}

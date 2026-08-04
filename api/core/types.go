@@ -605,6 +605,7 @@ type LifecycleHookStatus struct {
 	ApiVersion        string
 	ResourceName      string
 	ResourceNamespace string
+	RenderRef         string
 	State             LifecycleHookState
 	Weight            int32
 	StartedAt         *metav1.Time
@@ -659,16 +660,18 @@ const (
 )
 
 type ResourceInventoryItem struct {
-	Group          string
-	Version        string
-	Kind           string
-	Namespace      string
-	Name           string
-	UID            *types.UID
-	Wave           *int
-	State          *ResourceState
-	FirstUnhealthy *metav1.Time
-	Message        string
+	Group             string
+	Version           string
+	Kind              string
+	Namespace         string
+	Name              string
+	RenderRef         string
+	AssessedRenderRef string
+	UID               *types.UID
+	Wave              *int
+	State             *ResourceState
+	FirstUnhealthy    *metav1.Time
+	Message           string
 }
 
 type ReleaseLifecycleHookItem struct {

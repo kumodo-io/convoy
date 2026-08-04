@@ -83,6 +83,9 @@ func (s *apiStore) Put(ctx context.Context, namespace, name string, refs []Ref) 
 		if r.UID != "" {
 			item.WithUID(r.UID)
 		}
+		if r.RenderRef != "" {
+			item.WithRenderRef(r.RenderRef)
+		}
 		ac.WithInventory(item)
 	}
 	if _, err := s.client.CoreV1alpha1().ReleaseInventories(namespace).
@@ -130,8 +133,14 @@ func (s *apiStore) PutHooks(ctx context.Context, namespace, name string, hooks [
 	return nil
 }
 
-func (s *apiStore) GetHooks(_ context.Context, namespace, name string) ([]corev1alpha1.ReleaseLifecycleHookItem, error) {
-	inv, err := s.lister.ReleaseInventories(namespace).Get(name)
+// GetHooks reads live from the API server, not the informer cache: the controller
+// writes hook identity via PutHooks and then reads it back in the SAME reconcile
+// (to gate and to roll up status). A cache read would return the pre-write revision,
+// so a just-armed hook would be invisible until the cache caught up — leaving status
+// a step behind (never showing a hook as Running) and the gate reading stale state.
+// This matches the in-memory store, which always returns the latest Put.
+func (s *apiStore) GetHooks(ctx context.Context, namespace, name string) ([]corev1alpha1.ReleaseLifecycleHookItem, error) {
+	inv, err := s.client.CoreV1alpha1().ReleaseInventories(namespace).Get(ctx, name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return nil, nil
 	}
@@ -218,12 +227,14 @@ func refsFromItems(items []corev1alpha1.ResourceInventoryItem) []Ref {
 	for i := range items {
 		it := items[i]
 		ref := Ref{
-			Group:     it.Group,
-			Version:   it.Version,
-			Kind:      it.Kind,
-			Namespace: it.Namespace,
-			Name:      it.Name,
-			State:     it.State,
+			Group:             it.Group,
+			Version:           it.Version,
+			Kind:              it.Kind,
+			Namespace:         it.Namespace,
+			Name:              it.Name,
+			State:             it.State,
+			RenderRef:         it.RenderRef,
+			AssessedRenderRef: it.AssessedRenderRef,
 		}
 		if it.Wave != nil {
 			ref.Wave = *it.Wave

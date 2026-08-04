@@ -1728,6 +1728,13 @@ func schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref common.ReferenceCal
 							Format:      "",
 						},
 					},
+					"renderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderRef is the hash of the release render lifecycle hook was triggered by.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"state": {
 						SchemaProps: spec.SchemaProps{
 							Description: "State is the state of the hook.\n\nPossible enum values:\n - `\"Failed\"` is the state of a lifecycle hook that has failed.\n - `\"Running\"` is the state of a lifecycle hook that is running.\n - `\"Skipped\"` is the state of a lifecycle hook that has been skipped.\n - `\"Succeeded\"` is the state of a lifecycle hook that has succeeded.\n - `\"TimedOut\"` is the state of a lifecycle hook that has timed out.",
@@ -4272,6 +4279,20 @@ func schema_convoy_api_core_v1alpha1_ResourceInventoryItem(ref common.ReferenceC
 						SchemaProps: spec.SchemaProps{
 							Description: "Name reflects the name of the inventoried resource.",
 							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"renderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RenderRef is the hash of the release render inventoried resource belongs to.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"assessedRenderRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AssessedRenderRef is the hash of the release render that was assessed.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

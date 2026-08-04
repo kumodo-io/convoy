@@ -115,6 +115,16 @@ func lifecycleColumn(r *core.Release) string {
 		{"PreDelete", r.Status.Lifecycle.PreDelete},
 		{"PostDelete", r.Status.Lifecycle.PostDelete},
 	}
+	// Only reflect hooks of the current render: after a re-render, a prior render's
+	// completed hooks linger in status until they re-arm, and would otherwise show as
+	// the current state (e.g. "Completed:PostSync" while the new render's postSync is
+	// still pending). currentRender is the render the controller last targeted; a hook
+	// carrying a different renderRef is stale and skipped. Hooks/releases without a
+	// recorded render (legacy) are not filtered.
+	currentRender := ""
+	if r.Status.LastAttempted != nil {
+		currentRender = r.Status.LastAttempted.RenderRef
+	}
 	var (
 		total         int
 		firstFailed   string
@@ -123,6 +133,9 @@ func lifecycleColumn(r *core.Release) string {
 	)
 	for _, p := range phases {
 		for i := range p.hooks {
+			if currentRender != "" && p.hooks[i].RenderRef != "" && p.hooks[i].RenderRef != currentRender {
+				continue // stale: belongs to a prior render
+			}
 			total++
 			switch p.hooks[i].State {
 			case core.LifecycleHookStateFailed, core.LifecycleHookStateTimedOut:

@@ -1071,6 +1071,7 @@ func autoConvert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(in *Li
 	out.ApiVersion = in.ApiVersion
 	out.ResourceName = in.ResourceName
 	out.ResourceNamespace = in.ResourceNamespace
+	out.RenderRef = in.RenderRef
 	out.State = core.LifecycleHookState(in.State)
 	out.Weight = in.Weight
 	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
@@ -1093,6 +1094,7 @@ func autoConvert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in *co
 	out.ApiVersion = in.ApiVersion
 	out.ResourceName = in.ResourceName
 	out.ResourceNamespace = in.ResourceNamespace
+	out.RenderRef = in.RenderRef
 	out.State = LifecycleHookState(in.State)
 	out.Weight = in.Weight
 	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
@@ -2370,6 +2372,8 @@ func autoConvert_v1alpha1_ResourceInventoryItem_To_core_ResourceInventoryItem(in
 	out.Kind = in.Kind
 	out.Namespace = in.Namespace
 	out.Name = in.Name
+	out.RenderRef = in.RenderRef
+	out.AssessedRenderRef = in.AssessedRenderRef
 	out.UID = (*types.UID)(unsafe.Pointer(in.UID))
 	out.Wave = (*int)(unsafe.Pointer(in.Wave))
 	out.State = (*core.ResourceState)(unsafe.Pointer(in.State))
@@ -2389,6 +2393,8 @@ func autoConvert_core_ResourceInventoryItem_To_v1alpha1_ResourceInventoryItem(in
 	out.Kind = in.Kind
 	out.Namespace = in.Namespace
 	out.Name = in.Name
+	out.RenderRef = in.RenderRef
+	out.AssessedRenderRef = in.AssessedRenderRef
 	out.UID = (*types.UID)(unsafe.Pointer(in.UID))
 	out.Wave = (*int)(unsafe.Pointer(in.Wave))
 	out.State = (*ResourceState)(unsafe.Pointer(in.State))

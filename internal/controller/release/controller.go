@@ -923,9 +923,12 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 		}
 		// Tag each ref with the wave it applied in, so the persisted inventory
 		// records per-resource wave membership (for observability) and the gate can
-		// attribute the preceding wave's refs.
+		// attribute the preceding wave's refs. Also stamp the render it was applied
+		// under, so a render change is visible on the inventory (and the observer can
+		// mark which render its health assessment corresponds to).
 		for k := range waveApplied {
 			waveApplied[k].Wave = w.Number
+			waveApplied[k].RenderRef = attempt.RenderRef
 		}
 		applied = append(applied, waveApplied...)
 		prevWaveApplied = waveApplied // this wave becomes the next wave's gate target

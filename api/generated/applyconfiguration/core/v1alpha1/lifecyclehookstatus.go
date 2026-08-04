@@ -40,6 +40,8 @@ type LifecycleHookStatusApplyConfiguration struct {
 	ResourceName *string `json:"resourceName,omitempty"`
 	// ResourceNamespace is the namespace of the resource created by the hook.
 	ResourceNamespace *string `json:"resourceNamespace,omitempty"`
+	// RenderRef is the hash of the release render lifecycle hook was triggered by.
+	RenderRef *string `json:"renderRef,omitempty"`
 	// State is the state of the hook.
 	State *corev1alpha1.LifecycleHookState `json:"state,omitempty"`
 	// Weight is the weight of the hook.
@@ -107,6 +109,14 @@ func (b *LifecycleHookStatusApplyConfiguration) WithResourceName(value string) *
 // If called multiple times, the ResourceNamespace field is set to the value of the last call.
 func (b *LifecycleHookStatusApplyConfiguration) WithResourceNamespace(value string) *LifecycleHookStatusApplyConfiguration {
 	b.ResourceNamespace = &value
+	return b
+}
+
+// WithRenderRef sets the RenderRef field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RenderRef field is set to the value of the last call.
+func (b *LifecycleHookStatusApplyConfiguration) WithRenderRef(value string) *LifecycleHookStatusApplyConfiguration {
+	b.RenderRef = &value
 	return b
 }
 
