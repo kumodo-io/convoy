@@ -29,13 +29,11 @@ Represents a Git repository as a **reusable, credentialed handle** to a content 
 
 The controller's job is to verify the repository is reachable and that the configured credentials are accepted; content for a specific ref is fetched on demand when a `Release` references it.
 
-`GitRepository` is the most common source kind. Authentication supports a wide range of methods including SSH keys, HTTP basic auth, tokens, GitHub App installation, and cloud workload identity.
+`GitRepository` is the most common source kind. Implemented authentication methods are `none`, `basic` (HTTP), `token`, and `sshKey`; `githubApp`, `oidc`, and `cloudIdentity` are defined in the API but return `Unsupported` (planned).
 
 **Subresources**
 
-- `/status` — observed reachability/auth state
-- `/sync` — POST to force re-verification of reachability and auth. Subject to `minSyncInterval`.
-- `/webhooks` — GET / POST / DELETE webhook configuration (provider, secret reference, event filters, payload filters). The generated webhook URL is returned in responses and surfaced in status. See [Webhooks](#webhooks).
+- `/status` — observed reachability state (the only subresource). Re-verification is driven by the controller's interval/resync, not an on-demand subresource. (A `/sync` subresource exists only on `Release`, not on source kinds; `/webhooks` is not implemented — see [Webhooks](#webhooks).)
 
 ## Example
 
@@ -185,48 +183,15 @@ webhook:
 status:
   observedGeneration: 7
 
-  # Last successful registry probe.
-  lastSuccessfullProbedAt: 2026-04-29T09:55:00Z
+  # Last successful reachability/verification probe.
+  lastSuccessfulProbeAt: 2026-04-29T09:55:00Z
 
-  # Number of Releases referencing this Source.
-  releaseCount: 4
-
-  # Webhook status. See "Webhooks" below.
-  webhooks:
-    - name: github-primary
-      url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c...
-      lastReceived: 2026-04-29T10:00:00Z
-      lastTriggered: 2026-04-29T10:00:00Z
-      receivedCount: 142
-      triggersCount: 87
-      rejectedCount: 3
-      filteredCount: 52
-      lastRejection:
-        rejectedAt: 2026-04-29T08:30:00Z
-        reason: SignatureMismatch
-        message: "HMAC signature did not match expected value"
-    - name: gitea-mirror
-      url: https://convoy.svc.cluster.local/webhooks/2a4b6c8d...
-      lastReceived: 2026-04-29T09:50:00Z
-      lastTriggered: 2026-04-29T09:50:00Z
-      receivedCount: 18
-      triggersCount: 18
-      rejectedCount: 0
-      filteredCount: 0
-
+  # A single Ready condition is written. Reasons: Verified | VerifyFailed | Unsupported.
   conditions:
     - type: Ready
       status: "True"
       lastTransitionTime: 2026-04-29T09:59:00Z
       reason: Verified
-    - type: Reachable
-      status: "True"
-    - type: AuthValid
-      status: "True"
-      reason: CredentialsAccepted
-    - type: WebhookConfigured
-      status: "True"
-      reason: WebhookActive
 ```
 
 ## Spec
@@ -234,85 +199,80 @@ status:
 | Field                | Type     | Required            | Default | Description                                                                                                                                         |
 |----------------------|----------|---------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `url`                | string   | yes                 | —       | Repository URL. Supports `https://`, `git://`, `ssh://` schemes. The ref to fetch is set per `Release` (`spec.source.gitRepository.ref`), not here. |
-| `auth`               | object   | no                  | —       | Authentication — discriminated union on `auth.type`. Omit for public repos. See [Authentication Methods](#authentication-methods).                  |
-| `auth.type`          | enum     | yes (if `auth` set) | —       | One of `basic`, `sshKey`, `token`, `githubApp`, `oidc`, `cloudIdentity`.                                                                            |
+| `auth`               | object   | yes                 | —       | Authentication — discriminated union on `auth.type`. Use `type: none` for public repos. See [Authentication Methods](#authentication-methods).      |
+| `auth.type`          | enum     | yes                 | —       | One of `none`, `basic`, `sshKey`, `token`, `githubApp`, `oidc`, `cloudIdentity`. Only `none`/`basic`/`sshKey`/`token` are implemented.               |
 | `auth.basic`         | object   | one-of              | —       | HTTP basic auth (when `type: basic`).                                                                                                               |
 | `auth.sshKey`        | object   | one-of              | —       | SSH private key auth (when `type: sshKey`).                                                                                                         |
 | `auth.token`         | object   | one-of              | —       | Bearer token auth (when `type: token`).                                                                                                             |
 | `auth.githubApp`     | object   | one-of              | —       | GitHub App installation auth (when `type: githubApp`).                                                                                              |
 | `auth.oidc`          | object   | one-of              | —       | OIDC client-credentials flow (when `type: oidc`).                                                                                                   |
 | `auth.cloudIdentity` | object   | one-of              | —       | Cloud workload identity (when `type: cloudIdentity`); for cloud-hosted Git like CodeCommit.                                                         |
-| `interval`           | duration | no                  | `1m`    | Polling interval for ref resolution and content fetching.                                                                                           |
-| `minSyncInterval`    | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs. Rate-limits the `/sync` subresource.                                                       |
+| `interval`           | duration | no                  | —       | Polling interval for verification. No server-side default is applied (zero if unset).                                                               |
+| `minSyncInterval`    | duration | no                  | —       | Defined in the API but currently unused (no `/sync` subresource on source kinds). No default.                                                       |
 | `includePaths`       | []string | no                  | —       | Path patterns; changes outside these paths don't trigger downstream reconciliation.                                                                 |
 | `ignorePaths`        | []string | no                  | —       | Path patterns; changes matching these are ignored even if inside `includePaths`.                                                                    |
 
-The ref selector (`branch` / `tag` / `commit` / `semver`) that used to live here now lives on the consuming `Release` as `spec.source.gitRepository.ref` — see the [Release](../core/release.md) doc. This is what makes a single `GitRepository` reusable: staging can track `branch: main` and prod can pin `tag: v1.2.3` against the same repo + credentials.
+The ref selector (`branch` / `tag` / `commit`) lives on the consuming `Release` as `spec.source.gitRepository.ref` — see the [Release](../core/release.md) doc. This is what makes a single `GitRepository` reusable: staging can track `branch: main` and prod can pin `tag: v1.2.3` against the same repo + credentials. (A `semver` ref kind is defined in the API but its resolution is not yet implemented — it returns `Unsupported`; use `branch`/`tag`/`commit`.)
 
 ## Authentication Methods
 
-`spec.auth` is a discriminated union on `auth.type`. The active method's block is set; all others are omitted. Omit `auth` entirely for public repositories.
+`spec.auth` is **required** (a discriminated union on `auth.type`); for a public repository set `type: none`. Implemented types: `none`, `basic`, `token`, `sshKey`. `githubApp`, `oidc`, `cloudIdentity` are defined in the API but return `Unsupported` (planned).
 
 ### basic
 
-HTTP basic auth — a username plus password or personal access token, each read from a Secret.
+HTTP basic auth — a `username` (literal string) plus a `passwordRef` (a Secret key selector, i.e. `{name, key}`).
 
 ```yaml
 spec:
   auth:
     type: basic
     basic:
-      usernameRef: { secretRef: { name: payments-git-basic, key: username } }
-      passwordRef: { secretRef: { name: payments-git-basic, key: password } }
+      username: git
+      passwordRef: { name: payments-git-basic, key: password }
 ```
 
 ### sshKey
 
-An SSH private key stored in a Secret, for `ssh://` and `git@` remotes. Optionally pin a `known_hosts` entry for strict host key checking (recommended for production).
+An SSH private key (`sshKeyRef`) for `ssh://` / `git@` remotes. `knownHostsRef` is **required** (host-key verification). Only plaintext `known_hosts` entries are supported (hashed `|1|` entries are rejected; `@cert-authority` lines are skipped).
 
 ```yaml
 spec:
   auth:
     type: sshKey
     sshKey:
-      secretRef:
-        name: payments-git-ssh
-        key: id_rsa
-      knownHostsRef:
-        configMapRef:
-          name: github-known-hosts
-          key: known_hosts
+      sshKeyRef: { name: payments-git-ssh, key: id_rsa }
+      knownHostsRef: { name: github-known-hosts, key: known_hosts }
 ```
 
 ### token
 
-A bearer token (e.g. a GitHub PAT or GitLab token) stored in a Secret.
+A bearer token (e.g. a GitHub PAT or GitLab token). The field is `tokenRef` (a Secret key selector).
 
 ```yaml
 spec:
   auth:
     type: token
     token:
-      secretRef: { name: payments-git-token, key: token }
+      tokenRef: { name: payments-git-token, key: token }
 ```
 
 ### githubApp
 
-GitHub App installation auth (JWT-based). Finer-grained permissions than a PAT and not tied to an individual user. The controller mints short-lived installation tokens from the app's private key.
+_Planned — not implemented (returns `Unsupported`)._ GitHub App installation auth. `appID`/`installationID` are integers; `privateKeyRef` is a flat Secret key selector.
 
 ```yaml
 spec:
   auth:
     type: githubApp
     githubApp:
-      appID: "123456"
-      installationID: "7890123"
-      privateKeyRef: { secretRef: { name: github-app-key, key: key.pem } }
+      appID: 123456
+      installationID: 7890123
+      privateKeyRef: { name: github-app-key, key: key.pem }
 ```
 
 ### oidc
 
-OIDC client-credentials flow — the controller discovers the token endpoint from the issuer's `/.well-known/openid-configuration` and exchanges client credentials for a token. Client authentication is a nested discriminated union (`clientAuth.type`): `clientSecret` (shared secret), `privateKeyJWT` (signed JWT assertion), or `tlsClientAuth` (mTLS).
+_Planned — not implemented (returns `Unsupported`)._ OIDC client-credentials flow. Client auth is a nested union (`clientAuth.type`: `clientSecret`/`privateKeyJWT`/`tlsClientAuth`). Note the JSON tag `clientID`, and the secret nests under `clientSecret.clientSecretRef`.
 
 ```yaml
 spec:
@@ -320,16 +280,16 @@ spec:
     type: oidc
     oidc:
       issuerURL: https://auth.example.com/realms/internal
-      clientId: cd-controller
+      clientID: cd-controller
       clientAuth:
         type: clientSecret           # | privateKeyJWT | tlsClientAuth
         clientSecret:
-          secretRef: { name: oidc-client, key: client-secret }
+          clientSecretRef: { name: oidc-client, key: client-secret }
 ```
 
 ### cloudIdentity
 
-The controller pod uses its own cloud-native identity (e.g. IRSA on EKS) to authenticate to cloud-hosted Git such as AWS CodeCommit. No static credentials are stored.
+_Planned — not implemented (returns `Unsupported`)._ The controller pod uses its own cloud-native identity (e.g. IRSA on EKS) to authenticate to cloud-hosted Git. No static credentials are stored.
 
 ```yaml
 spec:
@@ -344,106 +304,42 @@ spec:
 | Field                     | Type        | Description                                                                                           |
 |---------------------------|-------------|-------------------------------------------------------------------------------------------------------|
 | `observedGeneration`      | integer     | Generation of `spec` last reconciled.                                                                 |
-| `releaseCount`            | integer     | Number of `Release` objects referencing this source.                                                  |
-| `webhooks`                | object      | Webhook operational state, mirrored from the `/webhooks` subresource. See [Webhooks](#webhooks).      |
+| `lastSuccessfulProbeAt`   | timestamp   | Time of the last successful reachability/verification probe.                                          |
 | `conditions`              | []Condition | See [Conditions](#conditions).                                                                        |
+
+(The API type also has a `releaseCount` field, but the controller does not currently populate it.)
 
 ## Conditions
 
-`GitRepository` reports the following standard k8s conditions in `status.conditions`.
+`GitRepository` reports a **single** condition in `status.conditions`: `Ready`. (There are no separate `Reachable`/`AuthValid`/`WebhookConfigured` conditions — those are not implemented.)
 
-| Condition           | What `True` means                                                                                                                                                                |
-|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Ready`             | Composite: the repository is reachable and authenticated, so Releases may fetch from it. The signal most tooling should watch. Requires `Reachable: True` and `AuthValid: True`. |
-| `Reachable`         | Network-level reachability of the Git remote succeeded.                                                                                                                          |
-| `AuthValid`         | The most recent authentication attempt succeeded. See [AuthValid](#authvalid) for full semantics.                                                                                |
-| `WebhookConfigured` | At least one webhook is configured and receiving events. See [Webhooks](#webhooks).                                                                                              |
+| Condition | What `True` means                                                        | Reasons                                                                       |
+|-----------|--------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `Ready`   | The remote was reached and its configured credentials verified, so Releases may fetch from it. | `Verified` (success); `VerifyFailed` (unreachable / auth rejected / other error); `Unsupported` (auth method or ref kind not implemented). |
 
-### AuthValid
+An authentication failure surfaces as `Ready: False` with reason `VerifyFailed` — there is no separate auth condition or auth-specific reason code.
 
-`AuthValid` reflects the state of authenticating to the Git remote. It is always present, even when no explicit credentials are configured (public repos report `True` with `reason: NoAuthRequired`).
+### AuthValid (not implemented)
 
-**Status semantics:**
-
-| Status    | Meaning                                                                                                     |
-|-----------|-------------------------------------------------------------------------------------------------------------|
-| `True`    | Most recent authentication attempt succeeded. Credentials are working.                                      |
-| `False`   | Most recent authentication attempt failed for an auth-specific reason. Actionable.                          |
-| `Unknown` | Authentication has not been attempted yet, OR a non-auth failure (network, timeout) prevented testing auth. |
-
-`Unknown` must not be conflated with `False`: "credentials are bad" is a different problem from "we couldn't test the credentials."
-
-**Reason codes:**
-
-| Status    | Reason                   | Meaning                                                                           |
-|-----------|--------------------------|-----------------------------------------------------------------------------------|
-| `True`    | `TokenAcquired`          | Succeeded via explicit token acquisition (GitHub App, workload identity).         |
-| `True`    | `CredentialsAccepted`    | Succeeded with simple credentials (basic auth, SSH key, token).                   |
-| `True`    | `NoAuthRequired`         | No authentication is configured; repository is public.                            |
-| `False`   | `InvalidCredentials`     | Credentials rejected by the remote (401-class).                                   |
-| `False`   | `TokenAcquisitionFailed` | GitHub App or workload-identity token exchange failed.                            |
-| `False`   | `SecretNotFound`         | Referenced Secret or ConfigMap does not exist.                                    |
-| `False`   | `SecretMalformed`        | Secret exists but content is invalid (bad base64, wrong format, missing keys).    |
-| `False`   | `PermissionDenied`       | Credentials valid but lack required permissions (403-class).                      |
-| `False`   | `TokenExpired`           | Known-expired token; refresh attempt failed.                                      |
-| `False`   | `AuthMisconfigured`      | Config error detected without contacting the remote (e.g. invalid GitHub App ID). |
-| `Unknown` | `NotYetAttempted`        | Repository is new; auth has not yet been tested.                                  |
-| `Unknown` | `RemoteUnreachable`      | Could not contact the remote to test auth (network, DNS, firewall).               |
-
-**Triage with `Reachable`:**
-
-| `Reachable` | `AuthValid` | Action                                                                              |
-|-------------|-------------|-------------------------------------------------------------------------------------|
-| `False`     | `Unknown`   | Fix network, DNS, firewall, or remote endpoint availability.                        |
-| `True`      | `False`     | Fix credentials or auth configuration.                                              |
-| `True`      | `True`      | If `Ready: False`, look beyond auth (rate limits, content errors).                  |
-
-`AuthValid: False` always forces `Ready: False`, with `Ready.reason: AuthFailed`.
-
-**Example — successful SSH key auth:**
+There is no `AuthValid` condition today. A verification failure (unreachable remote, rejected credentials, missing Secret) is reported on the single `Ready` condition as `status: "False"`, `reason: VerifyFailed`, with a human-readable message. Example:
 
 ```yaml
 status:
-  conditions:
-    - type: Ready
-      status: "True"
-      reason: Verified
-    - type: Reachable
-      status: "True"
-    - type: AuthValid
-      status: "True"
-      reason: CredentialsAccepted
-      message: "SSH key authentication successful"
-```
-
-**Example — secret missing:**
-
-```yaml
-status:
+  lastSuccessfulProbeAt: 2026-04-29T10:00:00Z
   conditions:
     - type: Ready
       status: "False"
-      reason: AuthFailed
-    - type: Reachable
-      status: "Unknown"
-      reason: AuthRequired
-    - type: AuthValid
-      status: "False"
-      reason: SecretNotFound
+      reason: VerifyFailed
       message: "Secret 'payments-git-ssh' not found in namespace 'payments-team'"
 ```
 
 ## Webhooks
 
+> **Status: planned — not implemented.** There is no `/webhooks` subresource and no webhook receiver: no per-entry URL generation, no operational status counters, no provider/event/filter processing. Webhook configuration is expressed today as an **inline `webhook` array field** on the object (a sibling of `spec`/`status`); the `WebhookStatus` types exist but the controller does not populate them, and no endpoint receives webhook deliveries. The rest of this section describes the intended design.
+
 ### Purpose
 
-The `/webhooks` subresource manages webhook configurations for the Source, enabling push-based notifications from the upstream Git provider that trigger source refreshes. Multiple webhooks can be configured per Source, supporting scenarios like multi-mirror Git setups, provider migrations, and chained CI/CD pipelines.
-
-Webhook configuration lives behind a subresource (rather than inline in `spec`) for several reasons:
-- Different RBAC than the rest of the Source (platform team manages source definitions; app teams configure their webhook integrations)
-- Different lifecycle (webhooks added/removed independently of Source changes)
-- Different sensitivity (webhook secrets are credentials)
-- Audit clarity (webhook config changes distinguishable from Source spec changes)
+The webhook design enables push-based notifications from the upstream Git provider that trigger source refreshes, supporting scenarios like multi-mirror Git setups, provider migrations, and chained CI/CD pipelines.
 
 ### Schema
 

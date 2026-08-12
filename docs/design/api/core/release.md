@@ -7,13 +7,12 @@
     * [kustomize](#kustomize)
     * [manifests](#manifests)
     * [jsonnet](#jsonnet)
-    * [cue](#cue)
   * [Mutation Types](#mutation-types)
-    * [helmValues](#helmvalues)
     * [goTemplate](#gotemplate)
     * [jsonPatch](#jsonpatch)
     * [strategicMergePatch](#strategicmergepatch)
     * [celTransform](#celtransform)
+    * [syncWave](#syncwave)
   * [Status](#status)
   * [Conditions](#conditions)
   * [Release State Model](#release-state-model)
@@ -31,11 +30,7 @@
     * [Purpose](#purpose)
     * [Health States](#health-states)
     * [How Health Is Determined](#how-health-is-determined)
-      * [Built-in Rules](#built-in-rules)
-      * [kstatus Fallback](#kstatus-fallback)
-      * [Custom Rules via `KindHealthRule` and `ResourceHealthRule`](#custom-rules-via-kindhealthrule-and-resourcehealthrule)
-    * [`KindHealthRule` Resource](#kindhealthrule-resource)
-    * [`ResourceHealthRule` Resource](#resourcehealthrule-resource)
+    * [Health Rule Sets](#health-rule-sets)
     * [Aggregation: Per-Resource → Release-Level `Healthy`](#aggregation-per-resource--release-level-healthy)
     * [Status Shape](#status-shape)
       * [`healthSummary`](#healthsummary)
@@ -45,25 +40,9 @@
     * [Comparison with Other Tools](#comparison-with-other-tools)
   * [Preview and Diff Subresources](#preview-and-diff-subresources)
     * [/preview](#preview)
-      * [Behavior](#behavior)
-      * [Output](#output)
-      * [Pin handling](#pin-handling)
-      * [Query parameters](#query-parameters)
-      * [POST with mutation overrides](#post-with-mutation-overrides)
-      * [Common usage patterns](#common-usage-patterns)
-      * [RBAC](#rbac)
     * [/diff](#diff)
-      * [Behavior](#behavior-1)
-      * [Comparison axes](#comparison-axes)
-      * [Query parameters](#query-parameters-1)
-      * [Common usage](#common-usage)
-      * [Pin interaction](#pin-interaction)
-      * [POST with mutation overrides](#post-with-mutation-overrides-1)
-      * [Output format](#output-format)
-      * [Managed-fields filtering](#managed-fields-filtering)
-      * [Drift categorization](#drift-categorization)
-      * [RBAC](#rbac-1)
-    * [Summary](#summary)
+      * [Output](#output)
+      * [Field filtering](#field-filtering)
   * [Lifecycle Hooks](#lifecycle-hooks)
     * [Purpose](#purpose-1)
     * [Why a Subresource, Not Annotations](#why-a-subresource-not-annotations)
@@ -107,7 +86,7 @@
 
 The deployment unit. Binds one `Source` + one `Cluster` + a content interpretation, with an ordered mutation pipeline. Self-describing via resolved status snapshots. Identity (source **kind + name**, cluster, content type) is immutable; routine config (the **source ref/version**, mutations, paths) is mutable.
 
-`spec.source` and `spec.content` are two orthogonal axes: **source = where + which** (the endpoint object plus the coordinate to fetch), **content = how** (how to render the fetched bytes). Both are discriminated unions on `.type`, mirroring `auth`. The `Source` object (`GitRepository`/`HelmRegistry`/`OCIRegistry`) is a reusable, credentialed *endpoint* — it does not pin a version; the coordinate lives on the Release: `spec.source.gitRepository.ref` (`branch`/`tag`/`commit`/`semver`), `spec.source.helmRegistry.chart{name,version}`, or `spec.source.ociRegistry.artifact{name,version}`. So one Source is shared across Releases pulling different versions — e.g. staging on `branch: main`, prod on `tag: v1.2.3` from one `GitRepository`.
+`spec.source` and `spec.content` are two orthogonal axes: **source = where + which** (the endpoint object plus the coordinate to fetch), **content = how** (how to render the fetched bytes). Both are discriminated unions on `.type`, mirroring `auth`. The `Source` object (`GitRepository`/`HelmRegistry`/`OCIRegistry`) is a reusable, credentialed *endpoint* — it does not pin a version; the coordinate lives on the Release: `spec.source.gitRepository.ref` (`branch`/`tag`/`commit`; `semver` is defined but not yet resolved), `spec.source.helmRegistry.chart{name,version}`, or `spec.source.ociRegistry.artifact{name,version}`. So one Source is shared across Releases pulling different versions — e.g. staging on `branch: main`, prod on `tag: v1.2.3` from one `GitRepository`.
 
 **Subresources**
 
@@ -116,9 +95,10 @@ The deployment unit. Binds one `Source` + one `Cluster` + a content interpretati
 - `/sync` — POST to trigger reconciliation
 - `/diff` — GET diff between rendered state and live cluster
 - `/preview` — GET the fully rendered post-mutation manifest set (without applying)
-- `/pin` — pin state (GET to read, POST to set, DELETE to clear)
-- `/history` — GET paginated list of past (inputs → output) records, S3-backed
-- `/health` — GET per-resource health for managed resources (re-evaluated at runtime; not persisted in `status`)
+- `/pin` — pin state: GET to read, PUT to set or clear (an empty `renderRef` unpins)
+- `/health` — GET per-resource health for managed resources (served from the durable `ReleaseInventory`)
+- `/lifecycle` — the phase-keyed lifecycle-hook config (GET / PUT / PATCH)
+- `/history` — **planned; not implemented** (would list past inputs→output records; requires render history / S3 storage, which is not built). Rollback is likewise not implemented.
 
 ```yaml
 apiVersion: core.convoy.kumodo.io/v1alpha1
@@ -295,33 +275,21 @@ spec:
 # Exposed via the /mutations subresource for field-level RBAC and audit clarity.
 # +listType=atomic — list is treated as a single unit; concurrent edits conflict.
 mutations:
-  # 1. Environment-wide values (shared across all prod releases).
-  - type: helmValues
-    from:
-      kind: GitRepository
-      name: payments-config-repo
-      path: env/prod/values.yaml
-  
-  # 2. Cluster-specific values (per-region overrides).
-  - type: helmValues
-    from:
-      kind: GitRepository
-      name: payments-config-repo
-      path: clusters/prod-eu/values.yaml
-  
-  # 3. Templated values using cluster metadata.
+  # NOTE: Helm values are NOT a mutation type — layer them via spec.content.helm.values.
+  # 1. Templated edit using cluster metadata.
   # Default: applied AFTER Helm rendering on the rendered YAML, to avoid {{ }} collisions.
-  # Template context: .Cluster, .Release, .Source.
+  # Template context (lowercase): .cluster (metadata keys flattened + .cluster.name),
+  # .self (the Release), .object (the rendered object).
   - type: goTemplate
     inline: |
-      replicaCount: {{ .Cluster.metadata.replicas | default 3 }}
-      region: {{ .Cluster.metadata.region }}
+      replicaCount: {{ .cluster.replicas | default 3 }}
+      region: {{ .cluster.region }}
       ingress:
-        host: payments-{{ .Cluster.metadata.region }}.example.com
+        host: payments-{{ .cluster.region }}.example.com
       podLabels:
-        cluster: {{ .Cluster.name }}
+        cluster: {{ .cluster.name }}
   
-  # 4. Small inline JSON patch — direct overrides without templating.
+  # 2. Small inline JSON patch — direct overrides without templating.
   - type: jsonPatch
     patches:
       - op: replace
@@ -443,28 +411,18 @@ status:
     # One entry per mutation in spec, with content hashes for reproducibility.
     resolvedMutations:
       - index: 0
-        type: helmValues
-        sourceRef: { kind: GitRepository, name: payments-config-repo, path: env/prod/values.yaml }
-        sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12
-        contentHash: sha256:7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e
-      - index: 1
-        type: helmValues
-        sourceRef: { kind: GitRepository, name: payments-config-repo, path: clusters/prod-eu/values.yaml }
-        sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12
-        contentHash: sha256:9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a
-      - index: 2
         type: goTemplate
         contentHash: sha256:0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b
-      - index: 3
+      - index: 1
         type: jsonPatch
         contentHash: sha256:1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c
-      - index: 4
+      - index: 2
         type: strategicMergePatch
         sourceRef: { kind: GitRepository, name: payments-experiments-repo, path: features/new-tracing/patch.yaml }
         sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d
         contentHash: sha256:2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d
     
-    # S3 hash of the fully rendered manifest set. Lookup key for /history and /rollback.
+    # Content hash of the fully rendered manifest set (the render identity).
     renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
     
     syncedAt: 2026-04-29T10:00:05Z
@@ -493,11 +451,9 @@ status:
         replicas: "5"
         cni: cilium
     resolvedMutations:
-      - { index: 0, type: helmValues, sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12, contentHash: "sha256:7d8e9f..." }
-      - { index: 1, type: helmValues, sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12, contentHash: "sha256:9f0a1b..." }
-      - { index: 2, type: goTemplate, contentHash: "sha256:0a1b2c..." }
-      - { index: 3, type: jsonPatch,  contentHash: "sha256:1b2c3d..." }
-      - { index: 4, type: strategicMergePatch, sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d, contentHash: "sha256:2c3d4e..." }
+      - { index: 0, type: goTemplate, contentHash: "sha256:0a1b2c..." }
+      - { index: 1, type: jsonPatch,  contentHash: "sha256:1b2c3d..." }
+      - { index: 2, type: strategicMergePatch, sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d, contentHash: "sha256:2c3d4e..." }
     renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
     attemptedAt: 2026-04-29T10:00:00Z
     
@@ -547,10 +503,10 @@ status:
 |-------------------|--------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `source`          | object | yes      | —       | WHERE + WHICH to fetch. Discriminated on `source.type` (`gitRepository`/`helmRegistry`/`ociRegistry`); each block references a Source object and carries the coordinate. See [Source Reference](#source-reference). |
 | `content`         | object | yes      | —       | HOW to render the fetched bytes. Discriminated on `content.type`; see [Content Types](#content-types). Must be compatible with `source.type`. `content.type` immutable.                                             |
-| `cluster`         | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                                                                                               |
-| `syncPolicy`      | object | no       | —       | Reconciliation behavior: `automatic`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).                                                                                  |
-| `retentionPolicy` | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.                                                                                       |
-| `deletionPolicy`  | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`).                                                                                                                                                        |
+| `clusterRef`      | object | yes      | —       | Reference (`name` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                                                                                              |
+| `syncPolicy`      | object | no       | —       | Reconciliation behavior: `automatic`, `prune` (`orphaned`/`includeCRDs`/`includeNamespaces`), `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).                                           |
+| `retentionPolicy` | object | no       | —       | `keepHistory` — retained-history count (stored on the object; `/history` and rollback that would consume it are not yet implemented).                                                                               |
+| `deletionPolicy`  | object | no       | —       | Per-Release deletion behavior (`keepWorkloads: bool`, `blockOnClusterUnreachable: bool`).                                                                                                                          |
 
 `mutations` is a **top-level field** (not under `spec`), exposed via the `/mutations` subresource for field-level RBAC and audit. It is an ordered, atomic (`+listType=atomic`) transformation pipeline; see [Mutation Types](#mutation-types).
 
@@ -594,15 +550,9 @@ spec:
 
 ### Source × Content compatibility
 
-`source.type` (where) and `content.type` (how) are orthogonal, but not every pairing is valid:
+`source.type` (where) and `content.type` (how) are orthogonal. The `content.type` enum is `helm`, `manifests`, `kustomize`, `jsonnet` (there is **no** `cue` content type — the constant exists but is validation-rejected). Today only **`helm`** and **`manifests`** actually render; `kustomize`/`jsonnet` are accepted by the API but not yet implemented in the renderer.
 
-| `source.type` ↓ / `content.type` → | `helm` | `manifests` | `kustomize` | `jsonnet` | `cue` |
-|------------------------------------|:------:|:-----------:|:-----------:|:---------:|:-----:|
-| `gitRepository`                    |   ✅   |     ✅      |     ✅      |    ✅     |  ✅   |
-| `helmRegistry`                     |   ✅   |      —      |      —      |     —     |   —   |
-| `ociRegistry`                      |   ✅   |     ✅      |     ✅      |     —     |   —   |
-
-Incompatible pairings are rejected by validation (e.g. `helmRegistry` requires `content.type: helm`).
+> **Note:** source×content compatibility is **not currently enforced** by validation — the source discriminator and content discriminator are validated independently, so any content type is admitted with any source type. Sensible pairings are still: `gitRepository` with any content type; `helmRegistry`/`ociRegistry` with `helm`.
 
 ## Content Types
 
@@ -623,7 +573,7 @@ spec:
 
 ### kustomize
 
-Build a Kustomize overlay at `path`.
+_Accepted by the API but not yet rendered (planned)._ Build a Kustomize overlay at `path`.
 
 ```yaml
 spec:
@@ -647,7 +597,7 @@ spec:
 
 ### jsonnet
 
-Render Jsonnet to manifests, optionally passing top-level arguments (`tla`).
+_Accepted by the API but not yet rendered (planned)._ Render Jsonnet to manifests, optionally passing top-level arguments (`tla`).
 
 ```yaml
 spec:
@@ -660,45 +610,24 @@ spec:
           value: prod
 ```
 
-### cue
-
-Render CUE to manifests from an entry path. Type-specific config mirrors the other path-based content types.
-
-```yaml
-spec:
-  content:
-    type: cue
-    cue:
-      path: ./manifests
-```
+(There is no `cue` content type — the enum constant exists but is rejected by validation.)
 
 ## Mutation Types
 
-`mutations[]` is an ordered pipeline; each entry declares its `type`. Entries run in order, each operating on the output of the previous one. Inline content is provided directly; external content is referenced via `from` (typically a `GitRepository`).
+`mutations[]` is an ordered pipeline; each entry declares its `type`, one of `goTemplate`, `jsonPatch`, `strategicMergePatch`, `celTransform`, `syncWave`. Entries run in order, each operating on the output of the previous one. Inline content is provided directly; external content is referenced via `from` (a `GitRepository`, `ConfigMap`, or `Secret`).
 
-### helmValues
-
-Merge Helm values before chart rendering. Sourced from a values file (`from`) or inline.
-
-```yaml
-mutations:
-  - type: helmValues
-    from:
-      kind: GitRepository
-      name: payments-config-repo
-      path: env/prod/values.yaml
-```
+> **Helm values are not a mutation.** To layer Helm values, use `spec.content.helm.values` (a list of value sources: `gitRepository`/`configMap`/`secret`/`inline`) — not a `helmValues` mutation (no such type exists).
 
 ### goTemplate
 
-Apply a Go template. By default it runs **after** Helm rendering on the rendered YAML (to avoid `{{ }}` collisions). Template context: `.Cluster`, `.Release`, `.Source`. Provided `inline` or via `from`.
+Apply a Go template. By default it runs **after** Helm rendering on the rendered YAML (to avoid `{{ }}` collisions). Template context is lowercase, shared with mutations/hooks: `.cluster` (Cluster `spec.metadata` keys flattened, plus `.cluster.name`), `.self` (the Release's name/namespace/labels/annotations), `.object` (the rendered object). Metadata is `.cluster.<key>` — there is no `.metadata` segment and no `.Source` binding. Provided `inline` or via `from`.
 
 ```yaml
 mutations:
   - type: goTemplate
     inline: |
-      replicaCount: {{ .Cluster.metadata.replicas | default 3 }}
-      region: {{ .Cluster.metadata.region }}
+      replicaCount: {{ .cluster.replicas | default 3 }}
+      region: {{ .cluster.region }}
 ```
 
 ### jsonPatch
@@ -729,13 +658,26 @@ mutations:
 
 ### celTransform
 
-Transform the rendered manifest set with a CEL expression, with the same binding context available to `goTemplate`. Useful for programmatic edits that are awkward to express as a patch. (Planned beyond the PoC; included here for completeness.)
+Transform matched objects with a CEL expression that returns a map overlay (RFC 7386-merged onto the object). Bindings are the same lowercase `cluster`/`self`/`object` as `goTemplate`. Provided `inline` or via `from`.
 
 ```yaml
 mutations:
   - type: celTransform
     inline: |
-      # CEL expression operating over the rendered objects
+      # CEL expression returning a map overlay, e.g.
+      {"metadata": {"labels": {"region": cluster.region}}}
+```
+
+### syncWave
+
+Assign sync-wave ordering to matched objects (equivalent to the `convoy.kumodo.io/sync-wave` annotation). See [Sync Waves](#sync-waves).
+
+```yaml
+mutations:
+  - type: syncWave
+    target: { kind: Deployment }
+    syncWave:
+      wave: 1
 ```
 
 ## Status
@@ -935,151 +877,35 @@ Each managed resource is evaluated to one of five states:
 | `Healthy`     | Resource has reached its intended runtime state | `Deployment` with all replicas ready, `observedGeneration` current                       |
 | `Progressing` | Working toward intended state, no failure yet   | `Deployment` rolling out a new revision; `Pod` pulling its image                         |
 | `Degraded`    | Failed or in a known-bad state                  | `Deployment` with `ProgressDeadlineExceeded`; `Pod` in `CrashLoopBackOff` past threshold |
-| `Suspended`   | Intentionally paused                            | `CronJob` with `spec.suspend: true`                                                      |
-| `Unknown`     | Health cannot be determined                     | Custom resource with no rule and no standard conditions                                  |
+| `Unknown`     | Health cannot be determined                     | Rule evaluation errored, or the resource couldn't be read                                |
 
-`Suspended` is a deliberate distinction from `Degraded` — operators shouldn't be alerted for resources that are intentionally not running.
-
-`Unknown` is a deliberate distinction from `Healthy` — the controller is honest about what it doesn't know rather than defaulting optimistically.
+There are four states. (`Suspended` is not a producible state — a `suspended` counter exists in the status summary type but the assessor never emits it.) `Unknown` is a deliberate distinction from `Healthy` — the controller is honest about what it doesn't know rather than defaulting optimistically.
 
 ### How Health Is Determined
 
-For each managed resource, the controller resolves a health rule in this order:
+Health is assessed **only** by the CEL rules in the `GlobalHealthRuleSet` / `HealthRuleSet` sets a Release selects — there are no built-in per-kind rules and no `kstatus` fallback. For each managed resource:
 
-1. **`ResourceHealthRule`** matching `(apiGroup, kind, namespace, name)` — highest priority; for cluster-scoped resources, `namespace` is empty
-2. **`KindHealthRule`** matching `(apiGroup, kind)` — applies to all resources of a kind
-3. **Built-in rule** for standard kinds — used when no user rule applies
-4. **kstatus fallback** for resources following Kubernetes API conventions
-5. **`Unknown`** — when none of the above can determine state
+1. Collect the rules from the rule sets the Release selects (below) whose `apiVersion` + `resources` match the resource.
+2. The resource **passes** when *every* matched rule's `ruleExpression` (a CEL predicate over `object`) returns `true`. A resource with **no** matching rule passes vacuously → `Healthy`.
+3. The health *state* is derived from pass/fail plus the Release-level deadline: a failing predicate is `Progressing` until `spec.healthAssessment.deadline` elapses (from when it first went non-passing), then `Degraded`. An evaluation error or unreadable resource is `Unknown`.
 
-The first matching layer is used; lower layers are consulted only when higher ones don't apply.
+The only CEL binding is `object` (the live resource) — there is no `now` binding. The states are `Healthy`, `Progressing`, `Degraded`, `Unknown` (there is no `Suspended`).
 
-#### Built-in Rules
+### Health Rule Sets
 
-The controller ships with rules for ~18 standard kinds covering 95% of typical deployments:
-
-**Workloads:** `Deployment`, `StatefulSet`, `DaemonSet`, `ReplicaSet`, `Pod`, `Job`, `CronJob`
-
-**Networking:** `Service`, `Ingress`
-
-**Storage:** `PersistentVolumeClaim`, `PersistentVolume`
-
-**Configuration:** `ConfigMap`, `Secret`
-
-**RBAC:** `ServiceAccount`, `Role`, `RoleBinding`, `ClusterRole`, `ClusterRoleBinding`
-
-**Autoscaling/Reliability:** `HorizontalPodAutoscaler`, `PodDisruptionBudget`
-
-Rules incorporate kind-appropriate progress deadlines (e.g., `Deployment.spec.progressDeadlineSeconds` for Deployments; 10m default for StatefulSets) and look at child-resource events for fast failure detection (e.g., `ImagePullBackOff` on Pods triggers `Degraded` on the parent without waiting for the parent's deadline).
-
-Built-in rule logic is documented per kind so users can predict behavior.
-
-#### kstatus Fallback
-
-For resources not covered by a built-in rule, the controller uses Google's `kstatus` library, which infers health from common Kubernetes API conventions:
-
-- Presence and value of a `Ready` condition
-- Generic `Failed`, `Reconciling`, `Stalled` conditions
-- `observedGeneration` vs `metadata.generation`
-
-This handles convention-following CRDs automatically with zero per-CRD configuration. Resources that don't follow conventions fall through to `Unknown`.
-
-#### Custom Rules via `KindHealthRule` and `ResourceHealthRule`
-
-For CRDs with non-standard status (or to override built-in behavior), users define `KindHealthRule` or `ResourceHealthRule` resources. See the resource summaries below for full schema.
-
-### `KindHealthRule` Resource
-
-`KindHealthRule` is **cluster-scoped**. It defines a health rule that applies to all resources of a given kind across the entire cluster, regardless of which Release manages them.
-
-**Targeting:** Each `KindHealthRule` targets exactly one `(apiGroup, kind)`. Validating admission rejects creation of a second `KindHealthRule` with the same target. To change behavior, edit the existing rule.
-
-**Relationship to Release:** None. The controller indexes `ResourceHealthRule` by `(apiGroup, kind, version)` and looks up the applicable rule by the resource's kind, regardless of which Release manages it. This ensures consistent health verdicts across the system.
-
-**Expression language:** CEL, with bindings for the live resource (`object`) and current time (`now`). Returns one of `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Unknown`.
+Rules live in two kinds in the `extensions.convoy.kumodo.io/v1alpha1` group: **`GlobalHealthRuleSet`** (cluster-scoped) and **`HealthRuleSet`** (namespaced). A Release opts in with label selectors:
 
 ```yaml
-apiVersion: extensions.convoy.kumodo.io/v1alpha1
-kind: KindHealthRule
-metadata:
-  name: certificate-health
 spec:
-  target:
-    apiGroup: cert-manager.io
-    kind: Certificate
-    version: v1
-  
-  expression: |
-    has(object.status.conditions) && object.status.conditions.exists(c, 
-      c.type == "Ready" && c.status == "True"
-    ) ? "Healthy" :
-    has(object.status.conditions) && object.status.conditions.exists(c,
-      c.type == "Ready" && c.status == "False"
-    ) ? "Degraded" :
-    "Progressing"
-  
-  progressDeadline: 5m
-  
-  messageExpression: |
-    has(object.status.conditions) && object.status.conditions.exists(c, c.type == "Ready") 
-      ? object.status.conditions.filter(c, c.type == "Ready")[0].message
-      : "Waiting for Certificate to become ready"
+  healthAssessment:
+    globalRuleSetSelector:            # selects GlobalHealthRuleSets by label
+      matchLabels: { convoy.kumodo.io/default: "true" }
+    localRuleSetSelector:             # selects HealthRuleSets in the Release's namespace
+      matchLabels: { team: payments }
+    deadline: 1m                      # Progressing → Degraded after this (all resources)
 ```
 
-### `ResourceHealthRule` Resource
-
-`ResourceHealthRule` is **namespaced**. It defines a health rule for a specific resource instance, identified by `(apiGroup, kind, namespace, name)`. Takes precedence over `KindHealthRule` when both match. For cluster-scoped target resources, `namespace` is empty.
-
-**Relationship to Release:** None. The controller indexes `ResourceHealthRule` by `(apiGroup, kind, version, namespace, name)` and looks up the rule at evaluation time, independently of which Release manages the resource.
-
-**Expression language:** Same CEL bindings as `KindHealthRule`.
-
-```yaml
-apiVersion: extensions.convoy.kumodo.io/v1alpha1
-kind: ResourceHealthRule
-metadata:
-  name: payments-db-health
-  namespace: payments-team
-spec:
-  target:
-    apiGroup: apps
-    kind: StatefulSet
-    version: v1
-    name: payments-db
-    namespace: payments-team
-  
-  expression: |
-    object.status.readyReplicas == object.status.replicas &&
-    object.status.replicas >= 3
-      ? "Healthy"
-      : object.status.readyReplicas > 0
-        ? "Progressing"
-        : "Degraded"
-  
-  progressDeadline: 15m
-  
-  messageExpression: |
-    string(object.status.readyReplicas) + "/" + string(object.status.replicas) + " replicas ready"
-```
-
-Cluster-scoped target example (namespace is empty in the target):
-
-```yaml
-apiVersion: extensions.convoy.kumodo.io/v1alpha1
-kind: ResourceHealthRule
-metadata:
-  name: some-ns-health
-  namespace: platform-team
-spec:
-  target:
-    apiGroup: ""
-    kind: Namespace
-    name: some-ns
-    namespace: ""
-  
-  expression: |
-    object.status.phase == "Active" ? "Healthy" : "Degraded"
-```
+Rules from selected global and local sets are **additive** (concatenated, evaluated as a conjunction — no precedence). A rule set that no selector matches is never consulted; a Release with no `healthAssessment` (or no matching sets) treats every resource as `Healthy`. Each rule is `{apiVersion, resources[], ruleExpression, messageExpression}` — see [`GlobalHealthRuleSet`](../extensions/global-health-rule-set.md) / [`HealthRuleSet`](../extensions/health-rule-set.md) for the full schema and examples.
 
 ### Aggregation: Per-Resource → Release-Level `Healthy`
 
@@ -1088,13 +914,12 @@ Per-resource health verdicts aggregate into the Release-level `Healthy` conditio
 | Resource states                                | Release `Healthy` condition |
 |------------------------------------------------|-----------------------------|
 | Any `Degraded`                                 | `False`                     |
-| All `Healthy` (and/or `Suspended`)             | `True`                      |
+| All `Healthy`                                  | `True`                      |
 | Any `Progressing`, no `Degraded`               | `Unknown`                   |
 | Any `Unknown`, no `Degraded`, no `Progressing` | `Unknown`                   |
 
 Key rules:
 
-- **`Suspended` doesn't count against `Healthy: True`.** Intentional pause is intentional; suspended resources are a normal steady state, not a failure.
 - **`Unknown` doesn't count toward `Healthy: True`.** The controller doesn't fabricate confidence; if any resource's state is unknown, the Release-level verdict is also `Unknown`.
 - **`Progressing` produces `Unknown`, not `True` or `False`.** Active progress is genuine indeterminacy — the deploy is in flight. `Healthy: Unknown` during deploys is normal, not an alert condition.
 
@@ -1143,58 +968,37 @@ Always present. Aggregate counts by state across all managed resources. Lets too
 |------|---------------------------|-------------------------------------------------------|
 | GET  | `/releases/<name>/health` | Return per-resource health for the managed resources. |
 
-The response contains only entries that need operator attention — the non-`Healthy`/`Progressing` buckets:
-
-| Health state  | Included in response?                                |
-|---------------|------------------------------------------------------|
-| `Healthy`     | No — nothing to surface                              |
-| `Progressing` | No — transient noise during deploys                  |
-| `Degraded`    | Yes — needs attention                                |
-| `Suspended`   | Yes — operators should know what's paused            |
-| `Unknown`     | Yes — indicates missing rule or non-conventional CRD |
-
-This makes the per-resource view directly actionable: a Release with 200 healthy resources and 1 degraded one returns 1 entry, not 201.
+The response lists **all** managed resources (not just the unhealthy ones), each with its assessed state — the top-level key is `objects`:
 
 ```yaml
 # GET /releases/payments-api-prod-eu/health
-resources:
-  - kind: Deployment
-    apiGroup: apps
+objects:
+  - group: apps
     version: v1
+    kind: Deployment
+    namespace: payments-team
     name: payments-api
-    namespace: payments-team
-    health: Degraded
-    since: 2026-04-29T10:01:15Z
+    state: Degraded
     message: "0/3 ready replicas; CrashLoopBackOff on container 'api' (exit code 1)"
-    ruleUsed:
-      type: builtin
-  - kind: CronJob
-    apiGroup: batch
+  - group: ""
     version: v1
-    name: payments-cleanup
+    kind: Service
     namespace: payments-team
-    health: Suspended
-    since: 2026-04-15T08:00:00Z
-    message: "spec.suspend is true"
-    ruleUsed:
-      type: builtin
+    name: payments-api
+    state: Healthy
+    message: ""
 ```
-
-**RBAC:** `GET` requires `releases/health: get`.
 
 #### Per-resource fields
 
-| Field                         | Description                                                                                                                |
-|-------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `kind`, `apiGroup`, `version` | Resource kind identification                                                                                               |
-| `name`, `namespace`           | Resource identity                                                                                                          |
-| `health`                      | One of `Degraded`, `Suspended`, `Unknown`                                                                                  |
-| `since`                       | When this state was first observed (transitions reset this)                                                                |
-| `message`                     | Human-readable detail from the health rule                                                                                 |
-| `ruleUsed.type`               | One of `resourceHealthRule`, `kindHealthRule`, `builtin`, `kstatus`, `fallbackUnknown`                                     |
-| `ruleUsed.ref`                | Reference to the `KindHealthRule` or `ResourceHealthRule` (only when `type: resourceHealthRule` or `type: kindHealthRule`) |
+| Field                       | Description                                             |
+|-----------------------------|---------------------------------------------------------|
+| `group`, `version`, `kind`  | Resource kind identification (`group` is `""` for core) |
+| `namespace`, `name`         | Resource identity                                       |
+| `state`                     | One of `Healthy`, `Progressing`, `Degraded`, `Unknown`  |
+| `message`                   | Human-readable detail (from the rule's `messageExpression`, or the assessor) |
 
-The `ruleUsed` field makes assessment auditable. Users debugging unexpected health verdicts can immediately see which rule produced them.
+There is no `since` field and no `ruleUsed` field.
 
 ### What's Not Covered
 
@@ -1209,262 +1013,76 @@ Health assessment is passive observation of resource state, not active testing.
 
 ### Comparison with Other Tools
 
-| Concept                    | This tool                                                                      | ArgoCD                       | Flux                            |
-|----------------------------|--------------------------------------------------------------------------------|------------------------------|---------------------------------|
-| Per-resource health        | Yes, via `/health` (degraded/suspended/unknown only)                           | Yes, full list               | Limited                         |
-| Custom health rules        | CEL via `KindHealthRule` (cluster-scoped) or `ResourceHealthRule` (namespaced) | Lua via ConfigMap            | None native                     |
-| Five health states         | Yes                                                                            | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
-| `Unknown` as honest signal | Yes                                                                            | Sometimes (for unknown CRDs) | Often defaults optimistic       |
-| Bounded status size        | Yes (per-resource detail kept out of the object entirely)                      | No (full list)               | Compact (less detail)           |
+| Concept                    | This tool                                                                          | ArgoCD                       | Flux                            |
+|----------------------------|------------------------------------------------------------------------------------|------------------------------|---------------------------------|
+| Per-resource health        | Yes, via `/health` (all managed resources)                                         | Yes, full list               | Limited                         |
+| Custom health rules        | CEL via `GlobalHealthRuleSet` (cluster-scoped) or `HealthRuleSet` (namespaced)     | Lua via ConfigMap            | None native                     |
+| Health states              | Four (`Healthy`/`Progressing`/`Degraded`/`Unknown`)                                | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
+| `Unknown` as honest signal | Yes                                                                                | Sometimes (for unknown CRDs) | Often defaults optimistic       |
+| Bounded status size        | Yes (per-resource detail kept out of the object entirely)                          | No (full list)               | Compact (less detail)           |
 
 ## Preview and Diff Subresources
 
 `/preview` and `/diff` are read-only subresources on `Release` that answer two operational questions: "what would deploy?" and "what would change?". Both are essential for safe deployment workflows — letting operators verify intent before triggering a sync.
 
+Both are **GET-only** proxies from the apiserver to the observer, which renders/diffs the Release as it is stored. Neither accepts query parameters or a POST body — the documented mutation-override / cluster-override / pin / `source`/`against` options are **not implemented**.
+
 ### /preview
 
-Returns the rendered manifest set that would result from a sync, given the Release's current configuration (or specified overrides). The output is consumable directly: pipeable to `kubectl apply`, validators (`kubeval`, `conftest`, OPA), or human review.
+`GET /releases/<name>/preview` returns the post-mutation manifest set that a sync would apply, rendered from the Release's **current spec**. It is a multi-document YAML stream, consumable directly (pipe to a validator, or human review).
 
-#### Behavior
+| Verb | Path                       | Purpose                                                       |
+|------|----------------------------|---------------------------------------------------------------|
+| GET  | `/releases/<name>/preview` | Return the rendered post-mutation manifests (current render). |
 
-| Verb | Path                       | Purpose                                          |
-|------|----------------------------|--------------------------------------------------|
-| GET  | `/releases/<name>/preview` | Return rendered manifests                        |
-| POST | `/releases/<name>/preview` | Return rendered manifests with overrides applied |
-
-#### Output
-
-A multi-document YAML stream (default) or JSON list. The output is the post-mutation manifest set — exactly what would be applied to the cluster on sync. Nothing else: no lifecycle hooks (accessed via `/lifecycle`), no resolved-source metadata (accessed via `/status`), no diff annotations.
-
-#### Pin handling
-
-`/preview` always answers "what would `/sync` apply right now?" When pinned, that's the pinned content. When not pinned, it's a fresh render from current spec.
-
-| Release state | Default behavior             |
-|---------------|------------------------------|
-| Not pinned    | Render from current spec     |
-| Pinned        | Return pinned render content |
-
-The default is operationally consistent: `/preview` always shows what the next sync would deploy.
-
-#### Query parameters
-
-| Parameter          | Values           | Default                 | Description                                                                                                                                                                                        |
-|--------------------|------------------|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `source`           | `spec`, `pinned` | (smart)                 | Override the default pin handling. `spec` forces fresh render from current spec, ignoring pin. `pinned` requires the Release to be pinned and returns pinned content; returns 400 when not pinned. |
-| `cluster`          | cluster name     | Release's bound cluster | Override the cluster context for templating, capabilities, and cluster-specific value selection. The Release itself is not modified.                                                               |
-| `clusterNamespace` | namespace        | Release's namespace     | Override the cluster reference's namespace for cross-namespace resolution.                                                                                                                         |
-
-#### POST with mutation overrides
-
-For "what would happen if I changed these mutations?" without committing to the Release. Lets users iterate safely — change a value file reference, an inline patch, a templated condition — and see the resulting render before persisting.
-
-```
-POST /releases/<name>/preview
-Content-Type: application/json
-Body: {
-  "mutations": [
-  {
-    "type": "helmValues",
-    "from": {
-      "sourceRef": { "name": "experimental-values", "path": "test/values.yaml" }
-    }
-  },
-  {
-    "type": "jsonPatch",
-      "inline": [
-        { "op": "replace", "path": "/spec/replicas", "value": 5 }
-      ]
-    }
-  ]
-}
-```
-
-The provided mutations replace the Release's mutations for this preview only. Query parameters (`source`, `cluster`, `clusterNamespace`) compose with POST overrides:
-
-```
-POST /releases/<name>/preview?cluster=prod-staging
-Body: { 
-  "mutations": [...]
-}
-```
-
-Returns the render that would result if the Release used these mutations and was deployed to the specified cluster. Useful for "is my mutation change correct, and does it work right in staging?" without two separate operations.
-
-#### Common usage patterns
+It always renders the current spec — there is no pin-aware behavior, no `source`/`cluster` query parameters, and no POST override.
 
 ```bash
-# What would deploy if I synced right now?
-kubectl get release/payments-prod-eu --raw "/.../preview"
-
-# What would deploy if I synced this Release to staging instead?
-kubectl get ... --raw "/.../preview?cluster=staging-eu"
-
-# What would deploy if I unpinned?
-kubectl get ... --raw "/.../preview?source=spec"
-
-# What if I changed my mutations?
-curl -X POST "/.../preview" -d '{"mutations": [...]}'
-
-# Validate against policies
-kubectl get ... --raw "/.../preview" | conftest test -
+# What would a sync render right now?
+kubectl get release/payments-prod-eu --raw "/apis/core.convoy.kumodo.io/v1alpha1/namespaces/<ns>/releases/<name>/preview"
 ```
-
-#### RBAC
-
-| Verb | Permission                 |
-|------|----------------------------|
-| GET  | `releases/preview: get`    |
-| POST | `releases/preview: create` |
-
-When `?cluster=<name>` is used, additionally requires `clusters: get` on the referenced cluster (standard k8s reference-resolution semantics).
 
 ### /diff
 
 Returns the differences between two states. The "what would change?" complement to `/preview`'s "what would deploy?". Several comparison axes are supported via the `against` parameter.
 
-#### Behavior
+`GET /releases/<name>/diff` returns the structural diff between the Release's **current render** and the **live cluster** state — the same comparison the observer's drift loop uses. There is only this one comparison axis: no `against=pin|render`, no `cluster`/`renderRef`/`compareTo`/`format` parameters, no POST override, no text format.
 
-| Verb | Path                    | Purpose                                     |
-|------|-------------------------|---------------------------------------------|
-| GET  | `/releases/<name>/diff` | Return diff between specified states        |
-| POST | `/releases/<name>/diff` | Return diff with mutation overrides applied |
+| Verb | Path                    | Purpose                                                  |
+|------|-------------------------|----------------------------------------------------------|
+| GET  | `/releases/<name>/diff` | Diff the current render against the bound cluster's live state. |
 
-#### Comparison axes
+#### Output
 
-The `against` parameter controls what's being compared.
-
-| `against`        | Compares                                                                            | Common use case                      |
-|------------------|-------------------------------------------------------------------------------------|--------------------------------------|
-| `live` (default) | Current rendered output vs live cluster state                                       | "What would change if I synced now?" |
-| `pin`            | Current rendered output vs pinned content                                           | "What would change if I unpinned?"   |
-| `render`         | Current rendered output vs a specific historical render (or two historical renders) | "What changed between deploys?"      |
-
-#### Query parameters
-
-| Parameter          | Used with        | Description                                                                                                                                    |
-|--------------------|------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `against`          | always           | Comparison axis: `live`, `pin`, or `render`. Default: `live`.                                                                                  |
-| `cluster`          | `against=live`   | Compare against the live state of a specified cluster instead of the Release's bound cluster. Useful for cross-cluster comparison.             |
-| `clusterNamespace` | `against=live`   | Override cluster reference's namespace.                                                                                                        |
-| `renderRef`        | `against=render` | Hash of the render to compare against. Required when `against=render`.                                                                         |
-| `compareTo`        | `against=render` | Optional second render hash. When provided, compares the two specified historical renders directly (Release's current render is not involved). |
-| `format`           | always           | Output format: `structural` (default), `text` (unified diff).                                                                                  |
-
-#### Common usage
-
-```
-GET /diff                                                       # against bound cluster's live state
-GET /diff?against=live&cluster=staging-eu                       # against staging's live state
-GET /diff?against=pin                                           # current render vs pinned content
-GET /diff?against=render&renderRef=sha256:abc...                # current render vs historical
-GET /diff?against=render&renderRef=sha256:abc...&compareTo=sha256:def...   # two historicals
-```
-
-#### Pin interaction
-
-When the Release is pinned, "current rendered output" in the comparison defaults to the **pinned content** (matching `/preview`'s default). To diff against the would-be-rendered content from current spec, combine with `/preview?source=spec` reasoning — implementation-side, the user requests `against=pin`, which gives "what would change if I unpinned and synced."
-
-#### POST with mutation overrides
-
-Same pattern as `/preview`. Lets users see what diff their mutation changes would produce before committing.
-
-```
-POST /releases/<name>/diff?against=live
-Content-Type: application/json
-Body: {
-  "mutations": [...]   // overrides Release's mutations for this diff
-}
-```
-
-Returns the diff between the specified comparison target and a render produced with the override mutations. Combinable with all GET query parameters.
-
-#### Output format
-
-**Structural diff (default):** A JSON document describing changes per resource. Format:
+A JSON document with a top-level `objects` array. Each object carries its GVK + identity, a per-object `status`, and per-field `changes`:
 
 ```json
 {
-  "resources": [
+  "objects": [
     {
-      "kind": "Deployment",
-      "apiGroup": "apps",
-      "version": "v1",
-      "name": "payments-api",
-      "namespace": "payments-team",
-      "changeType": "Modified",
-      "fieldChanges": [
-        { "path": "/spec/replicas", "before": 3, "after": 5 },
-        { "path": "/spec/template/spec/containers/0/image", "before": "...:v1.2.0", "after": "...:v1.3.0" }
+      "group": "apps", "version": "v1", "kind": "Deployment",
+      "namespace": "payments-team", "name": "payments-api",
+      "status": "Modified",
+      "changes": [
+        { "path": "/spec/replicas", "op": "replace", "live": 3, "desired": 5 }
       ]
     },
     {
-      "kind": "ConfigMap",
-      "apiGroup": "",
-      "version": "v1",
-      "name": "payments-config",
-      "namespace": "payments-team",
-      "changeType": "Added",
-      "manifest": { ... }
+      "group": "", "version": "v1", "kind": "ConfigMap",
+      "namespace": "payments-team", "name": "payments-config",
+      "status": "Missing",
+      "changes": []
     }
-  ],
-  "summary": {
-    "added": 1,
-    "modified": 1,
-    "deleted": 0,
-    "unchanged": 12
-  }
+  ]
 }
 ```
 
-`changeType` values: `Added`, `Modified`, `Deleted`, `Unchanged` (omitted from output by default; included if requested via `?include=unchanged`).
+- `status` is one of `InSync`, `Modified`, `Missing` (not `Added`/`Deleted`/`Unchanged`).
+- Each field change is `{path, op, live, desired}` (not `before`/`after`). There is no `summary` block, no `manifest` field, no `changeReason`/drift categorization, and no `include=unchanged`.
 
-**Text diff (`?format=text`):** Unified diff of YAML representations, one block per modified resource. Easier for human consumption; pipeable to standard diff-viewer tools.
+#### Field filtering
 
-#### Managed-fields filtering
-
-The diff filters out fields that aren't owned by the Release, to avoid showing noise that the user didn't cause. Specifically:
-
-- Fields populated by other field managers (HPA scaling `replicas`, defaulted by admission, set by other controllers) are excluded
-- Fields the apiserver sets at apply time (`creationTimestamp`, `resourceVersion`, `uid`) are excluded
-- Status fields are excluded (status is observed state, not desired state)
-
-This makes the diff output reflect "differences caused by this Release's intent," not "all bytes that differ between rendered and live."
-
-#### Drift categorization
-
-When `against=live` and field-level drift exists, the diff categorizes:
-
-- **Drift** — field is managed by this Release but the live value differs (someone manually edited the resource, or a controller fighting with field ownership)
-- **External** — field is not managed by this Release but exists in the live state (HPA-managed replicas, etc.) — informational only, not flagged as drift
-
-Categorization appears in the structural output as `changeReason` per field change.
-
-#### RBAC
-
-| Verb | Permission              |
-|------|-------------------------|
-| GET  | `releases/diff: get`    |
-| POST | `releases/diff: create` |
-
-When `?cluster=<name>` is used (with `against=live`), additionally requires `clusters: get` on the referenced cluster.
-
-### Summary
-
-| Aspect            | `/preview`                         | `/diff`                                                     |
-|-------------------|------------------------------------|-------------------------------------------------------------|
-| Purpose           | "What would deploy?"               | "What would change?"                                        |
-| Verbs             | GET, POST                          | GET, POST                                                   |
-| Default behavior  | Render with current config         | Diff current render vs live cluster                         |
-| Pin handling      | Default returns pinned when pinned | Default uses pinned content as "current render" when pinned |
-| Cluster override  | `?cluster=<name>`                  | `?cluster=<name>` (with `against=live`)                     |
-| Mutation override | POST with `mutations` body         | POST with `mutations` body                                  |
-| Lifecycle hooks   | Not included                       | Not included                                                |
-| Output            | YAML stream / JSON list            | Structural JSON (default) / text diff                       |
-| Field filtering   | n/a                                | Managed-fields filtering; drift categorization              |
-| Format options    | YAML (default), JSON               | structural (default), text                                  |
-
-Both subresources share the same parameter conventions (`?cluster=`, mutation override via POST), making them ergonomically consistent. `/preview` is for content; `/diff` is for differences. They compose: render via `/preview`, validate via `/diff` against live or pin, then `/sync` when satisfied.
+The diff strips fields that would be noise: `creationTimestamp`, `resourceVersion`, `uid`, `managedFields`, and `status` are removed before comparing, so the output reflects rendered-vs-live desired state rather than every differing byte.
 
 
 

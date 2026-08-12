@@ -5,24 +5,21 @@
     * [agentless](#agentless)
     * [agent](#agent)
   * [Authentication Methods](#authentication-methods)
-    * [execPlugin](#execplugin)
     * [kubeconfig](#kubeconfig)
     * [token](#token)
     * [clientCert](#clientcert)
-    * [workloadIdentity](#workloadidentity)
+    * [execPlugin](#execplugin)
     * [oidc](#oidc)
   * [Deletion Policy](#deletion-policy)
   * [Status](#status)
   * [Conditions](#conditions)
-    * [AuthValid](#authvalid)
 <!-- TOC -->
 
-Represents a target Kubernetes cluster: connection info, authentication, free-form metadata for templating, and declarative deletion policy. Supports both agentless (push) and agent (pull) connection modes.
+Represents a target Kubernetes cluster: connection info, authentication, free-form metadata for templating, and declarative deletion policy. Connection modes are `inCluster` (self-management) and `agentless` (control plane pushes via the target's kube-apiserver); `agent` (pull) is defined in the API but **not implemented** (returns `Unsupported`).
 
 **Subresources**
 
-- `/status` — observed reconciliation state
-- `/sync` — POST to force re-run health/discovery probe
+- `/status` — observed reconciliation state (the only subresource). Re-probing is driven by the controller's resync/requeue, not an on-demand subresource.
 
 ## Example
 
@@ -61,51 +58,40 @@ spec:
     # Authentication method — discriminated union. See "Authentication Methods" below.
     auth:
       # type: kubeconfig | token | clientCert | execPlugin | oidc
-      type: execPlugin
-      
-      # type: execPlugin — for cloud-provider auth (EKS, GKE, AKS).
-      # Token rotation is delegated to the plugin (e.g., aws eks get-token).
-      execPlugin:
-        command: aws
-        args:
-          - eks
-          - get-token
-          - --cluster-name
-          - prod-eu
-          - --region
-          - eu-west-1
-        # Optional env vars passed to the plugin
-        env:
-          - name: AWS_PROFILE
-            value: cd-controller
-        # Optional reference to credentials the plugin needs (e.g., AWS IAM role)
-        credentialsRef:
-          secretRef:
-            name: aws-cd-creds
+      # NOTE: only `kubeconfig` is implemented today; the others are defined in the
+      # API but return Unsupported at connect time (planned).
+      type: kubeconfig
+      kubeconfig:
+        secretRef: { name: prod-eu-kubeconfig, key: config }
 
       # --------------------------------
-      # type: kubeconfig — full kubeconfig blob in a Secret.
-      # Convenient but coarse-grained.
-      # kubeconfig:
-      #   secretRef: { name: prod-eu-kubeconfig, key: config }
+      # type: execPlugin — PLANNED (returns Unsupported). For cloud-provider auth.
+      # execPlugin:
+      #   command: aws
+      #   args: [eks, get-token, --cluster-name, prod-eu, --region, eu-west-1]
+      #   env:
+      #     - name: AWS_PROFILE
+      #       value: cd-controller
+      #   # credentialsRef is a flat SecretReference ({name[, namespace]}), not a nested secretRef:
+      #   credentialsRef: { name: aws-cd-creds }
 
       # --------------------------------
-      # type: token — bearer token (e.g., service account token).
+      # type: token — PLANNED (Unsupported). Bearer token; field is tokenRef (not secretRef).
       # token:
-      #   secretRef: { name: prod-eu-sa-token, key: token }
+      #   tokenRef: { name: prod-eu-sa-token, key: token }
 
       # --------------------------------
-      # type: clientCert — mTLS auth for clusters using cert-based auth.
+      # type: clientCert — PLANNED (Unsupported). mTLS for cert-based clusters.
       # clientCert:
       #   certRef: { name: prod-eu-client-cert, key: tls.crt }
       #   keyRef:  { name: prod-eu-client-cert, key: tls.key }
 
       # --------------------------------
-      # type: workloadIdentity — controller pod has cloud-native identity
-      # (IRSA on EKS, Workload Identity on GKE). No static creds needed.
+      # (There is no `workloadIdentity` Cluster auth type — the valid types are
+      # kubeconfig | token | clientCert | execPlugin | oidc.)
 
       # --------------------------------
-      # type: oidc
+      # type: oidc — PLANNED (Unsupported)
       # oidc:
       #   OIDC issuer URL — the controller does discovery at /.well-known/openid-configuration
       #   to find the actual token endpoint. Standard OIDC.
@@ -163,8 +149,9 @@ spec:
   #   # from agents not matching this ID. Useful for preventing agent spoofing.
   #   expectedAgentID: prod-eu-agent
   
-  # Free-form metadata used in mutation templates (goTemplate / celTransform).
-  # Available in templates as {{ .Cluster.metadata.<key> }}.
+  # Free-form metadata used in mutation templates (goTemplate / celTransform) and
+  # lifecycle-hook conditions. Keys are flattened directly under `.cluster`, so a key
+  # `region` is `{{ .cluster.region }}` (plus `.cluster.name` = the Cluster's name).
   # Keep types as strings (k8s label-style); templates can convert as needed.
   metadata:
     region: eu-west-1
@@ -207,52 +194,39 @@ status:
     - autoscaling/v2
     - cilium.io/v2
   
-  # Number of Releases currently referencing this Cluster.
-  # Useful for understanding deletion impact at a glance.
-  releaseCount: 23
+  # releaseCount and agentStatus exist in the API type but are NOT populated by the
+  # controller today:
+  #   releaseCount: <n>        # number of Releases referencing this Cluster (not written)
+  #   agentStatus: { ... }     # agent-mode heartbeat (agent mode not implemented)
   
-  # For agent mode — populated when connectionMode: agent.
-  # agentStatus:
-  #   agentVersion: v1.0.3
-  #   registeredAt: 2026-03-15T08:00:00Z
-  #   lastHeartbeat: 2026-04-29T10:00:30Z
-  
+  # The controller writes exactly ONE condition: Ready. Reasons are Reachable
+  # (success), Unsupported (unimplemented mode/auth), or ProbeFailed.
   conditions:
     - type: Ready
       status: "True"
       lastTransitionTime: 2026-04-29T10:00:00Z
-      reason: ConnectionEstablished
+      reason: Reachable
       message: "Cluster reachable, capabilities discovered"
-    - type: ConfigValid
-      status: "True"
-      lastTransitionTime: 2026-04-29T09:55:00Z
-    - type: Reachable
-      status: "True"
-      lastTransitionTime: 2026-04-29T10:00:00Z
-    - type: AuthValid
-      status: "True"
-      lastTransitionTime: 2026-04-29T10:00:00Z
-      reason: TokenAcquired
 ```
 
 ## Spec
 
 | Field                            | Type   | Required | Default    | Description                                                                                                        |
 |----------------------------------|--------|----------|------------|--------------------------------------------------------------------------------------------------------------------|
-| `connectionMode`                 | enum   | yes      | —          | `agentless` or `agent`. Selects which connection block applies. See [Connection Modes](#connection-modes).         |
+| `connectionMode`                 | enum   | yes      | —          | `inCluster`, `agentless`, or `agent`. `inCluster` + `agentless` are implemented; `agent` returns `Unsupported`.    |
 | `agentless`                      | object | one-of   | —          | Direct API-server access config (when `connectionMode: agentless`).                                                |
 | `agentless.server`               | string | yes      | —          | Target cluster's kube-apiserver URL.                                                                               |
 | `agentless.caPublicCertRef`      | object | no       | —          | Reference to the CA cert (ConfigMap) used to verify the API server's TLS cert.                                     |
-| `agentless.auth`                 | object | yes      | —          | Authentication method — discriminated union on `auth.type`. See [Authentication Methods](#authentication-methods). |
+| `agentless.auth`                 | object | yes      | —          | Authentication method — discriminated union on `auth.type`. Only `kubeconfig` is implemented. See [Authentication Methods](#authentication-methods). |
 | `agentless.connectionParameters` | object | no       | —          | Client tuning: `qps`, `burst`, `timeout`.                                                                          |
-| `agent`                          | object | one-of   | —          | Agent pull-mode config (when `connectionMode: agent`).                                                             |
-| `metadata`                       | map    | no       | —          | Free-form per-cluster metadata for templating; exposed as `{{ .Cluster.metadata.<key> }}`. String values.          |
+| `agent`                          | object | one-of   | —          | Agent pull-mode config (when `connectionMode: agent`). Not implemented.                                            |
+| `metadata`                       | map    | no       | —          | Free-form per-cluster metadata for templating; keys are flattened under `.cluster` (e.g. `{{ .cluster.<key> }}`). String values. |
 | `capabilities`                   | object | no       | discovered | Cluster capabilities (`serverSideApply`, `apiVersions`) used by the renderer. Auto-discovered if omitted.          |
 | `deletionPolicy`                 | object | no       | —          | Declarative deletion behavior. See [Deletion Policy](#deletion-policy).                                            |
 
 ## Connection Modes
 
-`spec.connectionMode` is a discriminated union. Exactly one of `spec.agentless` / `spec.agent` is set, matching the mode.
+`spec.connectionMode` is a discriminated union: `inCluster`, `agentless`, or `agent`. `inCluster` (the control plane manages its own cluster) and `agentless` are implemented; `agent` returns `Unsupported` at connect time (planned).
 
 ### agentless
 
@@ -277,41 +251,11 @@ spec:
 
 ### agent
 
-An in-cluster agent pulls desired state from the control plane and applies it locally. Used for clusters that can't be reached directly from the control plane (private/airgapped networks, egress-only connectivity).
-
-```yaml
-spec:
-  connectionMode: agent
-  agent:
-    # Token the in-cluster agent uses to register and authenticate with the control plane.
-    registrationTokenRef:
-      secretRef: { name: prod-eu-agent-registration, key: token }
-    # Optional: pin the expected agent identity to reject spoofed agents.
-    expectedAgentID: prod-eu-agent
-```
+_Planned — not implemented (returns `Unsupported`); `spec.agent` is currently an empty struct._ The design: an in-cluster agent pulls desired state from the control plane and applies it locally, for clusters that can't be reached directly (private/airgapped networks, egress-only connectivity).
 
 ## Authentication Methods
 
-`spec.agentless.auth` is a discriminated union on `auth.type`. The active method's block is set; all others are omitted.
-
-### execPlugin
-
-Delegates token acquisition to an external command (e.g. `aws eks get-token`). Best for cloud-provider auth (EKS, GKE, AKS) where token rotation is handled by the plugin.
-
-```yaml
-spec:
-  agentless:
-    auth:
-      type: execPlugin
-      execPlugin:
-        command: aws
-        args: [eks, get-token, --cluster-name, prod-eu, --region, eu-west-1]
-        env:
-          - name: AWS_PROFILE
-            value: cd-controller
-        credentialsRef:
-          secretRef: { name: aws-cd-creds }
-```
+`spec.agentless.auth` is a discriminated union on `auth.type`. The valid types are `kubeconfig`, `token`, `clientCert`, `execPlugin`, `oidc`. **Only `kubeconfig` is implemented today** — the others are defined in the API but return `Unsupported` at connect time (planned). (There is no `workloadIdentity` type.)
 
 ### kubeconfig
 
@@ -328,7 +272,7 @@ spec:
 
 ### token
 
-A static bearer token (e.g. a long-lived ServiceAccount token). Simple, but the token does not rotate automatically.
+_Planned — not implemented (returns `Unsupported`)._ A static bearer token (e.g. a long-lived ServiceAccount token). The field is `tokenRef`:
 
 ```yaml
 spec:
@@ -336,12 +280,12 @@ spec:
     auth:
       type: token
       token:
-        secretRef: { name: prod-eu-sa-token, key: token }
+        tokenRef: { name: prod-eu-sa-token, key: token }
 ```
 
 ### clientCert
 
-mTLS client-certificate authentication, for clusters configured with cert-based auth.
+_Planned — not implemented (returns `Unsupported`)._ mTLS client-certificate authentication:
 
 ```yaml
 spec:
@@ -353,20 +297,27 @@ spec:
         keyRef:  { name: prod-eu-client-cert, key: tls.key }
 ```
 
-### workloadIdentity
+### execPlugin
 
-The controller pod uses its own cloud-native identity (IRSA on EKS, Workload Identity on GKE). No static credentials are stored.
+_Planned — not implemented (returns `Unsupported`)._ Delegates token acquisition to an external command (e.g. `aws eks get-token`). `credentialsRef` is a flat `SecretReference` (`{name[, namespace]}`):
 
 ```yaml
 spec:
   agentless:
     auth:
-      type: workloadIdentity
+      type: execPlugin
+      execPlugin:
+        command: aws
+        args: [eks, get-token, --cluster-name, prod-eu, --region, eu-west-1]
+        env:
+          - name: AWS_PROFILE
+            value: cd-controller
+        credentialsRef: { name: aws-cd-creds }
 ```
 
 ### oidc
 
-OIDC client-credentials flow. The controller discovers the token endpoint via `/.well-known/openid-configuration` on the issuer and exchanges client credentials for a token. Client authentication itself is a nested discriminated union (`clientAuth.type`): `clientSecret` (shared secret, most common), `privateKeyJWT` (signed JWT assertion), or `tlsClientAuth` (mTLS).
+_Planned — not implemented (returns `Unsupported`)._ OIDC client-credentials flow. Client authentication is a nested discriminated union (`clientAuth.type`): `clientSecret`, `privateKeyJWT`, or `tlsClientAuth`. Note the JSON tag is `clientID` (not `clientId`), and the client secret nests under `clientSecret.clientSecretRef`:
 
 ```yaml
 spec:
@@ -375,11 +326,11 @@ spec:
       type: oidc
       oidc:
         issuerURL: https://auth.example.com/realms/internal
-        clientId: cd-controller
+        clientID: cd-controller
         clientAuth:
           type: clientSecret           # | privateKeyJWT | tlsClientAuth
           clientSecret:
-            secretRef: { name: oidc-client, key: client-secret }
+            clientSecretRef: { name: oidc-client, key: client-secret }
         scopes: [openid]
         audience: kube-apiserver
         # Optional TLS config for a self-signed corporate IdP:
@@ -403,73 +354,29 @@ objects will be kept in an orphaned state. Otherwise the cascade deletion will b
 | `lastSeen`              | timestamp   | Last successful contact with the cluster.                                               |
 | `discoveredVersion`     | string      | Discovered Kubernetes version (e.g. `v1.29.4`), populated on successful connection.     |
 | `discoveredAPIVersions` | []string    | API versions discovered on the cluster; used by the renderer for Helm Capabilities.     |
-| `releaseCount`          | integer     | Number of `Release` objects referencing this Cluster (deletion-impact at a glance).     |
-| `agentStatus`           | object      | Agent version / registration / heartbeat — populated only when `connectionMode: agent`. |
+| `releaseCount`          | integer     | Defined in the API but **not currently populated** by the controller.                   |
+| `agentStatus`           | object      | Defined in the API but **not currently populated** (agent mode is not implemented).     |
 | `conditions`            | []Condition | See [Conditions](#conditions).                                                          |
 
 ## Conditions
 
-`Cluster` reports the following standard k8s conditions in `status.conditions`.
+`Cluster` reports a **single** condition in `status.conditions`: `Ready`. (There are no separate `ConfigValid`/`Reachable`/`AuthValid` conditions — those are not implemented.)
 
-| Condition     | What `True` means                                                                                                                                                                              |
-|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Ready`       | Composite: the cluster is reachable, authenticated, and its capabilities/version have been discovered. The signal most tooling should watch. Requires `Reachable: True` and `AuthValid: True`. |
-| `ConfigValid` | The `spec` is internally consistent (connection mode matches the populated block, auth config is well-formed) — validated without contacting the cluster.                                      |
-| `Reachable`   | Network-level reachability of the target kube-apiserver succeeded.                                                                                                                             |
-| `AuthValid`   | The most recent authentication attempt succeeded. See [AuthValid](#authvalid) for full semantics.                                                                                              |
+| Condition | What `True` means                                                                                     | Reasons                                                                                 |
+|-----------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| `Ready`   | The controller connected to the target and its reachability/version were probed successfully.         | `Reachable` (success); `Unsupported` (mode/auth not implemented); `ProbeFailed` (connect/probe failed, including auth failures). |
 
-### AuthValid
+Reachability and discovered version are also surfaced directly in `status.reachable` / `status.discoveredVersion`. An authentication failure currently surfaces as `Ready: False` with reason `ProbeFailed` (there is no dedicated auth condition or auth-specific reason code).
 
-`AuthValid` reflects the state of authenticating to the target cluster. It is always present, even when no explicit credentials are configured.
-
-**Status semantics:**
-
-| Status    | Meaning                                                                                                     |
-|-----------|-------------------------------------------------------------------------------------------------------------|
-| `True`    | Most recent authentication attempt succeeded. Credentials are working.                                      |
-| `False`   | Most recent authentication attempt failed for an auth-specific reason. Actionable.                          |
-| `Unknown` | Authentication has not been attempted yet, OR a non-auth failure (network, timeout) prevented testing auth. |
-
-`Unknown` must not be conflated with `False`: "credentials are bad" is a different problem from "we couldn't test the credentials."
-
-**Reason codes:**
-
-| Status    | Reason                   | Meaning                                                                           |
-|-----------|--------------------------|-----------------------------------------------------------------------------------|
-| `True`    | `TokenAcquired`          | Succeeded via explicit token acquisition (execPlugin, workload identity, OIDC).   |
-| `True`    | `CredentialsAccepted`    | Succeeded with simple credentials (token, client cert, kubeconfig).               |
-| `False`   | `InvalidCredentials`     | Credentials rejected by the cluster (401-class).                                  |
-| `False`   | `TokenAcquisitionFailed` | OIDC or workload-identity token exchange failed.                                  |
-| `False`   | `SecretNotFound`         | Referenced Secret or ConfigMap does not exist.                                    |
-| `False`   | `SecretMalformed`        | Secret exists but content is invalid (bad base64, wrong format, missing keys).    |
-| `False`   | `PermissionDenied`       | Credentials valid but lack required permissions (403-class).                      |
-| `False`   | `TokenExpired`           | Known-expired token; refresh attempt failed.                                      |
-| `False`   | `AuthMisconfigured`      | Config error detected without contacting the cluster (e.g. invalid issuer URL).   |
-| `Unknown` | `NotYetAttempted`        | Cluster is new; auth has not yet been tested.                                     |
-| `Unknown` | `RemoteUnreachable`      | Could not contact the cluster to test auth (network, DNS, firewall).              |
-
-**Triage with `Reachable`:**
-
-| `Reachable` | `AuthValid` | Action                                                                              |
-|-------------|-------------|-------------------------------------------------------------------------------------|
-| `False`     | `Unknown`   | Fix network, DNS, firewall, or API-server availability.                             |
-| `True`      | `False`     | Fix credentials or auth configuration.                                              |
-| `True`      | `True`      | If `Ready: False`, look beyond auth (capability discovery, rate limits).            |
-
-`AuthValid: False` always forces `Ready: False`, with `Ready.reason: AuthFailed`.
-
-**Example — workload identity success:**
+**Example:**
 
 ```yaml
 status:
+  reachable: true
+  discoveredVersion: v1.29.4
   conditions:
     - type: Ready
       status: "True"
-      reason: ConnectionEstablished
-    - type: Reachable
-      status: "True"
-    - type: AuthValid
-      status: "True"
-      reason: TokenAcquired
-      message: "EKS GetToken succeeded via IRSA role arn:aws:iam::123456789012:role/cd-eks-deployer"
+      reason: Reachable
+      message: "Cluster reachable, capabilities discovered"
 ```

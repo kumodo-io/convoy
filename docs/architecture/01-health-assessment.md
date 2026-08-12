@@ -22,7 +22,7 @@
 
 This document covers where health assessment runs, how agents communicate with the control plane, and how memory is bounded across the system. It complements the Health Assessment design document, which describes *what* health assessment does (rules, states, aggregation, status shape).
 
-> **Status: planned — none of this is built yet.** This document describes the **target execution architecture** for health assessment and **agent-mode** delivery. Today the delivery path is control-plane **PUSH** only: the Release controller (in `convoy-controller-manager`) fetches, renders, and applies directly to the target cluster. There is no observer, no agent-manager, no agent (PULL) mode, no content proxying, and no health evaluation — `KindHealthRule` and `ResourceHealthRule` are served by the API server, but nothing evaluates them yet. **Read the whole document as a design proposal:** the components and mechanisms below describe what *would* be built, not what exists.
+> **Status: partially built.** The **observer** and its **health-assessor loop** exist today in control-plane **PUSH** mode (`convoy-observer`): it evaluates the `GlobalHealthRuleSet`/`HealthRuleSet` rules a Release selects against live resources, records per-resource state on the `ReleaseInventory`, and serves results via the `/health` subresource. What remains **planned** is everything about **agent-mode (PULL)** delivery: the agent-manager, the in-cluster agent, content proxying, and the memory-bounding/sharding mechanisms. Read the agent-mode components and protocols below as a design proposal; the push-mode observer and health evaluation are real.
 >
 > **Terminology note (this doc's "executor" vs. the current component model).** This document predates the component model in [00-overview](00-overview.md#target-evolution-planned). Rendering is always central (controller-manager); only *apply* and *observe* move by `connectionMode`. There is no single "executor" — the responsibilities the "executor" describes below map onto distinct components:
 > - **Deploy** — controller-manager (push) or the in-cluster **agent** (pull).
@@ -32,7 +32,7 @@ This document covers where health assessment runs, how agents communicate with t
 
 ## Component Model
 
-_Status: planned. Today only the PUSH path exists (the Release controller renders and applies inline); the observer, agent-manager, and agent do not exist._
+_Status: the observer (push mode) with its drift + health-assessor loops is built. The agent-manager and in-cluster agent (PULL mode) do not exist yet._
 
 The design has two roles that move by `Cluster.spec.connectionMode` — **deploy** (apply desired state) and **observe** (drift detection + health assessment) — while rendering stays central in the controller-manager.
 
@@ -43,7 +43,7 @@ The design has two roles that move by `Cluster.spec.connectionMode` — **deploy
 The **observe** loops are identical code in both topologies; only their deployment and how they reach the cluster differ (central + remote credentials vs. in-cluster + ServiceAccount). Each loop is a distinct responsibility:
 
 - **Drift-detector loop** — compares live managed-resource state against the desired render; on drift, requests a reconcile so the applier re-applies.
-- **Health-assessor loop** — watches managed resources and evaluates them against health rules (built-in + `KindHealthRule` + `ResourceHealthRule`), aggregating verdicts into `Release.status.health`.
+- **Health-assessor loop** — reads the managed resources recorded on the `ReleaseInventory`, evaluates each against the CEL rules of the `GlobalHealthRuleSet`/`HealthRuleSet` sets the Release selects, records per-resource state back on the `ReleaseInventory`, and aggregates the verdict into the Release's `Healthy` condition + `status.healthSummary`.
 
 Colocating the two loops lets them share an in-process live-state cache and the target-cluster connection; keeping them logically separate preserves their distinct inputs (drift needs the desired render; health needs only live state + rules) and cadence.
 
@@ -226,7 +226,7 @@ A fleet can have a mix of `agentless` and `agent` Clusters. The control plane di
 - For `agentless` clusters: included in the central executor's scope
 - For `agent` clusters: serves sync requests from the in-cluster agents
 
-No coordination needed between the two modes; they operate independently and produce the same `Release.status.health` updates.
+No coordination needed between the two modes; they operate independently and produce the same `Healthy`-condition + `status.healthSummary` updates (with per-resource state on the `ReleaseInventory`).
 
 ## What's Deferred to Phase 4
 
