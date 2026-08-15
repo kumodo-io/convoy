@@ -61,8 +61,8 @@ The rule everywhere: **act only while holding a valid lease, renew before acting
 
 ## Filtering to owned shards
 
-- **Compute-time filter** (start here) — the informer watches all objects; the reconciler early-returns for clusters it doesn't own (`if !ownsShard(cluster) { return }`). Simplest; matches Argo CD. Ceiling: the all-objects informer cache memory at very large fleets.
-- **Label-selector filter** (scale further) — label Releases/Clusters with their shard and give each replica a label-selector informer, so the cache holds only owned objects. Costs a labeler and re-labels when `S` changes. Add only if the all-objects cache becomes the bottleneck.
+- **Compute-time filter** (implemented) — the informer watches all objects; the reconciler early-returns for clusters it doesn't own (`if !ownsShard(cluster) { return }`). Simplest; matches Argo CD. It splits reconcile *work* but not *memory*: every replica still caches all objects, so per-replica memory is `O(total)` regardless of replica count. Ceiling: the all-objects informer cache at very large fleets (10k–50k Releases).
+- **Label-selector filter** (planned) — a content-derived shard label lets each replica watch only its shards, so the cache holds only owned objects and per-replica memory becomes `O(total / N)`. This is designed in [Shard-Scoped Caches](05-shard-scoped-caches.md); it's the path to make memory scale with replicas.
 
 ## Interplay with storage
 
@@ -84,7 +84,7 @@ Sharding composes cleanly with [Persistent Storage](03-persistent-storage.md) pr
 2. `S` shard `Lease`s per component; fair-share acquisition/renewal loop with atomic acquire.
 3. `ownsShard(cluster)` gate in the Release/Cluster reconcilers (compute-time filter); source-object sharding by source UID.
 4. Idempotency guards on history-append / `/sync` / hook-arming; ownership-partitioned GC.
-5. *(scale-further)* label-selector informers.
+5. *(scale-further)* label-selector informers — [Shard-Scoped Caches](05-shard-scoped-caches.md), the path to `O(total / N)` per-replica memory.
 
 ## Required follow-ups (not yet built)
 
