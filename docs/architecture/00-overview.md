@@ -13,7 +13,7 @@ convoy's design responses (see [Implementation Status](#implementation-status) f
 
 - A **composable rendering pipeline** — source, render (`manifests`/`helm` today; kustomize/jsonnet/cue planned), and an ordered **mutation** stage (implemented) kept independent.
 - **Server-Side Apply** as the deploy mechanism (implemented); `ignoreFields` mapping to SSA field ownership (planned).
-- **External (S3) artifact/state storage** (planned) — no Helm release Secrets, with built-in history/versioning.
+- **External (object-store) render/state storage** (planned) — no Helm release Secrets; content-addressed render snapshots unlock history and rollback (see [Persistent Storage](03-persistent-storage.md)).
 - **First-class API subresources** for operations — `/pin`, `/sync`, `/mutations`, `/lifecycle`, `/preview`, `/diff`, and `/health` implemented; `/history` and source `/sync`/`/webhooks` planned.
 - A move toward **decoupled components** (apiserver / controller-manager / observer / agent-manager / agent); today all controllers run in the controller-manager with render and apply combined in the Release controller.
 
@@ -43,7 +43,7 @@ The core delivery path works end to end: Git, Helm, and OCI sources are fetched,
 
 **Planned (described below, not built yet)**
 
-- External (S3) state storage, history, and versioning — the artifact store is in-memory only today. This gates render **history**, **rollback**, and historical **diff**; it does **not** gate current-render diff/drift or freeze-pin (see [External State Storage](#external-state-storage)).
+- External (object-store) render storage and history — renders are not persisted today. This gates render **history**, **rollback**, and historical **diff**; it does **not** gate current-render diff/drift or freeze-pin (see [Persistent Storage](03-persistent-storage.md)).
 - The remaining subresources: `/history` on `Release`, and `/sync`/`/webhooks` on the source kinds.
 - The `agent` (pull) connection mode — delivery is control-plane **push** only today.
 - Remaining source-fetch auth methods (`githubApp`/`oidc`/`cloudIdentity`/`dockerConfig` return `Unsupported`; Git `basic`/`token`/`sshKey` and Helm/OCI `basic`/`token` are built), Git `semver` refs, the `helm` `resolve` dependency mode, and the `kustomize`/`jsonnet` content types (`cue` is not a content type).
@@ -58,7 +58,7 @@ The core delivery path works end to end: Git, Helm, and OCI sources are fetched,
 Rendering is treated as a pipeline:
 
 ```
-Source → Render → Apply mutations → Artifact (stored in S3)
+Source → Render (+ mutations) → Persist render → Apply
 ```
 
 Each stage is independent and composable. Multiple source types and mutation mechanisms are supported without coupling them to the deploy mechanism.
@@ -78,18 +78,17 @@ _Status: implemented (the Release controller applies via SSA with field manager 
 
 ### External State Storage
 
-_Status: planned. Today controllers share a single in-memory artifact store — no S3, history, versioning, or filesystem cache. It is lost on restart and repopulated on the next reconcile._
+_Status: planned. Today controllers share a single in-memory artifact store and renders are not persisted at all — no object store, no history. It is lost on restart and repopulated on the next reconcile._
 
 > **What storage does and does not gate.** External storage gates only the features that need a **durable record of past renders**: render **history**, **rollback**, and **diff against a previous/historical render**. It does **not** gate current-render operations — current-render diff/drift (render-on-demand + live read + SSA `dryRun`) and **freeze-pin** (holds the render already produced) are all buildable without it. This is why freeze-pin and the observer's current-render path ship ahead of the storage backend.
 
-Rendered artifacts and deployed state are stored in S3-compatible storage, not in etcd. This provides:
+Rendered manifest sets are stored in an S3-compatible object store, not in etcd, **scoped per Release** (`<namespace>/<name>/`): immutable `blobs/<renderRef>` (content-addressed by the render's `sha256`) plus an ordered `history/` deploy-log. The store is the **authoritative, self-contained render history**; etcd holds only the *current* `renderRef` pointer (`status.lastSuccessful`), never a history list. This provides:
 
 - No Helm release Secrets — no object size limit.
-- Built-in history and versioning (S3 object versioning).
-- Natural rollback and historical-diff support (freeze-pin and current-diff do not depend on it).
-- Multi-cluster state in a single store (namespaced by cluster).
+- Render history and rollback, and diff against a previous render.
+- Multi-cluster renders in a single store.
 
-Controllers cache state on local filesystem after writing to S3. On restart, state is hydrated from S3.
+The write path is an invariant: **persist the render, then apply** — a render that reaches a cluster is always in the store first, so live state and recorded history cannot diverge. Source bytes are never persisted (the render is the frozen artifact of record). Full design in [Persistent Storage](03-persistent-storage.md).
 
 **Fetch flow and the artifact store.** Source content is **content-addressed**: the store is keyed by `(normalized repo URL, resolved revision)`, so identical content is held once and shared across Releases — regardless of which `GitRepository` referenced it. Access is gated at consume time by the referencing `GitRepository` being `Ready` (its credentials verified against that URL), so shared content is only reachable through a source that has proven access. Fetching is demand-driven: a `Release` asks a **fetch coordinator** to ensure `(source, ref)` is resolved and present, then reads the artifact by revision; the coordinator resolves the ref, fetches once (deduping concurrent requests), and writes to the store. The coordinator is an interface — in-process today, swappable for an out-of-process transport (gRPC/bus) later without touching the controllers.
 
@@ -343,21 +342,22 @@ _Status: none. An earlier design proposed `SourceSyncRequest`/`ReleaseSyncReques
 
 ---
 
-## Storage Layout (S3)
+## Storage Layout (object store)
 
-_Status: planned. No external storage today; the artifact store is in-memory._
+_Status: planned. No external storage today; renders are not persisted._
+
+Layout is **scoped per Release** and content-addressed — no object-store versioning. Each release has immutable `blobs/<renderRef>` (keyed by the render's `sha256`) and an append-only, ordered `history/` deploy-log. The store is the **authoritative render history** — it answers history / historical-diff / rollback on its own; etcd holds only the *current* `renderRef` pointer, never a history list.
 
 ```
-{bucket}/
-  {cluster-id}/
-    rendered/
-      {release-name}/
-        {content-hash}.yaml       # rendered+mutated artifact
-    state/
-      {release-name}/
-        current.yaml              # last successfully deployed state
-        {timestamp}.yaml          # historical versions (via S3 versioning)
+{bucket}/{prefix}/
+  <namespace>/<name>/
+    blobs/
+      <renderRef>                     # immutable, content-addressed render content
+    history/
+      <sortable-ts>-<renderRef>.json  # ordered deploy-log entry → points at a blob
 ```
+
+Full design — keying, the persist-then-apply invariant, retention/GC, config, and security — in [Persistent Storage](03-persistent-storage.md).
 
 ---
 
