@@ -1,6 +1,6 @@
 # Shard-Scoped Caches
 
-> **Status: planned / design.** [Sharding & High Availability](04-sharding.md) splits *reconcile work* across replicas but not *memory*: today each replica's informers `LIST + WATCH` every object and cache the whole set, filtering ownership only at reconcile time. So per-replica memory is `O(total objects)` **regardless of replica count** — adding replicas does not reduce it. At 10k–50k Releases that becomes the binding constraint. This document designs **shard-scoped informers** so each replica caches only the objects for the shards it owns, making per-replica memory `≈ O(total / N)` — a knob you tune with replica count. For the concrete sizing formulas (per-replica limits, when to scale, the object-count ceiling), see [Sharding § Capacity planning](04-sharding.md#capacity-planning).
+> **Status: implemented** (`internal/scopedinformers`, behind `--shard-scoped-cache`; default off). [Sharding & High Availability](04-sharding.md) splits *reconcile work* across replicas but not *memory*: with full caches each replica's informers `LIST + WATCH` every object and cache the whole set, filtering ownership only at reconcile time. So per-replica memory is `O(total objects)` **regardless of replica count** — adding replicas does not reduce it. At 10k–50k Releases that becomes the binding constraint. This document describes **shard-scoped informers** so each replica caches only the objects for the shards it owns, making per-replica memory `≈ O(total / N)` — a knob you tune with replica count. For the concrete sizing formulas (per-replica limits, when to scale, the object-count ceiling), see [Sharding § Capacity planning](04-sharding.md#capacity-planning).
 
 ## The two partitions
 
@@ -92,6 +92,26 @@ Unchanged: the lease coordinator, member + shard leases, striped fair-share assi
 
 - **Informer shape — one set-selector informer per kind, rebuilt on ownership change** (`shard in (owned…)`). Chosen over one-informer-per-shard because it holds only ~3 watch connections per replica regardless of shards owned, and its one cost — re-`LIST`ing all owned shards when the set changes — falls only on *rebalances*, which are rare (a replica added/removed/crashed). Per-shard informers would invert that: cheap rebalances but up to `owned-shards × kinds` (≈96 at `N=1`) constant watch connections. The rebuild is encapsulated in a "shard-scoped informer set" helper (build-new → sync → swap listers → stop-old) so controllers don't see the churn.
 
+## Implementation notes
+
+The mechanism lives in `internal/scopedinformers`: a `Set` holds one filtered
+`SharedInformerFactory` and hands out stable typed facades (`Releases`,
+`Clusters`, `ReleaseInventories`) that the controllers and the inventory store
+wire once. On an ownership change the coordinator's `OnChange` calls `Rebuild`,
+which builds a fresh factory with the new `shard in (owned…)` selector, replays
+the recorded indexers + event handlers, syncs it, atomically swaps the backing
+informers, and stops the previous factory (build → sync → swap → stop-old). A
+`swappableInformer` facade records/replays handlers so `base.Controller` needs no
+changes. `--shard-scoped-cache` (both managers, default off) picks the mode:
+off installs no selector (full cache, unchanged behaviour); on scopes the three
+per-Release kinds. Sources and rule sets always stay full.
+
+Verified live (kind, `N=2`): the two controller-manager replicas issue disjoint
+`shard in (…)` `LIST/WATCH` selectors for all three scoped kinds; on failover the
+survivor's `OnChange` rebuilds with a widened selector that absorbs the dead
+replica's shards, and the Release returns to a cache without any relabel.
+
 ## Open decisions
 
-- **Cluster informer scope** — shard-scoped (recommended, co-located) vs. full (if the cluster count stays small enough that it doesn't matter).
+- **Cluster informer scope** — resolved: shard-scoped (co-located with the
+  Releases that target it), consistent with the table above.

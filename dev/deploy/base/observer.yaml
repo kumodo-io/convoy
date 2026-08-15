@@ -104,6 +104,9 @@ spec:
             - --resync=2m
             - --workers=2
             - --serve-addr=:8080
+            # Shard-scoped caches: each replica caches only its owned shards'
+            # Releases/ReleaseInventories/Clusters (memory scales with replica count).
+            - --shard-scoped-cache
           # Sharding identity: replica-id and lease-namespace resolve from these.
           env:
             - name: POD_NAME
