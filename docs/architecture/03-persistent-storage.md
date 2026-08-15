@@ -6,15 +6,15 @@
 
 The instinct is to treat "convoy state" as one thing that either survives restart or doesn't. It isn't. Convoy already has a durable backend — **etcd**, via the aggregated API server — and most of its state lives there. Disaggregating the state shows how small the actual gap is:
 
-| State                                                             | Source of truth             | Durable today? | Where it belongs                             |
-|-------------------------------------------------------------------|-----------------------------|----------------|----------------------------------------------|
-| Desired state (`Release`/`Cluster`/sources/rule sets)             | the API object              | ✅ etcd        | etcd — solved                                |
-| Applied inventory + per-resource health (`ReleaseInventory`)      | the API object              | ✅ etcd        | etcd — solved                                |
-| Fetched source artifacts (Git/chart bytes)                        | **upstream** (Git/registry) | ❌ in-memory   | a **cache** — never persisted (re-fetchable) |
-| **Rendered manifest snapshots** (the bytes `renderRef` hashes)    | **nothing** — recomputed    | ❌ not stored  | the **object store** — the real gap          |
-| Runtime state (informer caches, work queues, in-flight reconcile) | derivable from etcd         | ❌ (by design) | **never persist** — rebuilt on start         |
+| State                                                             | Source of truth                               | Durable?                    | Where it belongs                                   |
+|-------------------------------------------------------------------|-----------------------------------------------|-----------------------------|----------------------------------------------------|
+| Desired state (`Release`/`Cluster`/sources/rule sets)             | the API object                                | ✅ etcd                     | etcd — solved                                      |
+| Applied inventory + per-resource health (`ReleaseInventory`)      | the API object                                | ✅ etcd                     | etcd — solved                                      |
+| Fetched source artifacts (Git/chart bytes)                        | **upstream** (Git/registry)                   | ❌ in-memory                | a **cache** — never persisted (re-fetchable)       |
+| **Rendered manifest snapshots** (the bytes `renderRef` hashes)    | the **render store** (or recomputed, if none) | ◑ **opt-in** — this backend | the **object store** — the gap this backend closes |
+| Runtime state (informer caches, work queues, in-flight reconcile) | derivable from etcd                           | ❌ (by design)              | **never persist** — rebuilt on start               |
 
-So the durable-storage question reduces to one thing: **persist render snapshots.** Everything else is already on etcd, or a re-fetchable cache, or ephemeral by design.
+So the durable-storage question reduced to one thing: **persist render snapshots** — which this backend does, behind `--render-store-url` (empty ⇒ renders are still recomputed, as before). Everything else is already on etcd, or a re-fetchable cache, or ephemeral by design.
 
 Two consequences settle the shape of this design:
 
