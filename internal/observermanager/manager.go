@@ -230,6 +230,10 @@ func (o *Options) Run(ctx context.Context) error {
 	// both loops (informer ADDs cover the initial set; this handles rebalances).
 	coord.OnChange(func() {
 		// Re-point the shard-scoped caches to the newly-owned shards before enqueuing.
+		// Runs inline on the coordinator's tick goroutine and blocks on the cache
+		// sync, so it delays the next lease renewal by the sync duration — acceptable
+		// because ownership changes are rare and the delay is bounded under the lease
+		// slack (see the controller-manager for the full rationale).
 		if err := scoped.Rebuild(ctx, coord.OwnedShards()); err != nil {
 			klog.ErrorS(err, "rebuilding shard-scoped informers on ownership change")
 		}

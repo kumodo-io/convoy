@@ -61,6 +61,15 @@ import (
 // promotion; only the methods needing record/replay (AddEventHandler,
 // AddIndexers) or lock-guarded, nil-safe access to the current backing
 // (GetIndexer, HasSynced) are overridden.
+//
+// Concurrency contract: only the overridden methods are safe to call
+// concurrently with a Rebuild (they read/write the backing under mu). The
+// promoted methods read the embedded field unsynchronized, so they must not be
+// called while a Rebuild may swap the backing. That holds by construction here:
+// this facade is consumed only as a typed informer's Informer()/Lister(), whose
+// callers touch exactly AddEventHandler, AddIndexers, GetIndexer, and HasSynced
+// (via the listers) — never Run (the real factory runs the backing) or the other
+// promoted methods. Widen the overrides before exposing more of the surface.
 type swappableInformer struct {
 	mu sync.RWMutex
 	// SharedIndexInformer is the current backing informer (nil until the first

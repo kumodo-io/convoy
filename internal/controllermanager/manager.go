@@ -286,6 +286,13 @@ func (o *Options) Run(ctx context.Context) error {
 	coord.OnChange(func() {
 		// Re-point the shard-scoped caches to the newly-owned shards first, so the
 		// enqueue below (and subsequent reconciles) read the correct cache.
+		//
+		// This runs inline on the coordinator's tick goroutine and blocks on the new
+		// informers' cache sync, so it delays the next member-lease renewal by the
+		// sync duration. Acceptable because ownership changes are rare (a replica
+		// joining/leaving) and the delay is bounded well under the lease-duration
+		// slack; a wedged apiserver here would stall renewal, but it would equally
+		// stall all reconciliation, and the compute-time gate keeps correctness.
 		if err := scoped.Rebuild(ctx, coord.OwnedShards()); err != nil {
 			klog.ErrorS(err, "rebuilding shard-scoped informers on ownership change")
 		}
