@@ -107,25 +107,52 @@ Because the blob is written in step 2 but only referenced — by the current poi
 
 ## Configuration & credentials
 
-"S3-compatible" means an endpoint override plus a path-style toggle, so one implementation serves AWS S3, MinIO, Ceph RGW, Cloudflare R2, and GCS (S3 mode):
+The store is selected by a single flag, `--render-store-url`, on every component that
+touches it — a [gocloud.dev/blob](https://gocloud.dev) URL whose scheme picks the
+backend and whose query parameters carry backend options. One S3 implementation
+serves AWS S3, MinIO, Ceph RGW, Cloudflare R2, and GCS-in-S3-mode via an endpoint
+override plus a path-style toggle; GCS and Azure have native schemes.
 
-```yaml
-store:
-  backend: objectstore          # | memory
-  objectstore:
-    endpoint: s3.amazonaws.com  # or minio.internal:9000
-    bucket: convoy-renders
-    region: eu-west-1
-    prefix: prod/               # optional isolation for multiple convoy instances on one bucket
-    forcePathStyle: false       # true for MinIO / Ceph
-    tls: { insecureSkipVerify: false }
-    sse: aws:kms                # server-side encryption (see Security)
-    credentials:                # exactly one:
-      secretRef: { name: convoy-s3 }   # accessKeyID / secretAccessKey
-      # cloudIdentity: {}              # ambient IRSA / GKE WI / AKS — no static keys
-```
+| Backend                         | Example `--render-store-url`                                                                            |
+|---------------------------------|--------------------------------------------------------------------------------------------------------|
+| AWS S3                          | `s3://convoy-renders?region=eu-west-1`                                                                  |
+| S3-compatible (MinIO/Ceph/R2)   | `s3://convoy-renders?endpoint=http://minio:9000&region=us-east-1&use_path_style=true&disable_https=true&hostname_immutable=true` |
+| GCS (native)                    | `gs://convoy-renders`                                                                                   |
+| Azure Blob (native)             | `azblob://convoy-renders`                                                                               |
+| Filesystem (PVC / single-node)  | `file:///var/lib/convoy/renders?create_dir=true&no_tmp_dir=true`                                        |
+| In-memory (dev only)            | `mem://`                                                                                                |
 
-Credentials mirror the cluster-auth direction: a **Secret**, or **ambient cloud identity** (no static keys). Never keys in flags.
+An empty flag disables persistence — renders are not stored and the time-travel
+features stay gated. There is no `prefix` parameter; isolate multiple convoy
+instances by giving each its own bucket. (`file://` needs `no_tmp_dir=true` on a
+mounted volume: otherwise fileblob writes a temp file under `$TMPDIR` and renames
+into place, which fails cross-device against the PVC.)
+
+**Credentials are ambient to the pod, not convoy configuration.** Convoy has no
+credential block and no `credentials:` field — gocloud opens the bucket through the
+cloud SDK's *default credential chain*, so the operator grants the pod access by the
+platform's normal means and gocloud picks it up:
+
+| Backend   | Credential-free (recommended)                              | Static fallback                                             |
+|-----------|------------------------------------------------------------|------------------------------------------------------------|
+| S3        | **IRSA** on EKS (ServiceAccount → IAM role; projected token) | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` env (from a Secret) |
+| GCS       | **GKE Workload Identity** (KSA → GSA)                       | `GOOGLE_APPLICATION_CREDENTIALS` → a mounted key file       |
+| Azure     | **AAD Workload Identity** / managed identity               | `AZURE_STORAGE_ACCOUNT` + `AZURE_STORAGE_KEY` (or a SAS) env |
+| file/mem  | — (no credentials)                                         | —                                                          |
+
+Prefer **workload identity** in production: the pod carries no long-lived secret and
+access is an IAM/role binding on the component's ServiceAccount. Static keys via a
+mounted Secret are the simple/dev path (what the `storage-minio` dev overlay uses).
+Either way, credentials are wired at the pod — env vars, a mounted file, or the
+ServiceAccount identity — and never passed to convoy as flags or embedded in
+`--render-store-url`.
+
+**Every component that opens the store needs this access.** Today that is the
+**controller-manager** (the write path — the only store consumer wired so far). When
+the read features land (`/history`, rollback validation, historical `/diff`), the
+**observer** and the **aggregated apiserver** open the same bucket too, so the
+identity/credentials must be granted to all three ServiceAccounts — scoped
+least-privilege to the bucket (see [Security](#security)).
 
 ## Topology & scaling
 
@@ -141,7 +168,7 @@ Compute is partitioned by **cluster shard** — see [Sharding & High Availabilit
 
 Rendered manifests can contain whatever the source produced — including inline `Secret` objects. The render store may therefore hold sensitive data. Accordingly:
 
-- **Server-side encryption** (SSE-S3 or SSE-KMS), a **private** bucket, and a **least-privilege** IAM policy scoped to the prefix.
+- **Server-side encryption** (SSE-S3 or SSE-KMS), a **private** bucket, and a **least-privilege** IAM policy (or workload-identity role) scoped to the bucket — granted to each component's ServiceAccount (see [Configuration & credentials](#configuration--credentials)).
 - Access is via convoy's own identity, never the end user's — a tenant cannot reach the bucket directly, so tenant isolation is enforced at convoy's layer. A single shared bucket across namespaces is acceptable for v1; per-tenant prefixes/buckets are a later refinement.
 - Convoy's stated non-goal is that secrets come from a secrets manager (External Secrets / Vault) rather than being rendered inline — but the store must be treated as sensitive regardless, since it cannot enforce that.
 
