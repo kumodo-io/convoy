@@ -6,13 +6,13 @@
 
 The instinct is to treat "convoy state" as one thing that either survives restart or doesn't. It isn't. Convoy already has a durable backend — **etcd**, via the aggregated API server — and most of its state lives there. Disaggregating the state shows how small the actual gap is:
 
-| State | Source of truth | Durable today? | Where it belongs |
-|-------|-----------------|----------------|------------------|
-| Desired state (`Release`/`Cluster`/sources/rule sets) | the API object | ✅ etcd | etcd — solved |
-| Applied inventory + per-resource health (`ReleaseInventory`) | the API object | ✅ etcd | etcd — solved |
-| Fetched source artifacts (Git/chart bytes) | **upstream** (Git/registry) | ❌ in-memory | a **cache** — never persisted (re-fetchable) |
-| **Rendered manifest snapshots** (the bytes `renderRef` hashes) | **nothing** — recomputed | ❌ not stored | the **object store** — the real gap |
-| Runtime state (informer caches, work queues, in-flight reconcile) | derivable from etcd | ❌ (by design) | **never persist** — rebuilt on start |
+| State                                                             | Source of truth             | Durable today? | Where it belongs                             |
+|-------------------------------------------------------------------|-----------------------------|----------------|----------------------------------------------|
+| Desired state (`Release`/`Cluster`/sources/rule sets)             | the API object              | ✅ etcd        | etcd — solved                                |
+| Applied inventory + per-resource health (`ReleaseInventory`)      | the API object              | ✅ etcd        | etcd — solved                                |
+| Fetched source artifacts (Git/chart bytes)                        | **upstream** (Git/registry) | ❌ in-memory   | a **cache** — never persisted (re-fetchable) |
+| **Rendered manifest snapshots** (the bytes `renderRef` hashes)    | **nothing** — recomputed    | ❌ not stored  | the **object store** — the real gap          |
+| Runtime state (informer caches, work queues, in-flight reconcile) | derivable from etcd         | ❌ (by design) | **never persist** — rebuilt on start         |
 
 So the durable-storage question reduces to one thing: **persist render snapshots.** Everything else is already on etcd, or a re-fetchable cache, or ephemeral by design.
 
@@ -25,12 +25,12 @@ Two consequences settle the shape of this design:
 
 A persistent backend flips exactly one capability — call it `PersistsRenders()` — which ungates the operations that need a durable record of a *past* render. Everything else works identically with or without it.
 
-| Works with the in-memory store | Needs a persistent store |
-|--------------------------------|--------------------------|
-| freeze `/pin` (hold current render) & unpin | rollback `/pin` (apply a **previous** render) |
-| `/preview`, current-render `/diff` (render-on-demand vs. live) | `/diff` against a pinned/historical render |
-| drift detection + self-heal | `/history` + retention |
-| health assessment, lifecycle hooks | orphan/extra-object drift *(durable per-revision inventory)* |
+| Works with the in-memory store                                 | Needs a persistent store                                     |
+|----------------------------------------------------------------|--------------------------------------------------------------|
+| freeze `/pin` (hold current render) & unpin                    | rollback `/pin` (apply a **previous** render)                |
+| `/preview`, current-render `/diff` (render-on-demand vs. live) | `/diff` against a pinned/historical render                   |
+| drift detection + self-heal                                    | `/history` + retention                                       |
+| health assessment, lifecycle hooks                             | orphan/extra-object drift *(durable per-revision inventory)* |
 
 The boundary is precise: **"does this operation need *content* from a past render?"** Freeze-pin does not — it is *compare-and-hold*: it holds the render already applied and, on a spec change, withholds the apply rather than re-applying stored bytes, so it only needs the `renderRef` (which lives in etcd), never the content. Rollback does need the content, because it re-applies a past render that may not re-render identically. That single distinction is why freeze-pin ships on the in-memory tier and rollback is gated behind this backend.
 
@@ -65,10 +65,10 @@ Renders are **scoped to the owning Release** and split into two prefixes — imm
       <sortable-ts>-<renderRef>.json  # append-only ORDERED deploy log → { renderRef, syncedAt, resolved-inputs summary }
 ```
 
-| Key | Content | Written | Mutability |
-|-----|---------|---------|------------|
-| `<ns>/<name>/blobs/<renderRef>` | the rendered manifest set (exactly what `renderRef` hashes) | on each new render (persist-then-apply) | immutable |
-| `<ns>/<name>/history/<ts>-<renderRef>.json` | a deploy-event record pointing at a blob | only when the deployed render **changes** | immutable |
+| Key                                         | Content                                                     | Written                                   | Mutability |
+|---------------------------------------------|-------------------------------------------------------------|-------------------------------------------|------------|
+| `<ns>/<name>/blobs/<renderRef>`             | the rendered manifest set (exactly what `renderRef` hashes) | on each new render (persist-then-apply)   | immutable  |
+| `<ns>/<name>/history/<ts>-<renderRef>.json` | a deploy-event record pointing at a blob                    | only when the deployed render **changes** | immutable  |
 
 The **object store is the authoritative, self-contained history** — it answers every historical query on its own:
 
