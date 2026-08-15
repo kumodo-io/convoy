@@ -23,7 +23,7 @@ Two consequences settle the shape of this design:
 
 ## What storage gates (and what it doesn't)
 
-A persistent backend flips exactly one capability — call it `PersistsRenders()` — which ungates the operations that need a durable record of a *past* render. Everything else works identically with or without it.
+A persistent backend flips exactly one thing — whether a render store is configured — which ungates the operations that need a durable record of a *past* render. Everything else works identically with or without it. (The write path — persist-then-apply and the history log — is implemented; the read features in the right-hand column are slice 5, still pending.)
 
 | Works with the in-memory store                                 | Needs a persistent store                                     |
 |----------------------------------------------------------------|--------------------------------------------------------------|
@@ -36,33 +36,35 @@ The boundary is precise: **"does this operation need *content* from a past rende
 
 ## The store seam
 
-The store is a byte-level, content-addressed interface with pluggable backends. The current `artifact.Store` (`Put(key, Artifact)` / `Get(key) (Artifact, bool)`, in-memory only) evolves into a network-capable form (context + error), with typed wrappers over it:
+The store is a byte-level, content-addressed interface (`internal/blobstore`) with pluggable backends. It is a **new** package, separate from the source-artifact cache: the existing `artifact.Store` (`Put(key, Artifact)` / `Get(key) (Artifact, bool)`, in-memory) is untouched and stays a pure fetch optimization. `BlobStore` is deliberately minimal — dumb key→bytes CRUD — so a backend implements five methods and all render semantics layer above it:
 
 ```go
 type BlobStore interface {
-    Put(ctx context.Context, key string, r io.Reader) error   // content-addressed ⇒ idempotent
-    Get(ctx context.Context, key string) (io.ReadCloser, bool, error)
-    Delete(ctx context.Context, key string) error
-    List(ctx context.Context, prefix string) ([]string, error) // for GC
-    PersistsRenders() bool                                     // the capability flag above
+    Put(ctx context.Context, key string, data []byte) error      // content-addressed ⇒ idempotent
+    Get(ctx context.Context, key string) ([]byte, error)         // ErrNotFound if absent
+    Exists(ctx context.Context, key string) (bool, error)
+    List(ctx context.Context, prefix string) ([]string, error)   // ordered; for history + GC
+    Delete(ctx context.Context, key string) error                // idempotent
 }
 ```
 
-- **Backends:** `memory` (today; `PersistsRenders()=false`) and `objectstore` (this design; `=true`). Selected by configuration at both construction sites (`controllermanager` and `observermanager`).
-- **Typed helpers** marshal over the byte store: a `RenderStore` (`Put(ctx, renderRef, manifests)` / `Get(ctx, renderRef)`) for render snapshots, and the existing artifact cache (now context-aware) for source bytes.
-- The `PersistsRenders()` flag is the single source of truth for gating: admission/validation rejects the time-travel operations when it is `false`, and the CLI reads it to surface the same message before a user tries.
+- **Backends:** an in-process `NewMemory()` (dev / tests / the mock double) and a gocloud-backed impl opened from a URL (`blobstore.Open(ctx, url)`) — see [Configuration & credentials](#configuration--credentials). gocloud is the *only* place a concrete cloud SDK is referenced; everything above `BlobStore` mocks it. Anything gocloud can't serve is just another `BlobStore` impl.
+- **`RenderStore`** (`internal/renderstore`) layers the render/history semantics over a `BlobStore`, keyed by `(namespace, name, renderRef)`: `PutRender` / `GetRender` / `HasRender` (rollback validation), and `AppendHistory` / `History` / `LastHistoryRef` (the ordered deploy log), plus `DeleteRelease` (drop a release's prefix). It is unit-tested against `NewMemory()` — never a real cloud.
+- **Gating is by presence, not a capability method.** A component with a render store configured (non-nil) persists and can serve the time-travel features; without one it behaves exactly as before. There is no `PersistsRenders()` method. (Wiring the read features to check the store and reject when absent is slice 5 — pending.)
 
 ## Object layout & keying
 
 Renders are **scoped to the owning Release** and split into two prefixes — immutable content addressed by `renderRef` (already a `sha256` of the render), plus an append-only, ordered log of deploy events. There is **no reliance on object-store versioning** (not every S3-compatible backend supports it, and content-addressing makes it redundant).
 
+Keys start at the bucket root (there is no configurable key prefix — isolate instances by bucket):
+
 ```
-{bucket}/{prefix}/
+{bucket}/
   <namespace>/<name>/
     blobs/
       <renderRef>                     # immutable render content — content-addressed, deduped, self-verifying
     history/
-      <sortable-ts>-<renderRef>.json  # append-only ORDERED deploy log → { renderRef, syncedAt, resolved-inputs summary }
+      <sortable-ts>-<renderRef>.json  # append-only ORDERED deploy log → { renderRef, syncedAt, summary }
 ```
 
 | Key                                         | Content                                                     | Written                                   | Mutability |
@@ -86,9 +88,9 @@ A `history/` entry is recorded **only when the render changes**, so the timeline
 A render that reaches a cluster **must** already be in the store, or live state and recorded history could diverge. This is an ordering invariant, not a tunable policy:
 
 1. **Render** the Release → compute `renderRef`.
-2. **Persist** the blob to `<ns>/<name>/blobs/<renderRef>`. Content-addressed ⇒ idempotent; an `Exists` check short-circuits re-upload.
+2. **Persist** the blob to `<ns>/<name>/blobs/<renderRef>`. Content-addressed ⇒ idempotent: a re-apply of the same render just re-stores identical bytes (a dedup overwrite), so the persist runs unconditionally on every apply rather than guarding on an existence check.
 3. **Apply** the manifest set to the cluster (SSA).
-4. On apply success, **commit**: if the render changed, append a `<ns>/<name>/history/<ts>-<renderRef>.json` entry **to the store**; set `status.lastSuccessful.renderRef` (the current pointer) in etcd; update inventory.
+4. On apply success, **commit**: if the render changed, append a `<ns>/<name>/history/<ts>-<renderRef>.json` entry **to the store**; set `status.lastSuccessful.renderRef` (the current pointer) in etcd; update inventory. "Changed" is decided against the **last logged history entry** (read back from the store, which is read-after-write consistent), *not* against `status.lastSuccessful` — the latter lags in the informer cache across the several reconciles one deploy triggers (e.g. lifecycle-hook phases), which would otherwise append duplicate entries for a single deploy. Appending history is best-effort: the blob (the rollback target) is already durable, so a failed append is logged, not fatal.
 
 Every failure point stays consistent under level-triggered reconciliation:
 
@@ -100,8 +102,11 @@ Because the blob is written in step 2 but only referenced — by the current poi
 
 ## History & retention
 
-- **History lives in the store**, in the release's `history/` prefix — an ordered log of deploy events, one small object each. `spec.retentionPolicy.keepHistory` bounds how many are kept. Depth is limited only by retention, not by any etcd object size — etcd carries just the current `renderRef` pointer.
-- **Per-release, reference-aware GC.** For each release, list `<ns>/<name>/history/`, keep the newest `keepHistory` entries, delete the rest; then delete any `blobs/<renderRef>` no longer referenced by a surviving `history/` entry or the current pointer, **older than a grace window** (e.g. 1h — this also covers the persist→commit gap above). Deleting a Release drops its whole `<ns>/<name>/` prefix — one operation, no bucket-wide sweep.
+**History lives in the store** (implemented) — the release's `history/` prefix is an ordered log of deploy events, one small object each, appended on change. Depth is limited only by retention, not by any etcd object size — etcd carries just the current `renderRef` pointer.
+
+> **Retention & GC are planned (slice 6, not built).** The `spec.retentionPolicy.keepHistory` field exists on the API but is **not yet enforced**: history and blobs currently accumulate. The reclaimer below is the design:
+
+- **Per-release, reference-aware GC.** For each release, list `<ns>/<name>/history/`, keep the newest `keepHistory` entries, delete the rest; then delete any `blobs/<renderRef>` no longer referenced by a surviving `history/` entry or the current pointer, **older than a grace window** (e.g. 1h — this also covers the persist→commit gap above). Deleting a Release drops its whole `<ns>/<name>/` prefix via `RenderStore.DeleteRelease` — one operation, no bucket-wide sweep (the method exists; wiring it into the finalizer is part of this slice).
 - **Partitioned by ownership, no global runner.** GC runs on every replica but each reclaims only the Releases in the clusters it owns (see [Sharding](04-sharding.md)) — exclusive ownership means it cannot race itself, so no leader is needed.
 - Object-store **lifecycle rules are a backstop only** — time-based expiry can't be reference-aware and would happily delete a still-pinned render, so it can never be the primary reclaimer.
 
@@ -113,14 +118,14 @@ backend and whose query parameters carry backend options. One S3 implementation
 serves AWS S3, MinIO, Ceph RGW, Cloudflare R2, and GCS-in-S3-mode via an endpoint
 override plus a path-style toggle; GCS and Azure have native schemes.
 
-| Backend                         | Example `--render-store-url`                                                                            |
-|---------------------------------|--------------------------------------------------------------------------------------------------------|
-| AWS S3                          | `s3://convoy-renders?region=eu-west-1`                                                                  |
-| S3-compatible (MinIO/Ceph/R2)   | `s3://convoy-renders?endpoint=http://minio:9000&region=us-east-1&use_path_style=true&disable_https=true&hostname_immutable=true` |
-| GCS (native)                    | `gs://convoy-renders`                                                                                   |
-| Azure Blob (native)             | `azblob://convoy-renders`                                                                               |
-| Filesystem (PVC / single-node)  | `file:///var/lib/convoy/renders?create_dir=true&no_tmp_dir=true`                                        |
-| In-memory (dev only)            | `mem://`                                                                                                |
+| Backend                        | Example `--render-store-url`                                                                                                     |
+|--------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| AWS S3                         | `s3://convoy-renders?region=eu-west-1`                                                                                           |
+| S3-compatible (MinIO/Ceph/R2)  | `s3://convoy-renders?endpoint=http://minio:9000&region=us-east-1&use_path_style=true&disable_https=true&hostname_immutable=true` |
+| GCS (native)                   | `gs://convoy-renders`                                                                                                            |
+| Azure Blob (native)            | `azblob://convoy-renders`                                                                                                        |
+| Filesystem (PVC / single-node) | `file:///var/lib/convoy/renders?create_dir=true&no_tmp_dir=true`                                                                 |
+| In-memory (dev only)           | `mem://`                                                                                                                         |
 
 An empty flag disables persistence — renders are not stored and the time-travel
 features stay gated. There is no `prefix` parameter; isolate multiple convoy
@@ -133,12 +138,12 @@ credential block and no `credentials:` field — gocloud opens the bucket throug
 cloud SDK's *default credential chain*, so the operator grants the pod access by the
 platform's normal means and gocloud picks it up:
 
-| Backend   | Credential-free (recommended)                              | Static fallback                                             |
-|-----------|------------------------------------------------------------|------------------------------------------------------------|
-| S3        | **IRSA** on EKS (ServiceAccount → IAM role; projected token) | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` env (from a Secret) |
-| GCS       | **GKE Workload Identity** (KSA → GSA)                       | `GOOGLE_APPLICATION_CREDENTIALS` → a mounted key file       |
-| Azure     | **AAD Workload Identity** / managed identity               | `AZURE_STORAGE_ACCOUNT` + `AZURE_STORAGE_KEY` (or a SAS) env |
-| file/mem  | — (no credentials)                                         | —                                                          |
+| Backend  | Credential-free (recommended)                                | Static fallback                                                   |
+|----------|--------------------------------------------------------------|-------------------------------------------------------------------|
+| S3       | **IRSA** on EKS (ServiceAccount → IAM role; projected token) | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` env (from a Secret) |
+| GCS      | **GKE Workload Identity** (KSA → GSA)                        | `GOOGLE_APPLICATION_CREDENTIALS` → a mounted key file             |
+| Azure    | **AAD Workload Identity** / managed identity                 | `AZURE_STORAGE_ACCOUNT` + `AZURE_STORAGE_KEY` (or a SAS) env      |
+| file/mem | — (no credentials)                                           | —                                                                 |
 
 Prefer **workload identity** in production: the pod carries no long-lived secret and
 access is an IAM/role binding on the component's ServiceAccount. Static keys via a
@@ -156,7 +161,7 @@ least-privilege to the bucket (see [Security](#security)).
 
 ## Topology & scaling
 
-Both the release controller (writes renders, reads them for rollback) and the observer (reads past renders for historical diff) point at the **same bucket**. Content-addressed + shared means **no coordination and no separate service** — keep the store an in-process library behind the interface. The seam stays clean enough to extract a dedicated `convoy-artifact` service later (a single-writer/caching front, as Flux does) if fleet scale ever demands it, but that is not needed to ship this backend.
+The release controller (writes renders, reads them for rollback), the observer (reads past renders for historical diff), and the aggregated apiserver (`/history`, rollback validation) all point at the **same bucket**. Today only the controller is wired (the write path); the observer and apiserver join when the read features land (slice 5). Content-addressed + shared means **no coordination and no separate service** — the store is an in-process library behind the interface. The seam stays clean enough to extract a dedicated `convoy-artifact` service later (a single-writer/caching front, as Flux does) if fleet scale ever demands it, but that is not needed to ship this backend.
 
 Compute is partitioned by **cluster shard** — see [Sharding & High Availability](04-sharding.md). That model is exclusive-ownership, which is what keeps this backend simple:
 
@@ -177,11 +182,12 @@ Rendered manifests can contain whatever the source produced — including inline
 - **No object-store versioning** — content-addressed immutable keys instead; portable across S3-compatible backends that lack versioning.
 - **Persist-then-apply is an invariant** — never apply an unstored render (see the write path). No "apply now, archive best-effort" mode.
 - **Renders only** — source bytes are never persisted; the render is the frozen artifact of record.
-- **Client library deferred** — the `BlobStore` interface is dependency-agnostic; the concrete S3 client is chosen at implementation time (and, per project policy, is an explicit dependency decision then).
+- **Client library: `gocloud.dev/blob`** — chosen (an explicit, approved dependency) for native S3/GCS/Azure plus `file`/`mem` behind one URL-opened API. The `BlobStore` interface still owns the seam, so gocloud is swappable and mocked out of tests, and a backend it doesn't cover can be a separate impl.
+- **Gating by store presence, not a capability flag** — a configured (non-nil) render store enables the durable features; there is no `PersistsRenders()` method.
 
 ## Relationship to the in-memory tier & phasing
 
-`memory → objectstore` is a **configuration switch**, not a migration: content-addressed keys mean a fresh object-store backend simply starts empty and fills as renders happen. Switching backends loses nothing that was durable (etcd is untouched); it only changes whether renders survive a restart.
+Enabling durable storage is a **configuration switch** (`--render-store-url`), not a migration: content-addressed keys mean a fresh backend simply starts empty and fills as renders happen. Switching backends (or from none) loses nothing that was durable (etcd is untouched); it only changes whether renders survive a restart.
 
 Build order:
 
