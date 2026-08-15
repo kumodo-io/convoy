@@ -24,6 +24,8 @@ package sharding
 import (
 	"hash/fnv"
 	"strconv"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ShardLabel is the object label carrying an object's shard, so replicas can
@@ -68,6 +70,22 @@ func (s Sharder) Shard(namespace, name string) int {
 // identity — the decimal shard index.
 func (s Sharder) ShardLabelValue(namespace, name string) string {
 	return strconv.Itoa(s.Shard(namespace, name))
+}
+
+// StampKey sets ShardLabel on obj to the shard of (keyNamespace, keyName).
+func StampKey(s Sharder, obj metav1.Object, keyNamespace, keyName string) {
+	ls := obj.GetLabels()
+	if ls == nil {
+		ls = make(map[string]string, 1)
+	}
+	ls[ShardLabel] = s.ShardLabelValue(keyNamespace, keyName)
+	obj.SetLabels(ls)
+}
+
+// StampSelf sets ShardLabel on obj to the shard of its own namespace/name — for
+// self-keyed kinds (Cluster and the source kinds).
+func StampSelf(s Sharder, obj metav1.Object) {
+	StampKey(s, obj, obj.GetNamespace(), obj.GetName())
 }
 
 // desiredShards returns the set of shards the member at sorted index myIndex (of
