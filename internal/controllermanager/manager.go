@@ -38,6 +38,7 @@ import (
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/backfill"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
@@ -101,6 +102,10 @@ type Options struct {
 	// RenewInterval is how often the coordinator renews leases and re-evaluates
 	// ownership.
 	RenewInterval time.Duration
+	// BackfillShards, when set, stamps the shard label on any pre-existing objects
+	// missing it at startup (idempotent). Set during the migration to shard-scoped
+	// caches, then remove.
+	BackfillShards bool
 }
 
 // NewOptions returns Options with defaults.
@@ -156,6 +161,14 @@ func (o *Options) Run(ctx context.Context) error {
 	// Cluster and source objects that identity is their own key; for a Release it
 	// is the target cluster's key.
 	owns := func(namespace, name string) bool { return coord.Owns(sharder.Shard(namespace, name)) }
+
+	// Migration step: stamp the shard label on pre-existing objects before
+	// informers rely on it. Idempotent; a no-op once everything is labeled.
+	if o.BackfillShards {
+		if err := backfill.Run(ctx, client, sharder); err != nil {
+			return fmt.Errorf("backfilling shard labels: %w", err)
+		}
+	}
 
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
 	clusterInformer := factory.Core().V1alpha1().Clusters()
@@ -382,6 +395,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.StringVar(&o.LeaseNamespace, "lease-namespace", o.LeaseNamespace, "Namespace for sharding leases. Empty uses $POD_NAMESPACE, then \"convoy-system\".")
 	flags.DurationVar(&o.LeaseDuration, "lease-duration", o.LeaseDuration, "How long a held shard lease is valid without renewal.")
 	flags.DurationVar(&o.RenewInterval, "lease-renew-interval", o.RenewInterval, "How often shard leases are renewed and ownership re-evaluated.")
+	flags.BoolVar(&o.BackfillShards, "backfill-shards", o.BackfillShards, "Stamp the shard label on pre-existing objects at startup (idempotent migration step).")
 
 	return cmd
 }
