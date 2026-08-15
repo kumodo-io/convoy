@@ -90,8 +90,11 @@ Unchanged: the lease coordinator, member + shard leases, striped fair-share assi
 3. **Shard-scoped informers** — filtered factory per kind for `Release`/`ReleaseInventory`/`Cluster`, rebuilt from the owned-shard set on `OnChange`, sync-before-swap; sources + rule sets stay full.
 4. **Cutover** — enable selector mode only after backfill; keep the reconcile gate as the backstop.
 
+## Decisions
+
+- **Informer shape — one set-selector informer per kind, rebuilt on ownership change** (`shard in (owned…)`). Chosen over one-informer-per-shard because it holds only ~3 watch connections per replica regardless of shards owned, and its one cost — re-`LIST`ing all owned shards when the set changes — falls only on *rebalances*, which are rare (a replica added/removed/crashed). Per-shard informers would invert that: cheap rebalances but up to `owned-shards × kinds` (≈96 at `N=1`) constant watch connections. The rebuild is encapsulated in a "shard-scoped informer set" helper (build-new → sync → swap listers → stop-old) so controllers don't see the churn.
+
 ## Open decisions
 
-- **Informer shape** — single set-selector informer per kind (recommended; fewer watches, coarser re-`LIST`) vs. one informer per owned shard (more watches, granular re-`LIST`).
 - **Cluster informer scope** — shard-scoped (recommended, co-located) vs. full (if the cluster count stays small enough that it doesn't matter).
 - **Backfill mechanism** — a one-shot `Job` vs. a self-disabling in-process migration on first start under selector mode.
