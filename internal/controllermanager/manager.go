@@ -232,7 +232,7 @@ func (o *Options) Run(ctx context.Context) error {
 	}
 	deployer := releasecontroller.NewDeployer(connector)
 	hookRunner := releasecontroller.NewHookRunner(connector)
-	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister())
+	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister(), releaseInformer.Lister())
 	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, hookRunner, releasesForCluster, owns)
 
 	// Axis B fan-out: when a Release's Applied/Healthy signal flips, re-enqueue its

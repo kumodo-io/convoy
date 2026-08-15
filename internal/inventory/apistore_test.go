@@ -27,6 +27,7 @@ import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
+	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
 func newAPIStore(t *testing.T, objs ...*corev1alpha1.ReleaseInventory) (Store, *fakeclient.Clientset) {
@@ -43,7 +44,39 @@ func newAPIStore(t *testing.T, objs ...*corev1alpha1.ReleaseInventory) (Store, *
 			t.Fatalf("seeding inventory store: %v", err)
 		}
 	}
-	return NewAPIStore(client, informer.Lister()), client
+	releaseInformer := factory.Core().V1alpha1().Releases()
+	return NewAPIStore(client, informer.Lister(), releaseInformer.Lister()), client
+}
+
+func TestAPIStore_CopiesShardLabelFromRelease(t *testing.T) {
+	ctx := context.Background()
+	const ns, name = "ns", "app"
+	// Seed an empty RI (the fake Apply updates rather than create-on-applies) and
+	// the owning Release carrying its apiserver-stamped shard label.
+	ri := &corev1alpha1.ReleaseInventory{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name}}
+	rel := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name, Labels: map[string]string{sharding.ShardLabel: "7"}}}
+	client := fakeclient.NewSimpleClientset(ri)
+	factory := informers.NewSharedInformerFactory(client, 0)
+	riInformer := factory.Core().V1alpha1().ReleaseInventories()
+	relInformer := factory.Core().V1alpha1().Releases()
+	if err := riInformer.Informer().GetStore().Add(ri); err != nil {
+		t.Fatalf("seeding RI: %v", err)
+	}
+	if err := relInformer.Informer().GetStore().Add(rel); err != nil {
+		t.Fatalf("seeding release: %v", err)
+	}
+	store := NewAPIStore(client, riInformer.Lister(), relInformer.Lister())
+
+	if err := store.Put(ctx, ns, name, []Ref{{Group: groupApps, Version: "v1", Kind: kindDeployment, Namespace: ns, Name: "d"}}); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	got, err := client.CoreV1alpha1().ReleaseInventories(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get RI: %v", err)
+	}
+	if got.Labels[sharding.ShardLabel] != "7" {
+		t.Fatalf("RI shard label = %q, want 7 (copied from its Release)", got.Labels[sharding.ShardLabel])
+	}
 }
 
 // TestAPIStore_SurvivesRestart is the regression guard for the reported bug: a

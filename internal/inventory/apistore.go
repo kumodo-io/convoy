@@ -27,6 +27,7 @@ import (
 	corev1alpha1ac "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
 // ControllerFieldManager is the Server-Side Apply field manager the release
@@ -50,13 +51,34 @@ const HookFieldManager = "convoy-release-hooks"
 // controller restart — the delete path can still enumerate and prune a Release's
 // resources after the process bounced.
 type apiStore struct {
-	client clientset.Interface
-	lister corelisters.ReleaseInventoryLister
+	client        clientset.Interface
+	lister        corelisters.ReleaseInventoryLister
+	releaseLister corelisters.ReleaseLister
 }
 
-// NewAPIStore returns a Store backed by ReleaseInventory objects.
-func NewAPIStore(client clientset.Interface, lister corelisters.ReleaseInventoryLister) Store {
-	return &apiStore{client: client, lister: lister}
+// NewAPIStore returns a Store backed by ReleaseInventory objects. releaseLister
+// lets it copy each Release's shard label onto its inventory (the RI shards with
+// its Release; see docs/architecture/05-shard-scoped-caches.md).
+func NewAPIStore(client clientset.Interface, lister corelisters.ReleaseInventoryLister, releaseLister corelisters.ReleaseLister) Store {
+	return &apiStore{client: client, lister: lister, releaseLister: releaseLister}
+}
+
+// shardLabels returns the shard label to stamp on a Release's inventory, copied
+// from the Release's own (apiserver-stamped) label — so the RI is guaranteed to
+// share its Release's shard. Returns nil if the Release or its label is absent
+// (e.g. pre-backfill); the RI is then left unlabeled until the Release is labeled.
+func (s *apiStore) shardLabels(namespace, name string) map[string]string {
+	if s.releaseLister == nil {
+		return nil
+	}
+	rel, err := s.releaseLister.Releases(namespace).Get(name)
+	if err != nil {
+		return nil
+	}
+	if v, ok := rel.Labels[sharding.ShardLabel]; ok {
+		return map[string]string{sharding.ShardLabel: v}
+	}
+	return nil
 }
 
 func (s *apiStore) Get(_ context.Context, namespace, name string) ([]Ref, bool, error) {
@@ -72,6 +94,9 @@ func (s *apiStore) Get(_ context.Context, namespace, name string) ([]Ref, bool, 
 
 func (s *apiStore) Put(ctx context.Context, namespace, name string, refs []Ref) error {
 	ac := corev1alpha1ac.ReleaseInventory(name, namespace)
+	if ls := s.shardLabels(namespace, name); ls != nil {
+		ac.WithLabels(ls)
+	}
 	for _, r := range refs {
 		item := corev1alpha1ac.ResourceInventoryItem().
 			WithGroup(r.Group).
@@ -105,6 +130,9 @@ func (s *apiStore) Delete(ctx context.Context, namespace, name string) error {
 
 func (s *apiStore) PutHooks(ctx context.Context, namespace, name string, hooks []HookRef) error {
 	ac := corev1alpha1ac.ReleaseInventory(name, namespace)
+	if ls := s.shardLabels(namespace, name); ls != nil {
+		ac.WithLabels(ls)
+	}
 	for _, h := range hooks {
 		item := corev1alpha1ac.ReleaseLifecycleHookItem().
 			WithName(h.Name).
