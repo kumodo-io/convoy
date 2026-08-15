@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
@@ -47,6 +48,7 @@ import (
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
+	"github.com/kumodo-io/convoy/internal/scopedinformers"
 	"github.com/kumodo-io/convoy/internal/sharding"
 	"github.com/kumodo-io/convoy/internal/waves"
 )
@@ -90,6 +92,12 @@ type Options struct {
 	// Shards is the fixed shard count S. Must match across the fleet. Work is
 	// partitioned by target cluster into S shards, owned via leases.
 	Shards int
+	// ShardScopedCache enables shard-scoped informers for Release/ReleaseInventory/
+	// Cluster: each replica caches only the objects for the shards it owns, so
+	// per-replica memory scales with replica count rather than total object count.
+	// Default off (full cache — behaviourally identical to before). Requires the
+	// shard label on those objects. See docs/architecture/05-shard-scoped-caches.md.
+	ShardScopedCache bool
 	// ReplicaID is this replica's unique shard-lease holder identity. Empty
 	// resolves from $POD_NAME, then the hostname.
 	ReplicaID string
@@ -157,15 +165,22 @@ func (o *Options) Run(ctx context.Context) error {
 	// is the target cluster's key.
 	owns := func(namespace, name string) bool { return coord.Owns(sharder.Shard(namespace, name)) }
 
+	// The plain factory backs the low-cardinality, shared caches (sources); those
+	// stay full because a Release's source may be in any shard.
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
-	clusterInformer := factory.Core().V1alpha1().Clusters()
+	// The high-cardinality per-Release caches (Release, ReleaseInventory, Cluster)
+	// are shard-scoped: each replica caches only its owned shards, so memory scales
+	// with replica count. The scoped set hands out stable typed facades and rebuilds
+	// its filtered factory whenever ownership changes (see scopedinformers).
+	scoped := scopedinformers.New(client, o.Resync, o.ShardScopedCache)
+	clusterInformer := scoped.Clusters()
 	// Release controller: fetches via the coordinator, renders, and applies to the
 	// target cluster (reached through the same connector the cluster controller
 	// probes with).
-	releaseInformer := factory.Core().V1alpha1().Releases()
+	releaseInformer := scoped.Releases()
 	// ReleaseInventory records each Release's applied resource set durably, so the
 	// controller can prune after a restart; the informer feeds Store reads.
-	releaseInventoryInformer := factory.Core().V1alpha1().ReleaseInventories()
+	releaseInventoryInformer := scoped.ReleaseInventories()
 
 	resolver := auth.NewSecretResolver(kube)
 	// Registry of agentless auth types. cfg is the controller's own config, used
@@ -269,6 +284,11 @@ func (o *Options) Run(ctx context.Context) error {
 	// ADDs cover the initial set; this handles rebalances (a replica joining or
 	// leaving) without waiting for the next informer resync.
 	coord.OnChange(func() {
+		// Re-point the shard-scoped caches to the newly-owned shards first, so the
+		// enqueue below (and subsequent reconciles) read the correct cache.
+		if err := scoped.Rebuild(ctx, coord.OwnedShards()); err != nil {
+			klog.ErrorS(err, "rebuilding shard-scoped informers on ownership change")
+		}
 		rels, _ := releaseInformer.Lister().List(labels.Everything())
 		releaseController.EnqueueKeys(ownedReleaseKeys(rels, owns))
 		clusters, _ := clusterInformer.Lister().List(labels.Everything())
@@ -285,16 +305,19 @@ func (o *Options) Run(ctx context.Context) error {
 	// enqueue filters see correct ownership from the first ADD.
 	coord.Prime(ctx)
 
-	factory.Start(ctx.Done())
-
-	// The release controller reads the ReleaseInventory cache during reconcile
-	// (including the delete/prune path) but does not watch it, so base.Run won't
-	// wait for it. Block here until it has synced — otherwise a delete processed
-	// before the cache populates would read an empty inventory and orphan
-	// resources (the very restart bug the durable inventory fixes).
-	if !cache.WaitForCacheSync(ctx.Done(), releaseInventoryInformer.Informer().HasSynced) {
-		return fmt.Errorf("timed out waiting for release inventory cache to sync")
+	// Build the shard-scoped informers for the owned shards and wait for their
+	// caches to sync. Prime's OnChange above may already have built them; Rebuild
+	// is a no-op when the selector is unchanged, and this call also covers the
+	// zero-owned edge case (where Prime fires no change). It syncs the Release,
+	// Cluster, and ReleaseInventory caches together — including the RI cache the
+	// release controller reads during the delete/prune path (it watches Releases,
+	// not the RI, so nothing else waits for it), preventing an early delete from
+	// reading an empty inventory and orphaning resources.
+	if err := scoped.Rebuild(ctx, coord.OwnedShards()); err != nil {
+		return fmt.Errorf("building shard-scoped informers: %w", err)
 	}
+
+	factory.Start(ctx.Done())
 
 	errGroup := errgroup.Group{}
 	errGroup.Go(func() error { return coord.Run(ctx) })
@@ -378,6 +401,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.DurationVar(&o.Resync, "resync", o.Resync, "Informer resync period; drives periodic re-probing of Clusters.")
 	flags.IntVar(&o.Workers, "workers", o.Workers, "Number of concurrent reconcile workers.")
 	flags.IntVar(&o.Shards, "shards", o.Shards, "Fixed shard count S; work is partitioned by target cluster into S shards. Must match across the fleet.")
+	flags.BoolVar(&o.ShardScopedCache, "shard-scoped-cache", o.ShardScopedCache, "Cache only the owned shards' Releases/ReleaseInventories/Clusters so memory scales with replica count. Requires the shard label on those objects.")
 	flags.StringVar(&o.ReplicaID, "replica-id", o.ReplicaID, "Unique shard-lease holder identity. Empty uses $POD_NAME, then the hostname.")
 	flags.StringVar(&o.LeaseNamespace, "lease-namespace", o.LeaseNamespace, "Namespace for sharding leases. Empty uses $POD_NAMESPACE, then \"convoy-system\".")
 	flags.DurationVar(&o.LeaseDuration, "lease-duration", o.LeaseDuration, "How long a held shard lease is valid without renewal.")

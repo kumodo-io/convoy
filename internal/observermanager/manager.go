@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/klog/v2"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
@@ -45,6 +46,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
 	"github.com/kumodo-io/convoy/internal/observer"
+	"github.com/kumodo-io/convoy/internal/scopedinformers"
 	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
@@ -84,6 +86,11 @@ type Options struct {
 	// the controller-manager's, though the two shard independently). Work is
 	// partitioned by target cluster.
 	Shards int
+	// ShardScopedCache enables shard-scoped informers for Release/ReleaseInventory/
+	// Cluster: each replica caches only the objects for the shards it owns, so
+	// per-replica memory scales with replica count. Default off (full cache).
+	// Requires the shard label on those objects.
+	ShardScopedCache bool
 	// ReplicaID is this replica's shard-lease holder identity. Empty resolves
 	// from $POD_NAME, then the hostname.
 	ReplicaID string
@@ -145,13 +152,18 @@ func (o *Options) Run(ctx context.Context) error {
 	sharder := coord.Sharder()
 	owns := func(namespace, name string) bool { return coord.Owns(sharder.Shard(namespace, name)) }
 
+	// The plain factory backs the full caches: sources (a Release's source may be in
+	// any shard) and the health rule sets (few, small, selected by label).
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
-	releaseInformer := factory.Core().V1alpha1().Releases()
-	clusterInformer := factory.Core().V1alpha1().Clusters()
+	// The per-Release caches (Release, ReleaseInventory, Cluster) are shard-scoped so
+	// memory scales with replica count; the scoped set rebuilds on ownership change.
+	scoped := scopedinformers.New(client, o.Resync, o.ShardScopedCache)
+	releaseInformer := scoped.Releases()
+	clusterInformer := scoped.Clusters()
 	// ReleaseInventory carries the durable per-resource health the health loop
 	// writes (and the controller rolls up for the sync-wave gate); the lister
 	// backs both the anchor reads and the /health subresource.
-	releaseInventoryInformer := factory.Core().V1alpha1().ReleaseInventories()
+	releaseInventoryInformer := scoped.ReleaseInventories()
 	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
 	helmRegInformer := factory.Source().V1alpha1().HelmRegistries()
 	ociRegInformer := factory.Source().V1alpha1().OCIRegistries()
@@ -217,6 +229,10 @@ func (o *Options) Run(ctx context.Context) error {
 	// On a shard reassignment, re-drive the Releases this replica now owns through
 	// both loops (informer ADDs cover the initial set; this handles rebalances).
 	coord.OnChange(func() {
+		// Re-point the shard-scoped caches to the newly-owned shards before enqueuing.
+		if err := scoped.Rebuild(ctx, coord.OwnedShards()); err != nil {
+			klog.ErrorS(err, "rebuilding shard-scoped informers on ownership change")
+		}
 		rels, _ := releaseInformer.Lister().List(labels.Everything())
 		keys := ownedReleaseKeys(rels, owns)
 		obs.EnqueueKeys(keys)
@@ -226,12 +242,20 @@ func (o *Options) Run(ctx context.Context) error {
 	// Prime shard ownership before informers deliver their initial events.
 	coord.Prime(ctx)
 
+	// Build the shard-scoped informers for the owned shards and sync their caches
+	// (a no-op if Prime's OnChange already built them; also covers the zero-owned
+	// case). The observer reads the Cluster and (below) source caches during each
+	// drift pass, so these must be synced before reconciling.
+	if err := scoped.Rebuild(ctx, coord.OwnedShards()); err != nil {
+		return err
+	}
+
 	factory.Start(ctx.Done())
-	// The observer only *watches* Releases, so base.Controller.Run waits for the
-	// Release cache alone. But each drift pass also reads the Cluster and the three
-	// source caches (via the coordinator's listers), so wait for every started
-	// informer here first — otherwise the observer would begin reconciling before
-	// those caches populate and report spurious "source/cluster not found" for
+	// The shard-scoped Release/Cluster/ReleaseInventory caches were synced by
+	// Rebuild above. Each drift pass also reads the three source caches (via the
+	// coordinator's listers), which live on the plain factory, so wait for every
+	// started informer here first — otherwise the observer would begin reconciling
+	// before those caches populate and report spurious "source not found" for
 	// objects that exist, until the caches catch up.
 	factory.WaitForCacheSync(ctx.Done())
 
@@ -304,6 +328,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.IntVar(&o.Workers, "workers", o.Workers, "Number of concurrent drift-check workers.")
 	flags.StringVar(&o.ServeAddr, "serve-addr", o.ServeAddr, "Address for the on-demand HTTP server (/preview) the apiserver proxies to.")
 	flags.IntVar(&o.Shards, "shards", o.Shards, "Fixed shard count S; work is partitioned by target cluster. Must match across the fleet.")
+	flags.BoolVar(&o.ShardScopedCache, "shard-scoped-cache", o.ShardScopedCache, "Cache only the owned shards' Releases/ReleaseInventories/Clusters so memory scales with replica count. Requires the shard label on those objects.")
 	flags.StringVar(&o.ReplicaID, "replica-id", o.ReplicaID, "Unique shard-lease holder identity. Empty uses $POD_NAME, then the hostname.")
 	flags.StringVar(&o.LeaseNamespace, "lease-namespace", o.LeaseNamespace, "Namespace for sharding leases. Empty uses $POD_NAMESPACE, then \"convoy-system\".")
 	flags.DurationVar(&o.LeaseDuration, "lease-duration", o.LeaseDuration, "How long a held shard lease is valid without renewal.")
