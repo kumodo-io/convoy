@@ -65,8 +65,8 @@ func NewAPIStore(client clientset.Interface, lister corelisters.ReleaseInventory
 
 // shardLabels returns the shard label to stamp on a Release's inventory, copied
 // from the Release's own (apiserver-stamped) label — so the RI is guaranteed to
-// share its Release's shard. Returns nil if the Release or its label is absent
-// (e.g. pre-backfill); the RI is then left unlabeled until the Release is labeled.
+// share its Release's shard. Returns nil if the Release or its label is absent;
+// the RI is then left unlabeled until the Release is labeled.
 func (s *apiStore) shardLabels(namespace, name string) map[string]string {
 	if s.releaseLister == nil {
 		return nil

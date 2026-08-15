@@ -73,10 +73,9 @@ Clusters `prod-eu` (`hash%4 = 2`) and `prod-us` (`hash%4 = 1`); pods `A`, `B`.
 
 ## Invariants, hazards, migrations
 
-- **Unlabeled object = invisible (the #1 risk).** An object with no shard label matches *no* shard-selective watch → it is in nobody's cache and never reconciled. Mitigated by guaranteeing the label at the write path (above) **and** a one-time backfill before switching informers to selector mode.
+- **Unlabeled object = invisible (the #1 risk).** An object with no shard label matches *no* shard-selective watch → it is in nobody's cache and never reconciled. Mitigated by guaranteeing the label at the write path (above): the apiserver stamps every user-object create/update and the controller stamps every inventory write, so any object written after labeling ships is labeled. Objects predating it are handled by **recreating the environment** (this is a private, recreatable project) rather than a backfill migration — new objects are stamped at creation.
 - **Transient unwatched window (safe).** During a handoff, a shard is briefly owned by nobody (released, not yet re-acquired), so its objects are momentarily uncached — equivalent to the controller being down for that shard for a few seconds. Level-triggered reconciliation catches up on the re-`LIST`; no work is lost.
 - **Rebuild window (safe).** Selector rebuilds sync the new informer before swapping, so there is never a serving gap — only brief extra memory during overlap.
-- **Backfill migration (one-time).** List-and-patch all existing `Release`/`Cluster`/source/`ReleaseInventory` objects with their shard label, then flip the informers to selector mode. Order matters: label first, switch second.
 - **Reshard migration (rare, deliberate).** Changing `S` changes `hash % S` for every object, so it requires re-stamping all labels + a coordinated restart — the same "changing `S` is a fleet event" cost already noted in [04](04-sharding.md). Changing the **replica count never touches `S`**, so scale up/down are always zero-relabel.
 
 ## What stays exactly as in [04](04-sharding.md)
@@ -86,9 +85,8 @@ Unchanged: the lease coordinator, member + shard leases, striped fair-share assi
 ## Build items
 
 1. **Shard-label stamping** — apiserver storage strategy for `Release`/`Cluster`/sources (create+update, overwrite); `--shards` flag on the apiserver; release controller stamps `ReleaseInventory` under its field manager.
-2. **Backfill migration** — one-time labeler for existing objects.
-3. **Shard-scoped informers** — filtered factory per kind for `Release`/`ReleaseInventory`/`Cluster`, rebuilt from the owned-shard set on `OnChange`, sync-before-swap; sources + rule sets stay full.
-4. **Cutover** — enable selector mode only after backfill; keep the reconcile gate as the backstop.
+2. **Shard-scoped informers** — filtered factory per kind for `Release`/`ReleaseInventory`/`Cluster`, rebuilt from the owned-shard set on `OnChange`, sync-before-swap; sources + rule sets stay full.
+3. **Cutover** — flip informers to selector mode behind a flag (full-cache default); keep the reconcile gate as the backstop.
 
 ## Decisions
 
@@ -97,4 +95,3 @@ Unchanged: the lease coordinator, member + shard leases, striped fair-share assi
 ## Open decisions
 
 - **Cluster informer scope** — shard-scoped (recommended, co-located) vs. full (if the cluster count stays small enough that it doesn't matter).
-- **Backfill mechanism** — a one-shot `Job` vs. a self-disabling in-process migration on first start under selector mode.
