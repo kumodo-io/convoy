@@ -1,0 +1,14 @@
+# Durable render store on a PersistentVolumeClaim. blobs/ and history/ live on the
+# volume, so renders survive a controller restart (single-node: the PVC is
+# ReadWriteOnce, mounted by the one controller replica).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: convoy-render-store
+  namespace: convoy-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

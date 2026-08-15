@@ -117,13 +117,13 @@ For agent (pull) clusters the problem does not arise: the in-cluster **agent** a
 
 ## Summary
 
-| Aspect | Local exec (rejected) | Credential-provider registry (this design) |
-| --- | --- | --- |
-| Auth binaries | baked into convoy image | isolated, one per plugin workload |
-| New provider | rebuild convoy image | deploy a new plugin workload |
-| Arbitrary-command RCE | yes (any `Cluster` creator) | no (only registered plugins callable) |
-| Cloud credentials | would live in control plane | isolated per plugin workload |
-| Trust boundary | the forked command | plugin **registration** + transport |
-| Credential acquisition | client-go forks locally | convoy calls endpoint, builds `rest.Config` |
+| Aspect                 | Local exec (rejected)       | Credential-provider registry (this design)  |
+|------------------------|-----------------------------|---------------------------------------------|
+| Auth binaries          | baked into convoy image     | isolated, one per plugin workload           |
+| New provider           | rebuild convoy image        | deploy a new plugin workload                |
+| Arbitrary-command RCE  | yes (any `Cluster` creator) | no (only registered plugins callable)       |
+| Cloud credentials      | would live in control plane | isolated per plugin workload                |
+| Trust boundary         | the forked command          | plugin **registration** + transport         |
+| Credential acquisition | client-go forks locally     | convoy calls endpoint, builds `rest.Config` |
 
 **Net:** `execPlugin` is served by an out-of-process credential-provider registry — plugin workloads self-register (stateless registry + heartbeats), hold their own cloud identity, and return `ExecCredential`-shaped credentials that convoy caches/refreshes. It removes third-party binaries from convoy's image and eliminates the exec RCE, at the cost of implementing credential caching/refresh and securing registration (authn) + transport (mTLS).

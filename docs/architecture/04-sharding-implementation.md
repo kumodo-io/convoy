@@ -119,9 +119,9 @@ Brief overlap is safe by construction — SSA is idempotent, and `Applied`/`InSy
 
 Each phase: `make lint` + `make test`, then a `feat: <description>` commit (no remote push).
 
-0. **`internal/sharding`** — `Sharder` + `Ownership` + lease `Coordinator`, fully unit-tested, no wiring.
-1. **Harness hooks** — `WithEnqueueFilter` + `EnqueueKeys` in `base.Controller`.
-2. **controller-manager wiring** — one `Coordinator`; key-extractor gate in each reconcile; enqueue filter; `OnChange` resync; flags + RBAC.
-3. **observer wiring** — same, for `obs` + `healthCtl`.
-4. **Rebalance & shutdown correctness** — `OnChange` re-enqueue of owned; graceful lease release; idempotency backstops.
-5. **Config, deploy overlays, observability** — `single-replica/` + `multi-replica/` overlays; metrics; kind kill-test.
+1. **`internal/sharding`** — `Sharder` + `Ownership` + lease `Coordinator`, fully unit-tested, no wiring.
+2. **Harness hooks** — `WithEnqueueFilter` + `EnqueueKeys` in `base.Controller`.
+3. **controller-manager wiring** — one `Coordinator`; key-extractor gate in each reconcile; enqueue filter; `OnChange` resync; flags + RBAC.
+4. **observer wiring** — same, for `obs` + `healthCtl`.
+5. **Rebalance & shutdown correctness** — `OnChange` re-enqueue of owned; graceful lease release; idempotency backstops.
+6. **Config, deploy overlays, observability** — `single-replica/` + `multi-replica/` overlays; metrics; kind kill-test.

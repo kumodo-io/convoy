@@ -1,0 +1,32 @@
+# Filesystem render store overlay: a PVC mounted at /var/lib/convoy/renders, with
+# the controller pointed at file://… Durable across restarts; exercises the gocloud
+# fileblob driver.
+#
+# no_tmp_dir=true is required: without it fileblob writes to a temp file under
+# $TMPDIR (/tmp) and renames into place, which fails with "invalid cross-device
+# link" because the PVC is a different filesystem than the container's /tmp.
+# no_tmp_dir writes the temp file next to the final path (same filesystem).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+  - pvc.yaml
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-controller-manager
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --render-store-url=file:///var/lib/convoy/renders?create_dir=true&no_tmp_dir=true
+      - op: add
+        path: /spec/template/spec/volumes
+        value:
+          - name: render-store
+            persistentVolumeClaim:
+              claimName: convoy-render-store
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value:
+          - name: render-store
+            mountPath: /var/lib/convoy/renders

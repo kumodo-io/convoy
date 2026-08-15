@@ -1,0 +1,98 @@
+# Dev-only MinIO (S3-compatible) object store for the render backend. Single
+# replica, ephemeral emptyDir data, hardcoded dev credentials — NOT a production
+# posture. The controller reaches it at http://minio:9000 via the gocloud s3blob
+# driver (path-style, plain HTTP).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: convoy-minio
+  namespace: convoy-system
+type: Opaque
+stringData:
+  # MinIO root credentials, reused as the S3 access key the controller presents.
+  MINIO_ROOT_USER: convoyminio
+  MINIO_ROOT_PASSWORD: convoyminio123
+  AWS_ACCESS_KEY_ID: convoyminio
+  AWS_SECRET_ACCESS_KEY: convoyminio123
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: convoy-system
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          args: ["server", "/data", "--console-address", ":9001"]
+          envFrom:
+            - secretRef:
+                name: convoy-minio
+          ports:
+            - name: s3
+              containerPort: 9000
+            - name: console
+              containerPort: 9001
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: convoy-system
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000
+---
+# Creates the render bucket once MinIO is reachable. Idempotent (--ignore-existing),
+# so it is safe to re-run on redeploy.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-mkbucket
+  namespace: convoy-system
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          envFrom:
+            - secretRef:
+                name: convoy-minio
+          command:
+            - sh
+            - -c
+            - |
+              until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                echo "waiting for minio..."; sleep 2;
+              done
+              mc mb --ignore-existing local/convoy-renders

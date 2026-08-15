@@ -1,0 +1,15 @@
+# In-memory render store overlay. The controller keeps blobs + history in process
+# (gocloud mem://): the render/history code path runs end to end, but nothing
+# survives a pod restart. Zero extra infrastructure — the default dev posture.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-controller-manager
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --render-store-url=mem://

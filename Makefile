@@ -243,6 +243,16 @@ tilt-up: tilt kustomize kubectl
 	$(TOOLS_BIN)/kubectl config use-context kind-$(KIND_CLUSTER)
 	$(TOOLS_BIN)/tilt up
 
+.PHONY: tilt-up-file
+tilt-up-file: tilt kustomize kubectl
+	$(TOOLS_BIN)/kubectl config use-context kind-$(KIND_CLUSTER)
+	$(TOOLS_BIN)/tilt up -- --storage=file
+
+.PHONY: tilt-up-minio
+tilt-up-minio: tilt kustomize kubectl
+	$(TOOLS_BIN)/kubectl config use-context kind-$(KIND_CLUSTER)
+	$(TOOLS_BIN)/tilt up -- --storage=minio
+
 .PHONY: tilt-down
 tilt-down: tilt
 	$(TOOLS_BIN)/tilt down
@@ -250,3 +260,9 @@ tilt-down: tilt
 # One-shot: ensure the kind cluster exists, then start Tilt.
 .PHONY: dev
 dev: kind-up tilt-up
+
+.PHONY: dev-file
+dev-file: kind-up tilt-up-file
+
+.PHONY: dev-minio
+dev-minio: kind-up tilt-up-minio

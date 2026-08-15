@@ -6,10 +6,10 @@
 
 The design rests on keeping two partitions strictly separate:
 
-| Partition | Rule | Changes when… | Lives as |
-|-----------|------|---------------|----------|
-| **objects → shards** | `shard = hash(shardKey) % S` | only if `S` changes | a **label** on the object |
-| **shards → replicas** | striped over live members | every time `N` changes | **leases** (see [04](04-sharding.md)) |
+| Partition             | Rule                         | Changes when…          | Lives as                              |
+|-----------------------|------------------------------|------------------------|---------------------------------------|
+| **objects → shards**  | `shard = hash(shardKey) % S` | only if `S` changes    | a **label** on the object             |
+| **shards → replicas** | striped over live members    | every time `N` changes | **leases** (see [04](04-sharding.md)) |
 
 [Sharding](04-sharding.md) already builds the second partition (the lease coordinator, striped assignment, `OnChange`). This document adds the **first** partition as a label, and switches informers from "watch everything, filter later" to "watch only my shards." Scaling replicas moves *ownership and watch selectors*; it never rewrites labels.
 
@@ -17,12 +17,12 @@ The design rests on keeping two partitions strictly separate:
 
 A single content-derived label, `convoy.kumodo.io/shard = hash(shardKey) % S`, where the shard key is the object's existing sharding identity:
 
-| Object | Shard key | Notes |
-|--------|-----------|-------|
-| `Release` | its **cluster** (`spec.clusterRef`, immutable) | so a cluster's Releases co-locate |
-| `Cluster` | **self** (`namespace/name`) | |
-| `GitRepository` / `HelmRegistry` / `OCIRegistry` | **self** (`namespace/name`) | |
-| `ReleaseInventory` | its **Release's cluster** | == the owning Release's shard |
+| Object                                           | Shard key                                      | Notes                             |
+|--------------------------------------------------|------------------------------------------------|-----------------------------------|
+| `Release`                                        | its **cluster** (`spec.clusterRef`, immutable) | so a cluster's Releases co-locate |
+| `Cluster`                                        | **self** (`namespace/name`)                    |                                   |
+| `GitRepository` / `HelmRegistry` / `OCIRegistry` | **self** (`namespace/name`)                    |                                   |
+| `ReleaseInventory`                               | its **Release's cluster**                      | == the owning Release's shard     |
 
 Because the label is a pure function of an immutable key, it is **write-once and never changes** while `S` is fixed. A useful consequence of the keys above: a `Release`, its target `Cluster`, and its `ReleaseInventory` all hash on the same cluster identity, so **they always land in the same shard** — a replica that owns a shard has a Release, the Cluster it targets, and its inventory together.
 
@@ -40,13 +40,13 @@ This guarantees the critical invariant below: no object is ever born unlabeled.
 
 Shard-scope only the **high-cardinality, per-Release** caches; keep the **low-cardinality, shared** ones full:
 
-| Informer | Mode | Why |
-|----------|------|-----|
-| `Release` | **shard-scoped** | `O(releases)` — the dominant memory cost |
-| `ReleaseInventory` | **shard-scoped** | `O(releases)`; same shard as its Release |
-| `Cluster` | **shard-scoped** | co-located with the Releases that target it, so a replica already has the clusters it needs |
-| `GitRepository` / `HelmRegistry` / `OCIRegistry` | **full** | few, shared across many Releases; a Release's source may be in any shard, and fetching is demand-driven anyway |
-| `GlobalHealthRuleSet` / `HealthRuleSet` | **full** | few, small; a Release may select any of them by label selector |
+| Informer                                         | Mode             | Why                                                                                                            |
+|--------------------------------------------------|------------------|----------------------------------------------------------------------------------------------------------------|
+| `Release`                                        | **shard-scoped** | `O(releases)` — the dominant memory cost                                                                       |
+| `ReleaseInventory`                               | **shard-scoped** | `O(releases)`; same shard as its Release                                                                       |
+| `Cluster`                                        | **shard-scoped** | co-located with the Releases that target it, so a replica already has the clusters it needs                    |
+| `GitRepository` / `HelmRegistry` / `OCIRegistry` | **full**         | few, shared across many Releases; a Release's source may be in any shard, and fetching is demand-driven anyway |
+| `GlobalHealthRuleSet` / `HealthRuleSet`          | **full**         | few, small; a Release may select any of them by label selector                                                 |
 
 The memory that scales with clusters is Releases + inventories, so scoping those (plus the co-located Clusters) captures nearly all the benefit while the handful of sources and rule sets stay cheap to hold everywhere.
 

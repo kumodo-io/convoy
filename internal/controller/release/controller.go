@@ -54,6 +54,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
 	"github.com/kumodo-io/convoy/internal/render"
+	"github.com/kumodo-io/convoy/internal/renderstore"
 	"github.com/kumodo-io/convoy/internal/waves"
 )
 
@@ -82,12 +83,16 @@ type ReleasesForClusterFunc func(clusterNamespace, clusterName string) ([]*corev
 // to the target cluster → record status.
 type Controller struct {
 	*base.Controller
-	client             clientset.Interface
-	releaseLister      corelisters.ReleaseLister
-	clusterLister      corelisters.ClusterLister
-	coordinator        fetch.Coordinator
-	resolver           auth.SecretResolver
-	inventory          inventory.Store
+	client        clientset.Interface
+	releaseLister corelisters.ReleaseLister
+	clusterLister corelisters.ClusterLister
+	coordinator   fetch.Coordinator
+	resolver      auth.SecretResolver
+	inventory     inventory.Store
+	// renderStore durably persists each applied render (blob) and the ordered
+	// deploy history. nil disables persistence — the controller renders and
+	// applies exactly as before, just without a durable render history.
+	renderStore        *renderstore.RenderStore
 	deployer           Deployer
 	hookRunner         HookRunner
 	releasesForCluster ReleasesForClusterFunc
@@ -136,6 +141,7 @@ func NewController(
 	coordinator fetch.Coordinator,
 	resolver auth.SecretResolver,
 	inv inventory.Store,
+	renderStore *renderstore.RenderStore,
 	deployer Deployer,
 	hookRunner HookRunner,
 	releasesForCluster ReleasesForClusterFunc,
@@ -148,6 +154,7 @@ func NewController(
 		coordinator:        coordinator,
 		resolver:           resolver,
 		inventory:          inv,
+		renderStore:        renderStore,
 		deployer:           deployer,
 		hookRunner:         hookRunner,
 		releasesForCluster: releasesForCluster,
@@ -864,6 +871,14 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// helper stamps st.attempt, which equals this copy on every non-success path.
 	attempt := st.attempt
 
+	// persist-then-apply: durably store this render (content-addressed by its
+	// renderRef) before applying anything. A crash mid-apply then leaves the render
+	// recoverable — it is referenced by status.lastAttempted, so it is not orphaned —
+	// and rollback/diff can read it later. If persistence fails we do NOT apply.
+	if err := c.persistRender(ctx, rel.Namespace, rel.Name, attempt.RenderRef, objects); err != nil {
+		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
+	}
+
 	// PreSync hooks run before anything is applied. Hold (nothing applied) until the
 	// phase completes; a hook with onFailure=Fail aborts the sync. Advancing falls
 	// through to the wave loop.
@@ -1029,6 +1044,9 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseSucceeded
 	attempt.SyncedAt = &now
 	attempt.SyncedResources = int64(len(applied))
+
+	c.recordHistory(ctx, rel, now, attempt)
+
 	outcome := reconcileOutcome{
 		ready:   true,
 		applied: true,
@@ -1205,6 +1223,73 @@ func renderRef(objects []*unstructured.Unstructured) string {
 		_, _ = h.Write(b)
 	}
 	return "sha256:" + hex.EncodeToString(h.Sum(nil))
+}
+
+// renderManifest serializes the rendered objects into the bytes stored as the
+// render blob: a JSON array reparseable by readers (rollback, diff). It is a pure
+// function of objects, so a given renderRef always maps to identical blob content.
+func renderManifest(objects []*unstructured.Unstructured) ([]byte, error) {
+	return json.Marshal(objects)
+}
+
+// persistRender durably stores a render before it is applied (persist-then-apply).
+// A nil render store disables persistence and this is a no-op.
+func (c *Controller) persistRender(ctx context.Context, namespace, name, renderRef string, objects []*unstructured.Unstructured) error {
+	if c.renderStore == nil {
+		return nil
+	}
+	manifest, err := renderManifest(objects)
+	if err != nil {
+		return fmt.Errorf("serializing render: %w", err)
+	}
+	if err := c.renderStore.PutRender(ctx, namespace, name, renderRef, manifest); err != nil {
+		return fmt.Errorf("persisting render: %w", err)
+	}
+	return nil
+}
+
+// recordHistory appends a deploy-log entry when the render differs from the last
+// logged deploy. It compares against the last *history* entry, not
+// status.lastSuccessful: the latter lags in the informer cache, so several quick
+// reconciles of one deploy (e.g. lifecycle-hook phases) would each still see the
+// pre-write status and append duplicate entries. The store is read-after-write
+// consistent, so the last history entry always reflects a preceding append.
+//
+// Best-effort: the render blob is already persisted (the rollback target is safe),
+// so a failed append is logged rather than failing an otherwise-successful deploy
+// — it would only leave a gap in the log. A nil render store is a no-op.
+func (c *Controller) recordHistory(ctx context.Context, rel *corev1alpha1.Release, now metav1.Time, attempt corev1alpha1.ReleaseAttemptedRenderStatus) {
+	if c.renderStore == nil {
+		return
+	}
+	last, err := c.renderStore.LastHistoryRef(ctx, rel.Namespace, rel.Name)
+	if err != nil {
+		klog.ErrorS(err, "reading last render history", "release", rel.Name)
+		return
+	}
+	if attempt.RenderRef == last {
+		return
+	}
+	if err := c.renderStore.AppendHistory(ctx, rel.Namespace, rel.Name, renderstore.HistoryEntry{
+		RenderRef: attempt.RenderRef,
+		SyncedAt:  now,
+		Summary:   renderSummary(attempt.ResolvedSource),
+	}); err != nil {
+		klog.ErrorS(err, "appending render history", "release", rel.Name, "renderRef", attempt.RenderRef)
+	}
+}
+
+// renderSummary is a short human description of a render's resolved source for the
+// deploy-history log, e.g. "https://…/podinfo@1.2.3" or "gitRepository/podinfo@<sha>".
+func renderSummary(src corev1alpha1.ResolvedSource) string {
+	loc := src.URL
+	if loc == "" {
+		loc = strings.Trim(src.Kind+"/"+src.Name, "/")
+	}
+	if src.Revision != "" {
+		return loc + "@" + src.Revision
+	}
+	return loc
 }
 
 // prune deletes resources dropped from the render set since the last successful
