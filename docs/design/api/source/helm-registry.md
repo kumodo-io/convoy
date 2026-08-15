@@ -5,11 +5,10 @@
     * [basic](#basic)
     * [token](#token)
     * [oidc](#oidc)
-    * [workloadIdentity](#workloadidentity)
+    * [cloudIdentity](#cloudidentity)
   * [Status](#status)
   * [Conditions](#conditions)
-    * [AuthValid](#authvalid)
-  * [Webhooks](#webhooks)
+  * [Webhooks](#webhooks) — planned
     * [Purpose](#purpose)
     * [Schema](#schema)
     * [Verbs](#verbs)
@@ -27,9 +26,7 @@ Represents a Helm HTTP chart repository — a server providing a chart index (`i
 
 **Subresources**
 
-- `/status` — observed reconciliation state
-- `/sync` — POST to force re-fetch of the chart index (subject to `minSyncInterval`)
-- `/webhooks` — GET / POST / DELETE webhook configuration; see [Webhooks](#webhooks)
+- `/status` — observed reconciliation state (the only subresource). Re-verification is driven by the controller's interval/resync. (`/sync` exists only on `Release`; `/webhooks` is not implemented — see [Webhooks](#webhooks).)
 
 ## Example
 
@@ -132,39 +129,15 @@ webhook:
 status:
   observedGeneration: 2
 
-  # Last successful registry probe.
-  lastSuccessfullProbedAt: 2026-04-29T09:55:00Z
-  
-  releaseCount: 12
+  # Last successful reachability/verification probe.
+  lastSuccessfulProbeAt: 2026-04-29T09:55:00Z
 
-  # Webhook operational state — see "Webhooks" below.
-  webhooks:
-    - name: harbor
-      url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-      lastReceived: 2026-04-29T10:00:00Z
-      lastTriggered: 2026-04-29T10:00:00Z
-      receivedCount: 142
-      triggersCount: 87
-      rejectedCount: 3
-      filteredCount: 52
-      lastRejection:
-        rejectedAt: 2026-04-29T08:30:00Z
-        reason: SignatureMismatch
-        message: "HMAC signature did not match expected value"
-
+  # A single Ready condition is written. Reasons: Verified | VerifyFailed | Unsupported.
   conditions:
     - type: Ready
       status: "True"
       lastTransitionTime: 2026-04-29T09:55:00Z
-      reason: IndexFetched
-    - type: Reachable
-      status: "True"
-    - type: AuthValid
-      status: "True"
-      reason: CredentialsAccepted
-    - type: WebhookConfigured
-      status: "True"
-      reason: WebhookActive
+      reason: Verified
 ```
 
 ## Spec
@@ -172,46 +145,46 @@ status:
 | Field                    | Type     | Required            | Default | Description                                                                                                                        |
 |--------------------------|----------|---------------------|---------|------------------------------------------------------------------------------------------------------------------------------------|
 | `url`                    | string   | yes                 | —       | Helm HTTP repository URL serving `index.yaml`.                                                                                     |
-| `auth`                   | object   | no                  | —       | Authentication — discriminated union on `auth.type`. Omit for public repos. See [Authentication Methods](#authentication-methods). |
-| `auth.type`              | enum     | yes (if `auth` set) | —       | One of `basic`, `token`, `oidc`, `workloadIdentity`.                                                                               |
-| `interval`               | duration | no                  | `5m`    | Polling interval for index refresh.                                                                                                |
-| `minSyncInterval`        | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs.                                                                           |
+| `auth`                   | object   | yes                 | —       | Authentication — discriminated union on `auth.type`. Use `type: none` for public repos. See [Authentication Methods](#authentication-methods). |
+| `auth.type`              | enum     | yes                 | —       | One of `none`, `basic`, `token`, `oidc`, `cloudIdentity`. Only `none`/`basic`/`token` are implemented.                             |
+| `interval`               | duration | no                  | —       | Polling interval for verification. No server-side default (zero if unset).                                                         |
+| `minSyncInterval`        | duration | no                  | —       | Defined in the API but currently unused. No default.                                                                              |
 | `tls`                    | object   | no                  | —       | TLS config for the registry.                                                                                                       |
-| `tls.caPublicCertRef`    | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                                                 |
+| `tls.caPublicCertRef`    | object   | no                  | —       | CA bundle reference (`{name, key}`). **Not yet wired** — only `insecureSkipVerify` is honored today.                               |
 | `tls.insecureSkipVerify` | bool     | no                  | `false` | Skip TLS verification (not recommended).                                                                                           |
 
 ## Authentication Methods
 
-`spec.auth` is a discriminated union on `auth.type`. The active method's block is set; all others are omitted. Omit `auth` entirely for public repositories.
+`spec.auth` is **required** (a discriminated union on `auth.type`); for a public repository set `type: none`. Implemented types: `none`, `basic`, `token`. `oidc` and `cloudIdentity` are defined in the API but return `Unsupported` (planned).
 
 ### basic
 
-HTTP basic auth — username and password from a Secret. The most common method for private Helm HTTP repositories.
+HTTP basic auth — a `username` (literal string) plus a `passwordRef` (`{name, key}`). The most common method for private Helm HTTP repositories.
 
 ```yaml
 spec:
   auth:
     type: basic
     basic:
-      usernameRef: { secretRef: { name: bitnami-creds, key: username } }
-      passwordRef: { secretRef: { name: bitnami-creds, key: password } }
+      username: deploy
+      passwordRef: { name: bitnami-creds, key: password }
 ```
 
 ### token
 
-A static bearer token sent in the `Authorization` header. Less common for Helm HTTP repositories but supported.
+A static bearer token (`tokenRef`) sent in the `Authorization` header.
 
 ```yaml
 spec:
   auth:
     type: token
     token:
-      secretRef: { name: bitnami-token, key: token }
+      tokenRef: { name: bitnami-token, key: token }
 ```
 
 ### oidc
 
-OIDC client-credentials flow. The controller discovers the token endpoint via `/.well-known/openid-configuration` on the issuer and exchanges client credentials for a token. Client authentication itself is a nested discriminated union (`clientAuth.type`): `clientSecret` (shared secret, most common), `privateKeyJWT` (signed JWT assertion, used in regulated envs), or `tlsClientAuth` (mTLS, rare).
+_Planned — not implemented (returns `Unsupported`)._ OIDC client-credentials flow. Client auth is a nested union (`clientAuth.type`: `clientSecret`/`privateKeyJWT`/`tlsClientAuth`). JSON tag is `clientID`; the secret nests under `clientSecret.clientSecretRef`.
 
 ```yaml
 spec:
@@ -219,27 +192,23 @@ spec:
     type: oidc
     oidc:
       issuerURL: https://auth.example.com/realms/internal
-      clientId: cd-controller
+      clientID: cd-controller
       clientAuth:
         type: clientSecret           # | privateKeyJWT | tlsClientAuth
         clientSecret:
-          secretRef: { name: oidc-client, key: client-secret }
-        # Alternative methods:
-        # privateKeyJWT:
-        #   privateKeyRef: { secretRef: { name: oidc-client-key, key: key.pem } }
-        # tlsClientAuth:
-        #   certRef: { secretRef: { name: oidc-mtls, key: tls.crt } }
-        #   keyRef:  { secretRef: { name: oidc-mtls, key: tls.key } }
+          clientSecretRef: { name: oidc-client, key: client-secret }
 ```
 
-### workloadIdentity
+### cloudIdentity
 
-The controller pod uses its own cloud-native identity (e.g. Workload Identity on GKE) to authenticate. No static credentials are stored. Used for cloud-hosted Helm registries such as Google Artifact Registry.
+_Planned — not implemented (returns `Unsupported`)._ The controller pod uses its own cloud-native identity to authenticate to a cloud-hosted Helm registry. No static credentials are stored.
 
 ```yaml
 spec:
   auth:
-    type: workloadIdentity
+    type: cloudIdentity
+    cloudIdentity:
+      provider: gcp   # | aws | azure
 ```
 
 ## Status
@@ -247,92 +216,38 @@ spec:
 | Field                    | Type        | Description                                                                       |
 |--------------------------|-------------|-----------------------------------------------------------------------------------|
 | `observedGeneration`     | integer     | Generation of `spec` last reconciled.                                             |
-| `lastFetched`            | object      | Last successful index fetch.                                                      |
-| `lastFetched.fetchedAt`  | timestamp   | When the index was fetched.                                                       |
-| `lastFetched.chartCount` | integer     | Number of charts in the index (informational).                                    |
-| `releaseCount`           | integer     | Number of `Release` objects referencing this registry.                            |
-| `webhooks`               | []object    | Per-entry webhook operational state. See [Webhooks](#webhooks).                   |
+| `lastSuccessfulProbeAt`  | timestamp   | Time of the last successful reachability/verification probe.                      |
 | `conditions`             | []Condition | See [Conditions](#conditions).                                                    |
+
+(The API type also has a `releaseCount` field, not currently populated. There is no `lastFetched`/chart-count status.)
 
 ## Conditions
 
-`HelmRegistry` reports the following standard k8s conditions in `status.conditions`.
+`HelmRegistry` reports a **single** condition in `status.conditions`: `Ready`. (There are no separate `Reachable`/`AuthValid`/`WebhookConfigured` conditions — those are not implemented.)
 
-| Condition           | What `True` means                                                                                                                                                                  |
-|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Ready`             | Composite: the registry is reachable, authenticated, and its chart index has been fetched. The signal most tooling should watch. Requires `Reachable: True` and `AuthValid: True`. |
-| `Reachable`         | Network-level reachability of the registry endpoint succeeded.                                                                                                                     |
-| `AuthValid`         | The most recent authentication attempt succeeded. See [AuthValid](#authvalid) for full semantics.                                                                                  |
-| `WebhookConfigured` | At least one webhook is configured and accepting events. See [Webhooks](#webhooks).                                                                                                |
+| Condition | What `True` means                                              | Reasons                                                                       |
+|-----------|----------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `Ready`   | The registry was reached and its credentials verified.         | `Verified` (success); `VerifyFailed` (unreachable / rejected / other); `Unsupported` (auth method not implemented). |
 
-### AuthValid
-
-`AuthValid` reflects the state of authenticating to the registry. It is always present, even when no explicit credentials are configured (public repos report `True` with `reason: NoAuthRequired`).
-
-**Status semantics:**
-
-| Status    | Meaning                                                                                                     |
-|-----------|-------------------------------------------------------------------------------------------------------------|
-| `True`    | Most recent authentication attempt succeeded. Credentials are working.                                      |
-| `False`   | Most recent authentication attempt failed for an auth-specific reason. Actionable.                          |
-| `Unknown` | Authentication has not been attempted yet, OR a non-auth failure (network, timeout) prevented testing auth. |
-
-`Unknown` must not be conflated with `False`: "credentials are bad" is a different problem from "we couldn't test the credentials."
-
-**Reason codes:**
-
-| Status    | Reason                   | Meaning                                                                           |
-|-----------|--------------------------|-----------------------------------------------------------------------------------|
-| `True`    | `TokenAcquired`          | Succeeded via explicit token acquisition (OIDC, workload identity).               |
-| `True`    | `CredentialsAccepted`    | Succeeded with simple credentials (basic auth, token).                            |
-| `True`    | `NoAuthRequired`         | No authentication is configured; the repository is public.                        |
-| `False`   | `InvalidCredentials`     | Credentials rejected by the registry (401-class).                                 |
-| `False`   | `TokenAcquisitionFailed` | OIDC or workload-identity token exchange failed.                                  |
-| `False`   | `SecretNotFound`         | Referenced Secret or ConfigMap does not exist.                                    |
-| `False`   | `SecretMalformed`        | Secret exists but content is invalid (bad base64, wrong format, missing keys).    |
-| `False`   | `PermissionDenied`       | Credentials valid but lack required permissions (403-class).                      |
-| `False`   | `TokenExpired`           | Known-expired token; refresh attempt failed.                                      |
-| `False`   | `AuthMisconfigured`      | Config error detected without contacting the registry (e.g. invalid issuer URL).  |
-| `Unknown` | `NotYetAttempted`        | Registry is new; auth has not yet been tested.                                    |
-| `Unknown` | `RemoteUnreachable`      | Could not contact the registry to test auth (network, DNS, firewall).             |
-
-**Triage with `Reachable`:**
-
-| `Reachable` | `AuthValid` | Action                                                                              |
-|-------------|-------------|-------------------------------------------------------------------------------------|
-| `False`     | `Unknown`   | Fix network, DNS, firewall, or registry endpoint availability.                      |
-| `True`      | `False`     | Fix credentials or auth configuration.                                              |
-| `True`      | `True`      | If `Ready: False`, look beyond auth (rate limits, IdP misconfig, content errors).   |
-
-`AuthValid: False` always forces `Ready: False`, with `Ready.reason: AuthFailed`.
-
-**Example — OIDC client credentials failure:**
+An authentication failure surfaces as `Ready: False` with reason `VerifyFailed` — there is no separate auth condition or auth-specific reason code. Example:
 
 ```yaml
 status:
+  lastSuccessfulProbeAt: 2026-04-29T09:55:00Z
   conditions:
     - type: Ready
       status: "False"
-      reason: AuthFailed
-    - type: Reachable
-      status: "True"
-    - type: AuthValid
-      status: "False"
-      reason: TokenAcquisitionFailed
-      message: "Failed to acquire OIDC token from https://auth.example.com/realms/internal: invalid_client (client authentication failed)"
+      reason: VerifyFailed
+      message: "registry authentication failed (401)"
 ```
 
 ## Webhooks
 
+> **Status: planned — not implemented.** There is no `/webhooks` subresource and no webhook receiver (no per-entry URL generation, operational status, or provider/event/filter processing). Webhook configuration is expressed today as an inline `webhook` array field on the object; the controller does not populate any webhook status. The rest of this section describes the intended design.
+
 ### Purpose
 
-The `/webhooks` subresource manages webhook configurations for the registry, enabling push-based notifications from upstream systems that trigger index refreshes. Multiple webhooks can be configured per registry, supporting scenarios like provider migrations and chained CI/CD pipelines.
-
-Webhook configuration lives behind a subresource (rather than inline in `spec`) for several reasons:
-- Different RBAC than the rest of the Source (platform team manages source definitions; app teams configure their webhook integrations)
-- Different lifecycle (webhooks added/removed independently of Source changes)
-- Different sensitivity (webhook secrets are credentials)
-- Audit clarity (webhook config changes distinguishable from Source spec changes)
+The webhook design enables push-based notifications from upstream systems that trigger index refreshes, supporting scenarios like provider migrations and chained CI/CD pipelines.
 
 ### Schema
 

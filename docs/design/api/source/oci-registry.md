@@ -2,16 +2,15 @@
   * [Example](#example)
   * [Spec](#spec)
   * [Authentication Methods](#authentication-methods)
-    * [dockerConfig](#dockerconfig)
     * [basic](#basic)
     * [token](#token)
+    * [dockerConfig](#dockerconfig)
     * [oidc](#oidc)
-    * [workloadIdentity](#workloadidentity)
+    * [cloudIdentity](#cloudidentity)
   * [Content Types](#content-types)
   * [Status](#status)
   * [Conditions](#conditions)
-    * [AuthValid](#authvalid)
-  * [Webhooks](#webhooks)
+  * [Webhooks](#webhooks) — planned
     * [Purpose](#purpose)
     * [Schema](#schema)
     * [Verbs](#verbs)
@@ -25,13 +24,11 @@
     * [URL Generation](#url-generation)
 <!-- TOC -->
 
-Represents an OCI registry that may hold Helm charts (OCI-packaged), raw manifest bundles, or Kustomize bundles. OCI is a generic artifact format; the registry doesn't dictate content type, so a `defaultContentType` is configured on the registry and may be overridden per-`Release`. OCI registries are increasingly common for chart distribution (Harbor, ghcr.io, GitLab, ECR, ACR, GAR) and are the modern alternative to HTTP Helm registries.
+Represents an OCI registry holding Helm charts packaged as OCI artifacts. OCI is a generic artifact format, and the API's `defaultContentType` enumerates `helm`/`manifests`/`kustomize`, but **only `helm` content is fetchable today** — the fetcher always pulls a Helm chart; `manifests`/`kustomize` are accepted by the API but not yet implemented. OCI registries are common for chart distribution (Harbor, ghcr.io, GitLab, ECR, ACR, GAR).
 
 **Subresources**
 
-- `/status` — observed reconciliation state
-- `/sync` — POST to force a registry re-probe (subject to `minSyncInterval`)
-- `/webhooks` — GET / POST / DELETE webhook configuration. See [Webhooks](#webhooks).
+- `/status` — observed reconciliation state (the only subresource). Re-probing is driven by the controller's interval/resync. (`/sync` exists only on `Release`; `/webhooks` is not implemented — see [Webhooks](#webhooks).)
 
 ## Example
 
@@ -50,29 +47,25 @@ spec:
   # Authentication — most OCI registries require auth.
   # Discriminated union on auth.type. See "Authentication Methods" below.
   auth:
-    # type: none | dockerConfig | basic | token | oidc | cloudIdentity
-    type: dockerConfig
-    
-    # type: dockerConfig — standard kubelet-style image pull secret.
-    # Most flexible; handles registry-specific auth flows.
-    dockerConfig:
-      secretRef:
-        name: ghcr-pull-secret
-        key: .dockerconfigjson
+    # type: none | basic | token | dockerConfig | oidc | cloudIdentity
+    # Only none/basic/token are implemented; dockerConfig/oidc/cloudIdentity → Unsupported.
+    type: basic
+    basic:
+      username: deploy
+      passwordRef: { name: ghcr-creds, key: password }
 
     # --------------------------------
-    # type: basic
-    # basic:
-    #   usernameRef: { secretRef: { name: ghcr-creds, key: username } }
-    #   passwordRef: { secretRef: { name: ghcr-creds, key: password } }
-
-    # --------------------------------
-    # type: token — bearer token (e.g., GitHub PAT for ghcr.io).
+    # type: token — bearer token (sent as the basic-auth password to the registry).
     # token:
-    #   secretRef: { name: ghcr-token, key: token }
+    #   tokenRef: { name: ghcr-token, key: token }
 
     # --------------------------------
-    # type: cloudIdentity — controller pod has cloud-native identity
+    # type: dockerConfig — PLANNED (Unsupported). Kubelet-style image pull secret.
+    # dockerConfig:
+    #   secretRef: { name: ghcr-pull-secret, key: .dockerconfigjson }
+
+    # --------------------------------
+    # type: cloudIdentity — PLANNED (Unsupported). Cloud-native identity
     # (IRSA for ECR, Workload Identity for GAR, managed identity for ACR).
     # cloudIdentity:
     #   provider: aws | azure | gcp
@@ -137,57 +130,26 @@ spec:
   # Can be overridden per-Release in spec.content.type.
   defaultContentType: helm
 
-webhooks:
+# Webhook config is an inline `webhook` array (singular key), a sibling of spec/status.
+# NOTE: webhook processing is not implemented (planned) — see "Webhooks".
+webhook:
   - name: ghcr
     provider: ghcr
-    secretRef:
-      name: ghcr-webhook-secret
-      key: secret
-    events:
-      - package-published
-    filters:
-      repositories:
-        - payments-api
-        - payments-worker
-      tags:
-        - "v*"
+    secretRef: { name: ghcr-webhook-secret, key: secret }
+    events: [package-published]
 
 status:
   observedGeneration: 2
 
-  # Last successful registry probe.
-  lastSuccessfullProbedAt: 2026-04-29T09:55:00Z
-  
-  releaseCount: 8
+  # Last successful reachability/verification probe.
+  lastSuccessfulProbeAt: 2026-04-29T09:55:00Z
 
-  # Webhook status
-  webhooks:
-    - name: harbor
-      url: https://convoy.svc.cluster.local/webhooks/8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-      lastReceived: 2026-04-29T10:00:00Z
-      lastTriggered: 2026-04-29T10:00:00Z
-      receivedCount: 142
-      triggersCount: 87
-      rejectedCount: 3
-      filteredCount: 52
-      lastRejection:
-        rejectedAt: 2026-04-29T08:30:00Z
-        reason: SignatureMismatch
-        message: "HMAC signature did not match expected value"
-
+  # A single Ready condition is written. Reasons: Verified | VerifyFailed | Unsupported.
   conditions:
     - type: Ready
       status: "True"
       lastTransitionTime: 2026-04-29T09:55:00Z
-      reason: RegistryReachable
-    - type: Reachable
-      status: "True"
-    - type: AuthValid
-      status: "True"
-      reason: CredentialsAccepted
-    - type: WebhookConfigured
-      status: "True"
-      reason: WebhookActive
+      reason: Verified
 ```
 
 ## Spec
@@ -195,107 +157,84 @@ status:
 | Field                    | Type     | Required            | Default | Description                                                                                                 |
 |--------------------------|----------|---------------------|---------|-------------------------------------------------------------------------------------------------------------|
 | `url`                    | string   | yes                 | —       | OCI registry URL with `oci://` scheme.                                                                      |
-| `auth`                   | object   | no                  | —       | Authentication — discriminated union on `auth.type`. See [Authentication Methods](#authentication-methods). |
-| `auth.type`              | enum     | yes (if `auth` set) | —       | One of `dockerConfig`, `basic`, `token`, `oidc`, `workloadIdentity`.                                        |
-| `auth.dockerConfig`      | object   | one-of              | —       | Standard kubelet-style image pull secret (when `type: dockerConfig`).                                       |
+| `auth`                   | object   | yes                 | —       | Authentication — discriminated union on `auth.type`. Use `type: none` for public registries. See [Authentication Methods](#authentication-methods). |
+| `auth.type`              | enum     | yes                 | —       | One of `none`, `basic`, `token`, `dockerConfig`, `oidc`, `cloudIdentity`. Only `none`/`basic`/`token` are implemented. |
 | `auth.basic`             | object   | one-of              | —       | HTTP basic auth (when `type: basic`).                                                                       |
 | `auth.token`             | object   | one-of              | —       | Bearer token auth (when `type: token`).                                                                     |
-| `auth.oidc`              | object   | one-of              | —       | OIDC client credentials flow (when `type: oidc`).                                                           |
-| `auth.workloadIdentity`  | object   | one-of              | —       | Cloud workload identity (when `type: workloadIdentity`); for ECR (IRSA), GAR (GCP Workload Identity), ACR.  |
-| `interval`               | duration | no                  | `5m`    | Polling interval for tag/digest checks.                                                                     |
-| `minSyncInterval`        | duration | no                  | `10s`   | Minimum interval between manual/webhook-triggered syncs.                                                    |
-| `defaultContentType`     | enum     | no                  | `helm`  | Default interpretation of artifacts. See [Content Types](#content-types). Overridable per Release.          |
+| `auth.dockerConfig`      | object   | one-of              | —       | Image pull secret (when `type: dockerConfig`). Not implemented (planned).                                   |
+| `auth.oidc`              | object   | one-of              | —       | OIDC client credentials flow (when `type: oidc`). Not implemented (planned).                                |
+| `auth.cloudIdentity`     | object   | one-of              | —       | Cloud workload identity (when `type: cloudIdentity`); for ECR/GAR/ACR. Not implemented (planned).           |
+| `interval`               | duration | no                  | —       | Polling interval for verification. No server-side default (zero if unset).                                  |
+| `minSyncInterval`        | duration | no                  | —       | Defined in the API but currently unused. No default.                                                        |
+| `defaultContentType`     | enum     | no                  | —       | `helm`/`manifests`/`kustomize`. Only `helm` is fetchable; no server-side default. See [Content Types](#content-types). |
 | `tls`                    | object   | no                  | —       | TLS config for the registry.                                                                                |
-| `tls.caPublicCertRef`    | object   | no                  | —       | Reference to a ConfigMap containing the CA bundle.                                                          |
+| `tls.caPublicCertRef`    | object   | no                  | —       | CA bundle reference (`{name, key}`). **Not yet wired** — only `insecureSkipVerify` is honored today.        |
 | `tls.insecureSkipVerify` | bool     | no                  | `false` | Skip TLS verification (not recommended).                                                                    |
 
 ## Authentication Methods
 
-`spec.auth` is a discriminated union on `auth.type`. The active method's block is set; all others are omitted. Most OCI registries require auth; omit `auth` entirely for public registries.
-
-### dockerConfig
-
-A standard kubelet-style image pull secret (a `.dockerconfigjson` blob in a Secret). The most flexible option — it handles registry-specific auth flows and works with the same secrets used for pulling images.
-
-```yaml
-spec:
-  auth:
-    type: dockerConfig
-    dockerConfig:
-      secretRef:
-        name: ghcr-pull-secret
-        key: .dockerconfigjson
-```
+`spec.auth` is **required** (a discriminated union on `auth.type`); for a public registry set `type: none`. Implemented types: `none`, `basic`, `token`. `dockerConfig`, `oidc`, and `cloudIdentity` are defined in the API but return `Unsupported` (planned). Note: `token` is sent to the registry as the basic-auth password.
 
 ### basic
 
-HTTP basic authentication with a username and password drawn from a Secret.
+HTTP basic auth — a `username` (literal string) plus a `passwordRef` (`{name, key}`).
 
 ```yaml
 spec:
   auth:
     type: basic
     basic:
-      usernameRef: { secretRef: { name: ghcr-creds, key: username } }
-      passwordRef: { secretRef: { name: ghcr-creds, key: password } }
+      username: deploy
+      passwordRef: { name: ghcr-creds, key: password }
 ```
 
 ### token
 
-A static bearer token (e.g. a GitHub PAT for ghcr.io). Simple, but the token does not rotate automatically.
+A static bearer token (`tokenRef`), sent to the registry as the basic-auth password.
 
 ```yaml
 spec:
   auth:
     type: token
     token:
-      secretRef: { name: ghcr-token, key: token }
+      tokenRef: { name: ghcr-token, key: token }
+```
+
+### dockerConfig
+
+_Planned — not implemented (returns `Unsupported`)._ A kubelet-style image pull secret (a `.dockerconfigjson` blob in a Secret).
+
+```yaml
+spec:
+  auth:
+    type: dockerConfig
+    dockerConfig:
+      secretRef: { name: ghcr-pull-secret, key: .dockerconfigjson }
 ```
 
 ### oidc
 
-OIDC client-credentials flow. The controller discovers the token endpoint via `/.well-known/openid-configuration` on the issuer and exchanges client credentials for a token. Client authentication itself is a nested discriminated union (`clientAuth.type`): `clientSecret` (shared secret, most common), `privateKeyJWT` (signed JWT assertion), or `tlsClientAuth` (mTLS).
+_Planned — not implemented (returns `Unsupported`)._ OIDC client-credentials flow (`clientID`, `clientAuth.clientSecret.clientSecretRef`, etc.).
+
+### cloudIdentity
+
+_Planned — not implemented (returns `Unsupported`)._ The controller pod uses its own cloud-native identity (IRSA for ECR, Workload Identity for GAR, managed identity for ACR). No static credentials are stored.
 
 ```yaml
 spec:
   auth:
-    type: oidc
-    oidc:
-      issuerURL: https://auth.example.com/realms/internal
-      clientId: cd-controller
-      clientAuth:
-        type: clientSecret           # | privateKeyJWT | tlsClientAuth
-        clientSecret:
-          secretRef: { name: oidc-client, key: client-secret }
-      scopes: [openid]
-      audience: oci-registry
-      # Optional TLS config for a self-signed corporate IdP:
-      # tls:
-      #   caPublicCertRef: { name: corporate-ca, key: ca.crt }
-      #   insecureSkipVerify: false
-```
-
-### workloadIdentity
-
-The controller pod uses its own cloud-native identity (IRSA for ECR, Workload Identity for GAR, managed identity for ACR). No static credentials are stored.
-
-```yaml
-spec:
-  auth:
-    type: workloadIdentity
+    type: cloudIdentity
+    cloudIdentity:
+      provider: aws   # | gcp | azure
 ```
 
 ## Content Types
 
-`spec.defaultContentType` is an enum selecting how artifacts in this registry are interpreted by default. OCI is a generic artifact format, so the registry itself does not dictate content type. The default may be overridden per-`Release` in `spec.content.type`.
-
-- `helm` (default) — OCI-packaged Helm charts (`mediaType: application/vnd.cncf.helm.config.v1+json`).
-- `manifests` — tarballs of raw YAML manifests.
-- `kustomize` — Kustomize bundles.
+`spec.defaultContentType` is an enum (`helm`/`manifests`/`kustomize`), overridable per-`Release` in `spec.content.type`. **Only `helm` is implemented** — the fetcher always pulls a Helm chart packaged as an OCI artifact (`mediaType: application/vnd.cncf.helm.config.v1+json`). `manifests` and `kustomize` are accepted by the API but not yet fetchable. There is no server-side default applied; the fetcher assumes `helm`.
 
 ```yaml
 spec:
-  defaultContentType: helm   # | manifests | kustomize
+  defaultContentType: helm   # manifests | kustomize accepted but not yet implemented
 ```
 
 ## Status
@@ -303,91 +242,37 @@ spec:
 | Field                   | Type        | Description                                                                                           |
 |-------------------------|-------------|-------------------------------------------------------------------------------------------------------|
 | `observedGeneration`    | integer     | Generation of `spec` last reconciled.                                                                 |
-| `lastChecked`           | object      | Last successful registry probe.                                                                       |
-| `lastChecked.checkedAt` | timestamp   | When the check completed.                                                                             |
-| `releaseCount`          | integer     | Number of `Release` objects referencing this registry.                                                |
-| `webhooks`              | object      | Webhook operational state, mirrored from the `/webhooks` subresource. See [Webhooks](#webhooks).      |
+| `lastSuccessfulProbeAt` | timestamp   | Time of the last successful reachability/verification probe.                                          |
 | `conditions`            | []Condition | See [Conditions](#conditions).                                                                        |
+
+(The API type also has a `releaseCount` field, not currently populated. There is no `lastChecked` status.)
 
 ## Conditions
 
-`OCIRegistry` reports the following standard k8s conditions in `status.conditions`.
+`OCIRegistry` reports a **single** condition in `status.conditions`: `Ready`. (There are no separate `Reachable`/`AuthValid`/`WebhookConfigured` conditions — those are not implemented.)
 
-| Condition           | What `True` means                                                                                                                                                                                  |
-|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Ready`             | Composite: the registry is reachable, authenticated, and any configured webhooks are active. The signal most tooling should watch. Requires `Reachable: True` and `AuthValid: True`.               |
-| `Reachable`         | Network-level reachability of the registry endpoint succeeded.                                                                                                                                     |
-| `AuthValid`         | The most recent authentication attempt succeeded. See [AuthValid](#authvalid) for full semantics.                                                                                                  |
-| `WebhookConfigured` | At least one webhook is configured and receiving events. `True` when no webhooks are configured is not reported as a fault; per-entry health is in `status.webhooks[]`. See [Webhooks](#webhooks). |
+| Condition | What `True` means                                                        | Reasons                                                                       |
+|-----------|--------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `Ready`   | The registry's `/v2/` endpoint was reached successfully (200 or 401). Note this reflects **reachability**, not verified credentials. | `Verified` (reachable); `VerifyFailed` (unreachable / other error); `Unsupported` (auth method or content type not implemented). |
 
-### AuthValid
-
-`AuthValid` reflects the state of authenticating to the registry. It is always present, even when no explicit credentials are configured (public registries report `True` with `reason: NoAuthRequired`).
-
-**Status semantics:**
-
-| Status    | Meaning                                                                                                     |
-|-----------|-------------------------------------------------------------------------------------------------------------|
-| `True`    | Most recent authentication attempt succeeded. Credentials are working.                                      |
-| `False`   | Most recent authentication attempt failed for an auth-specific reason. Actionable.                          |
-| `Unknown` | Authentication has not been attempted yet, OR a non-auth failure (network, timeout) prevented testing auth. |
-
-`Unknown` must not be conflated with `False`: "credentials are bad" is a different problem from "we couldn't test the credentials."
-
-**Reason codes:**
-
-| Status    | Reason                   | Meaning                                                                          |
-|-----------|--------------------------|----------------------------------------------------------------------------------|
-| `True`    | `TokenAcquired`          | Succeeded via explicit token acquisition (OIDC, workload identity).              |
-| `True`    | `CredentialsAccepted`    | Succeeded with simple credentials (dockerConfig, basic, token).                  |
-| `True`    | `NoAuthRequired`         | No authentication is configured; registry is public.                             |
-| `False`   | `InvalidCredentials`     | Credentials rejected by the registry (401-class).                                |
-| `False`   | `TokenAcquisitionFailed` | OIDC or workload-identity token exchange failed.                                 |
-| `False`   | `SecretNotFound`         | Referenced Secret or ConfigMap does not exist.                                   |
-| `False`   | `SecretMalformed`        | Secret exists but content is invalid (bad base64, wrong format, missing keys).   |
-| `False`   | `PermissionDenied`       | Credentials valid but lack required permissions (403-class).                     |
-| `False`   | `TokenExpired`           | Known-expired token; refresh attempt failed.                                     |
-| `False`   | `AuthMisconfigured`      | Config error detected without contacting the registry (e.g. invalid issuer URL). |
-| `Unknown` | `NotYetAttempted`        | Registry is new; auth has not yet been tested.                                   |
-| `Unknown` | `RemoteUnreachable`      | Could not contact the registry to test auth (network, DNS, firewall).            |
-
-**Triage with `Reachable`:**
-
-| `Reachable` | `AuthValid` | Action                                                                              |
-|-------------|-------------|-------------------------------------------------------------------------------------|
-| `False`     | `Unknown`   | Fix network, DNS, firewall, or registry endpoint availability.                      |
-| `True`      | `False`     | Fix credentials or auth configuration.                                              |
-| `True`      | `True`      | If `Ready: False`, look beyond auth (rate limits, content errors).                  |
-
-`AuthValid: False` always forces `Ready: False`, with `Ready.reason: AuthFailed`.
-
-**Example — public registry, no auth:**
+An authentication failure surfaces as `Ready: False` with reason `VerifyFailed` — there is no separate auth condition or auth-specific reason code. Example:
 
 ```yaml
 status:
+  lastSuccessfulProbeAt: 2026-04-29T09:55:00Z
   conditions:
     - type: Ready
       status: "True"
-      reason: RegistryReachable
-    - type: Reachable
-      status: "True"
-    - type: AuthValid
-      status: "True"
-      reason: NoAuthRequired
-      message: "Registry is public; no authentication configured"
+      reason: Verified
 ```
 
 ## Webhooks
 
+> **Status: planned — not implemented.** There is no `/webhooks` subresource and no webhook receiver (no per-entry URL generation, operational status, or provider/event/filter processing). Webhook configuration is expressed today as an inline `webhook` array field (singular key) on the object; the controller does not populate any webhook status. The rest of this section describes the intended design.
+
 ### Purpose
 
-The `/webhooks` subresource manages webhook configurations for the registry, enabling push-based notifications from upstream that trigger source refreshes. Multiple webhooks can be configured, supporting scenarios like multi-mirror setups, provider migrations, and chained CI/CD pipelines.
-
-Webhook configuration lives behind a subresource (rather than inline in `spec`) for several reasons:
-- Different RBAC than the rest of the Source (platform team manages source definitions; app teams configure their webhook integrations)
-- Different lifecycle (webhooks added/removed independently of Source changes)
-- Different sensitivity (webhook secrets are credentials)
-- Audit clarity (webhook config changes distinguishable from Source spec changes)
+The webhook design enables push-based notifications from upstream that trigger source refreshes, supporting scenarios like multi-mirror setups, provider migrations, and chained CI/CD pipelines.
 
 ### Schema
 

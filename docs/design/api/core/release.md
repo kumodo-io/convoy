@@ -7,13 +7,12 @@
     * [kustomize](#kustomize)
     * [manifests](#manifests)
     * [jsonnet](#jsonnet)
-    * [cue](#cue)
   * [Mutation Types](#mutation-types)
-    * [helmValues](#helmvalues)
     * [goTemplate](#gotemplate)
     * [jsonPatch](#jsonpatch)
     * [strategicMergePatch](#strategicmergepatch)
     * [celTransform](#celtransform)
+    * [syncWave](#syncwave)
   * [Status](#status)
   * [Conditions](#conditions)
   * [Release State Model](#release-state-model)
@@ -31,11 +30,7 @@
     * [Purpose](#purpose)
     * [Health States](#health-states)
     * [How Health Is Determined](#how-health-is-determined)
-      * [Built-in Rules](#built-in-rules)
-      * [kstatus Fallback](#kstatus-fallback)
-      * [Custom Rules via `KindHealthRule` and `ResourceHealthRule`](#custom-rules-via-kindhealthrule-and-resourcehealthrule)
-    * [`KindHealthRule` Resource](#kindhealthrule-resource)
-    * [`ResourceHealthRule` Resource](#resourcehealthrule-resource)
+    * [Health Rule Sets](#health-rule-sets)
     * [Aggregation: Per-Resource → Release-Level `Healthy`](#aggregation-per-resource--release-level-healthy)
     * [Status Shape](#status-shape)
       * [`healthSummary`](#healthsummary)
@@ -45,69 +40,33 @@
     * [Comparison with Other Tools](#comparison-with-other-tools)
   * [Preview and Diff Subresources](#preview-and-diff-subresources)
     * [/preview](#preview)
-      * [Behavior](#behavior)
-      * [Output](#output)
-      * [Pin handling](#pin-handling)
-      * [Query parameters](#query-parameters)
-      * [POST with mutation overrides](#post-with-mutation-overrides)
-      * [Common usage patterns](#common-usage-patterns)
-      * [RBAC](#rbac)
     * [/diff](#diff)
-      * [Behavior](#behavior-1)
-      * [Comparison axes](#comparison-axes)
-      * [Query parameters](#query-parameters-1)
-      * [Common usage](#common-usage)
-      * [Pin interaction](#pin-interaction)
-      * [POST with mutation overrides](#post-with-mutation-overrides-1)
-      * [Output format](#output-format)
-      * [Managed-fields filtering](#managed-fields-filtering)
-      * [Drift categorization](#drift-categorization)
-      * [RBAC](#rbac-1)
-    * [Summary](#summary)
+      * [Output](#output)
+      * [Field filtering](#field-filtering)
   * [Lifecycle Hooks](#lifecycle-hooks)
     * [Purpose](#purpose-1)
     * [Why a Subresource, Not Annotations](#why-a-subresource-not-annotations)
     * [Phases](#phases)
     * [Hook Schema](#hook-schema)
       * [Hook fields](#hook-fields)
-    * [CEL `when` Conditions](#cel-when-conditions)
-      * [Phase-specific bindings](#phase-specific-bindings)
-      * [Common patterns](#common-patterns)
-      * [Evaluation semantics](#evaluation-semantics)
+    * [Templating context](#templating-context)
+    * [The `if` Condition (skip)](#the-if-condition-skip)
+    * [The `runAfter` Trigger (wait) — postSync only](#the-runafter-trigger-wait--postsync-only)
     * [Failure Handling](#failure-handling)
     * [Cleanup](#cleanup)
-      * [`deleteBeforeCreation`](#deletebeforecreation)
-      * [`cleanupOnCompletion`](#cleanuponcompletion)
+      * [`cleanup` — delete after the hook completes](#cleanup--delete-after-the-hook-completes)
+      * [`deleteBeforeCreation` — delete the prior workload on re-arm](#deletebeforecreation--delete-the-prior-workload-on-re-arm)
+      * [The two together](#the-two-together)
     * [Ownership Tracking](#ownership-tracking)
     * [Lifecycle Retention Policy](#lifecycle-retention-policy)
-      * [Interaction with per-hook policy](#interaction-with-per-hook-policy)
-      * [When GC runs](#when-gc-runs)
     * [Helm Chart Compatibility](#helm-chart-compatibility)
     * [Status Reflection](#status-reflection)
       * [Per-hook status fields](#per-hook-status-fields)
+      * [Condition and printer column](#condition-and-printer-column)
     * [Interaction with Sync Waves](#interaction-with-sync-waves)
     * [Mutation Pipeline Interaction](#mutation-pipeline-interaction)
     * [Subresource](#subresource)
     * [Summary Table](#summary-table)
-    * [Binding Model](#binding-model)
-    * [`.Release` Bindings](#release-bindings)
-      * [Release aliases](#release-aliases)
-    * [`.Cluster` Bindings](#cluster-bindings)
-      * [Cluster aliases](#cluster-aliases)
-    * [`.Source` Bindings](#source-bindings)
-      * [Source aliases](#source-aliases)
-    * [`.Sync` Bindings](#sync-bindings)
-      * [`.Sync.failure` (SyncFail only)](#syncfailure-syncfail-only)
-    * [Phase Availability Summary](#phase-availability-summary)
-    * [Common Patterns](#common-patterns-1)
-      * [First-deploy vs. update](#first-deploy-vs-update)
-      * [Skip on no-op syncs](#skip-on-no-op-syncs)
-      * [Environment-conditional](#environment-conditional)
-      * [Region-conditional](#region-conditional)
-      * [Failure-stage-conditional](#failure-stage-conditional)
-      * [Combining conditions](#combining-conditions)
-      * [Reference render hash in template](#reference-render-hash-in-template)
-    * [Evaluation Semantics](#evaluation-semantics-1)
     * [Validation](#validation)
   * [Sync Waves](#sync-waves)
     * [Purpose](#purpose-2)
@@ -127,7 +86,7 @@
 
 The deployment unit. Binds one `Source` + one `Cluster` + a content interpretation, with an ordered mutation pipeline. Self-describing via resolved status snapshots. Identity (source **kind + name**, cluster, content type) is immutable; routine config (the **source ref/version**, mutations, paths) is mutable.
 
-`spec.source` and `spec.content` are two orthogonal axes: **source = where + which** (the endpoint object plus the coordinate to fetch), **content = how** (how to render the fetched bytes). Both are discriminated unions on `.type`, mirroring `auth`. The `Source` object (`GitRepository`/`HelmRegistry`/`OCIRegistry`) is a reusable, credentialed *endpoint* — it does not pin a version; the coordinate lives on the Release: `spec.source.gitRepository.ref` (`branch`/`tag`/`commit`/`semver`), `spec.source.helmRegistry.chart{name,version}`, or `spec.source.ociRegistry.artifact{name,version}`. So one Source is shared across Releases pulling different versions — e.g. staging on `branch: main`, prod on `tag: v1.2.3` from one `GitRepository`.
+`spec.source` and `spec.content` are two orthogonal axes: **source = where + which** (the endpoint object plus the coordinate to fetch), **content = how** (how to render the fetched bytes). Both are discriminated unions on `.type`, mirroring `auth`. The `Source` object (`GitRepository`/`HelmRegistry`/`OCIRegistry`) is a reusable, credentialed *endpoint* — it does not pin a version; the coordinate lives on the Release: `spec.source.gitRepository.ref` (`branch`/`tag`/`commit`; `semver` is defined but not yet resolved), `spec.source.helmRegistry.chart{name,version}`, or `spec.source.ociRegistry.artifact{name,version}`. So one Source is shared across Releases pulling different versions — e.g. staging on `branch: main`, prod on `tag: v1.2.3` from one `GitRepository`.
 
 **Subresources**
 
@@ -136,9 +95,10 @@ The deployment unit. Binds one `Source` + one `Cluster` + a content interpretati
 - `/sync` — POST to trigger reconciliation
 - `/diff` — GET diff between rendered state and live cluster
 - `/preview` — GET the fully rendered post-mutation manifest set (without applying)
-- `/pin` — pin state (GET to read, POST to set, DELETE to clear)
-- `/history` — GET paginated list of past (inputs → output) records, S3-backed
-- `/health` — GET per-resource health for managed resources (re-evaluated at runtime; not persisted in `status`)
+- `/pin` — pin state: GET to read, PUT to set or clear (an empty `renderRef` unpins)
+- `/health` — GET per-resource health for managed resources (served from the durable `ReleaseInventory`)
+- `/lifecycle` — the phase-keyed lifecycle-hook config (GET / PUT / PATCH)
+- `/history` — **planned; not implemented** (would list past inputs→output records; requires render history / S3 storage, which is not built). Rollback is likewise not implemented.
 
 ```yaml
 apiVersion: core.convoy.kumodo.io/v1alpha1
@@ -315,33 +275,21 @@ spec:
 # Exposed via the /mutations subresource for field-level RBAC and audit clarity.
 # +listType=atomic — list is treated as a single unit; concurrent edits conflict.
 mutations:
-  # 1. Environment-wide values (shared across all prod releases).
-  - type: helmValues
-    from:
-      kind: GitRepository
-      name: payments-config-repo
-      path: env/prod/values.yaml
-  
-  # 2. Cluster-specific values (per-region overrides).
-  - type: helmValues
-    from:
-      kind: GitRepository
-      name: payments-config-repo
-      path: clusters/prod-eu/values.yaml
-  
-  # 3. Templated values using cluster metadata.
+  # NOTE: Helm values are NOT a mutation type — layer them via spec.content.helm.values.
+  # 1. Templated edit using cluster metadata.
   # Default: applied AFTER Helm rendering on the rendered YAML, to avoid {{ }} collisions.
-  # Template context: .Cluster, .Release, .Source.
+  # Template context (lowercase): .cluster (metadata keys flattened + .cluster.name),
+  # .self (the Release), .object (the rendered object).
   - type: goTemplate
     inline: |
-      replicaCount: {{ .Cluster.metadata.replicas | default 3 }}
-      region: {{ .Cluster.metadata.region }}
+      replicaCount: {{ .cluster.replicas | default 3 }}
+      region: {{ .cluster.region }}
       ingress:
-        host: payments-{{ .Cluster.metadata.region }}.example.com
+        host: payments-{{ .cluster.region }}.example.com
       podLabels:
-        cluster: {{ .Cluster.name }}
+        cluster: {{ .cluster.name }}
   
-  # 4. Small inline JSON patch — direct overrides without templating.
+  # 2. Small inline JSON patch — direct overrides without templating.
   - type: jsonPatch
     patches:
       - op: replace
@@ -365,13 +313,14 @@ lifecycle:
   preSync:
     - name: db-migration
       type: Job
-      when: '.Cluster.metadata.tier == "production"'
-      jobTemplate: { ... }          # JobTemplateSpec
+      if: 'cluster.tier == "production"'
+      jobTemplate: { ... }          # { metadata (partial), spec: JobSpec }
       weight: 0
-      onFailure: AbortSync
+      onFailure: Fail
   postSync:
     - name: smoke-test
       type: Job
+      runAfter: Healthy             # postSync only: wait until the release is healthy
       jobTemplate: { ... }
       onFailure: Continue
 
@@ -384,9 +333,10 @@ pin:
 status:
   observedGeneration: 42
   
-  # Exactly three conditions are written (see Conditions). Render-pipeline progress
-  # is in lastAttempted; pin state is in status.pin (and surfaced as the Applied
-  # condition's reason). A composite Ready and dedicated SourceResolved/
+  # Three core conditions are written (Applied, InSync, Healthy), plus
+  # LifecycleSucceeded when the Release has hooks (see Conditions). Render-pipeline
+  # progress is in lastAttempted; pin state is in status.pin (and surfaced as the
+  # Applied condition's reason). A composite Ready and dedicated SourceResolved/
   # MutationsResolved/Rendered/Pinned conditions are planned, not implemented.
   conditions:
     - type: Applied
@@ -461,28 +411,18 @@ status:
     # One entry per mutation in spec, with content hashes for reproducibility.
     resolvedMutations:
       - index: 0
-        type: helmValues
-        sourceRef: { kind: GitRepository, name: payments-config-repo, path: env/prod/values.yaml }
-        sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12
-        contentHash: sha256:7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e
-      - index: 1
-        type: helmValues
-        sourceRef: { kind: GitRepository, name: payments-config-repo, path: clusters/prod-eu/values.yaml }
-        sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12
-        contentHash: sha256:9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a
-      - index: 2
         type: goTemplate
         contentHash: sha256:0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b
-      - index: 3
+      - index: 1
         type: jsonPatch
         contentHash: sha256:1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c
-      - index: 4
+      - index: 2
         type: strategicMergePatch
         sourceRef: { kind: GitRepository, name: payments-experiments-repo, path: features/new-tracing/patch.yaml }
         sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d
         contentHash: sha256:2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d
     
-    # S3 hash of the fully rendered manifest set. Lookup key for /history and /rollback.
+    # Content hash of the fully rendered manifest set (the render identity).
     renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
     
     syncedAt: 2026-04-29T10:00:05Z
@@ -511,11 +451,9 @@ status:
         replicas: "5"
         cni: cilium
     resolvedMutations:
-      - { index: 0, type: helmValues, sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12, contentHash: "sha256:7d8e9f..." }
-      - { index: 1, type: helmValues, sourceRevision: 1a2b3c4d5e6f7890abcdef1234567890abcdef12, contentHash: "sha256:9f0a1b..." }
-      - { index: 2, type: goTemplate, contentHash: "sha256:0a1b2c..." }
-      - { index: 3, type: jsonPatch,  contentHash: "sha256:1b2c3d..." }
-      - { index: 4, type: strategicMergePatch, sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d, contentHash: "sha256:2c3d4e..." }
+      - { index: 0, type: goTemplate, contentHash: "sha256:0a1b2c..." }
+      - { index: 1, type: jsonPatch,  contentHash: "sha256:1b2c3d..." }
+      - { index: 2, type: strategicMergePatch, sourceRevision: 2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d, contentHash: "sha256:2c3d4e..." }
     renderRef: sha256:abc123def456789aabbccddeeff001122334455667788990011223344556677
     attemptedAt: 2026-04-29T10:00:00Z
     
@@ -524,12 +462,12 @@ status:
     
     # Set only when phase: Failed.
     # failure:
-    #   stage: SourceResolution | MutationResolution | Rendering | Syncing
+    #   stage: SourceResolution | ClusterResolution | MutationResolution | Rendering | Syncing | HookFailed
     #   mutationIndex: 1   # if failure during mutation pipeline
     #   message: "failed to fetch values file: 404 not found"
     #   waveNumber: 1
-    #   hookName: "my-hook"
-    #   hookPhase: PreRender
+    #   hookName: "my-hook"   # set when stage: HookFailed
+    #   hookPhase: PreSync    # set when stage: HookFailed
 
   # Per-wave apply progress (Axis A). listType=map keyed by number. The controller
   # owns `applied`; `healthy` is rolled up from the observer-written ReleaseInventory.
@@ -565,10 +503,10 @@ status:
 |-------------------|--------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `source`          | object | yes      | —       | WHERE + WHICH to fetch. Discriminated on `source.type` (`gitRepository`/`helmRegistry`/`ociRegistry`); each block references a Source object and carries the coordinate. See [Source Reference](#source-reference). |
 | `content`         | object | yes      | —       | HOW to render the fetched bytes. Discriminated on `content.type`; see [Content Types](#content-types). Must be compatible with `source.type`. `content.type` immutable.                                             |
-| `cluster`         | object | yes      | —       | Reference (`ref` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                                                                                               |
-| `syncPolicy`      | object | no       | —       | Reconciliation behavior: `automatic`, `pruneOrphaned`, `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).                                                                                  |
-| `retentionPolicy` | object | no       | —       | `keepHistory` — number of historical (rendered, applied) records to retain in S3; drives `/history` depth and rollback range.                                                                                       |
-| `deletionPolicy`  | object | no       | —       | Per-Release deletion behavior (`workloads: prune \| leave`).                                                                                                                                                        |
+| `clusterRef`      | object | yes      | —       | Reference (`name` [+ `namespace`]) to the target `Cluster`. Immutable.                                                                                                                                              |
+| `syncPolicy`      | object | no       | —       | Reconciliation behavior: `automatic`, `prune` (`orphaned`/`includeCRDs`/`includeNamespaces`), `interval`, `retryBackoff`, `waveStrategy` (see [Sync Waves](#sync-waves)).                                           |
+| `retentionPolicy` | object | no       | —       | `keepHistory` — retained-history count (stored on the object; `/history` and rollback that would consume it are not yet implemented).                                                                               |
+| `deletionPolicy`  | object | no       | —       | Per-Release deletion behavior (`keepWorkloads: bool`, `blockOnClusterUnreachable: bool`).                                                                                                                          |
 
 `mutations` is a **top-level field** (not under `spec`), exposed via the `/mutations` subresource for field-level RBAC and audit. It is an ordered, atomic (`+listType=atomic`) transformation pipeline; see [Mutation Types](#mutation-types).
 
@@ -612,15 +550,9 @@ spec:
 
 ### Source × Content compatibility
 
-`source.type` (where) and `content.type` (how) are orthogonal, but not every pairing is valid:
+`source.type` (where) and `content.type` (how) are orthogonal. The `content.type` enum is `helm`, `manifests`, `kustomize`, `jsonnet` (there is **no** `cue` content type — the constant exists but is validation-rejected). Today only **`helm`** and **`manifests`** actually render; `kustomize`/`jsonnet` are accepted by the API but not yet implemented in the renderer.
 
-| `source.type` ↓ / `content.type` → | `helm` | `manifests` | `kustomize` | `jsonnet` | `cue` |
-|------------------------------------|:------:|:-----------:|:-----------:|:---------:|:-----:|
-| `gitRepository`                    |   ✅    |      ✅      |      ✅      |     ✅     |   ✅   |
-| `helmRegistry`                     |   ✅    |      —      |      —      |     —     |   —   |
-| `ociRegistry`                      |   ✅    |      ✅      |      ✅      |     —     |   —   |
-
-Incompatible pairings are rejected by validation (e.g. `helmRegistry` requires `content.type: helm`).
+> **Note:** source×content compatibility is **not currently enforced** by validation — the source discriminator and content discriminator are validated independently, so any content type is admitted with any source type. Sensible pairings are still: `gitRepository` with any content type; `helmRegistry`/`ociRegistry` with `helm`.
 
 ## Content Types
 
@@ -641,7 +573,7 @@ spec:
 
 ### kustomize
 
-Build a Kustomize overlay at `path`.
+_Accepted by the API but not yet rendered (planned)._ Build a Kustomize overlay at `path`.
 
 ```yaml
 spec:
@@ -665,7 +597,7 @@ spec:
 
 ### jsonnet
 
-Render Jsonnet to manifests, optionally passing top-level arguments (`tla`).
+_Accepted by the API but not yet rendered (planned)._ Render Jsonnet to manifests, optionally passing top-level arguments (`tla`).
 
 ```yaml
 spec:
@@ -678,45 +610,24 @@ spec:
           value: prod
 ```
 
-### cue
-
-Render CUE to manifests from an entry path. Type-specific config mirrors the other path-based content types.
-
-```yaml
-spec:
-  content:
-    type: cue
-    cue:
-      path: ./manifests
-```
+(There is no `cue` content type — the enum constant exists but is rejected by validation.)
 
 ## Mutation Types
 
-`mutations[]` is an ordered pipeline; each entry declares its `type`. Entries run in order, each operating on the output of the previous one. Inline content is provided directly; external content is referenced via `from` (typically a `GitRepository`).
+`mutations[]` is an ordered pipeline; each entry declares its `type`, one of `goTemplate`, `jsonPatch`, `strategicMergePatch`, `celTransform`, `syncWave`. Entries run in order, each operating on the output of the previous one. Inline content is provided directly; external content is referenced via `from` (a `GitRepository`, `ConfigMap`, or `Secret`).
 
-### helmValues
-
-Merge Helm values before chart rendering. Sourced from a values file (`from`) or inline.
-
-```yaml
-mutations:
-  - type: helmValues
-    from:
-      kind: GitRepository
-      name: payments-config-repo
-      path: env/prod/values.yaml
-```
+> **Helm values are not a mutation.** To layer Helm values, use `spec.content.helm.values` (a list of value sources: `gitRepository`/`configMap`/`secret`/`inline`) — not a `helmValues` mutation (no such type exists).
 
 ### goTemplate
 
-Apply a Go template. By default it runs **after** Helm rendering on the rendered YAML (to avoid `{{ }}` collisions). Template context: `.Cluster`, `.Release`, `.Source`. Provided `inline` or via `from`.
+Apply a Go template. By default it runs **after** Helm rendering on the rendered YAML (to avoid `{{ }}` collisions). Template context is lowercase, shared with mutations/hooks: `.cluster` (Cluster `spec.metadata` keys flattened, plus `.cluster.name`), `.self` (the Release's name/namespace/labels/annotations), `.object` (the rendered object). Metadata is `.cluster.<key>` — there is no `.metadata` segment and no `.Source` binding. Provided `inline` or via `from`.
 
 ```yaml
 mutations:
   - type: goTemplate
     inline: |
-      replicaCount: {{ .Cluster.metadata.replicas | default 3 }}
-      region: {{ .Cluster.metadata.region }}
+      replicaCount: {{ .cluster.replicas | default 3 }}
+      region: {{ .cluster.region }}
 ```
 
 ### jsonPatch
@@ -747,13 +658,26 @@ mutations:
 
 ### celTransform
 
-Transform the rendered manifest set with a CEL expression, with the same binding context available to `goTemplate`. Useful for programmatic edits that are awkward to express as a patch. (Planned beyond the PoC; included here for completeness.)
+Transform matched objects with a CEL expression that returns a map overlay (RFC 7386-merged onto the object). Bindings are the same lowercase `cluster`/`self`/`object` as `goTemplate`. Provided `inline` or via `from`.
 
 ```yaml
 mutations:
   - type: celTransform
     inline: |
-      # CEL expression operating over the rendered objects
+      # CEL expression returning a map overlay, e.g.
+      {"metadata": {"labels": {"region": cluster.region}}}
+```
+
+### syncWave
+
+Assign sync-wave ordering to matched objects (equivalent to the `convoy.kumodo.io/sync-wave` annotation). See [Sync Waves](#sync-waves).
+
+```yaml
+mutations:
+  - type: syncWave
+    target: { kind: Deployment }
+    syncWave:
+      wave: 1
 ```
 
 ## Status
@@ -773,13 +697,14 @@ mutations:
 
 ## Conditions
 
-`Release` reports **three** conditions in `status.conditions`, each with a single writer (there is intentionally no composite condition — see [Release State Model](#release-state-model)):
+`Release` reports **three** core conditions in `status.conditions`, each with a single writer (there is intentionally no composite condition — see [Release State Model](#release-state-model)). A fourth, `LifecycleSucceeded`, appears only when the Release has lifecycle hooks:
 
-| Condition | Writer                | What `True` means                                                                                                    |
-|-----------|-----------------------|----------------------------------------------------------------------------------------------------------------------|
-| `Applied` | release controller    | The most recent apply to the cluster succeeded (kube-apiserver accepted every resource). See [State Model](#applied). |
-| `InSync`  | observer (drift loop) | The live cluster state matches the rendered manifest set (no drift). See [State Model](#insync).                     |
-| `Healthy` | observer (health loop)| Every managed resource reached its intended runtime state. `Unknown` while progressing. See [State Model](#healthy). |
+| Condition            | Writer                 | What `True` means                                                                                                                                                                               |
+|----------------------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Applied`            | release controller     | The most recent apply to the cluster succeeded (kube-apiserver accepted every resource). See [State Model](#applied).                                                                           |
+| `InSync`             | observer (drift loop)  | The live cluster state matches the rendered manifest set (no drift). See [State Model](#insync).                                                                                                |
+| `Healthy`            | observer (health loop) | Every managed resource reached its intended runtime state (for the current render). `Unknown`/`Pending` while progressing or not yet applied. See [State Model](#healthy).                      |
+| `LifecycleSucceeded` | release controller     | All applicable lifecycle hooks succeeded (or were skipped). Absent when the Release has no hooks; `Unknown` while any runs; `False` when any failed. See [Lifecycle Hooks](#status-reflection). |
 
 Progress that is *not* a condition:
 
@@ -843,20 +768,20 @@ Drift may be transient (the controller will re-apply on next reconciliation) or 
 
 `Healthy: False` means at least one resource is degraded — failing to come up, stuck progressing past a deadline, or in a known-bad state.
 
-`Healthy: Unknown` is a meaningful third value here: a Pod that's still pulling its image isn't unhealthy, it's progressing. A Deployment that just started rolling out isn't unhealthy. The health assessment must distinguish "still working on it" from "broken."
+`Healthy: Unknown` is a meaningful third value here: a Pod that's still pulling its image isn't unhealthy, it's progressing. A Deployment that just started rolling out isn't unhealthy. The health assessment must distinguish "still working on it" from "broken." `Healthy` is also reported `Unknown` with reason `Pending` when the **current render** is not yet reflected on the cluster — nothing is deployed yet, or a re-render (or a gating `preSync` hook) means the assessed resources still belong to a prior render. Health is always assessed against the render the resource was actually applied under, so a prior render's healthy resources never read as the new render's `True`.
 
-`Healthy` is independent of `Applied` and `InSync`. A Release can be applied, in-sync, and unhealthy (manifest is correct, workloads aren't working). A Release can be unapplied (apply failed) but its previously-deployed workloads are still healthy (cluster still has the prior version running).
+`Healthy` is independent of `Applied` and `InSync`. A Release can be applied, in-sync, and unhealthy (manifest is correct, workloads aren't working). A Release can be unapplied (apply failed) but its previously-deployed workloads are still healthy (cluster still has the prior version running). During a rolling update, `Healthy` can legitimately stay `True` — the current render's workloads never went down — while `InSync` flips `False` until convergence.
 
 ### Reading the Three Signals Together
 
 There is no `Ready` condition; consumers combine the three signals themselves. The common combinations:
 
-| `Applied` | `InSync` | `Healthy` | Meaning                                                         |
-|-----------|----------|-----------|-----------------------------------------------------------------|
-| `True`    | `True`   | `True`    | Steady state — deployed and working                             |
-| `True`    | `True`   | `Unknown` | Progressing — workloads coming up                               |
-| `True`    | `True`   | `False`   | Deployment broken — manifests applied but workloads not working |
-| `True`    | `False`  | *         | Drift — cluster has diverged from desired                       |
+| `Applied` | `InSync` | `Healthy` | Meaning                                                               |
+|-----------|----------|-----------|-----------------------------------------------------------------------|
+| `True`    | `True`   | `True`    | Steady state — deployed and working                                   |
+| `True`    | `True`   | `Unknown` | Progressing — workloads coming up                                     |
+| `True`    | `True`   | `False`   | Deployment broken — manifests applied but workloads not working       |
+| `True`    | `False`  | *         | Drift — cluster has diverged from desired                             |
 | `False`   | *        | *         | Apply failed (or a wave/cluster-wave hold) — see the `Applied` reason |
 
 > **Planned.** A composite `Ready` (`Applied ∧ InSync ∧ Healthy`) may be added later as a convenience for dashboards. It is not written today.
@@ -909,12 +834,12 @@ Here the Release is applied and in-sync but not healthy — a consumer reads tha
 
 ### Vocabulary Mapping for Users Coming from Other Tools
 
-| Concept                        | This tool | ArgoCD                 | Flux                                     |
-|--------------------------------|-----------|------------------------|------------------------------------------|
-| Manifests successfully applied | `Applied` | `Synced`               | (implicit; not a separate condition)     |
-| Cluster matches desired state  | `InSync`  | (implicit in `Synced`) | `Ready` (partial — also includes health) |
-| Workloads running correctly    | `Healthy` | `Healthy`              | (folded into `Ready`)                    |
-| Aggregate "all good"           | — (combine the three) | `Synced + Healthy` | `Ready`                          |
+| Concept                        | This tool             | ArgoCD                 | Flux                                     |
+|--------------------------------|-----------------------|------------------------|------------------------------------------|
+| Manifests successfully applied | `Applied`             | `Synced`               | (implicit; not a separate condition)     |
+| Cluster matches desired state  | `InSync`              | (implicit in `Synced`) | `Ready` (partial — also includes health) |
+| Workloads running correctly    | `Healthy`             | `Healthy`              | (folded into `Ready`)                    |
+| Aggregate "all good"           | — (combine the three) | `Synced + Healthy`     | `Ready`                                  |
 
 ArgoCD users will recognize `Healthy`. The split between `Applied` and `InSync` is more granular than ArgoCD's `Synced` (which conflates "applied" with "matches" — fine in practice but loses signal during drift events). Flux users will find the three-way split more granular than Flux's combined `Ready` — convoy has no single aggregate condition; consumers combine the three.
 
@@ -952,151 +877,35 @@ Each managed resource is evaluated to one of five states:
 | `Healthy`     | Resource has reached its intended runtime state | `Deployment` with all replicas ready, `observedGeneration` current                       |
 | `Progressing` | Working toward intended state, no failure yet   | `Deployment` rolling out a new revision; `Pod` pulling its image                         |
 | `Degraded`    | Failed or in a known-bad state                  | `Deployment` with `ProgressDeadlineExceeded`; `Pod` in `CrashLoopBackOff` past threshold |
-| `Suspended`   | Intentionally paused                            | `CronJob` with `spec.suspend: true`                                                      |
-| `Unknown`     | Health cannot be determined                     | Custom resource with no rule and no standard conditions                                  |
+| `Unknown`     | Health cannot be determined                     | Rule evaluation errored, or the resource couldn't be read                                |
 
-`Suspended` is a deliberate distinction from `Degraded` — operators shouldn't be alerted for resources that are intentionally not running.
-
-`Unknown` is a deliberate distinction from `Healthy` — the controller is honest about what it doesn't know rather than defaulting optimistically.
+There are four states. (`Suspended` is not a producible state — a `suspended` counter exists in the status summary type but the assessor never emits it.) `Unknown` is a deliberate distinction from `Healthy` — the controller is honest about what it doesn't know rather than defaulting optimistically.
 
 ### How Health Is Determined
 
-For each managed resource, the controller resolves a health rule in this order:
+Health is assessed **only** by the CEL rules in the `GlobalHealthRuleSet` / `HealthRuleSet` sets a Release selects — there are no built-in per-kind rules and no `kstatus` fallback. For each managed resource:
 
-1. **`ResourceHealthRule`** matching `(apiGroup, kind, namespace, name)` — highest priority; for cluster-scoped resources, `namespace` is empty
-2. **`KindHealthRule`** matching `(apiGroup, kind)` — applies to all resources of a kind
-3. **Built-in rule** for standard kinds — used when no user rule applies
-4. **kstatus fallback** for resources following Kubernetes API conventions
-5. **`Unknown`** — when none of the above can determine state
+1. Collect the rules from the rule sets the Release selects (below) whose `apiVersion` + `resources` match the resource.
+2. The resource **passes** when *every* matched rule's `ruleExpression` (a CEL predicate over `object`) returns `true`. A resource with **no** matching rule passes vacuously → `Healthy`.
+3. The health *state* is derived from pass/fail plus the Release-level deadline: a failing predicate is `Progressing` until `spec.healthAssessment.deadline` elapses (from when it first went non-passing), then `Degraded`. An evaluation error or unreadable resource is `Unknown`.
 
-The first matching layer is used; lower layers are consulted only when higher ones don't apply.
+The only CEL binding is `object` (the live resource) — there is no `now` binding. The states are `Healthy`, `Progressing`, `Degraded`, `Unknown` (there is no `Suspended`).
 
-#### Built-in Rules
+### Health Rule Sets
 
-The controller ships with rules for ~18 standard kinds covering 95% of typical deployments:
-
-**Workloads:** `Deployment`, `StatefulSet`, `DaemonSet`, `ReplicaSet`, `Pod`, `Job`, `CronJob`
-
-**Networking:** `Service`, `Ingress`
-
-**Storage:** `PersistentVolumeClaim`, `PersistentVolume`
-
-**Configuration:** `ConfigMap`, `Secret`
-
-**RBAC:** `ServiceAccount`, `Role`, `RoleBinding`, `ClusterRole`, `ClusterRoleBinding`
-
-**Autoscaling/Reliability:** `HorizontalPodAutoscaler`, `PodDisruptionBudget`
-
-Rules incorporate kind-appropriate progress deadlines (e.g., `Deployment.spec.progressDeadlineSeconds` for Deployments; 10m default for StatefulSets) and look at child-resource events for fast failure detection (e.g., `ImagePullBackOff` on Pods triggers `Degraded` on the parent without waiting for the parent's deadline).
-
-Built-in rule logic is documented per kind so users can predict behavior.
-
-#### kstatus Fallback
-
-For resources not covered by a built-in rule, the controller uses Google's `kstatus` library, which infers health from common Kubernetes API conventions:
-
-- Presence and value of a `Ready` condition
-- Generic `Failed`, `Reconciling`, `Stalled` conditions
-- `observedGeneration` vs `metadata.generation`
-
-This handles convention-following CRDs automatically with zero per-CRD configuration. Resources that don't follow conventions fall through to `Unknown`.
-
-#### Custom Rules via `KindHealthRule` and `ResourceHealthRule`
-
-For CRDs with non-standard status (or to override built-in behavior), users define `KindHealthRule` or `ResourceHealthRule` resources. See the resource summaries below for full schema.
-
-### `KindHealthRule` Resource
-
-`KindHealthRule` is **cluster-scoped**. It defines a health rule that applies to all resources of a given kind across the entire cluster, regardless of which Release manages them.
-
-**Targeting:** Each `KindHealthRule` targets exactly one `(apiGroup, kind)`. Validating admission rejects creation of a second `KindHealthRule` with the same target. To change behavior, edit the existing rule.
-
-**Relationship to Release:** None. The controller indexes `ResourceHealthRule` by `(apiGroup, kind, version)` and looks up the applicable rule by the resource's kind, regardless of which Release manages it. This ensures consistent health verdicts across the system.
-
-**Expression language:** CEL, with bindings for the live resource (`object`) and current time (`now`). Returns one of `Healthy`, `Progressing`, `Degraded`, `Suspended`, `Unknown`.
+Rules live in two kinds in the `extensions.convoy.kumodo.io/v1alpha1` group: **`GlobalHealthRuleSet`** (cluster-scoped) and **`HealthRuleSet`** (namespaced). A Release opts in with label selectors:
 
 ```yaml
-apiVersion: extensions.convoy.kumodo.io/v1alpha1
-kind: KindHealthRule
-metadata:
-  name: certificate-health
 spec:
-  target:
-    apiGroup: cert-manager.io
-    kind: Certificate
-    version: v1
-  
-  expression: |
-    has(object.status.conditions) && object.status.conditions.exists(c, 
-      c.type == "Ready" && c.status == "True"
-    ) ? "Healthy" :
-    has(object.status.conditions) && object.status.conditions.exists(c,
-      c.type == "Ready" && c.status == "False"
-    ) ? "Degraded" :
-    "Progressing"
-  
-  progressDeadline: 5m
-  
-  messageExpression: |
-    has(object.status.conditions) && object.status.conditions.exists(c, c.type == "Ready") 
-      ? object.status.conditions.filter(c, c.type == "Ready")[0].message
-      : "Waiting for Certificate to become ready"
+  healthAssessment:
+    globalRuleSetSelector:            # selects GlobalHealthRuleSets by label
+      matchLabels: { convoy.kumodo.io/default: "true" }
+    localRuleSetSelector:             # selects HealthRuleSets in the Release's namespace
+      matchLabels: { team: payments }
+    deadline: 1m                      # Progressing → Degraded after this (all resources)
 ```
 
-### `ResourceHealthRule` Resource
-
-`ResourceHealthRule` is **namespaced**. It defines a health rule for a specific resource instance, identified by `(apiGroup, kind, namespace, name)`. Takes precedence over `KindHealthRule` when both match. For cluster-scoped target resources, `namespace` is empty.
-
-**Relationship to Release:** None. The controller indexes `ResourceHealthRule` by `(apiGroup, kind, version, namespace, name)` and looks up the rule at evaluation time, independently of which Release manages the resource.
-
-**Expression language:** Same CEL bindings as `KindHealthRule`.
-
-```yaml
-apiVersion: extensions.convoy.kumodo.io/v1alpha1
-kind: ResourceHealthRule
-metadata:
-  name: payments-db-health
-  namespace: payments-team
-spec:
-  target:
-    apiGroup: apps
-    kind: StatefulSet
-    version: v1
-    name: payments-db
-    namespace: payments-team
-  
-  expression: |
-    object.status.readyReplicas == object.status.replicas &&
-    object.status.replicas >= 3
-      ? "Healthy"
-      : object.status.readyReplicas > 0
-        ? "Progressing"
-        : "Degraded"
-  
-  progressDeadline: 15m
-  
-  messageExpression: |
-    string(object.status.readyReplicas) + "/" + string(object.status.replicas) + " replicas ready"
-```
-
-Cluster-scoped target example (namespace is empty in the target):
-
-```yaml
-apiVersion: extensions.convoy.kumodo.io/v1alpha1
-kind: ResourceHealthRule
-metadata:
-  name: some-ns-health
-  namespace: platform-team
-spec:
-  target:
-    apiGroup: ""
-    kind: Namespace
-    name: some-ns
-    namespace: ""
-  
-  expression: |
-    object.status.phase == "Active" ? "Healthy" : "Degraded"
-```
+Rules from selected global and local sets are **additive** (concatenated, evaluated as a conjunction — no precedence). A rule set that no selector matches is never consulted; a Release with no `healthAssessment` (or no matching sets) treats every resource as `Healthy`. Each rule is `{apiVersion, resources[], ruleExpression, messageExpression}` — see [`GlobalHealthRuleSet`](../extensions/global-health-rule-set.md) / [`HealthRuleSet`](../extensions/health-rule-set.md) for the full schema and examples.
 
 ### Aggregation: Per-Resource → Release-Level `Healthy`
 
@@ -1105,13 +914,12 @@ Per-resource health verdicts aggregate into the Release-level `Healthy` conditio
 | Resource states                                | Release `Healthy` condition |
 |------------------------------------------------|-----------------------------|
 | Any `Degraded`                                 | `False`                     |
-| All `Healthy` (and/or `Suspended`)             | `True`                      |
+| All `Healthy`                                  | `True`                      |
 | Any `Progressing`, no `Degraded`               | `Unknown`                   |
 | Any `Unknown`, no `Degraded`, no `Progressing` | `Unknown`                   |
 
 Key rules:
 
-- **`Suspended` doesn't count against `Healthy: True`.** Intentional pause is intentional; suspended resources are a normal steady state, not a failure.
 - **`Unknown` doesn't count toward `Healthy: True`.** The controller doesn't fabricate confidence; if any resource's state is unknown, the Release-level verdict is also `Unknown`.
 - **`Progressing` produces `Unknown`, not `True` or `False`.** Active progress is genuine indeterminacy — the deploy is in flight. `Healthy: Unknown` during deploys is normal, not an alert condition.
 
@@ -1160,58 +968,37 @@ Always present. Aggregate counts by state across all managed resources. Lets too
 |------|---------------------------|-------------------------------------------------------|
 | GET  | `/releases/<name>/health` | Return per-resource health for the managed resources. |
 
-The response contains only entries that need operator attention — the non-`Healthy`/`Progressing` buckets:
-
-| Health state  | Included in response?                                |
-|---------------|------------------------------------------------------|
-| `Healthy`     | No — nothing to surface                              |
-| `Progressing` | No — transient noise during deploys                  |
-| `Degraded`    | Yes — needs attention                                |
-| `Suspended`   | Yes — operators should know what's paused            |
-| `Unknown`     | Yes — indicates missing rule or non-conventional CRD |
-
-This makes the per-resource view directly actionable: a Release with 200 healthy resources and 1 degraded one returns 1 entry, not 201.
+The response lists **all** managed resources (not just the unhealthy ones), each with its assessed state — the top-level key is `objects`:
 
 ```yaml
 # GET /releases/payments-api-prod-eu/health
-resources:
-  - kind: Deployment
-    apiGroup: apps
+objects:
+  - group: apps
     version: v1
+    kind: Deployment
+    namespace: payments-team
     name: payments-api
-    namespace: payments-team
-    health: Degraded
-    since: 2026-04-29T10:01:15Z
+    state: Degraded
     message: "0/3 ready replicas; CrashLoopBackOff on container 'api' (exit code 1)"
-    ruleUsed:
-      type: builtin
-  - kind: CronJob
-    apiGroup: batch
+  - group: ""
     version: v1
-    name: payments-cleanup
+    kind: Service
     namespace: payments-team
-    health: Suspended
-    since: 2026-04-15T08:00:00Z
-    message: "spec.suspend is true"
-    ruleUsed:
-      type: builtin
+    name: payments-api
+    state: Healthy
+    message: ""
 ```
-
-**RBAC:** `GET` requires `releases/health: get`.
 
 #### Per-resource fields
 
-| Field                         | Description                                                                                                                |
-|-------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `kind`, `apiGroup`, `version` | Resource kind identification                                                                                               |
-| `name`, `namespace`           | Resource identity                                                                                                          |
-| `health`                      | One of `Degraded`, `Suspended`, `Unknown`                                                                                  |
-| `since`                       | When this state was first observed (transitions reset this)                                                                |
-| `message`                     | Human-readable detail from the health rule                                                                                 |
-| `ruleUsed.type`               | One of `resourceHealthRule`, `kindHealthRule`, `builtin`, `kstatus`, `fallbackUnknown`                                     |
-| `ruleUsed.ref`                | Reference to the `KindHealthRule` or `ResourceHealthRule` (only when `type: resourceHealthRule` or `type: kindHealthRule`) |
+| Field                       | Description                                             |
+|-----------------------------|---------------------------------------------------------|
+| `group`, `version`, `kind`  | Resource kind identification (`group` is `""` for core) |
+| `namespace`, `name`         | Resource identity                                       |
+| `state`                     | One of `Healthy`, `Progressing`, `Degraded`, `Unknown`  |
+| `message`                   | Human-readable detail (from the rule's `messageExpression`, or the assessor) |
 
-The `ruleUsed` field makes assessment auditable. Users debugging unexpected health verdicts can immediately see which rule produced them.
+There is no `since` field and no `ruleUsed` field.
 
 ### What's Not Covered
 
@@ -1226,262 +1013,76 @@ Health assessment is passive observation of resource state, not active testing.
 
 ### Comparison with Other Tools
 
-| Concept                    | This tool                                                                      | ArgoCD                       | Flux                            |
-|----------------------------|--------------------------------------------------------------------------------|------------------------------|---------------------------------|
-| Per-resource health        | Yes, via `/health` (degraded/suspended/unknown only)                           | Yes, full list               | Limited                         |
-| Custom health rules        | CEL via `KindHealthRule` (cluster-scoped) or `ResourceHealthRule` (namespaced) | Lua via ConfigMap            | None native                     |
-| Five health states         | Yes                                                                            | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
-| `Unknown` as honest signal | Yes                                                                            | Sometimes (for unknown CRDs) | Often defaults optimistic       |
-| Bounded status size        | Yes (per-resource detail kept out of the object entirely)                      | No (full list)               | Compact (less detail)           |
+| Concept                    | This tool                                                                          | ArgoCD                       | Flux                            |
+|----------------------------|------------------------------------------------------------------------------------|------------------------------|---------------------------------|
+| Per-resource health        | Yes, via `/health` (all managed resources)                                         | Yes, full list               | Limited                         |
+| Custom health rules        | CEL via `GlobalHealthRuleSet` (cluster-scoped) or `HealthRuleSet` (namespaced)     | Lua via ConfigMap            | None native                     |
+| Health states              | Four (`Healthy`/`Progressing`/`Degraded`/`Unknown`)                                | Yes (similar set)            | Reduced (mostly Ready/NotReady) |
+| `Unknown` as honest signal | Yes                                                                                | Sometimes (for unknown CRDs) | Often defaults optimistic       |
+| Bounded status size        | Yes (per-resource detail kept out of the object entirely)                          | No (full list)               | Compact (less detail)           |
 
 ## Preview and Diff Subresources
 
 `/preview` and `/diff` are read-only subresources on `Release` that answer two operational questions: "what would deploy?" and "what would change?". Both are essential for safe deployment workflows — letting operators verify intent before triggering a sync.
 
+Both are **GET-only** proxies from the apiserver to the observer, which renders/diffs the Release as it is stored. Neither accepts query parameters or a POST body — the documented mutation-override / cluster-override / pin / `source`/`against` options are **not implemented**.
+
 ### /preview
 
-Returns the rendered manifest set that would result from a sync, given the Release's current configuration (or specified overrides). The output is consumable directly: pipeable to `kubectl apply`, validators (`kubeval`, `conftest`, OPA), or human review.
+`GET /releases/<name>/preview` returns the post-mutation manifest set that a sync would apply, rendered from the Release's **current spec**. It is a multi-document YAML stream, consumable directly (pipe to a validator, or human review).
 
-#### Behavior
+| Verb | Path                       | Purpose                                                       |
+|------|----------------------------|---------------------------------------------------------------|
+| GET  | `/releases/<name>/preview` | Return the rendered post-mutation manifests (current render). |
 
-| Verb | Path                       | Purpose                                          |
-|------|----------------------------|--------------------------------------------------|
-| GET  | `/releases/<name>/preview` | Return rendered manifests                        |
-| POST | `/releases/<name>/preview` | Return rendered manifests with overrides applied |
-
-#### Output
-
-A multi-document YAML stream (default) or JSON list. The output is the post-mutation manifest set — exactly what would be applied to the cluster on sync. Nothing else: no lifecycle hooks (accessed via `/lifecycle`), no resolved-source metadata (accessed via `/status`), no diff annotations.
-
-#### Pin handling
-
-`/preview` always answers "what would `/sync` apply right now?" When pinned, that's the pinned content. When not pinned, it's a fresh render from current spec.
-
-| Release state | Default behavior             |
-|---------------|------------------------------|
-| Not pinned    | Render from current spec     |
-| Pinned        | Return pinned render content |
-
-The default is operationally consistent: `/preview` always shows what the next sync would deploy.
-
-#### Query parameters
-
-| Parameter          | Values           | Default                 | Description                                                                                                                                                                                        |
-|--------------------|------------------|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `source`           | `spec`, `pinned` | (smart)                 | Override the default pin handling. `spec` forces fresh render from current spec, ignoring pin. `pinned` requires the Release to be pinned and returns pinned content; returns 400 when not pinned. |
-| `cluster`          | cluster name     | Release's bound cluster | Override the cluster context for templating, capabilities, and cluster-specific value selection. The Release itself is not modified.                                                               |
-| `clusterNamespace` | namespace        | Release's namespace     | Override the cluster reference's namespace for cross-namespace resolution.                                                                                                                         |
-
-#### POST with mutation overrides
-
-For "what would happen if I changed these mutations?" without committing to the Release. Lets users iterate safely — change a value file reference, an inline patch, a templated condition — and see the resulting render before persisting.
-
-```
-POST /releases/<name>/preview
-Content-Type: application/json
-Body: {
-  "mutations": [
-  {
-    "type": "helmValues",
-    "from": {
-      "sourceRef": { "name": "experimental-values", "path": "test/values.yaml" }
-    }
-  },
-  {
-    "type": "jsonPatch",
-      "inline": [
-        { "op": "replace", "path": "/spec/replicas", "value": 5 }
-      ]
-    }
-  ]
-}
-```
-
-The provided mutations replace the Release's mutations for this preview only. Query parameters (`source`, `cluster`, `clusterNamespace`) compose with POST overrides:
-
-```
-POST /releases/<name>/preview?cluster=prod-staging
-Body: { 
-  "mutations": [...]
-}
-```
-
-Returns the render that would result if the Release used these mutations and was deployed to the specified cluster. Useful for "is my mutation change correct, and does it work right in staging?" without two separate operations.
-
-#### Common usage patterns
+It always renders the current spec — there is no pin-aware behavior, no `source`/`cluster` query parameters, and no POST override.
 
 ```bash
-# What would deploy if I synced right now?
-kubectl get release/payments-prod-eu --raw "/.../preview"
-
-# What would deploy if I synced this Release to staging instead?
-kubectl get ... --raw "/.../preview?cluster=staging-eu"
-
-# What would deploy if I unpinned?
-kubectl get ... --raw "/.../preview?source=spec"
-
-# What if I changed my mutations?
-curl -X POST "/.../preview" -d '{"mutations": [...]}'
-
-# Validate against policies
-kubectl get ... --raw "/.../preview" | conftest test -
+# What would a sync render right now?
+kubectl get release/payments-prod-eu --raw "/apis/core.convoy.kumodo.io/v1alpha1/namespaces/<ns>/releases/<name>/preview"
 ```
-
-#### RBAC
-
-| Verb | Permission                 |
-|------|----------------------------|
-| GET  | `releases/preview: get`    |
-| POST | `releases/preview: create` |
-
-When `?cluster=<name>` is used, additionally requires `clusters: get` on the referenced cluster (standard k8s reference-resolution semantics).
 
 ### /diff
 
 Returns the differences between two states. The "what would change?" complement to `/preview`'s "what would deploy?". Several comparison axes are supported via the `against` parameter.
 
-#### Behavior
+`GET /releases/<name>/diff` returns the structural diff between the Release's **current render** and the **live cluster** state — the same comparison the observer's drift loop uses. There is only this one comparison axis: no `against=pin|render`, no `cluster`/`renderRef`/`compareTo`/`format` parameters, no POST override, no text format.
 
-| Verb | Path                    | Purpose                                     |
-|------|-------------------------|---------------------------------------------|
-| GET  | `/releases/<name>/diff` | Return diff between specified states        |
-| POST | `/releases/<name>/diff` | Return diff with mutation overrides applied |
+| Verb | Path                    | Purpose                                                  |
+|------|-------------------------|----------------------------------------------------------|
+| GET  | `/releases/<name>/diff` | Diff the current render against the bound cluster's live state. |
 
-#### Comparison axes
+#### Output
 
-The `against` parameter controls what's being compared.
-
-| `against`        | Compares                                                                            | Common use case                      |
-|------------------|-------------------------------------------------------------------------------------|--------------------------------------|
-| `live` (default) | Current rendered output vs live cluster state                                       | "What would change if I synced now?" |
-| `pin`            | Current rendered output vs pinned content                                           | "What would change if I unpinned?"   |
-| `render`         | Current rendered output vs a specific historical render (or two historical renders) | "What changed between deploys?"      |
-
-#### Query parameters
-
-| Parameter          | Used with        | Description                                                                                                                                    |
-|--------------------|------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `against`          | always           | Comparison axis: `live`, `pin`, or `render`. Default: `live`.                                                                                  |
-| `cluster`          | `against=live`   | Compare against the live state of a specified cluster instead of the Release's bound cluster. Useful for cross-cluster comparison.             |
-| `clusterNamespace` | `against=live`   | Override cluster reference's namespace.                                                                                                        |
-| `renderRef`        | `against=render` | Hash of the render to compare against. Required when `against=render`.                                                                         |
-| `compareTo`        | `against=render` | Optional second render hash. When provided, compares the two specified historical renders directly (Release's current render is not involved). |
-| `format`           | always           | Output format: `structural` (default), `text` (unified diff).                                                                                  |
-
-#### Common usage
-
-```
-GET /diff                                                       # against bound cluster's live state
-GET /diff?against=live&cluster=staging-eu                       # against staging's live state
-GET /diff?against=pin                                           # current render vs pinned content
-GET /diff?against=render&renderRef=sha256:abc...                # current render vs historical
-GET /diff?against=render&renderRef=sha256:abc...&compareTo=sha256:def...   # two historicals
-```
-
-#### Pin interaction
-
-When the Release is pinned, "current rendered output" in the comparison defaults to the **pinned content** (matching `/preview`'s default). To diff against the would-be-rendered content from current spec, combine with `/preview?source=spec` reasoning — implementation-side, the user requests `against=pin`, which gives "what would change if I unpinned and synced."
-
-#### POST with mutation overrides
-
-Same pattern as `/preview`. Lets users see what diff their mutation changes would produce before committing.
-
-```
-POST /releases/<name>/diff?against=live
-Content-Type: application/json
-Body: {
-  "mutations": [...]   // overrides Release's mutations for this diff
-}
-```
-
-Returns the diff between the specified comparison target and a render produced with the override mutations. Combinable with all GET query parameters.
-
-#### Output format
-
-**Structural diff (default):** A JSON document describing changes per resource. Format:
+A JSON document with a top-level `objects` array. Each object carries its GVK + identity, a per-object `status`, and per-field `changes`:
 
 ```json
 {
-  "resources": [
+  "objects": [
     {
-      "kind": "Deployment",
-      "apiGroup": "apps",
-      "version": "v1",
-      "name": "payments-api",
-      "namespace": "payments-team",
-      "changeType": "Modified",
-      "fieldChanges": [
-        { "path": "/spec/replicas", "before": 3, "after": 5 },
-        { "path": "/spec/template/spec/containers/0/image", "before": "...:v1.2.0", "after": "...:v1.3.0" }
+      "group": "apps", "version": "v1", "kind": "Deployment",
+      "namespace": "payments-team", "name": "payments-api",
+      "status": "Modified",
+      "changes": [
+        { "path": "/spec/replicas", "op": "replace", "live": 3, "desired": 5 }
       ]
     },
     {
-      "kind": "ConfigMap",
-      "apiGroup": "",
-      "version": "v1",
-      "name": "payments-config",
-      "namespace": "payments-team",
-      "changeType": "Added",
-      "manifest": { ... }
+      "group": "", "version": "v1", "kind": "ConfigMap",
+      "namespace": "payments-team", "name": "payments-config",
+      "status": "Missing",
+      "changes": []
     }
-  ],
-  "summary": {
-    "added": 1,
-    "modified": 1,
-    "deleted": 0,
-    "unchanged": 12
-  }
+  ]
 }
 ```
 
-`changeType` values: `Added`, `Modified`, `Deleted`, `Unchanged` (omitted from output by default; included if requested via `?include=unchanged`).
+- `status` is one of `InSync`, `Modified`, `Missing` (not `Added`/`Deleted`/`Unchanged`).
+- Each field change is `{path, op, live, desired}` (not `before`/`after`). There is no `summary` block, no `manifest` field, no `changeReason`/drift categorization, and no `include=unchanged`.
 
-**Text diff (`?format=text`):** Unified diff of YAML representations, one block per modified resource. Easier for human consumption; pipeable to standard diff-viewer tools.
+#### Field filtering
 
-#### Managed-fields filtering
-
-The diff filters out fields that aren't owned by the Release, to avoid showing noise that the user didn't cause. Specifically:
-
-- Fields populated by other field managers (HPA scaling `replicas`, defaulted by admission, set by other controllers) are excluded
-- Fields the apiserver sets at apply time (`creationTimestamp`, `resourceVersion`, `uid`) are excluded
-- Status fields are excluded (status is observed state, not desired state)
-
-This makes the diff output reflect "differences caused by this Release's intent," not "all bytes that differ between rendered and live."
-
-#### Drift categorization
-
-When `against=live` and field-level drift exists, the diff categorizes:
-
-- **Drift** — field is managed by this Release but the live value differs (someone manually edited the resource, or a controller fighting with field ownership)
-- **External** — field is not managed by this Release but exists in the live state (HPA-managed replicas, etc.) — informational only, not flagged as drift
-
-Categorization appears in the structural output as `changeReason` per field change.
-
-#### RBAC
-
-| Verb | Permission              |
-|------|-------------------------|
-| GET  | `releases/diff: get`    |
-| POST | `releases/diff: create` |
-
-When `?cluster=<name>` is used (with `against=live`), additionally requires `clusters: get` on the referenced cluster.
-
-### Summary
-
-| Aspect            | `/preview`                         | `/diff`                                                     |
-|-------------------|------------------------------------|-------------------------------------------------------------|
-| Purpose           | "What would deploy?"               | "What would change?"                                        |
-| Verbs             | GET, POST                          | GET, POST                                                   |
-| Default behavior  | Render with current config         | Diff current render vs live cluster                         |
-| Pin handling      | Default returns pinned when pinned | Default uses pinned content as "current render" when pinned |
-| Cluster override  | `?cluster=<name>`                  | `?cluster=<name>` (with `against=live`)                     |
-| Mutation override | POST with `mutations` body         | POST with `mutations` body                                  |
-| Lifecycle hooks   | Not included                       | Not included                                                |
-| Output            | YAML stream / JSON list            | Structural JSON (default) / text diff                       |
-| Field filtering   | n/a                                | Managed-fields filtering; drift categorization              |
-| Format options    | YAML (default), JSON               | structural (default), text                                  |
-
-Both subresources share the same parameter conventions (`?cluster=`, mutation override via POST), making them ergonomically consistent. `/preview` is for content; `/diff` is for differences. They compose: render via `/preview`, validate via `/diff` against live or pin, then `/sync` when satisfied.
+The diff strips fields that would be noise: `creationTimestamp`, `resourceVersion`, `uid`, `managedFields`, and `status` are removed before comparing, so the output reflects rendered-vs-live desired state rather than every differing byte.
 
 
 
@@ -1500,21 +1101,20 @@ Hooks could be expressed as annotations on individual manifests (the ArgoCD/Helm
 - **Separates concerns.** Manifests describe what to deploy; lifecycle describes what to do at deploy time. Mixing them in annotations conflates two different things.
 - **Decouples hooks from charts.** With annotations, hooks live inside the chart. To add a smoke test for a vendored chart, users would have to fork it. Subresource-defined hooks are owned by the deploying team.
 - **Templating with cluster metadata is natural.** Hooks in the subresource use the same template engine as mutations and have direct access to per-cluster context.
-- **Phase vocabulary is unconstrained.** Not bound to ArgoCD or Helm phase names; can include phases (like `PreRender` and `PostRender`) that don't exist in either ecosystem.
 - **Audit and RBAC.** Subresource means standard k8s RBAC; distinct audit events for hook configuration changes.
-- **Helm chart compatibility happens at translation time.** When sources have `helm.sh/hook` annotations, the renderer translates them into lifecycle entries automatically. Existing Helm charts with hooks work without modification.
+- **Helm chart compatibility can happen at translation time.** When sources carry `helm.sh/hook` annotations, the renderer can translate them into lifecycle entries (planned — see [Helm Chart Compatibility](#helm-chart-compatibility)).
 
 ### Phases
 
-| Phase        | When it runs                                      | Common uses                                              |
-|--------------|---------------------------------------------------|----------------------------------------------------------|
-| `PreRender`  | Before mutations are applied                      | Validation of source content; environment checks         |
-| `PostRender` | After rendering, before applying                  | Manifest validation; security scanning; signing          |
-| `PreSync`    | Before any wave applies                           | Database migrations; pre-deploy checks; resource cleanup |
-| `PostSync`   | After all waves complete (and optionally healthy) | Smoke tests; cache warming; deploy notifications         |
-| `SyncFail`   | When sync fails at any point                      | Alerts; partial-state cleanup; rollback triggers         |
-| `PreDelete`  | Before workloads are pruned on Release deletion   | Backups; graceful shutdown; external cleanup             |
-| `PostDelete` | After workloads are pruned                        | Final notifications; resource accounting                 |
+| Phase        | When it runs                                                 | Common uses                                              |
+|--------------|--------------------------------------------------------------|----------------------------------------------------------|
+| `PreSync`    | Before any wave applies                                      | Database migrations; pre-deploy checks; resource cleanup |
+| `PostSync`   | After all waves complete (optionally after healthy — see `runAfter`) | Smoke tests; cache warming; deploy notifications |
+| `SyncFailed` | After a sync failure at the apply stage (render succeeded)   | Alerts; partial-state cleanup; rollback triggers         |
+| `PreDelete`  | Before workloads are pruned on Release deletion              | Backups; graceful shutdown; external cleanup             |
+| `PostDelete` | After workloads are pruned                                   | Final notifications; resource accounting                 |
+
+Hooks run at the boundaries of the **apply** and **delete** flows. There are no pre-/post-*render* phases: a hook is a workload created on the target cluster, so it cannot feed the in-memory render (that is the mutation pipeline's job) nor gate anything the mutation pipeline doesn't already gate. `SyncFailed` fires only when the sync itself failed — the render succeeded (so a target cluster and render exist) but an apply/wave/prune step failed; it does not fire on a source/cluster/render failure, and it is best-effort (fire-and-forget).
 
 ### Hook Schema
 
@@ -1526,13 +1126,17 @@ Hooks are typed units — each declares its kind via `type` and provides a Kuber
 preSync:
   - name: db-migration
     type: Job                       # Job | Pod (v1)
-    
-    # Optional CEL condition. If absent, hook always runs.
-    # If present and evaluates to false (or errors), hook is skipped.
-    when: '.Cluster.metadata.tier == "production"'
-    
-    # k8s-native template (here: JobTemplateSpec, similar to CronJob.spec.jobTemplate)
+
+    # Optional CEL condition. If absent, the hook always runs.
+    # If present and evaluates to false (or errors), the hook is skipped.
+    # Context is lowercase {cluster, release} (see "Templating context" below).
+    if: 'cluster.tier == "production"'
+
+    # Custom template with PARTIAL metadata (labels/annotations/namespace only —
+    # the controller owns the workload name). `spec` is a k8s-native JobSpec.
     jobTemplate:
+      metadata:
+        labels: { audit: "true" }
       spec:
         template:
           spec:
@@ -1544,31 +1148,35 @@ preSync:
                 command: ["./migrate.sh"]
                 env:
                   - name: TARGET_REGION
-                    # Templated against per-Release context at sync time
-                    value: "{{ .Cluster.metadata.region }}"
+                    # Templated against the hook context at sync time
+                    value: "{{ .cluster.region }}"
         backoffLimit: 0
-    
-    # Ordering within the phase (signed integer, parallel within same weight)
+
+    # Ordering within the phase (parallel within the same weight)
     weight: 0
-    
-    # Hook timeout — overrides any phase-level default
+
+    # Hook timeout. If unset, the controller waits indefinitely.
     timeout: 10m
-    
-    # What happens if the hook fails
-    onFailure: AbortSync            # | Continue | AbortDelete (PreDelete only)
-    
-    # Cleanup behavior
+
+    # What happens if the hook fails: Fail (abort) | Continue (best-effort).
+    onFailure: Fail
+
+    # Cleanup behavior. Empty behaves like Never (kept).
     deleteBeforeCreation: true
     cleanup: OnSuccess  # | OnCompletion | Never
 
 postSync:
   - name: smoke-test
     type: Job
-    jobTemplate: { ... }
+    # postSync-only: hold until the release condition is reached before firing.
+    # Applied (default) fires right after apply; Healthy waits until the whole
+    # release is healthy for the current render.
+    runAfter: Healthy
+    jobTemplate: { spec: { template: { spec: { restartPolicy: Never, containers: [ ... ] } } } }
     onFailure: Continue
     cleanup: OnCompletion
 
-syncFail:
+syncFailed:
   - name: alert-oncall
     type: Job
     jobTemplate:
@@ -1581,148 +1189,131 @@ syncFail:
                 image: alerting-tool:v1
                 env:
                   - name: RELEASE_NAME
-                    value: "{{ .Release.name }}"
-                  - name: FAILURE_STAGE
-                    value: "{{ .Sync.failure.stage }}"
+                    value: "{{ .release.name }}"
     cleanup: OnCompletion
 
 preDelete:
   - name: backup-database
     type: Job
-    jobTemplate: { ... }
+    jobTemplate: { spec: { template: { spec: { restartPolicy: Never, containers: [ ... ] } } } }
     timeout: 30m
-    onFailure: AbortDelete
-    cleanupOnCompletion: Never      # retain for compliance audit
+    onFailure: Fail                 # blocks deletion until it succeeds
+    cleanup: Never                  # retain for compliance audit
 ```
 
 #### Hook fields
 
-| Field                  | Type     | Required      | Default       | Description                                                                        |
-|------------------------|----------|---------------|---------------|------------------------------------------------------------------------------------|
-| `name`                 | string   | yes           | —             | Unique within the Release. Identifies the hook for status reporting and updates.   |
-| `type`                 | enum     | yes           | —             | One of `Job`, `Pod`. Determines which template field is used.                      |
-| `when`                 | string   | no            | —             | CEL expression. Hook runs only when expression is `true`. Errors treat as `false`. |
-| `jobTemplate`          | object   | when type=Job | —             | Standard k8s `JobTemplateSpec`. Templated against phase-specific context.          |
-| `podTemplate`          | object   | when type=Pod | —             | Standard k8s `PodTemplateSpec`.                                                    |
-| `weight`               | integer  | no            | `0`           | Ordering within phase. Lower runs first; same weight runs in parallel.             |
-| `timeout`              | duration | no            | phase default | Maximum time to wait for hook completion before marking it `TimedOut`.             |
-| `onFailure`            | enum     | no            | phase default | `AbortSync`, `AbortDelete`, or `Continue`.                                         |
-| `deleteBeforeCreation` | bool     | no            | `true`        | Delete any existing hook resource of the same name before creating a new one.      |
-| `cleanupOnCompletion`  | enum     | no            | phase default | `OnSuccess`, `OnCompletion`, or `Never`.                                           |
+| Field                  | Type     | Required      | Default        | Description                                                                                     |
+|------------------------|----------|---------------|----------------|-------------------------------------------------------------------------------------------------|
+| `name`                 | string   | yes           | —              | Unique within its phase. Identifies the hook for status reporting and updates.                  |
+| `type`                 | enum     | yes           | —              | One of `Job`, `Pod`. Determines which template field is used.                                   |
+| `if`                   | string   | no            | —              | CEL expression. The hook runs only when it evaluates to `true`. False/error → skipped.          |
+| `runAfter`             | enum     | no (postSync) | `Applied`      | **postSync only.** `Applied` fires right after apply; `Healthy` holds until the release is healthy for the current render. Forbidden on other phases. |
+| `jobTemplate`          | object   | when type=Job | —              | `{ metadata (partial), spec (k8s JobSpec) }`. Templated against the hook context.               |
+| `podTemplate`          | object   | when type=Pod | —              | `{ metadata (partial), spec (k8s PodSpec) }`.                                                    |
+| `weight`               | integer  | no            | `0`            | Ordering within the phase. Lower weight runs (and must complete) before higher; equal weight runs in parallel. |
+| `timeout`              | duration | no            | wait forever   | Max time to wait for completion before marking `TimedOut`. Unset = no timeout.                  |
+| `onFailure`            | enum     | no            | `Continue`     | `Fail` (abort) or `Continue` (best-effort). Empty behaves as `Continue`; only `Fail` blocks.    |
+| `deleteBeforeCreation` | bool     | no            | `false`        | Delete this hook's prior workloads (by label) before creating the new one.                      |
+| `cleanup`              | enum     | no            | `Never`        | `OnSuccess`, `OnCompletion`, or `Never`. Empty behaves as `Never` (kept).                        |
 
-### CEL `when` Conditions
+There is no per-phase defaulting: `timeout`, `onFailure`, and `cleanup` take the values above regardless of phase.
 
-The optional `when` field on each hook makes hook execution conditional. When absent, the hook always runs. When present, the expression evaluates against phase-specific bindings; the hook runs only if the expression is `true`.
+### Templating context
 
-#### Phase-specific bindings
+Hook workload templates (Go templates) and the `if` CEL expression share one context — the same lowercase, credential-free projection the mutation pipeline uses. It is the **same for every phase**; there are no phase-specific bindings:
 
-| Phase        | Bindings available                                                                              |
-|--------------|-------------------------------------------------------------------------------------------------|
-| `PreRender`  | `.Release`, `.Cluster`, `.Source`                                                               |
-| `PostRender` | `.Release`, `.Cluster`, `.Source`, `.Render.manifestsRef`                                       |
-| `PreSync`    | `.Release`, `.Cluster`, `.Render.manifestsRef`, `.Release.previousRender`                       |
-| `PostSync`   | `.Release`, `.Cluster`, `.Render.manifestsRef`, `.Sync.completedAt`                             |
-| `SyncFail`   | `.Release`, `.Cluster`, `.Render.manifestsRef`, `.Sync.failure.{stage, message, mutationIndex}` |
-| `PreDelete`  | `.Release`, `.Cluster`                                                                          |
-| `PostDelete` | `.Release`, `.Cluster`                                                                          |
+| Binding    | Contents                                                                                          |
+|------------|---------------------------------------------------------------------------------------------------|
+| `cluster`  | The target `Cluster`'s `spec.metadata` keys **flattened directly** (`cluster.<key>`), plus `cluster.name`. Credentials are never exposed. |
+| `release`  | The `Release`'s `name`, `namespace`, `labels`, `annotations`.                                      |
 
-`.Release.previousRender` is `null` on first deploy and populated otherwise — enables "first-deploy vs update" conditional logic without separate phases.
+So a metadata key `region` is `{{ .cluster.region }}` (Go template) / `cluster.region` (CEL) — there is **no** `.metadata` segment. There are no `.source`, `.render`, or `.sync` bindings; in particular, `SyncFailed` hooks do **not** currently have the failure stage/message in their template context (the failure is recorded in `status`, not passed to the hook).
 
-#### Common patterns
+### The `if` Condition (skip)
+
+The optional `if` field makes a hook conditional. Absent → the hook always runs. Present → it must evaluate to a bool; the hook runs only when `true`. A `false` result — or a compile/evaluation error — **skips** the hook.
 
 ```yaml
-# Production-only
-when: '.Cluster.metadata.tier == "production"'
+if: 'cluster.tier == "production"'                          # production-only
+if: 'cluster.region in ["eu-west-1", "eu-central-1"]'       # region-specific
 ```
 
-```yaml
-# First deploy only
-when: '.Release.firstDeploy'
-```
+Evaluation semantics:
 
-```yaml
-# Region-specific
-when: '.Cluster.metadata.region in ["eu-west-1", "eu-central-1"]'
-```
+- The `if` expression is compiled and evaluated **at run time** by the controller (not at admission). Structural validation — name uniqueness within a phase, `type`↔template consistency, enum values, `runAfter` being postSync-only — is enforced on `/lifecycle` write; the CEL itself is not.
+- A false result or an evaluation error → the hook is **skipped**: no workload is created and no entry is recorded, so a skipped hook does not appear in `status.lifecycle`.
 
-```yaml
-# Specific failure stage
-when: '.Sync.failure.stage == "Rendering"'
-```
+### The `runAfter` Trigger (wait) — postSync only
 
-```yaml
-# Combination
-when: '.Cluster.metadata.tier == "production" && .Release.firstDeploy'
-```
+`if` decides *whether* a hook runs; `runAfter` decides *when* a postSync hook fires. They are orthogonal and compose.
 
-#### Evaluation semantics
+| `runAfter`          | Behavior                                                                                             |
+|---------------------|------------------------------------------------------------------------------------------------------|
+| `Applied` (default) | Fire right after the apply completes.                                                                |
+| `Healthy`           | Hold until the **whole release** (every applied resource, all waves) is **Healthy for the current render**, then fire. |
 
-- Validation at admission time: each `when` expression is compiled and field references are validated; invalid expressions are rejected on `/lifecycle` update
-- Errors at runtime treat the condition as `false`; hook is skipped with a warning recorded in status
-- Skipped hooks appear in status with `state: Skipped` and a reason
+`runAfter` is only allowed on `postSync` hooks (it is `Forbidden` elsewhere — the other phases have no post-apply health milestone to wait on). With no health assessment configured, `Healthy` is trivially satisfied and behaves like `Applied`.
+
+**Choosing `runAfter`, and the one trap.** `runAfter: Healthy` is right when the hook is *downstream* of health — smoke tests, backfills, "deployment healthy" notifications, cache warming — things the app does not block on. It is the **wrong** choice for a schema migration the app itself needs to become healthy: the app stays unhealthy waiting for the migration → the release never becomes healthy → the migration never fires (a deadlock). Migrations the app depends on belong in **`preSync`** (which gates the whole apply before the app is deployed), or in a separate DB release the app release orders behind. This is inherent to any run-after-healthy hook model (Argo's `PostSync` has the same trap), so it is guidance, not a bug.
 
 ### Failure Handling
 
-Each hook's `onFailure` controls behavior when the hook fails. Defaults vary by phase based on stake:
+Each hook's `onFailure` controls what happens when the hook reaches `Failed` or `TimedOut`. There is no per-phase defaulting; empty behaves as `Continue`.
 
-| Phase        | Default `onFailure` |
-|--------------|---------------------|
-| `PreRender`  | `AbortSync`         |
-| `PostRender` | `AbortSync`         |
-| `PreSync`    | `AbortSync`         |
-| `PostSync`   | `Continue`          |
-| `SyncFail`   | `Continue`          |
-| `PreDelete`  | `AbortDelete`       |
-| `PostDelete` | `Continue`          |
+| Value      | Behavior                                                                                                                         |
+|------------|--------------------------------------------------------------------------------------------------------------------------------|
+| `Fail`     | Abort the flow. In `preSync` the sync is aborted before anything is applied; in `preDelete` the finalizer is held, so **deletion blocks** until the hook succeeds (or the finalizer is removed manually). |
+| `Continue` | Record the failure in `status` and proceed. `postSync`/`syncFailed`/`postDelete` are best-effort, so a failure there never un-applies or un-deletes anything. |
 
-| Value      | Behavior                                                                                                      |
-|------------|---------------------------------------------------------------------------------------------------------------|
-| `Fail`     | Stop the `Release` processing.                                                                                |
-| `Continue` | Log the failure, continue with the rest of the sync. Failure is recorded in status but doesn't halt progress. |
+Independently of `onFailure`, a failed hook is always reflected in `status.lifecycle` and flips the `LifecycleSucceeded` condition to `False` (see [Status Reflection](#status-reflection)) — `onFailure` governs only whether the flow proceeds, not whether the failure is surfaced.
 
 ### Cleanup
 
-Two orthogonal axes control hook resource lifecycle.
+Two orthogonal fields control a hook workload's lifecycle. They act at **different moments**: `cleanup` acts when the hook *completes*; `deleteBeforeCreation` acts when the hook is *re-armed* on a later render.
 
-#### `deleteBeforeCreation`
-
-Whether to delete any existing same-named hook resource before creating a new one for the current sync.
-
-| Value            | Behavior                                                                                                                                  |
-|------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
-| `true` (default) | Delete leftover hook resource before creating new one. Required for re-runnable hooks (migrations re-running on each sync).               |
-| `false`          | Allow accumulation. Each sync creates a new hook resource (typically with a generated suffix). Subject to `maxRetainedPerHook` retention. |
-
-#### `cleanupOnCompletion`
-
-When to delete the hook resource after it completes.
+#### `cleanup` — delete after the hook completes
 
 | Value          | Behavior                                                                                             |
 |----------------|------------------------------------------------------------------------------------------------------|
 | `OnSuccess`    | Delete on success; retain on failure (for debugging).                                                |
 | `OnCompletion` | Delete after completion regardless of success/failure.                                               |
-| `Never`        | Retain indefinitely. User responsible for manual cleanup. Compliance use case (audit jobs, backups). |
+| `Never`        | Retain. The user is responsible for manual cleanup (compliance use case: audit jobs, backups).       |
 
-Defaults per phase:
+Empty `cleanup` behaves like `Never` (the workload is kept). The default is therefore *keep* — see the caveat below.
 
-| Phase                     | Default `cleanupOnCompletion` |
-|---------------------------|-------------------------------|
-| `PreRender`, `PostRender` | `OnSuccess`                   |
-| `PreSync`, `PostSync`     | `OnSuccess`                   |
-| `SyncFail`                | `OnCompletion`                |
-| `PreDelete`               | `Never`                       |
-| `PostDelete`              | `OnCompletion`                |
+#### `deleteBeforeCreation` — delete the prior workload on re-arm
 
-`deleteBeforeCreation: true` is the default for all phases.
+Hook workload names embed the render, so a new render creates a new workload and the prior render's workload can linger. `deleteBeforeCreation` (default `false`) controls that at arm time, by **label selector** (all of this hook's prior workloads, across renders):
+
+| Value            | Behavior                                                                              |
+|------------------|---------------------------------------------------------------------------------------|
+| `true`           | Delete this hook's prior workloads before creating the new one.                       |
+| `false` (default)| Leave prior-render workloads in place.                                                |
+
+#### The two together
+
+The fields don't overlap — `cleanup` handles this run, `deleteBeforeCreation` handles the next:
+
+| `cleanup`               | `deleteBeforeCreation: true` | `deleteBeforeCreation: false` |
+|-------------------------|------------------------------|-------------------------------|
+| `OnSuccess`/`OnCompletion` | keep none                 | keep none (cleanup already removed it) |
+| `Never` (or empty)      | **keep latest** (replaced on re-arm) | **keep all** (accumulate) |
+
+> **Caveat — the defaults accumulate.** With both fields unset (`cleanup` empty → `Never`, `deleteBeforeCreation: false`), every render leaves its hook workload behind. Set `cleanup: OnCompletion` (or `deleteBeforeCreation: true`) for a hook that runs repeatedly, and reserve `Never` for workloads you intend to inspect. Bounded retention/GC of accumulated or orphaned workloads is not yet implemented — see [Lifecycle Retention Policy](#lifecycle-retention-policy).
 
 ### Ownership Tracking
 
 Hook resources live in target clusters; the Release object lives in the control plane cluster. Cross-cluster `ownerReferences` don't work (the target cluster's GC can't resolve references to resources in another cluster), so hooks use **labels-only ownership tracking**.
 
-Every hook resource created by the controller carries:
+Every hook workload created by the controller carries:
 
 ```yaml
 metadata:
+  # The controller owns the name: {phase}-{hook-name}-{8-char hash(release|hook|renderRef)}.
+  # The render is encoded in the name (not an annotation), so a new render yields a new
+  # workload while re-reconciles of the same render are idempotent.
+  name: presync-db-migration-6f43257d
   labels:
     convoy.kumodo.io/release-name: payments-api-prod-eu
     convoy.kumodo.io/release-namespace: payments-team
@@ -1730,144 +1321,95 @@ metadata:
     convoy.kumodo.io/hook-phase: PreSync
     convoy.kumodo.io/hook-name: db-migration
     convoy.kumodo.io/managed-by: convoy
-  annotations:
-    convoy.kumodo.io/created-at: "2026-04-29T09:59:30Z"
-    convoy.kumodo.io/sync-id: <sync-uuid>
 ```
 
-The controller queries by label selector to discover owned resources. All cleanup is controller-driven (sync-time and periodic GC sweep).
+Ownership labels are stamped by the controller and win over any user-supplied label of the same key. The controller queries by the `(release-uid, hook-phase, hook-name)` label selector for `deleteBeforeCreation` and `cleanup`. The namespace defaults to the Release's target namespace when the template omits one.
 
-If the controller is permanently lost or disconnected, hook resources in target clusters become orphaned. Operators discover this via target-cluster inspection (`kubectl get jobs -l convoy.kumodo.io/managed-by=convoy`) and clean up manually. This is a property of any cross-cluster managed system; the cure is operational practice (monitoring controller health), not a technical mechanism.
+If the controller is permanently lost or disconnected, hook workloads in target clusters become orphaned. Operators discover this via target-cluster inspection (`kubectl get jobs -l convoy.kumodo.io/managed-by=convoy`) and clean up manually. A periodic GC sweep is not yet implemented (see [Lifecycle Retention Policy](#lifecycle-retention-policy)).
 
 ### Lifecycle Retention Policy
 
-`Release.spec.lifecycleRetentionPolicy` provides a backstop for stale hook resources beyond per-hook cleanup behavior. Catches edge cases: orphans from removed hooks, leftovers from controller crashes, accumulation under `cleanupOnCompletion: Never`.
+_Status: planned; not implemented._
 
-```yaml
-spec:
-  lifecycleRetentionPolicy:
-    maxAge: 30d
-    onHookRemoved: prune
-    overrideNeverCleanup: false
-    maxRetainedPerHook: 5
-```
+There is currently no automatic garbage collection of hook workloads beyond the per-hook `cleanup` and `deleteBeforeCreation` above. That leaves three sources of accumulation unbounded: `cleanup: Never` workloads, `deleteBeforeCreation: false` accumulation across renders, and workloads orphaned after their Release is deleted.
 
-| Field                  | Type     | Default | Description                                                                                                                                       |
-|------------------------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| `maxAge`               | duration | `30d`   | Maximum age for any retained hook resource. Older resources are deleted by GC sweep. Set to `0` to disable.                                       |
-| `onHookRemoved`        | enum     | `prune` | When a hook is removed from `/lifecycle`, what to do with existing resources. `prune` deletes them; `retain` leaves them to age out via `maxAge`. |
-| `overrideNeverCleanup` | bool     | `false` | Whether `maxAge` applies even to hooks with `cleanupOnCompletion: Never`. Default `false` respects compliance intent.                             |
-| `maxRetainedPerHook`   | integer  | `5`     | Maximum retained resources per hook name when `deleteBeforeCreation: false`.                                                                      |
-
-#### Interaction with per-hook policy
-
-| Per-hook config                                             | `maxAge` behavior                              |
-|-------------------------------------------------------------|------------------------------------------------|
-| `cleanupOnCompletion: OnSuccess`, succeeded                 | Already cleaned; nothing to do                 |
-| `cleanupOnCompletion: OnSuccess`, failed                    | Retained; deleted when older than `maxAge`     |
-| `cleanupOnCompletion: OnCompletion`                         | Already cleaned; nothing to do                 |
-| `cleanupOnCompletion: Never`, `overrideNeverCleanup: false` | Retained indefinitely; `maxAge` does not apply |
-| `cleanupOnCompletion: Never`, `overrideNeverCleanup: true`  | Deleted when older than `maxAge`               |
-
-#### When GC runs
-
-- **Sync-time:** cleanup runs as part of each sync, after applying manifests and running hooks
-- **Periodic background sweep:** controller scans all Releases periodically (e.g., hourly) for stale resources, regardless of sync activity
-- Both modes apply the same retention policy
+A retention backstop (`maxAge`, `maxRetainedPerHook`, prune-on-hook-removed) is planned, but **not** as a `Release.spec` field: once a Release is deleted, the release controller no longer knows about it (finalizer removed, inventory deleted), and hook workloads carry no cross-cluster owner references, so k8s GC can't reclaim them either. The reclaimer therefore belongs at **cluster scope** — a component that connects to a target cluster, lists `convoy.kumodo.io/managed-by=convoy` workloads, and prunes those whose owning Release no longer exists. The retention-policy shape, its owner (cluster controller vs. a dedicated sweeper), and RBAC are open design questions.
 
 ### Helm Chart Compatibility
 
-Helm charts use `helm.sh/hook` annotations to mark resources as hooks. The renderer recognizes these and translates them into lifecycle entries automatically:
+_Status: planned; not implemented._
 
-| Helm hook                                          | Translated to                                               | Notes                              |
-|----------------------------------------------------|-------------------------------------------------------------|------------------------------------|
-| `pre-install`, `pre-upgrade`                       | `PreSync` entry                                             | Treated as a regular PreSync hook  |
-| `post-install`, `post-upgrade`                     | `PostSync` entry                                            |                                    |
-| `pre-delete`                                       | `PreDelete` entry                                           |                                    |
-| `post-delete`                                      | `PostDelete` entry                                          |                                    |
-| `helm.sh/hook-weight`                              | `weight` field                                              |                                    |
-| `helm.sh/hook-delete-policy: hook-succeeded`       | `cleanupOnCompletion: OnSuccess`                            |                                    |
-| `helm.sh/hook-delete-policy: hook-failed`          | `cleanupOnCompletion: Never` (retain on failure equivalent) |                                    |
-| `helm.sh/hook-delete-policy: before-hook-creation` | `deleteBeforeCreation: true`                                |                                    |
-| `test`, `test-success`, `test-failure`             | Currently ignored                                           | Helm test framework not integrated |
+Helm charts mark hook resources with `helm.sh/hook` annotations. The intent is for the renderer to translate these into lifecycle entries automatically (`pre-install`/`pre-upgrade` → `PreSync`, `post-*` → `PostSync`, `pre-delete`/`post-delete` → the delete phases, `helm.sh/hook-weight` → `weight`, `helm.sh/hook-delete-policy` → `cleanup`/`deleteBeforeCreation`), so standard charts with hooks work unmodified and chart-translated hooks coexist with user hooks (distinguished in status by `source: chart` vs `source: lifecycle`).
 
-User-defined hooks (in `/lifecycle`) and chart-translated hooks coexist. Chart hooks appear in status marked with `source: chart`; user hooks with `source: lifecycle`. Within a phase, ordering is by `weight` regardless of source.
-
-This means standard Helm charts with hook annotations work without modification when deployed via this tool — chart authors don't have to do anything special, and deploying teams don't have to translate hooks manually.
+Today none of this translation runs: the renderer only **excludes** Helm test hooks (`helm.sh/hook: test*`) from the applied set. The `source` field exists in the status schema for when translation lands.
 
 ### Status Reflection
 
-Hook execution state is reported per-phase in `Release.status.lifecycle`:
+Hook execution state is reported per-phase in `Release.status.lifecycle`. It is a controller-owned rollup of the durable per-hook records (parity with `status.waves`), and it is **render-aware**: after a re-render, a prior render's completed hooks are filtered out of the summary/column until they re-arm, so the status reflects the current render.
 
 ```yaml
 status:
   lifecycle:
     preSync:
       - name: db-migration
-        source: lifecycle              # | chart
+        source: lifecycle              # | chart (planned)
         kind: Job
         apiVersion: batch/v1
         resourceNamespace: payments-team
-        resourceName: db-migration-1745928000
+        resourceName: presync-db-migration-6f43257d
         state: Succeeded
         weight: 0
+        renderRef: sha256:ab12…        # the render this hook ran for
         startedAt: 2026-04-29T09:59:30Z
         completedAt: 2026-04-29T10:00:00Z
-        cleanedUpAt: 2026-04-29T10:00:05Z
-        message: "Job completed successfully (1/1 succeeded). Resource cleaned up."
-    
+        message: "Job completed successfully (1/1 succeeded)."
+
     postSync:
       - name: smoke-test
         source: lifecycle
         state: Failed
+        renderRef: sha256:ab12…
         startedAt: 2026-04-29T10:00:50Z
         completedAt: 2026-04-29T10:01:30Z
         message: "Job failed (backoff limit exceeded; container exit 1)"
-        followUpAction: Continue
-      
-      - name: payments-helm-post-install
-        source: chart                   # came from helm.sh/hook annotation
-        state: Skipped
-        message: "when condition evaluated to false"
-  
-  lifecycleRetention:
-    lastSweepAt: 2026-04-29T10:00:00Z
-    resourcesDeleted: 3
-    resourcesRetained: 5
-  
-  resolvedLifecycleRetentionPolicy:
-    maxAge: 30d
-    onHookRemoved: prune
-    overrideNeverCleanup: false
-    maxRetainedPerHook: 5
+        followUpAction: Continue       # the hook's onFailure, recorded on failure
 ```
+
+Skipped hooks (those whose `if` was false) create no workload and no record, so they do **not** appear here.
 
 #### Per-hook status fields
 
 | Field                               | Description                                                                                           |
 |-------------------------------------|-------------------------------------------------------------------------------------------------------|
 | `name`                              | Matches the hook's name in the subresource.                                                           |
-| `source`                            | `lifecycle` (user-defined) or `chart` (translated from Helm hook annotation).                         |
-| `kind`, `apiVersion`                | Resource kind of the created hook.                                                                    |
-| `resourceNamespace`, `resourceName` | Identity of the actual created resource.                                                              |
-| `state`                             | `Running`, `Succeeded`, `Failed`, `TimedOut`, `Skipped`.                                              |
+| `source`                            | `lifecycle` (user-defined). `chart` is reserved for translated Helm hooks (planned).                  |
+| `kind`, `apiVersion`                | Kind/apiVersion of the created workload (`Job`/`batch/v1` or `Pod`/`v1`).                             |
+| `resourceNamespace`, `resourceName` | Identity of the actual created workload (the controller-derived name).                                |
+| `state`                             | `Running`, `Succeeded`, `Failed`, `TimedOut` (`Skipped` is not recorded — skipped hooks are absent).  |
 | `weight`                            | Weight of the hook.                                                                                   |
-| `skipReason`                        | When `state: Skipped`: `Condition` (when=false) or `EvaluationError`.                                 |
-| `startedAt`                         | When the hook resource was created and began running.                                                 |
-| `completedAt`                       | When the hook reached terminal state (success/failure/timeout).                                       |
-| `cleanedUpAt`                       | When the hook resource was deleted by cleanup logic. Absent when retained.                            |
+| `renderRef`                         | The render this hook was armed for. Distinguishes a current run from a prior render's stale record.   |
+| `startedAt`                         | When the hook workload was created (its `createdAt`).                                                 |
+| `completedAt`                       | When the hook reached a terminal state (success/failure/timeout).                                     |
+| `cleanedUpAt`                       | Reserved for the cleanup timestamp; **not currently populated** by the controller.                    |
 | `message`                           | Human-readable detail.                                                                                |
-| `followUpAction`                    | What the controller did after the hook completed: `None`, `Continue`, `AbortedSync`, `AbortedDelete`. |
+| `followUpAction`                    | The hook's `onFailure` (`Continue`/`Fail`), recorded when it failed.                                  |
+
+#### Condition and printer column
+
+Two aggregate signals summarize the rollup:
+
+- **`LifecycleSucceeded` condition** (controller-owned, alongside `Applied`): absent when the Release has no hooks; `True`/`AllSucceeded` when all applicable hooks succeeded or were skipped; `Unknown`/`Running` while any is in progress; `False`/`HookFailed` when any hook failed — **regardless of its `onFailure`** (the condition reports the fact; `onFailure` only governs whether the flow proceeded).
+- **`Lifecycle` printer column** (`kubectl get releases`): `N/A` (no hooks), `Running:<phase>`, `Failed:<phase>`, or `Completed:<phase>` — computed from the current render's hooks only.
 
 ### Interaction with Sync Waves
 
 Hooks and waves operate at different points in the sync pipeline and don't mix at the resource level:
 
-- `PreSync` hooks run before any wave starts
+- `PreSync` hooks run once, before any wave starts (they gate the whole apply)
 - All waves apply through their own ordering and transition strategies
-- `PostSync` hooks run after all waves complete
+- `PostSync` hooks run once, after all waves complete — optionally after the release is healthy (`runAfter: Healthy`)
 
-Within a phase, hooks order by `weight` (not by `sync-wave`). Ordering mechanisms are scoped: waves order regular manifests; hook weights order hooks within a phase. They don't interact.
+Within a phase, hooks order by `weight` (not by `sync-wave`). Ordering mechanisms are scoped: waves order regular manifests; hook weights order hooks within a phase. They don't interact, and there is no "run a hook between two specific waves" — the phases bracket the entire apply.
 
 ### Mutation Pipeline Interaction
 
@@ -1891,215 +1433,30 @@ Per-phase or per-hook addressing is not supported in v1; the entire lifecycle co
 | Aspect                | Decision                                                                                |
 |-----------------------|-----------------------------------------------------------------------------------------|
 | Expression            | `/lifecycle` subresource with phase-keyed hook lists                                    |
-| Phases                | `PreRender`, `PostRender`, `PreSync`, `PostSync`, `SyncFail`, `PreDelete`, `PostDelete` |
+| Phases                | `PreSync`, `PostSync`, `SyncFailed`, `PreDelete`, `PostDelete`                           |
 | Hook types            | `Job` and `Pod` for v1                                                                  |
-| Hook template         | k8s-native template per type (e.g., `JobTemplateSpec`)                                  |
-| Templating context    | Phase-specific bindings (`.Release`, `.Cluster`, `.Render`, `.Sync`, etc.)              |
-| Conditional execution | Optional CEL `when` field per hook                                                      |
-| Completion criteria   | Reuses `HealthRule` machinery — hook is done when its resource is `Healthy`             |
-| Failure handling      | Per-hook `onFailure`; phase-appropriate defaults                                        |
+| Hook template         | Custom template per type: partial `metadata` + k8s-native `spec` (`JobSpec`/`PodSpec`)  |
+| Templating context    | One context for all phases: lowercase `{cluster, release}` (same as mutations)          |
+| Conditional execution | Optional CEL `if` per hook (skip); `runAfter` on postSync (wait for `Applied`/`Healthy`) |
+| Completion criteria   | Job conditions / Pod phase, plus per-hook `timeout` → `TimedOut`                        |
+| Failure handling      | Per-hook `onFailure` (`Fail`/`Continue`); no per-phase defaults                         |
 | Ordering              | Per-hook `weight` within phase; parallel within same weight                             |
-| Cleanup               | Per-hook `deleteBeforeCreation` and `cleanupOnCompletion`                               |
-| Retention backstop    | Release-level `lifecycleRetentionPolicy`                                                |
-| Ownership tracking    | Labels-only (cross-cluster `ownerReferences` don't work)                                |
-| Helm compatibility    | `helm.sh/hook` annotations translated automatically; coexist with user hooks            |
-| Status                | Per-phase, per-hook execution state in `status.lifecycle`                               |
-
-### Binding Model
-
-The context exposes three top-level objects, each a projection of an underlying API resource, plus a small set of computed aliases for common patterns.
-
-| Object     | Backing resource                                            | Available in phases                                              |
-|------------|-------------------------------------------------------------|------------------------------------------------------------------|
-| `.Release` | The Release object itself                                   | All phases                                                       |
-| `.Cluster` | The Cluster object referenced by the Release                | All phases                                                       |
-| `.Source`  | The Source object referenced by the Release                 | `PreRender`, `PostRender` only                                   |
-| `.Sync`    | Computed projection of the in-flight or just-completed sync | `PostRender` onward (with phase-specific availability per field) |
-
-Direct access to underlying resource fields (`.Release.status.lastAttempted.renderRef`, etc.) is fully supported. Aliases exist purely for ergonomic access to commonly-referenced information; they are read-only projections that present the right value for the hook's phase.
-
-When the underlying status structure evolves between API versions, aliases preserve their documented semantics. Users referencing aliases are insulated from internal status reorganization; users using direct status access bear the responsibility of tracking schema changes.
-
-### `.Release` Bindings
-
-Direct projection of the Release object. Available in all phases.
-
-| Path                   | Backing                | Notes                                                               |
-|------------------------|------------------------|---------------------------------------------------------------------|
-| `.Release.name`        | `metadata.name`        | Release object name                                                 |
-| `.Release.namespace`   | `metadata.namespace`   | Release object namespace                                            |
-| `.Release.uid`         | `metadata.uid`         | Stable identity across renames                                      |
-| `.Release.generation`  | `metadata.generation`  | Spec generation at hook execution time                              |
-| `.Release.labels`      | `metadata.labels`      | Release labels                                                      |
-| `.Release.annotations` | `metadata.annotations` | Release annotations                                                 |
-| `.Release.spec.*`      | `spec.*`               | Full Release spec — source, cluster, content, syncPolicy, etc.      |
-| `.Release.status.*`    | `status.*`             | Full Release status — for direct access when an alias doesn't exist |
-
-#### Release aliases
-
-| Alias                              | Backing                                          | Notes                                                                   |
-|------------------------------------|--------------------------------------------------|-------------------------------------------------------------------------|
-| `.Release.firstDeploy`             | computed: `!has(.Release.status.lastSuccessful)` | `true` on the first deploy of this Release; `false` thereafter.         |
-| `.Release.lastSuccessfulRenderRef` | `.Release.status.lastSuccessful.renderRef`       | Hash of currently deployed render. `null` when `firstDeploy` is `true`. |
-| `.Release.lastSuccessfulSyncedAt`  | `.Release.status.lastSuccessful.syncedAt`        | When the previously deployed render was synced. `null` on first deploy. |
-
-### `.Cluster` Bindings
-
-Direct projection of the Cluster object. Available in all phases.
-
-| Path                 | Backing              | Notes                                     |
-|----------------------|----------------------|-------------------------------------------|
-| `.Cluster.name`      | `metadata.name`      | Cluster object name                       |
-| `.Cluster.namespace` | `metadata.namespace` | Cluster object namespace                  |
-| `.Cluster.uid`       | `metadata.uid`       | Stable cluster identity                   |
-| `.Cluster.labels`    | `metadata.labels`    | Cluster labels (used for fleet selection) |
-| `.Cluster.spec.*`    | `spec.*`             | Full Cluster spec                         |
-| `.Cluster.status.*`  | `status.*`           | Full Cluster status                       |
-
-#### Cluster aliases
-
-| Alias                        | Backing                             | Notes                                                                                                                                                                                |
-|------------------------------|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `.Cluster.metadata`          | `.Cluster.spec.metadata`            | Per-cluster free-form metadata. **Note:** this aliases the spec field, not the k8s `metadata` block. The k8s metadata fields are exposed as `.Cluster.name`, `.Cluster.labels`, etc. |
-| `.Cluster.discoveredVersion` | `.Cluster.status.discoveredVersion` | Discovered Kubernetes version (e.g., `v1.29.4`).                                                                                                                                     |
-
-The `.Cluster.metadata` alias intentionally surfaces the most commonly-referenced field (per-cluster templating metadata) at a convenient path. Users referencing the k8s metadata block directly use `.Cluster.name`, `.Cluster.labels`, etc.
-
-### `.Source` Bindings
-
-Direct projection of the Source object referenced by `Release.spec.source`. Available only in `PreRender` and `PostRender` phases — by `PreSync` onward, the rendered output is what matters and source-specific information is no longer relevant.
-
-| Path                | Backing                     | Notes                                                 |
-|---------------------|-----------------------------|-------------------------------------------------------|
-| `.Source.kind`      | source kind                 | One of `GitRepository`, `HelmRegistry`, `OCIRegistry` |
-| `.Source.name`      | source `metadata.name`      |                                                       |
-| `.Source.namespace` | source `metadata.namespace` |                                                       |
-| `.Source.spec.*`    | source `spec.*`             | Full source spec                                      |
-| `.Source.status.*`  | source `status.*`           | Full source status                                    |
-
-#### Source aliases
-
-| Alias                         | Backing                               | Notes                                                    |
-|-------------------------------|---------------------------------------|----------------------------------------------------------|
-| `.Source.lastFetchedRevision` | `.Source.status.lastFetched.revision` | Resolved revision (e.g., Git SHA, chart version digest). |
-
-### `.Sync` Bindings
-
-Computed projection of the sync attempt the hook is part of. Aliases consolidate render and sync information that would otherwise require navigating `lastAttempted` and `lastSuccessful` separately.
-
-`.Sync.*` is **phase-dependent**: the underlying field that backs each alias varies by phase, so the alias presents the value meaningful for that phase without users needing to know which status field to read.
-
-| Alias                       | Backing (phase-dependent)                                                                                                                  | Available in                            | Notes                                                                                                                        |
-|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| `.Sync.renderRef`           | `.Release.status.lastAttempted.renderRef` (PostRender, PreSync, PostSync, SyncFail); equals `lastSuccessful.renderRef` once sync completes | PostRender, PreSync, PostSync, SyncFail | Hash of the render being applied (or just applied). May be `null` in `SyncFail` if failure occurred before render completed. |
-| `.Sync.renderCompletedAt`   | `.Release.status.lastAttempted.renderCompletedAt`                                                                                          | PostRender, PreSync, PostSync           | When rendering finished for the current attempt.                                                                             |
-| `.Sync.attemptedAt`         | `.Release.status.lastAttempted.attemptedAt`                                                                                                | PreSync, PostSync, SyncFail             | When the current sync attempt started.                                                                                       |
-| `.Sync.completedAt`         | `.Release.status.lastSuccessful.syncedAt`                                                                                                  | PostSync                                | When sync finished.                                                                                                          |
-| `.Sync.syncedResources`     | `.Release.status.lastSuccessful.syncedResources`                                                                                           | PostSync                                | Count of resources applied in the just-completed sync.                                                                       |
-| `.Sync.changedFromPrevious` | computed: `lastAttempted.renderRef != lastSuccessful.renderRef` (or `true` if `lastSuccessful` is `null`)                                  | PostSync                                | `true` if this sync changed the deployed render hash; `false` if the same content was reapplied.                             |
-
-#### `.Sync.failure` (SyncFail only)
-
-| Alias                         | Backing                                               | Notes                                                                                                      |
-|-------------------------------|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| `.Sync.failure.stage`         | `.Release.status.lastAttempted.failure.stage`         | One of `ClusterResolution`, `SourceResolution`, `MutationResolution`, `Rendering`, `Syncing`, `HookFailed` |
-| `.Sync.failure.message`       | `.Release.status.lastAttempted.failure.message`       | Human-readable failure detail                                                                              |
-| `.Sync.failure.mutationIndex` | `.Release.status.lastAttempted.failure.mutationIndex` | When `stage: MutationResolution`, the index of the failing mutation. `null` otherwise.                     |
-| `.Sync.failure.waveNumber`    | `.Release.status.lastAttempted.failure.waveNumber`    | When `stage: Syncing`, the wave number where failure occurred. `null` otherwise.                           |
-| `.Sync.failure.hookName`      | `.Release.status.lastAttempted.failure.hookName`      | When `stage: HookFailed`, the name of the failing hook. `null` otherwise.                                  |
-| `.Sync.failure.hookPhase`     | `.Release.status.lastAttempted.failure.hookPhase`     | When `stage: HookFailed`, the phase of the failing hook. `null` otherwise.                                 |
-
-### Phase Availability Summary
-
-| Binding                     | PreRender | PostRender | PreSync | PostSync | SyncFail        | PreDelete | PostDelete |
-|-----------------------------|-----------|------------|---------|----------|-----------------|-----------|------------|
-| `.Release.*`                | ✓         | ✓          | ✓       | ✓        | ✓               | ✓         | ✓          |
-| `.Cluster.*`                | ✓         | ✓          | ✓       | ✓        | ✓               | ✓         | ✓          |
-| `.Source.*`                 | ✓         | ✓          | —       | —        | —               | —         | —          |
-| `.Sync.renderRef`           | —         | ✓          | ✓       | ✓        | ✓ (may be null) | —         | —          |
-| `.Sync.renderCompletedAt`   | —         | ✓          | ✓       | ✓        | —               | —         | —          |
-| `.Sync.attemptedAt`         | —         | —          | ✓       | ✓        | ✓               | —         | —          |
-| `.Sync.completedAt`         | —         | —          | —       | ✓        | —               | —         | —          |
-| `.Sync.syncedResources`     | —         | —          | —       | ✓        | —               | —         | —          |
-| `.Sync.changedFromPrevious` | —         | —          | —       | ✓        | —               | —         | —          |
-| `.Sync.failure.*`           | —         | —          | —       | —        | ✓               | —         | —          |
-
-### Common Patterns
-
-#### First-deploy vs. update
-
-```yaml
-when: '.Release.firstDeploy'
-```
-
-Runs only on the first successful deploy of this Release. Useful for one-time initialization (database seeds, namespace setup, initial configuration).
-
-#### Skip on no-op syncs
-
-```yaml
-when: '.Sync.changedFromPrevious'
-```
-
-In `PostSync`, runs the hook only when the sync actually changed something. Avoids re-running smoke tests when reconciliation reapplies an unchanged manifest set.
-
-#### Environment-conditional
-
-```yaml
-when: '.Cluster.metadata.tier == "production"'
-```
-
-Production-only operations. The user populates `Cluster.spec.metadata.tier` during cluster registration; the alias makes templating concise.
-
-#### Region-conditional
-
-```yaml
-when: '.Cluster.metadata.region in ["eu-west-1", "eu-central-1"]'
-```
-
-Region-specific operations (e.g., GDPR-related cleanup in EU regions).
-
-#### Failure-stage-conditional
-
-```yaml
-when: '.Sync.failure.stage == "Rendering"'
-```
-
-In `SyncFail`, route different alerts depending on what stage failed. Render failures are config issues; sync failures are runtime issues; they typically need different escalation paths.
-
-#### Combining conditions
-
-```yaml
-when: '.Cluster.metadata.tier == "production" && .Release.firstDeploy'
-```
-
-Production, first deploy only. Common pattern for one-time production setup that should never run in dev or staging.
-
-#### Reference render hash in template
-
-```yaml
-env:
-  - name: RENDER_HASH
-    value: "{{ .Sync.renderRef }}"
-  - name: REGION
-    value: "{{ .Cluster.metadata.region }}"
-```
-
-### Evaluation Semantics
-
-- Bindings are evaluated at hook execution time, immediately before the controller decides whether to run the hook (for `when`) or templates the hook resource (for template bodies).
-- Values reflect the Release's state at that exact moment. They are not snapshotted earlier in the sync.
-- Aliases are resolved against their backing fields at evaluation time. If an aliased field is `null` (e.g., `.Release.lastSuccessfulRenderRef` on first deploy), the alias resolves to `null`.
-- Expressions referencing potentially-null bindings must handle `null` explicitly using CEL's `has()` operator or null comparisons. Errors during evaluation treat the condition as `false` — the hook is skipped with a warning recorded in status.
+| Cleanup               | Per-hook `cleanup` (on completion) and `deleteBeforeCreation` (on re-arm)               |
+| Retention backstop    | Planned (cluster-scope); not implemented                                                |
+| Ownership tracking    | Labels-only (cross-cluster `ownerReferences` don't work); render encoded in the name    |
+| Helm compatibility    | Planned; today only Helm test hooks are excluded from the applied set                   |
+| Status                | Per-phase records in `status.lifecycle` + `LifecycleSucceeded` condition + `Lifecycle` column |
 
 ### Validation
 
-When `/lifecycle` is updated:
+`/lifecycle` writes are **structurally** validated at admission:
 
-- Each `when` expression is compiled as CEL and field references are validated against the bindings available for the hook's phase.
-- Each template body's go-template syntax is parsed; field references against the bindings are checked.
-- Invalid expressions or out-of-phase binding references are rejected at admission time with a message identifying the offending hook and expression.
+- Hook `name` is unique within its phase.
+- `type` matches the template (`Job`↔`jobTemplate`, `Pod`↔`podTemplate`; exactly one).
+- `onFailure`, `cleanup`, and `runAfter` are recognized enum values (empty allowed).
+- `runAfter` is present only on `postSync` hooks.
 
-This catches typos and binding-availability mistakes before they cause runtime failures or skipped hooks.
+The CEL `if` expression and the Go-template bodies are **not** validated at admission — they are compiled and evaluated at run time (see [The `if` Condition](#the-if-condition-skip)). A bad `if` skips the hook; a bad template surfaces as a hook/render failure in `status`.
 
 ## Sync Waves
 
