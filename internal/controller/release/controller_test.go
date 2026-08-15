@@ -160,7 +160,7 @@ func newTestControllerWithResolver(t *testing.T, rel *corev1alpha1.Release, clus
 	}
 	// releasesForCluster is nil here: Axis B cluster-wave ordering is off by default
 	// in unit tests, and the cluster-wave tests set c.releasesForCluster explicitly.
-	c := NewController(client, relInformer, clInformer.Lister(), coordinator, resolver, inventory.NewMemoryStore(), deployer, nil, nil)
+	c := NewController(client, relInformer, clInformer.Lister(), coordinator, resolver, inventory.NewMemoryStore(), deployer, nil, nil, nil)
 	fixed := metav1.NewTime(time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
 	return c, client

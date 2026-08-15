@@ -73,6 +73,9 @@ type ExtraConfig struct {
 	// ObserverURL is the base URL of the observer that the Release /preview
 	// subresource proxies to.
 	ObserverURL string
+	// Shards is the fleet-wide shard count used to stamp the shard label on
+	// user-written objects (see docs/architecture/05-shard-scoped-caches.md).
+	Shards int
 }
 
 // Config wraps the generic recommended config plus convoy extras.
@@ -119,11 +122,11 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	// core API group
 	coreGroup := genericapiserver.NewDefaultAPIGroupInfo(core.GroupName, Scheme, metav1.ParameterCodec, Codecs)
 
-	clusterREST, clusterStatusREST, err := clusterstorage.NewREST(Scheme, optsGetter)
+	clusterREST, clusterStatusREST, err := clusterstorage.NewREST(Scheme, optsGetter, c.ExtraConfig.Shards)
 	if err != nil {
 		return nil, err
 	}
-	releaseStorage, err := releasestorage.NewREST(Scheme, optsGetter, c.ExtraConfig.ObserverURL)
+	releaseStorage, err := releasestorage.NewREST(Scheme, optsGetter, c.ExtraConfig.ObserverURL, c.ExtraConfig.Shards)
 	if err != nil {
 		return nil, err
 	}
@@ -142,15 +145,15 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	// source API group
 	sourceGroup := genericapiserver.NewDefaultAPIGroupInfo(source.GroupName, Scheme, metav1.ParameterCodec, Codecs)
 
-	gitREST, gitStatusREST, err := gitrepositorystorage.NewREST(Scheme, optsGetter)
+	gitREST, gitStatusREST, err := gitrepositorystorage.NewREST(Scheme, optsGetter, c.ExtraConfig.Shards)
 	if err != nil {
 		return nil, err
 	}
-	helmREST, helmStatusREST, err := helmregistrystorage.NewREST(Scheme, optsGetter)
+	helmREST, helmStatusREST, err := helmregistrystorage.NewREST(Scheme, optsGetter, c.ExtraConfig.Shards)
 	if err != nil {
 		return nil, err
 	}
-	ociREST, ociStatusREST, err := ociregistrystorage.NewREST(Scheme, optsGetter)
+	ociREST, ociStatusREST, err := ociregistrystorage.NewREST(Scheme, optsGetter, c.ExtraConfig.Shards)
 	if err != nil {
 		return nil, err
 	}

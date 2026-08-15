@@ -31,8 +31,8 @@ import (
 )
 
 // NewREST returns RESTStorage for HelmRegistry and its /status subresource.
-func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter) (*registry.REST, *StatusREST, error) {
-	strategy := NewStrategy(scheme)
+func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, shards int) (*registry.REST, *StatusREST, error) {
+	strategy := NewStrategy(scheme, shards)
 
 	store := &genericregistry.Store{
 		NewFunc:                   func() runtime.Object { return &source.HelmRegistry{} },

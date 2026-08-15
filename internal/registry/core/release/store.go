@@ -73,8 +73,8 @@ func (s *Storage) Map() map[string]rest.Storage {
 // NewREST returns the Release RESTStorage and its subresources. observerURL is
 // the base URL of the observer the /preview subresource proxies to (empty
 // disables /preview: it returns ServiceUnavailable).
-func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, observerURL string) (*Storage, error) {
-	strategy := NewStrategy(scheme)
+func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, observerURL string, shards int) (*Storage, error) {
+	strategy := NewStrategy(scheme, shards)
 
 	store := &genericregistry.Store{
 		NewFunc:                   func() runtime.Object { return &core.Release{} },

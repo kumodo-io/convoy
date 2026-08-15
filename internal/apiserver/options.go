@@ -45,15 +45,22 @@ type Options struct {
 	// ObserverURL is the base URL of the observer that the Release /preview (and,
 	// later, /diff) subresources proxy to.
 	ObserverURL string
+	// Shards is the fleet-wide shard count used to stamp the shard label on
+	// user-written objects. Must match the controllers' --shards.
+	Shards int
 }
 
 // defaultObserverURL is the in-cluster Service DNS for the observer's HTTP server.
 const defaultObserverURL = "http://convoy-observer.convoy-system.svc:8080"
 
+// defaultShards is the default shard count; must match the controllers' default.
+const defaultShards = 32
+
 // NewOptions returns Options with sane defaults.
 func NewOptions() *Options {
 	o := &Options{
 		ObserverURL: defaultObserverURL,
+		Shards:      defaultShards,
 		RecommendedOptions: genericoptions.NewRecommendedOptions(
 			defaultEtcdPathPrefix,
 			// Storage codec: must cover every served group so each object encodes
@@ -121,7 +128,7 @@ func (o *Options) Config() (*Config, error) {
 
 	return &Config{
 		GenericConfig: serverConfig,
-		ExtraConfig:   ExtraConfig{ObserverURL: o.ObserverURL},
+		ExtraConfig:   ExtraConfig{ObserverURL: o.ObserverURL, Shards: o.Shards},
 	}, nil
 }
 
@@ -161,6 +168,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 
 	o.RecommendedOptions.AddFlags(cmd.Flags())
 	cmd.Flags().StringVar(&o.ObserverURL, "observer-url", o.ObserverURL, "Base URL of the observer that /preview and /diff proxy to.")
+	cmd.Flags().IntVar(&o.Shards, "shards", o.Shards, "Fleet-wide shard count used to stamp the shard label. Must match the controllers' --shards.")
 
 	return cmd
 }

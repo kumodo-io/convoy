@@ -91,6 +91,9 @@ type Controller struct {
 	deployer           Deployer
 	hookRunner         HookRunner
 	releasesForCluster ReleasesForClusterFunc
+	// owns reports whether this replica owns a Release's target-cluster shard.
+	// nil disables sharding (every Release is reconciled locally).
+	owns func(clusterNamespace, clusterName string) bool
 	// failures tracks consecutive transient reconcile failures per Release, to
 	// drive per-Release retry backoff. In-memory; reset on a terminal outcome.
 	failures *failureCounts
@@ -136,6 +139,7 @@ func NewController(
 	deployer Deployer,
 	hookRunner HookRunner,
 	releasesForCluster ReleasesForClusterFunc,
+	owns func(clusterNamespace, clusterName string) bool,
 ) *Controller {
 	c := &Controller{
 		client:             client,
@@ -147,13 +151,33 @@ func NewController(
 		deployer:           deployer,
 		hookRunner:         hookRunner,
 		releasesForCluster: releasesForCluster,
+		owns:               owns,
 		failures:           newFailureCounts(),
 		now:                metav1.Now,
 	}
 	c.Controller = base.NewController("release", c.syncHandler,
-		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation))
+		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation),
+		// Shard by the Release's target cluster: keep only Releases whose cluster
+		// this replica owns. The syncHandler re-checks (ownership may shift while
+		// queued); this only trims the queue.
+		base.WithEnqueueFilter(func(obj any) bool {
+			if c.owns == nil {
+				return true
+			}
+			rel, ok := obj.(*corev1alpha1.Release)
+			if !ok {
+				return true
+			}
+			return c.owns(c.clusterKeyOf(rel))
+		}))
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
+}
+
+// clusterKeyOf returns the namespace/name of the cluster a Release targets — the
+// Release's shard key.
+func (c *Controller) clusterKeyOf(rel *corev1alpha1.Release) (string, string) {
+	return orDefault(rel.Spec.ClusterRef.Namespace, rel.Namespace), rel.Spec.ClusterRef.Name
 }
 
 func (c *Controller) syncHandler(ctx context.Context, key string) error {
@@ -169,6 +193,12 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	if err != nil {
 		return err
+	}
+
+	// Sharding gate: another replica owns this Release's target-cluster shard.
+	// Skip everything (including finalization — the owner handles it).
+	if c.owns != nil && !c.owns(c.clusterKeyOf(rel)) {
+		return nil
 	}
 
 	// finalize Release on deletion according to deletion policy

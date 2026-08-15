@@ -43,7 +43,7 @@ const (
 func newStorage(t *testing.T) (*genericregistry.Store, *helmregistrystorage.StatusREST, *etcd3testing.EtcdTestServer) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, sourceinstall.Install, sourcev1alpha1.SchemeGroupVersion, source.Resource("helmregistries"))
 
-	restStorage, statusStorage, err := helmregistrystorage.NewREST(scheme, restOptions)
+	restStorage, statusStorage, err := helmregistrystorage.NewREST(scheme, restOptions, 4)
 	if err != nil {
 		server.Terminate(t)
 		t.Fatalf("unexpected error from NewREST: %v", err)

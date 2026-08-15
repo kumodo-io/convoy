@@ -41,6 +41,10 @@ rules:
   - apiGroups: [""]
     resources: ["secrets", "configmaps"]
     verbs: ["get"]
+  # Sharding: membership + shard leases partition work across replicas.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -100,6 +104,19 @@ spec:
             - --resync=2m
             - --workers=2
             - --serve-addr=:8080
+            # Shard-scoped caches: each replica caches only its owned shards'
+            # Releases/ReleaseInventories/Clusters (memory scales with replica count).
+            - --shard-scoped-cache
+          # Sharding identity: replica-id and lease-namespace resolve from these.
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           ports:
             - name: http
               containerPort: 8080

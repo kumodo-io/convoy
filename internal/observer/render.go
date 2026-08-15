@@ -63,6 +63,30 @@ func renderReleaseObjects(ctx context.Context, coordinator fetch.Coordinator, re
 	return objects, err
 }
 
+// clusterKeyOf returns the namespace/name of the cluster a Release targets — the
+// Release's shard key for sharding.
+func clusterKeyOf(rel *corev1alpha1.Release) (string, string) {
+	ns := rel.Spec.ClusterRef.Namespace
+	if ns == "" {
+		ns = rel.Namespace
+	}
+	return ns, rel.Spec.ClusterRef.Name
+}
+
+// releaseOwned reports whether obj (a Release) belongs to a cluster shard this
+// replica owns. It is the observer controllers' enqueue filter. A nil owns (no
+// sharding) or a non-Release object passes.
+func releaseOwned(owns func(clusterNamespace, clusterName string) bool, obj any) bool {
+	if owns == nil {
+		return true
+	}
+	rel, ok := obj.(*corev1alpha1.Release)
+	if !ok {
+		return true
+	}
+	return owns(clusterKeyOf(rel))
+}
+
 // resolveClusterRef looks up a Release's target Cluster from the lister,
 // best-effort — nil if not found, since the mutation context tolerates a missing
 // cluster (an empty .Cluster). Callers that require the cluster for live reads

@@ -53,14 +53,14 @@ type Controller struct {
 
 // NewController wires a Controller to a GitRepository informer. It verifies
 // reachability/auth via the fetcher; it does not fetch content.
-func NewController(client clientset.Interface, informer informers.GitRepositoryInformer, fetcher Fetcher) *Controller {
+func NewController(client clientset.Interface, informer informers.GitRepositoryInformer, fetcher Fetcher, opts ...base.Option) *Controller {
 	c := &Controller{
 		client:  client,
 		lister:  informer.Lister(),
 		fetcher: fetcher,
 		now:     metav1.Now,
 	}
-	c.Controller = base.NewController("gitrepository", c.syncHandler)
+	c.Controller = base.NewController("gitrepository", c.syncHandler, opts...)
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
 }

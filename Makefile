@@ -216,7 +216,7 @@ kind-deploy: image kind kubectl
 	$(TOOLS_BIN)/kind load docker-image $(API_SERVER_IMAGE) --name $(KIND_CLUSTER)
 	$(TOOLS_BIN)/kind load docker-image $(CONTROLLER_IMAGE) --name $(KIND_CLUSTER)
 	$(TOOLS_BIN)/kind load docker-image $(OBSERVER_IMAGE) --name $(KIND_CLUSTER)
-	$(TOOLS_BIN)/kubectl apply -k dev/deploy
+	$(TOOLS_BIN)/kubectl apply -k dev/deploy/single-replica
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s
 	$(TOOLS_BIN)/kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s
 	$(TOOLS_BIN)/kubectl wait --for=condition=Available --timeout=120s \
