@@ -65,6 +65,7 @@ func NewController(
 	informer informers.ClusterInformer,
 	prober Prober,
 	releasesForCluster ReleasesForClusterFunc,
+	opts ...base.Option,
 ) *Controller {
 	c := &Controller{
 		client:             client,
@@ -73,7 +74,7 @@ func NewController(
 		now:                metav1.Now,
 		releasesForCluster: releasesForCluster,
 	}
-	c.Controller = base.NewController("cluster", c.syncHandler)
+	c.Controller = base.NewController("cluster", c.syncHandler, opts...)
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
 }

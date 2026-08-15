@@ -75,6 +75,38 @@ func WithEnqueueFilter(keep func(obj any) bool) Option {
 	return func(c *Controller) { c.enqueueFilter = keep }
 }
 
+// WithShardGate installs sharding for a controller whose shard key is the
+// object's own namespace/name (Cluster and the source kinds). owns reports
+// whether this replica owns that identity. It both gates the ReconcileFunc (a
+// non-owned key returns nil without work — the correctness layer) and installs
+// the matching enqueue filter (the efficiency layer). A nil owns is a no-op.
+//
+// Controllers keyed by a *different* identity than their own object (the Release
+// controller, keyed by its target cluster) do not use this; they gate inside
+// their reconcile and set WithEnqueueFilter directly.
+func WithShardGate(owns func(namespace, name string) bool) Option {
+	return func(c *Controller) {
+		if owns == nil {
+			return
+		}
+		inner := c.reconcile
+		c.reconcile = func(ctx context.Context, key string) error {
+			namespace, name, err := cache.SplitMetaNamespaceKey(key)
+			if err == nil && !owns(namespace, name) {
+				return nil // not ours; skip without requeue
+			}
+			return inner(ctx, key)
+		}
+		c.enqueueFilter = func(obj any) bool {
+			m, err := meta.Accessor(obj)
+			if err != nil {
+				return true // can't tell; enqueue and let the gate decide
+			}
+			return owns(m.GetNamespace(), m.GetName())
+		}
+	}
+}
+
 // NewController returns a harness that calls reconcile for each queued key.
 // name is used in logs and error messages.
 func NewController(name string, reconcile ReconcileFunc, opts ...Option) *Controller {

@@ -21,6 +21,7 @@ package controllermanager
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -36,6 +37,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
+	"github.com/kumodo-io/convoy/internal/controller/base"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
 	helmregistrycontroller "github.com/kumodo-io/convoy/internal/controller/helmregistry"
@@ -43,7 +45,16 @@ import (
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
+	"github.com/kumodo-io/convoy/internal/sharding"
 	"github.com/kumodo-io/convoy/internal/waves"
+)
+
+const (
+	// shardingComponent scopes this manager's sharding leases.
+	shardingComponent = "convoy-cm"
+	// defaultLeaseNamespace holds sharding leases when neither the flag nor
+	// $POD_NAMESPACE is set.
+	defaultLeaseNamespace = "convoy-system"
 )
 
 // releaseByClusterIndex is the informer index keying Releases by the
@@ -74,13 +85,30 @@ type Options struct {
 	Resync time.Duration
 	// Workers is the number of concurrent reconcile workers per controller.
 	Workers int
+	// Shards is the fixed shard count S. Must match across the fleet. Work is
+	// partitioned by target cluster into S shards, owned via leases.
+	Shards int
+	// ReplicaID is this replica's unique shard-lease holder identity. Empty
+	// resolves from $POD_NAME, then the hostname.
+	ReplicaID string
+	// LeaseNamespace is where sharding Leases live. Empty resolves from
+	// $POD_NAMESPACE, then "convoy-system".
+	LeaseNamespace string
+	// LeaseDuration is how long a held shard lease is valid without renewal.
+	LeaseDuration time.Duration
+	// RenewInterval is how often the coordinator renews leases and re-evaluates
+	// ownership.
+	RenewInterval time.Duration
 }
 
 // NewOptions returns Options with defaults.
 func NewOptions() *Options {
 	return &Options{
-		Resync:  2 * time.Minute,
-		Workers: 2,
+		Resync:        2 * time.Minute,
+		Workers:       2,
+		Shards:        32,
+		LeaseDuration: 30 * time.Second,
+		RenewInterval: 10 * time.Second,
 	}
 }
 
@@ -106,11 +134,26 @@ func (o *Options) Run(ctx context.Context) error {
 	}
 
 	// kube is used to resolve referenced Secrets/ConfigMaps (e.g. kubeconfigs)
-	// from the cluster convoy runs in.
+	// from the cluster convoy runs in, and to maintain sharding leases.
 	kube, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return err
 	}
+
+	// Sharding: partition work by target cluster across replicas via leases.
+	coord := sharding.NewCoordinator(kube, sharding.Config{
+		Component:     shardingComponent,
+		ReplicaID:     resolveReplicaID(o.ReplicaID),
+		Namespace:     resolveLeaseNamespace(o.LeaseNamespace),
+		Shards:        o.Shards,
+		LeaseDuration: o.LeaseDuration,
+		RenewInterval: o.RenewInterval,
+	})
+	sharder := coord.Sharder()
+	// owns reports whether this replica owns the shard for a namespace/name. For
+	// Cluster and source objects that identity is their own key; for a Release it
+	// is the target cluster's key.
+	owns := func(namespace, name string) bool { return coord.Owns(sharder.Shard(namespace, name)) }
 
 	factory := informers.NewSharedInformerFactory(client, o.Resync)
 	clusterInformer := factory.Core().V1alpha1().Clusters()
@@ -144,7 +187,7 @@ func (o *Options) Run(ctx context.Context) error {
 		}
 		return out, nil
 	}
-	clusterController := clustercontroller.NewController(client, clusterInformer, prober, releasesForCluster)
+	clusterController := clustercontroller.NewController(client, clusterInformer, prober, releasesForCluster, base.WithShardGate(owns))
 
 	// Content-addressed artifact store, shared by the fetch coordinator (producer)
 	// and consumed via the coordinator's result.
@@ -154,17 +197,17 @@ func (o *Options) Run(ctx context.Context) error {
 	// The Git auth registry slots into the fetcher once a real git auth type lands.
 	gitRepoInformer := factory.Source().V1alpha1().GitRepositories()
 	gitFetcher := gitrepositorycontroller.NewGitFetcher(resolver)
-	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher)
+	gitController := gitrepositorycontroller.NewController(client, gitRepoInformer, gitFetcher, base.WithShardGate(owns))
 
 	// HelmRegistry controller: verifies HTTP Helm repos are reachable.
 	helmRegInformer := factory.Source().V1alpha1().HelmRegistries()
 	helmFetcher := helmregistrycontroller.NewHelmFetcher(resolver)
-	helmController := helmregistrycontroller.NewController(client, helmRegInformer, helmFetcher)
+	helmController := helmregistrycontroller.NewController(client, helmRegInformer, helmFetcher, base.WithShardGate(owns))
 
 	// OCIRegistry controller: verifies OCI registries are reachable.
 	ociRegInformer := factory.Source().V1alpha1().OCIRegistries()
 	ociFetcher := ociregistrycontroller.NewOCIFetcher(resolver)
-	ociController := ociregistrycontroller.NewController(client, ociRegInformer, ociFetcher)
+	ociController := ociregistrycontroller.NewController(client, ociRegInformer, ociFetcher, base.WithShardGate(owns))
 
 	// Fetch coordinator: resolves a Release's source coordinate and fetches
 	// content on demand into the artifact store.
@@ -188,7 +231,7 @@ func (o *Options) Run(ctx context.Context) error {
 	deployer := releasecontroller.NewDeployer(connector)
 	hookRunner := releasecontroller.NewHookRunner(connector)
 	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister())
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, hookRunner, releasesForCluster)
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, hookRunner, releasesForCluster, owns)
 
 	// Axis B fan-out: when a Release's Applied/Healthy signal flips, re-enqueue its
 	// higher-wave successors on the same cluster so they re-evaluate the cluster-wave
@@ -220,6 +263,10 @@ func (o *Options) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Prime shard ownership before informers deliver their initial events, so the
+	// enqueue filters see correct ownership from the first ADD.
+	coord.Prime(ctx)
+
 	factory.Start(ctx.Done())
 
 	// The release controller reads the ReleaseInventory cache during reconcile
@@ -232,6 +279,7 @@ func (o *Options) Run(ctx context.Context) error {
 	}
 
 	errGroup := errgroup.Group{}
+	errGroup.Go(func() error { return coord.Run(ctx) })
 	errGroup.Go(func() error { return clusterController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return gitController.Run(ctx, o.Workers) })
 	errGroup.Go(func() error { return helmController.Run(ctx, o.Workers) })
@@ -239,6 +287,31 @@ func (o *Options) Run(ctx context.Context) error {
 	errGroup.Go(func() error { return releaseController.Run(ctx, o.Workers) })
 
 	return errGroup.Wait()
+}
+
+// resolveReplicaID returns the configured replica ID, or falls back to
+// $POD_NAME, then the hostname.
+func resolveReplicaID(configured string) string {
+	if configured != "" {
+		return configured
+	}
+	if pn := os.Getenv("POD_NAME"); pn != "" {
+		return pn
+	}
+	host, _ := os.Hostname()
+	return host
+}
+
+// resolveLeaseNamespace returns the configured lease namespace, or falls back to
+// $POD_NAMESPACE, then defaultLeaseNamespace.
+func resolveLeaseNamespace(configured string) string {
+	if configured != "" {
+		return configured
+	}
+	if podNS := os.Getenv("POD_NAMESPACE"); podNS != "" {
+		return podNS
+	}
+	return defaultLeaseNamespace
 }
 
 // NewCommand builds the cobra command that starts the controller manager.
@@ -258,6 +331,11 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.StringVar(&o.Kubeconfig, "kubeconfig", o.Kubeconfig, "Path to a kubeconfig file. Empty uses in-cluster config.")
 	flags.DurationVar(&o.Resync, "resync", o.Resync, "Informer resync period; drives periodic re-probing of Clusters.")
 	flags.IntVar(&o.Workers, "workers", o.Workers, "Number of concurrent reconcile workers.")
+	flags.IntVar(&o.Shards, "shards", o.Shards, "Fixed shard count S; work is partitioned by target cluster into S shards. Must match across the fleet.")
+	flags.StringVar(&o.ReplicaID, "replica-id", o.ReplicaID, "Unique shard-lease holder identity. Empty uses $POD_NAME, then the hostname.")
+	flags.StringVar(&o.LeaseNamespace, "lease-namespace", o.LeaseNamespace, "Namespace for sharding leases. Empty uses $POD_NAMESPACE, then \"convoy-system\".")
+	flags.DurationVar(&o.LeaseDuration, "lease-duration", o.LeaseDuration, "How long a held shard lease is valid without renewal.")
+	flags.DurationVar(&o.RenewInterval, "lease-renew-interval", o.RenewInterval, "How often shard leases are renewed and ownership re-evaluated.")
 
 	return cmd
 }

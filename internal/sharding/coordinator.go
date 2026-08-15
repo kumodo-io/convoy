@@ -141,6 +141,13 @@ func (c *Coordinator) OnChange(fn func()) {
 	c.onChange = append(c.onChange, fn)
 }
 
+// Prime performs one synchronous membership + ownership evaluation. Call it
+// before starting informers so the enqueue filters see correct ownership from
+// the first event, avoiding a cold-start gap.
+func (c *Coordinator) Prime(ctx context.Context) {
+	c.tick(ctx)
+}
+
 // Run drives the membership + shard-lease loop until ctx is cancelled, then
 // releases all held leases so failover is immediate rather than TTL-delayed.
 func (c *Coordinator) Run(ctx context.Context) error {

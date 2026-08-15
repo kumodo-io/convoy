@@ -47,14 +47,14 @@ type Controller struct {
 
 // NewController wires a Controller to an OCIRegistry informer. It verifies
 // reachability via the fetcher; it does not fetch content.
-func NewController(client clientset.Interface, informer informers.OCIRegistryInformer, fetcher Fetcher) *Controller {
+func NewController(client clientset.Interface, informer informers.OCIRegistryInformer, fetcher Fetcher, opts ...base.Option) *Controller {
 	c := &Controller{
 		client:  client,
 		lister:  informer.Lister(),
 		fetcher: fetcher,
 		now:     metav1.Now,
 	}
-	c.Controller = base.NewController("ociregistry", c.syncHandler)
+	c.Controller = base.NewController("ociregistry", c.syncHandler, opts...)
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
 }
