@@ -64,7 +64,7 @@ docker_build_with_restart(
     ],
 )
 
-k8s_yaml(kustomize('dev/deploy'))
+k8s_yaml(kustomize('dev/deploy/single-replica'))
 
 k8s_resource('convoy-etcd', labels=['convoy'])
 k8s_resource(

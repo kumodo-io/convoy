@@ -1,0 +1,13 @@
+# Multi-replica overlay — exercises lease-based sharding. With two Clusters
+# (dev-local, convoy-managed) and two replicas each, the clusters' Releases
+# should be owned by different replicas. Scale further by raising the counts
+# (up to the shard count S).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+replicas:
+  - name: convoy-controller-manager
+    count: 2
+  - name: convoy-observer
+    count: 2

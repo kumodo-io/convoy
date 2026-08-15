@@ -1,0 +1,11 @@
+# Single-replica overlay — the default dev posture. No sharding fan-out: the one
+# replica holds every shard (the N=1 degenerate case).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+replicas:
+  - name: convoy-controller-manager
+    count: 1
+  - name: convoy-observer
+    count: 1
