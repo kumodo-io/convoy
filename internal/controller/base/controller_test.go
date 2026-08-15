@@ -97,3 +97,41 @@ func TestEnqueueAfter_NonPositiveEnqueuesImmediately(t *testing.T) {
 		t.Errorf("queue.Len() = %d after EnqueueAfter(_, 0), want 1", n)
 	}
 }
+
+func partialMeta(ns, name string) *metav1.PartialObjectMetadata {
+	return &metav1.PartialObjectMetadata{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name}}
+}
+
+func TestFilteredEnqueue_DropsUnownedKeepsOwned(t *testing.T) {
+	c := NewController("test",
+		func(_ context.Context, _ string) error { return nil },
+		WithEnqueueFilter(func(o any) bool {
+			return o.(*metav1.PartialObjectMetadata).Name == "keep"
+		}),
+	)
+
+	c.filteredEnqueue(partialMeta("ns", "drop"))
+	if got := c.queue.Len(); got != 0 {
+		t.Fatalf("unowned object enqueued: queue len = %d, want 0", got)
+	}
+	c.filteredEnqueue(partialMeta("ns", "keep"))
+	if got := c.queue.Len(); got != 1 {
+		t.Fatalf("owned object not enqueued: queue len = %d, want 1", got)
+	}
+}
+
+func TestFilteredEnqueue_NoFilterEnqueuesAll(t *testing.T) {
+	c := NewController("test", func(_ context.Context, _ string) error { return nil })
+	c.filteredEnqueue(partialMeta("ns", "anything"))
+	if got := c.queue.Len(); got != 1 {
+		t.Fatalf("no filter should enqueue: queue len = %d, want 1", got)
+	}
+}
+
+func TestEnqueueKeys(t *testing.T) {
+	c := NewController("test", func(_ context.Context, _ string) error { return nil })
+	c.EnqueueKeys([]string{"ns/a", "ns/b"})
+	if got := c.queue.Len(); got != 2 {
+		t.Fatalf("EnqueueKeys: queue len = %d, want 2", got)
+	}
+}

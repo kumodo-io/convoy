@@ -48,6 +48,11 @@ type Controller struct {
 	// change forces an enqueue on update (e.g. a /sync reconcile-request stamp).
 	// Empty means only resync + spec changes enqueue.
 	reconcileRequestAnnotation string
+	// enqueueFilter, when non-nil, drops informer add/update events whose object
+	// this replica does not own (a sharding optimization). It is not applied to
+	// deletes or to EnqueueKeys/EnqueueAfter; correctness still rests on the
+	// ReconcileFunc's own ownership gate, so a stale filter only wastes work.
+	enqueueFilter func(obj any) bool
 }
 
 // Option configures a Controller.
@@ -59,6 +64,15 @@ type Option func(*Controller)
 // broadly enqueuing on every unrelated annotation edit.
 func WithReconcileRequestAnnotation(key string) Option {
 	return func(c *Controller) { c.reconcileRequestAnnotation = key }
+}
+
+// WithEnqueueFilter installs a predicate that keeps only informer add/update
+// events for objects this replica owns, so unowned objects don't churn the
+// queue under sharding. keep receives the informer object (never a delete
+// tombstone). It is an optimization only — the ReconcileFunc must still gate on
+// ownership, since ownership can change while a key is queued.
+func WithEnqueueFilter(keep func(obj any) bool) Option {
+	return func(c *Controller) { c.enqueueFilter = keep }
 }
 
 // NewController returns a harness that calls reconcile for each queued key.
@@ -81,12 +95,14 @@ func NewController(name string, reconcile ReconcileFunc, opts ...Option) *Contro
 // its cache-sync function so Run waits for it before processing.
 func (c *Controller) WatchInformer(informer cache.SharedIndexInformer) error {
 	_, err := informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: c.enqueue,
+		AddFunc: c.filteredEnqueue,
 		UpdateFunc: func(oldObj, newObj any) {
 			if c.shouldEnqueueOnUpdate(oldObj, newObj) {
-				c.enqueue(newObj)
+				c.filteredEnqueue(newObj)
 			}
 		},
+		// Deletes are always enqueued (no filter, no tombstone unwrapping): a
+		// non-owner simply no-ops at the reconcile gate.
 		DeleteFunc: c.enqueue,
 	})
 	if err != nil {
@@ -130,6 +146,14 @@ func (c *Controller) shouldEnqueueOnUpdate(oldObj, newObj any) bool {
 	return false
 }
 
+// filteredEnqueue enqueues obj unless an installed enqueue filter rejects it.
+func (c *Controller) filteredEnqueue(obj any) {
+	if c.enqueueFilter != nil && !c.enqueueFilter(obj) {
+		return
+	}
+	c.enqueue(obj)
+}
+
 // enqueue extracts a namespace/name key from an object and queues it.
 func (c *Controller) enqueue(obj any) {
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
@@ -138,6 +162,15 @@ func (c *Controller) enqueue(obj any) {
 		return
 	}
 	c.queue.Add(key)
+}
+
+// EnqueueKeys queues the given namespace/name keys directly. It is used to
+// re-drive newly-owned work after a sharding reassignment; the keys are assumed
+// already scoped to what this replica should reconcile.
+func (c *Controller) EnqueueKeys(keys []string) {
+	for _, key := range keys {
+		c.queue.Add(key)
+	}
 }
 
 // EnqueueAfter schedules key to be reprocessed after d. It lets a ReconcileFunc
