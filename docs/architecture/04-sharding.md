@@ -6,11 +6,11 @@
 
 Convoy does **not** have a separate leader-election path. Work is partitioned into **shards**, each guarded by its own `Lease`, and a replica does a shard's work only while it holds that shard's lease. A per-shard lease is a micro leader-election, so the same mechanism covers both goals at different replica counts:
 
-| Replicas | Behavior |
-|----------|----------|
-| `N=1` | the single replica holds every shard (single active — the degenerate case) |
+| Replicas                  | Behavior                                                                                    |
+|---------------------------|---------------------------------------------------------------------------------------------|
+| `N=1`                     | the single replica holds every shard (single active — the degenerate case)                  |
 | `N≥2`, sized for failover | shards split across replicas; a dead replica's shards are re-acquired by survivors → **HA** |
-| `N=k` for load | shards spread `k` ways → **horizontal scale** |
+| `N=k` for load            | shards spread `k` ways → **horizontal scale**                                               |
 
 This works because compute is **stateless over externalized state** (etcd + the render object store). A replica that acquires a shard reconciles it straight from etcd — level-triggered, no state handoff — so rebalancing is free.
 
@@ -117,18 +117,18 @@ Set the pod memory **limit** above `pod` with headroom, and set `GOMEMLIMIT` jus
 
 `n_R = 10k`, `s_R = 20 KB`; `n_I = 10k`, `s_I = 10 KB`; `n_C = 1000`, `s_C = 5 KB`; `f = 2.5`. Raw = `200 + 100 + 5 = 305 MB`.
 
-| | per-replica cache | suggested limit (×1.5–2 for working set + headroom) |
-|---|---|---|
-| Full cache (default, any `N`) | 305 × 2.5 ≈ **760 MB** | ~1.2–1.5 GB, on **every** replica |
-| Scoped, `N=5` | (305/5) × 2.5 ≈ **150 MB** | ~256–384 MB per replica |
-| Scoped, `N=10` | (305/10) × 2.5 ≈ **75 MB** | ~192 MB per replica |
+|                               | per-replica cache          | suggested limit (×1.5–2 for working set + headroom) |
+|-------------------------------|----------------------------|-----------------------------------------------------|
+| Full cache (default, any `N`) | 305 × 2.5 ≈ **760 MB**     | ~1.2–1.5 GB, on **every** replica                   |
+| Scoped, `N=5`                 | (305/5) × 2.5 ≈ **150 MB** | ~256–384 MB per replica                             |
+| Scoped, `N=10`                | (305/10) × 2.5 ≈ **75 MB** | ~192 MB per replica                                 |
 
 ### When to scale — two independent triggers
 
-| Trigger | Signal | Action |
-|---|---|---|
-| **Throughput** | reconcile queue depth / p99 reconcile latency rising, drift-health lagging, API QPS throttled, per-replica CPU saturated | **Add replicas** — works today (sharding splits work). |
-| **Memory** | pod RSS approaching limit / OOMKills | **Full cache (default):** raise the limit (vertical) — replicas don't help. **With `--shard-scoped-cache`:** add replicas. |
+| Trigger        | Signal                                                                                                                   | Action                                                                                                                     |
+|----------------|--------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| **Throughput** | reconcile queue depth / p99 reconcile latency rising, drift-health lagging, API QPS throttled, per-replica CPU saturated | **Add replicas** — works today (sharding splits work).                                                                     |
+| **Memory**     | pod RSS approaching limit / OOMKills                                                                                     | **Full cache (default):** raise the limit (vertical) — replicas don't help. **With `--shard-scoped-cache`:** add replicas. |
 
 ### The object-count ceiling
 
