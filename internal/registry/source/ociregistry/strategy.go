@@ -32,19 +32,21 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 
 	"github.com/kumodo-io/convoy/api/source"
+	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
 const v1alpha1Version = "source.convoy.kumodo.io/v1alpha1"
 
 // NewStrategy returns the create/update/delete strategy for OCIRegistry.
-func NewStrategy(typer runtime.ObjectTyper) Strategy {
-	return Strategy{typer, names.SimpleNameGenerator}
+func NewStrategy(typer runtime.ObjectTyper, shards int) Strategy {
+	return Strategy{typer, names.SimpleNameGenerator, sharding.NewSharder(shards)}
 }
 
 // Strategy implements the behavior for OCIRegistry objects on the main endpoint.
 type Strategy struct {
 	runtime.ObjectTyper
 	names.NameGenerator
+	sharder sharding.Sharder
 }
 
 var (
@@ -57,21 +59,23 @@ var (
 func (Strategy) NamespaceScoped() bool { return true }
 
 // PrepareForCreate clears status and initializes the generation.
-func (Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
+func (s Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
 	reg := obj.(*source.OCIRegistry)
 	reg.Status = source.OCIRegistryStatus{}
 	reg.Generation = 1
+	sharding.StampSelf(s.sharder, reg)
 }
 
 // PrepareForUpdate preserves status (mutable only via /status) and bumps the
 // generation when the spec changes.
-func (Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
+func (s Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
 	newReg := obj.(*source.OCIRegistry)
 	oldReg := old.(*source.OCIRegistry)
 	newReg.Status = oldReg.Status
 	if !apiequality.Semantic.DeepEqual(newReg.Spec, oldReg.Spec) {
 		newReg.Generation = oldReg.Generation + 1
 	}
+	sharding.StampSelf(s.sharder, newReg)
 }
 
 // Validate validates a new OCIRegistry.

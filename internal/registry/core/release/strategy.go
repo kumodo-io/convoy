@@ -36,19 +36,22 @@ import (
 
 	"github.com/kumodo-io/convoy/api/core"
 	"github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
 const v1alpha1Version = "core.convoy.kumodo.io/v1alpha1"
 
-// NewStrategy returns the create/update/delete strategy for Release.
-func NewStrategy(typer runtime.ObjectTyper) Strategy {
-	return Strategy{typer, names.SimpleNameGenerator}
+// NewStrategy returns the create/update/delete strategy for Release. shards is
+// the fleet-wide shard count used to stamp the shard label.
+func NewStrategy(typer runtime.ObjectTyper, shards int) Strategy {
+	return Strategy{typer, names.SimpleNameGenerator, sharding.NewSharder(shards)}
 }
 
 // Strategy implements the behavior for Release objects on the main endpoint.
 type Strategy struct {
 	runtime.ObjectTyper
 	names.NameGenerator
+	sharder sharding.Sharder
 }
 
 var (
@@ -60,22 +63,36 @@ var (
 // NamespaceScoped returns true: Release objects are namespaced.
 func (Strategy) NamespaceScoped() bool { return true }
 
-// PrepareForCreate clears status and initializes the generation.
-func (Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
+// PrepareForCreate clears status, initializes the generation, and stamps the
+// shard label (a Release shards by its target cluster).
+func (s Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
 	release := obj.(*core.Release)
 	release.Status = core.ReleaseStatus{}
 	release.Generation = 1
+	s.stampShard(release)
 }
 
-// PrepareForUpdate preserves status (mutable only via /status) and bumps the
-// generation when the spec changes.
-func (Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
+// PrepareForUpdate preserves status (mutable only via /status), bumps the
+// generation when the spec changes, and re-stamps the shard label (authoritative,
+// so a user can't misroute the object by editing it).
+func (s Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
 	newRelease := obj.(*core.Release)
 	oldRelease := old.(*core.Release)
 	newRelease.Status = oldRelease.Status
 	if !apiequality.Semantic.DeepEqual(newRelease.Spec, oldRelease.Spec) {
 		newRelease.Generation = oldRelease.Generation + 1
 	}
+	s.stampShard(newRelease)
+}
+
+// stampShard stamps the shard label from the Release's target cluster (its shard
+// key), defaulting the cluster namespace to the Release's own.
+func (s Strategy) stampShard(r *core.Release) {
+	cns := r.Spec.ClusterRef.Namespace
+	if cns == "" {
+		cns = r.Namespace
+	}
+	sharding.StampKey(s.sharder, r, cns, r.Spec.ClusterRef.Name)
 }
 
 // Validate validates a new Release.

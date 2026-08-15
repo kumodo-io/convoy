@@ -32,19 +32,22 @@ import (
 	"sigs.k8s.io/structured-merge-diff/v6/fieldpath"
 
 	"github.com/kumodo-io/convoy/api/core"
+	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
 const v1alpha1Version = "core.convoy.kumodo.io/v1alpha1"
 
-// NewStrategy returns the create/update/delete strategy for Cluster.
-func NewStrategy(typer runtime.ObjectTyper) Strategy {
-	return Strategy{typer, names.SimpleNameGenerator}
+// NewStrategy returns the create/update/delete strategy for Cluster. shards is
+// the fleet-wide shard count used to stamp the shard label.
+func NewStrategy(typer runtime.ObjectTyper, shards int) Strategy {
+	return Strategy{typer, names.SimpleNameGenerator, sharding.NewSharder(shards)}
 }
 
 // Strategy implements the behavior for Cluster objects on the main endpoint.
 type Strategy struct {
 	runtime.ObjectTyper
 	names.NameGenerator
+	sharder sharding.Sharder
 }
 
 var (
@@ -56,22 +59,26 @@ var (
 // NamespaceScoped returns true: Cluster objects are namespaced.
 func (Strategy) NamespaceScoped() bool { return true }
 
-// PrepareForCreate clears status and initializes the generation.
-func (Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
+// PrepareForCreate clears status, initializes the generation, and stamps the
+// shard label (a Cluster shards by its own namespace/name).
+func (s Strategy) PrepareForCreate(_ context.Context, obj runtime.Object) {
 	cluster := obj.(*core.Cluster)
 	cluster.Status = core.ClusterStatus{}
 	cluster.Generation = 1
+	sharding.StampSelf(s.sharder, cluster)
 }
 
-// PrepareForUpdate preserves status (mutable only via /status) and bumps the
-// generation when the spec changes.
-func (Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
+// PrepareForUpdate preserves status (mutable only via /status), bumps the
+// generation when the spec changes, and re-stamps the shard label (authoritative,
+// so a user can't misroute the object by editing it).
+func (s Strategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
 	newCluster := obj.(*core.Cluster)
 	oldCluster := old.(*core.Cluster)
 	newCluster.Status = oldCluster.Status
 	if !apiequality.Semantic.DeepEqual(newCluster.Spec, oldCluster.Spec) {
 		newCluster.Generation = oldCluster.Generation + 1
 	}
+	sharding.StampSelf(s.sharder, newCluster)
 }
 
 // Validate validates a new Cluster.

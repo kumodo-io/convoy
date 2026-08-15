@@ -43,7 +43,7 @@ const (
 func newStorage(t *testing.T) (*genericregistry.Store, *gitrepositorystorage.StatusREST, *etcd3testing.EtcdTestServer) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, sourceinstall.Install, sourcev1alpha1.SchemeGroupVersion, source.Resource("gitrepositories"))
 
-	restStorage, statusStorage, err := gitrepositorystorage.NewREST(scheme, restOptions)
+	restStorage, statusStorage, err := gitrepositorystorage.NewREST(scheme, restOptions, 4)
 	if err != nil {
 		server.Terminate(t)
 		t.Fatalf("unexpected error from NewREST: %v", err)

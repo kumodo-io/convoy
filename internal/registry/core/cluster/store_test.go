@@ -44,7 +44,7 @@ const (
 func newStorage(t *testing.T) (*genericregistry.Store, *clusterstorage.StatusREST, *etcd3testing.EtcdTestServer) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("clusters"))
 
-	restStorage, statusStorage, err := clusterstorage.NewREST(scheme, restOptions)
+	restStorage, statusStorage, err := clusterstorage.NewREST(scheme, restOptions, 4)
 	if err != nil {
 		server.Terminate(t)
 		t.Fatalf("unexpected error from NewREST: %v", err)
