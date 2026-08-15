@@ -19,6 +19,7 @@ package sharding
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -261,5 +262,19 @@ func TestCoordinator_KeepsBrieflyStaleMemberLease(t *testing.T) {
 
 	if _, err := client.CoordinationV1().Leases(testLeaseNamespace).Get(ctx, member, metav1.GetOptions{}); err != nil {
 		t.Fatalf("briefly-stale member lease must not be GC'd yet: %v", err)
+	}
+}
+
+func TestSharder_ShardLabelValue(t *testing.T) {
+	s := NewSharder(16)
+	for i := 0; i < 200; i++ {
+		ns, name := fmt.Sprintf("ns-%d", i%5), fmt.Sprintf("rel-%d", i)
+		want := strconv.Itoa(s.Shard(ns, name))
+		if got := s.ShardLabelValue(ns, name); got != want {
+			t.Fatalf("ShardLabelValue(%s/%s) = %q, want %q", ns, name, got, want)
+		}
+	}
+	if ShardLabel != "convoy.kumodo.io/shard" {
+		t.Fatalf("ShardLabel = %q", ShardLabel)
 	}
 }

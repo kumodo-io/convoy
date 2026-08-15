@@ -23,7 +23,14 @@ package sharding
 
 import (
 	"hash/fnv"
+	"strconv"
 )
+
+// ShardLabel is the object label carrying an object's shard, so replicas can
+// watch only the shards they own (see docs/architecture/05-shard-scoped-caches.md).
+// The value is the decimal shard index; it is a pure function of the object's
+// shard key, written by whoever writes the object.
+const ShardLabel = "convoy.kumodo.io/shard"
 
 // Sharder maps any work identity into a fixed shard space [0, S). The mapping is
 // pure and stable: the same identity always yields the same shard for a given S,
@@ -55,6 +62,12 @@ func (s Sharder) Shard(namespace, name string) int {
 	_, _ = h.Write([]byte{'/'})
 	_, _ = h.Write([]byte(name))
 	return int(h.Sum32() % uint32(s.shards)) //nolint:gosec // modulo by positive shards is in-range
+}
+
+// ShardLabelValue returns the ShardLabel value for the given namespace/name
+// identity — the decimal shard index.
+func (s Sharder) ShardLabelValue(namespace, name string) string {
+	return strconv.Itoa(s.Shard(namespace, name))
 }
 
 // desiredShards returns the set of shards the member at sorted index myIndex (of
