@@ -29,6 +29,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 
+	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/healthresult"
 )
 
@@ -40,10 +41,13 @@ func (c *Controller) Serve(ctx context.Context, addr string) error {
 	mux := http.NewServeMux()
 	// Render-only preview: "what would be applied for this Release right now".
 	mux.HandleFunc("GET /preview/{namespace}/{name}", c.handlePreview)
-	// Render + compare-to-live: the structured per-object drift.
+	// Render + compare-to-live: the structured per-object drift. With ?render=<ref>,
+	// diffs a stored (past) render against live instead of the current source render.
 	mux.HandleFunc("GET /diff/{namespace}/{name}", c.handleDiff)
 	// Per-object health from the health loop's store.
 	mux.HandleFunc("GET /health/{namespace}/{name}", c.handleHealth)
+	// The ordered deploy log for a Release, from the render store.
+	mux.HandleFunc("GET /history/{namespace}/{name}", c.handleHistory)
 
 	srv := &http.Server{Addr: addr, Handler: mux}
 	go func() {
@@ -112,13 +116,58 @@ func (c *Controller) handleDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := c.diff(r.Context(), rel)
+	// ?render=<ref> selects a historical diff (stored render vs live); absent, the
+	// current source render vs live.
+	var result *diffresult.Result
+	if ref := r.URL.Query().Get("render"); ref != "" {
+		result, err = c.diffStored(r.Context(), rel, ref)
+	} else {
+		result, err = c.diff(r.Context(), rel)
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	out, err := json.Marshal(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(out)
+}
+
+// handleHistory returns a Release's ordered deploy log (newest first) as JSON,
+// from the render store. 404 for a missing Release; 503 when no store is
+// configured (the feature is unavailable). An empty log returns [] (200).
+func (c *Controller) handleHistory(w http.ResponseWriter, r *http.Request) {
+	namespace := r.PathValue("namespace")
+	name := r.PathValue("name")
+
+	if _, err := c.releaseLister.Releases(namespace).Get(name); apierrors.IsNotFound(err) {
+		http.Error(w, fmt.Sprintf("release %s/%s not found", namespace, name), http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if c.renderStore == nil {
+		http.Error(w, "render history is not configured (no render store)", http.StatusServiceUnavailable)
+		return
+	}
+	hist, err := c.renderStore.History(r.Context(), namespace, name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// History returns oldest-first; present newest-first (most recent deploy on top).
+	for i, j := 0, len(hist)-1; i < j; i, j = i+1, j-1 {
+		hist[i], hist[j] = hist[j], hist[i]
+	}
+
+	out, err := json.Marshal(hist)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

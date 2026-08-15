@@ -49,6 +49,7 @@ import (
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/fetch"
@@ -804,7 +805,59 @@ func (c *Controller) stageRender(ctx context.Context, st *reconcileState) (recon
 	st.objects = objects
 	st.attempt.ResolvedMutations = resolvedMutations
 	st.attempt.RenderRef = renderRef(objects)
+
+	// A pin overrides the freshly-rendered source render. Freezing to the current
+	// render (refs equal) falls through unchanged. Pinning to a *different* render
+	// is a rollback: load that render from the store and apply it instead of
+	// re-rendering source (which may not reproduce it). The controller is the
+	// validation point for a rollback target — an absent store or missing blob is
+	// reported (held), never silently ignored.
+	if out, done := c.resolvePinnedRender(ctx, st); done {
+		return stop(out, nil)
+	}
 	return cont()
+}
+
+// resolvePinnedRender applies a rollback pin: when the Release is pinned to a
+// render other than the freshly-rendered one, it replaces the render to apply with
+// the pinned render loaded from the store. It returns (outcome, true) to halt the
+// pipeline when the pin cannot be honored (no store, or the render is missing).
+func (c *Controller) resolvePinnedRender(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
+	p := st.rel.Pin
+	if p == nil || p.RenderRef == "" || p.RenderRef == st.attempt.RenderRef {
+		return reconcileOutcome{}, false // no pin, or freezing to the current render
+	}
+	if c.renderStore == nil {
+		out, _ := st.fail(conditionReasonPinned,
+			fmt.Sprintf("cannot roll back to render %s: no render store configured", p.RenderRef),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
+		return out, true
+	}
+	data, err := c.renderStore.GetRender(ctx, st.rel.Namespace, st.rel.Name, p.RenderRef)
+	if errors.Is(err, blobstore.ErrNotFound) {
+		out, _ := st.fail(conditionReasonPinned,
+			fmt.Sprintf("pinned render %s is not available in the store", p.RenderRef),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
+		return out, true
+	}
+	if err != nil {
+		out, e := st.fail(conditionReasonDeployFailed,
+			fmt.Sprintf("loading pinned render %s: %v", p.RenderRef, err),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, err)
+		_ = e
+		return out, true
+	}
+	pinned, err := render.ParseManifest(data)
+	if err != nil {
+		out, _ := st.fail(conditionReasonDeployFailed,
+			fmt.Sprintf("parsing pinned render %s: %v", p.RenderRef, err),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, err)
+		return out, true
+	}
+	// Apply the pinned render, not the source render.
+	st.objects = pinned
+	st.attempt.RenderRef = p.RenderRef
+	return reconcileOutcome{}, false
 }
 
 // stageGates evaluates the pre-apply holds — freeze pin, manual-mode sync gate, and
@@ -813,17 +866,10 @@ func (c *Controller) stageRender(ctx context.Context, st *reconcileState) (recon
 func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, error) {
 	rel := st.rel
 
-	// Honor a freeze pin: hold (do not apply) when the current render differs from
-	// the pinned render — i.e. spec/source/values changed since the pin. Freezing
-	// to the current render (refs equal) applies normally (idempotent). Pinning to
-	// a *previous* render (rollback) is storage-gated and not handled here.
-	if p := rel.Pin; p != nil && p.RenderRef != "" && p.RenderRef != st.attempt.RenderRef {
-		return stop(reconcileOutcome{
-			reason:  conditionReasonPinned,
-			message: fmt.Sprintf("pinned to render %s; withholding current render %s", p.RenderRef, st.attempt.RenderRef),
-			attempt: st.attempt,
-		}, nil) // terminal hold; resync/unpin re-checks
-	}
+	// The pin has already been resolved in stageRender: st.attempt.RenderRef is the
+	// render to apply (the current source render, or a pinned/rolled-back render
+	// loaded from the store), so no freeze-withhold is needed here — a valid pin
+	// applies its render idempotently, holding the cluster at it.
 
 	// Manual-mode sync gate. In manual mode (syncPolicy.automatic=false) apply only
 	// when an explicit /sync is pending. Otherwise observe without applying: report
@@ -1226,10 +1272,9 @@ func renderRef(objects []*unstructured.Unstructured) string {
 }
 
 // renderManifest serializes the rendered objects into the bytes stored as the
-// render blob: a JSON array reparseable by readers (rollback, diff). It is a pure
-// function of objects, so a given renderRef always maps to identical blob content.
+// render blob (see render.MarshalManifest for the format).
 func renderManifest(objects []*unstructured.Unstructured) ([]byte, error) {
-	return json.Marshal(objects)
+	return render.MarshalManifest(objects)
 }
 
 // persistRender durably stores a render before it is applied (persist-then-apply).

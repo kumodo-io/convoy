@@ -1,6 +1,11 @@
 # In-memory render store overlay. The controller keeps blobs + history in process
 # (gocloud mem://): the render/history code path runs end to end, but nothing
 # survives a pod restart. Zero extra infrastructure — the default dev posture.
+#
+# NOTE: mem:// is per-process, so the observer's store is a SEPARATE empty store
+# from the controller's — /history and historical /diff will be empty in this
+# mode. Use storage-file or storage-minio (a shared store) to exercise the read
+# features across components.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -9,6 +14,13 @@ patches:
   - target:
       kind: Deployment
       name: convoy-controller-manager
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --render-store-url=mem://
+  - target:
+      kind: Deployment
+      name: convoy-observer
     patch: |-
       - op: add
         path: /spec/template/spec/containers/0/args/-

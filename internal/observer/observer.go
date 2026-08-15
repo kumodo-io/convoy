@@ -24,6 +24,7 @@ package observer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,11 +39,14 @@ import (
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/healthresult"
+	"github.com/kumodo-io/convoy/internal/render"
+	"github.com/kumodo-io/convoy/internal/renderstore"
 )
 
 // Controller runs the drift-detection loop, keyed on Release. It embeds the
@@ -55,6 +59,10 @@ type Controller struct {
 	coordinator   fetch.Coordinator
 	resolver      auth.SecretResolver
 	connector     *clusterconn.Connector
+	// renderStore serves the store-backed read features: /history (the deploy log)
+	// and historical /diff (a stored render vs live). nil disables them (they
+	// return ServiceUnavailable).
+	renderStore *renderstore.RenderStore
 	// owns reports whether this replica owns a Release's target-cluster shard.
 	// nil disables sharding.
 	owns func(clusterNamespace, clusterName string) bool
@@ -86,6 +94,7 @@ func NewController(
 	coordinator fetch.Coordinator,
 	resolver auth.SecretResolver,
 	connector *clusterconn.Connector,
+	renderStore *renderstore.RenderStore,
 	owns func(clusterNamespace, clusterName string) bool,
 ) *Controller {
 	c := &Controller{
@@ -95,6 +104,7 @@ func NewController(
 		coordinator:   coordinator,
 		resolver:      resolver,
 		connector:     connector,
+		renderStore:   renderStore,
 		owns:          owns,
 		now:           metav1.Now,
 	}
@@ -182,6 +192,38 @@ func (c *Controller) assess(ctx context.Context, rel *corev1alpha1.Release) (boo
 // disagree. A non-nil error means the diff couldn't be produced (source/cluster
 // absent or unreachable, unsupported config).
 func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diffresult.Result, error) {
+	objects, err := c.renderDesired(ctx, rel)
+	if err != nil {
+		return nil, err
+	}
+	return c.diffObjects(ctx, rel, objects)
+}
+
+// diffStored diffs a stored (past) render against the live cluster: "what would
+// change if this Release were rolled back to renderRef". It reads the render from
+// the store rather than re-rendering source, so it works even when source has
+// moved on. Requires a render store.
+func (c *Controller) diffStored(ctx context.Context, rel *corev1alpha1.Release, renderRef string) (*diffresult.Result, error) {
+	if c.renderStore == nil {
+		return nil, fmt.Errorf("historical diff requires a render store (none configured)")
+	}
+	data, err := c.renderStore.GetRender(ctx, rel.Namespace, rel.Name, renderRef)
+	if errors.Is(err, blobstore.ErrNotFound) {
+		return nil, fmt.Errorf("render %s not found in store for %s/%s", renderRef, rel.Namespace, rel.Name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	objects, err := render.ParseManifest(data)
+	if err != nil {
+		return nil, fmt.Errorf("parsing stored render %s: %w", renderRef, err)
+	}
+	return c.diffObjects(ctx, rel, objects)
+}
+
+// diffObjects resolves the target cluster and diffs the given desired objects
+// against its live state.
+func (c *Controller) diffObjects(ctx context.Context, rel *corev1alpha1.Release, objects []*unstructured.Unstructured) (*diffresult.Result, error) {
 	clusterNamespace := rel.Spec.ClusterRef.Namespace
 	if clusterNamespace == "" {
 		clusterNamespace = rel.Namespace
@@ -192,11 +234,6 @@ func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diff
 	}
 	if !cluster.Status.Reachable {
 		return nil, fmt.Errorf("target cluster %s is not reachable", cluster.Name)
-	}
-
-	objects, err := c.renderDesired(ctx, rel)
-	if err != nil {
-		return nil, err
 	}
 
 	dyn, mapper, err := c.connector.DynamicClients(ctx, cluster)

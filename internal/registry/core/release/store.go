@@ -51,6 +51,7 @@ type Storage struct {
 	Preview   *observerProxyREST
 	Diff      *observerProxyREST
 	Health    *observerProxyREST
+	History   *observerProxyREST
 }
 
 // Map returns the resource-path → storage entries to install in the API group's
@@ -67,6 +68,7 @@ func (s *Storage) Map() map[string]rest.Storage {
 		"releases/preview":   s.Preview,
 		"releases/diff":      s.Diff,
 		"releases/health":    s.Health,
+		"releases/history":   s.History,
 	}
 }
 
@@ -126,6 +128,7 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, obser
 		Preview:   &observerProxyREST{observerURL: observerURL, subresource: "preview"},
 		Diff:      &observerProxyREST{observerURL: observerURL, subresource: "diff"},
 		Health:    &observerProxyREST{observerURL: observerURL, subresource: "health"},
+		History:   &observerProxyREST{observerURL: observerURL, subresource: "history"},
 	}, nil
 }
 
@@ -390,7 +393,13 @@ func (r *observerProxyREST) Connect(ctx context.Context, name string, _ runtime.
 	target := fmt.Sprintf("%s/%s/%s/%s", strings.TrimRight(r.observerURL, "/"), r.subresource, namespace, name)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		proxyReq, err := http.NewRequestWithContext(req.Context(), http.MethodGet, target, nil)
+		// Forward the client's query string (e.g. /diff?render=<ref> for a
+		// historical diff) to the observer.
+		url := target
+		if req.URL.RawQuery != "" {
+			url += "?" + req.URL.RawQuery
+		}
+		proxyReq, err := http.NewRequestWithContext(req.Context(), http.MethodGet, url, nil)
 		if err != nil {
 			responder.Error(err)
 			return

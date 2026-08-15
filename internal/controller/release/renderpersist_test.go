@@ -22,9 +22,14 @@ import (
 	"errors"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/render"
 	"github.com/kumodo-io/convoy/internal/renderstore"
 )
 
@@ -149,6 +154,69 @@ func TestSyncHandler_PersistFailureBlocksApply(t *testing.T) {
 	}
 	if len(deployer.waveCalls) != 0 {
 		t.Errorf("deployer applied %d wave(s) despite a persist failure; persist must precede apply", len(deployer.waveCalls))
+	}
+}
+
+// TestSyncHandler_RollbackAppliesStoredRender verifies a rollback pin: pinned to a
+// past render present in the store, the controller applies that stored render's
+// objects — not what source renders to now.
+func TestSyncHandler_RollbackAppliesStoredRender(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}}, // current source renders "cm"
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	const rollbackRef = "sha256:rollback"
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: rollbackRef})
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, rel, reachableCluster(), coord, deployer)
+
+	// Seed the store with a *different* past render (a ConfigMap named "old-cm").
+	oldCM := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": "ConfigMap",
+		"metadata": map[string]any{"name": "old-cm", "namespace": "ns"},
+	}}
+	manifest, err := render.MarshalManifest([]*unstructured.Unstructured{oldCM})
+	if err != nil {
+		t.Fatalf("MarshalManifest: %v", err)
+	}
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+	if err := c.renderStore.PutRender(context.Background(), "ns", "r1", rollbackRef, manifest); err != nil {
+		t.Fatalf("PutRender: %v", err)
+	}
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 1 || len(deployer.waveCalls[0]) != 1 {
+		t.Fatalf("expected one applied object, got waves %v", deployer.waveCalls)
+	}
+	if got := deployer.waveCalls[0][0].GetName(); got != "old-cm" {
+		t.Errorf("applied object = %q, want the stored render's %q (rollback)", got, "old-cm")
+	}
+}
+
+// TestSyncHandler_RollbackToMissingRenderHolds verifies a pin to a render absent
+// from the store holds (does not apply) and reports Pinned.
+func TestSyncHandler_RollbackToMissingRenderHolds(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: "sha256:ghost"})
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	c.renderStore = renderstore.New(blobstore.NewMemory()) // empty store
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if deployer.called {
+		t.Error("Deploy called despite the pinned render being absent from the store")
+	}
+	if got := statusUpdate(client.Actions()); got == nil {
+		t.Fatalf("expected status write")
+	} else if s, r := readyReason(got); s != metav1.ConditionFalse || r != conditionReasonPinned {
+		t.Errorf("Ready = %s/%s, want False/Pinned", s, r)
 	}
 }
 
