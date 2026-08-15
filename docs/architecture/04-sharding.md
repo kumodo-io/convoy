@@ -61,8 +61,8 @@ The rule everywhere: **act only while holding a valid lease, renew before acting
 
 ## Filtering to owned shards
 
-- **Compute-time filter** (implemented) — the informer watches all objects; the reconciler early-returns for clusters it doesn't own (`if !ownsShard(cluster) { return }`). Simplest; matches Argo CD. It splits reconcile *work* but not *memory*: every replica still caches all objects, so per-replica memory is `O(total)` regardless of replica count. Ceiling: the all-objects informer cache at very large fleets (10k–50k Releases).
-- **Label-selector filter** (planned) — a content-derived shard label lets each replica watch only its shards, so the cache holds only owned objects and per-replica memory becomes `O(total / N)`. This is designed in [Shard-Scoped Caches](05-shard-scoped-caches.md); it's the path to make memory scale with replicas.
+- **Compute-time filter** (implemented, always on) — the reconciler early-returns for clusters it doesn't own (`if !ownsShard(cluster) { return }`). It splits reconcile *work* but not *memory*: with a full cache every replica still caches all objects, so per-replica memory is `O(total)` regardless of replica count. This gate is always the correctness backstop, independent of the cache mode below.
+- **Label-selector filter** (implemented, opt-in via `--shard-scoped-cache`) — a content-derived shard label lets each replica watch only its shards, so the cache holds only owned objects and per-replica memory becomes `O(total / N)`. See [Shard-Scoped Caches](05-shard-scoped-caches.md). Default off (full cache); turning it on is how memory scales with replicas.
 
 ## Interplay with storage
 
@@ -96,20 +96,22 @@ In-memory cost per object ≈ JSON bytes × an **overhead factor** `f` (~2–3×
 
 ### Per-replica memory formula
 
-**Today** (compute-time filter — memory does **not** shard; same on every replica, any `N`):
+**Full cache** (default, `--shard-scoped-cache` off — memory does **not** shard; same on every replica, any `N`):
 
 ```
 cache ≈ (n_R·s_R + n_I·s_I + n_C·s_C) · f
 pod   ≈ cache + working set (render buffers, queues, Go runtime, connections)
 ```
 
-**With [shard-scoped caches](05-shard-scoped-caches.md)** (planned — memory shards; scoped kinds divide by `N`, the few full-cache kinds don't):
+**[Shard-scoped caches](05-shard-scoped-caches.md)** (`--shard-scoped-cache` on — memory shards; the scoped kinds `Release`/`ReleaseInventory`/`Cluster` divide by `N`, the few full-cache kinds — sources, rule sets — don't):
 
 ```
 cache ≈ ( (n_R·s_R + n_I·s_I + n_C·s_C) / N + sources + rule sets ) · f
 ```
 
-Set the pod memory **limit** above `pod` with headroom, and set `GOMEMLIMIT` just under the limit so Go's GC targets it before the kernel OOM-kills.
+The `/ N` holds only up to `N ≤ S` (a replica caches at least the shards it owns; beyond `S` replicas some sit idle) and assumes objects spread across shards — they do, since the shard is `hash(key) % S`. Enabling the flag requires every scoped object to carry its shard label; that is guaranteed for anything written after the labeling code shipped (the apiserver stamps on every write), so flip it on a fleet whose objects are all labeled — see [05](05-shard-scoped-caches.md#invariants-hazards-migrations).
+
+Set the pod memory **limit** above `pod` with headroom, and set `GOMEMLIMIT` just under the limit so Go's GC targets it before the kernel OOM-kills. With scoped caches, size for a **rebalance**, not the steady state: when one replica dies its shards are absorbed by the survivors, so each survivor holds up to `1 / (N−1)` of the total, not `1 / N`. Size the limit against the `1/(N−1)` figure. In the extreme — `N=2` sized for HA — the survivor takes **everything**, so each replica must be sized for the whole set (scoping then buys failover safety, not a smaller limit; the memory win comes at larger `N` for horizontal scale).
 
 ### Worked example
 
@@ -117,26 +119,26 @@ Set the pod memory **limit** above `pod` with headroom, and set `GOMEMLIMIT` jus
 
 | | per-replica cache | suggested limit (×1.5–2 for working set + headroom) |
 |---|---|---|
-| Today (any `N`) | 305 × 2.5 ≈ **760 MB** | ~1.2–1.5 GB, on **every** replica |
-| With 05, `N=5` | (305/5) × 2.5 ≈ **150 MB** | ~256–384 MB per replica |
-| With 05, `N=10` | (305/10) × 2.5 ≈ **75 MB** | ~192 MB per replica |
+| Full cache (default, any `N`) | 305 × 2.5 ≈ **760 MB** | ~1.2–1.5 GB, on **every** replica |
+| Scoped, `N=5` | (305/5) × 2.5 ≈ **150 MB** | ~256–384 MB per replica |
+| Scoped, `N=10` | (305/10) × 2.5 ≈ **75 MB** | ~192 MB per replica |
 
 ### When to scale — two independent triggers
 
 | Trigger | Signal | Action |
 |---|---|---|
 | **Throughput** | reconcile queue depth / p99 reconcile latency rising, drift-health lagging, API QPS throttled, per-replica CPU saturated | **Add replicas** — works today (sharding splits work). |
-| **Memory** | pod RSS approaching limit / OOMKills | **Today:** raise the limit (vertical) — replicas don't help. **With 05:** add replicas. |
+| **Memory** | pod RSS approaching limit / OOMKills | **Full cache (default):** raise the limit (vertical) — replicas don't help. **With `--shard-scoped-cache`:** add replicas. |
 
 ### The object-count ceiling
 
-The Release count at which a replica hits its memory limit **today**:
+The Release count at which a replica hits its memory limit with the **default full cache**:
 
 ```
 n_R_max ≈ (cache_budget / f) / (s_R + s_I)
 ```
 
-where `cache_budget` = limit − working set. E.g. a 1 GB cache budget, `f = 2.5`, `s_R + s_I = 30 KB` → `n_R_max ≈ (1 GB / 2.5) / 30 KB ≈ 13k Releases` per replica — beyond which you must raise the limit or ship [05](05-shard-scoped-caches.md). **With 05**, the same budget instead yields the **replica count needed**:
+where `cache_budget` = limit − working set. E.g. a 1 GB cache budget, `f = 2.5`, `s_R + s_I = 30 KB` → `n_R_max ≈ (1 GB / 2.5) / 30 KB ≈ 13k Releases` per replica — beyond which you must raise the limit or turn on [`--shard-scoped-cache`](05-shard-scoped-caches.md). **With `--shard-scoped-cache`**, the same budget instead yields the **replica count needed** (up to the ceiling `N ≤ S`):
 
 ```
 N ≈ ( n_R·(s_R + s_I)·f ) / cache_budget_per_replica
@@ -152,7 +154,7 @@ Track your Release count against these and act before the wall.
 2. `S` shard `Lease`s per component; fair-share acquisition/renewal loop with atomic acquire.
 3. `ownsShard(cluster)` gate in the Release/Cluster reconcilers (compute-time filter); source-object sharding by source UID.
 4. Idempotency guards on history-append / `/sync` / hook-arming; ownership-partitioned GC.
-5. *(scale-further)* label-selector informers — [Shard-Scoped Caches](05-shard-scoped-caches.md), the path to `O(total / N)` per-replica memory.
+5. *(scale-further, implemented)* label-selector informers behind `--shard-scoped-cache` — [Shard-Scoped Caches](05-shard-scoped-caches.md), the path to `O(total / N)` per-replica memory.
 
 ## Required follow-ups (not yet built)
 
