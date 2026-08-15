@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -213,6 +214,15 @@ func (o *Options) Run(ctx context.Context) error {
 		return err
 	}
 
+	// On a shard reassignment, re-drive the Releases this replica now owns through
+	// both loops (informer ADDs cover the initial set; this handles rebalances).
+	coord.OnChange(func() {
+		rels, _ := releaseInformer.Lister().List(labels.Everything())
+		keys := ownedReleaseKeys(rels, owns)
+		obs.EnqueueKeys(keys)
+		healthCtl.EnqueueKeys(keys)
+	})
+
 	// Prime shard ownership before informers deliver their initial events.
 	coord.Prime(ctx)
 
@@ -258,6 +268,22 @@ func resolveLeaseNamespace(configured string) string {
 		return podNS
 	}
 	return defaultLeaseNamespace
+}
+
+// ownedReleaseKeys returns the namespace/name keys of Releases whose target
+// cluster this replica owns.
+func ownedReleaseKeys(rels []*corev1alpha1.Release, owns func(clusterNamespace, clusterName string) bool) []string {
+	keys := make([]string, 0, len(rels))
+	for _, rel := range rels {
+		cns := rel.Spec.ClusterRef.Namespace
+		if cns == "" {
+			cns = rel.Namespace
+		}
+		if owns(cns, rel.Spec.ClusterRef.Name) {
+			keys = append(keys, rel.Namespace+"/"+rel.Name)
+		}
+	}
+	return keys
 }
 
 // NewCommand builds the cobra command that starts the observer.

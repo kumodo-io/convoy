@@ -26,6 +26,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -263,6 +265,22 @@ func (o *Options) Run(ctx context.Context) error {
 		return err
 	}
 
+	// On a shard reassignment, re-drive the work this replica now owns. Informer
+	// ADDs cover the initial set; this handles rebalances (a replica joining or
+	// leaving) without waiting for the next informer resync.
+	coord.OnChange(func() {
+		rels, _ := releaseInformer.Lister().List(labels.Everything())
+		releaseController.EnqueueKeys(ownedReleaseKeys(rels, owns))
+		clusters, _ := clusterInformer.Lister().List(labels.Everything())
+		clusterController.EnqueueKeys(ownedSelfKeys(clusters, owns))
+		gits, _ := gitRepoInformer.Lister().List(labels.Everything())
+		gitController.EnqueueKeys(ownedSelfKeys(gits, owns))
+		helms, _ := helmRegInformer.Lister().List(labels.Everything())
+		helmController.EnqueueKeys(ownedSelfKeys(helms, owns))
+		ocis, _ := ociRegInformer.Lister().List(labels.Everything())
+		ociController.EnqueueKeys(ownedSelfKeys(ocis, owns))
+	})
+
 	// Prime shard ownership before informers deliver their initial events, so the
 	// enqueue filters see correct ownership from the first ADD.
 	coord.Prime(ctx)
@@ -312,6 +330,34 @@ func resolveLeaseNamespace(configured string) string {
 		return podNS
 	}
 	return defaultLeaseNamespace
+}
+
+// ownedReleaseKeys returns the namespace/name keys of Releases whose target
+// cluster this replica owns.
+func ownedReleaseKeys(rels []*corev1alpha1.Release, owns func(clusterNamespace, clusterName string) bool) []string {
+	keys := make([]string, 0, len(rels))
+	for _, rel := range rels {
+		cns := rel.Spec.ClusterRef.Namespace
+		if cns == "" {
+			cns = rel.Namespace
+		}
+		if owns(cns, rel.Spec.ClusterRef.Name) {
+			keys = append(keys, rel.Namespace+"/"+rel.Name)
+		}
+	}
+	return keys
+}
+
+// ownedSelfKeys returns the namespace/name keys of objects this replica owns by
+// their own identity (Cluster and the source kinds).
+func ownedSelfKeys[T metav1.Object](items []T, owns func(namespace, name string) bool) []string {
+	keys := make([]string, 0, len(items))
+	for _, it := range items {
+		if owns(it.GetNamespace(), it.GetName()) {
+			keys = append(keys, it.GetNamespace()+"/"+it.GetName())
+		}
+	}
+	return keys
 }
 
 // NewCommand builds the cobra command that starts the controller manager.
