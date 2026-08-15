@@ -1,6 +1,6 @@
 # Persistent Storage
 
-> **Status: planned / design.** Convoy runs today with an **in-memory** store: source artifacts are cached in-process (lost on restart, repopulated on the next fetch) and **renders are not persisted at all**. As a result the "time-travel" features — render **history**, **rollback**, and **diff against a previous render** — are gated off (rollback is rejected by `/pin` validation; `/history` is unimplemented). This document designs the **durable, external object-store backend** that persists renders and lights those features up. It specifies the interface and semantics, not a client library — the concrete S3 client is an implementation detail chosen when the code is written.
+> **Status: write path implemented; read features pending.** The durable backend is built (`internal/blobstore`, `internal/renderstore`) and wired behind `--render-store-url` (a [gocloud.dev/blob](https://gocloud.dev) URL — `s3://`, `gs://`, `azblob://`, `file://`, `mem://`). When set, the release controller **persists each render before applying it (persist-then-apply)** and appends an ordered deploy-log entry, so renders and history are now durable. Still **pending** (slices 5–6): surfacing them — the `/history` subresource, enabling **rollback** in `/pin` validation, **diff against a previous render** in the observer, and **GC/retention** (`keepHistory` + prefix-delete on finalize). Source artifacts remain in the in-process cache (repopulated on fetch); only renders are persisted. This document specifies the interface and semantics; the concrete backend is gocloud, mocked at the `BlobStore` seam in tests.
 
 ## Why storage, and why so little of it
 
@@ -158,7 +158,7 @@ Rendered manifests can contain whatever the source produced — including inline
 
 Build order:
 
-1. `BlobStore` interface (context + error) + `objectstore` backend; switch the two construction sites on config.
-2. `RenderStore` wrapper; **persist-then-apply**; store the `renderRef` bytes on render.
-3. `history/` deploy-log entries in the store (append-on-change, bounded by `keepHistory`); un-gate rollback / `/history` / historical `/diff` via `PersistsRenders()`.
-4. Leader-only reference-aware GC with a grace window.
+1. **(done)** `BlobStore` interface (context + error) + gocloud backend + in-memory backend; opened from `--render-store-url`.
+2. **(done)** `RenderStore` wrapper over `BlobStore`; **persist-then-apply**; store the render bytes keyed by `renderRef` on the release controller's apply path.
+3. **(partly done)** `history/` deploy-log entries are appended on change (best-effort). **Remaining:** un-gate the read features — enable rollback in `/pin` validation, implement the `/history` subresource, and historical `/diff` in the observer — by giving those components the render store and checking for a stored render.
+4. **(remaining)** ownership-partitioned, reference-aware GC with a grace window, `keepHistory` retention, and prefix-delete on finalize.
