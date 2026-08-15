@@ -60,6 +60,9 @@ type HealthController struct {
 	globalRuleSetLister extensionslisters.GlobalHealthRuleSetLister
 	ruleSetLister       extensionslisters.HealthRuleSetLister
 	inventoryLister     corelisters.ReleaseInventoryLister
+	// owns reports whether this replica owns a Release's target-cluster shard.
+	// nil disables sharding.
+	owns func(clusterNamespace, clusterName string) bool
 	// progress tracks the consecutive not-yet-healthy assessment count per Release,
 	// to drive exponential backoff of re-checks while a rollout is progressing.
 	progress *backoffCounts
@@ -85,6 +88,7 @@ func NewHealthController(
 	globalRuleSetLister extensionslisters.GlobalHealthRuleSetLister,
 	ruleSetLister extensionslisters.HealthRuleSetLister,
 	inventoryLister corelisters.ReleaseInventoryLister,
+	owns func(clusterNamespace, clusterName string) bool,
 ) *HealthController {
 	c := &HealthController{
 		client:              client,
@@ -94,13 +98,15 @@ func NewHealthController(
 		globalRuleSetLister: globalRuleSetLister,
 		ruleSetLister:       ruleSetLister,
 		inventoryLister:     inventoryLister,
+		owns:                owns,
 		progress:            newBackoffCounts(),
 		now:                 metav1.Now,
 	}
 	c.assessFn = c.assess
 	c.syncFn = c.requestSync
 	c.pollHooksFn = c.pollHooks
-	c.Controller = base.NewController("health", c.syncHandler)
+	c.Controller = base.NewController("health", c.syncHandler,
+		base.WithEnqueueFilter(func(obj any) bool { return releaseOwned(c.owns, obj) }))
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
 }
@@ -119,6 +125,9 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 	}
 	if err != nil {
 		return err
+	}
+	if c.owns != nil && !c.owns(clusterKeyOf(rel)) {
+		return nil // another replica owns this Release's cluster shard
 	}
 	if !rel.DeletionTimestamp.IsZero() {
 		// During deletion keep polling delete-phase hooks so the controller's finalize

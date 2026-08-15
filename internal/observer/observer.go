@@ -55,6 +55,9 @@ type Controller struct {
 	coordinator   fetch.Coordinator
 	resolver      auth.SecretResolver
 	connector     *clusterconn.Connector
+	// owns reports whether this replica owns a Release's target-cluster shard.
+	// nil disables sharding.
+	owns func(clusterNamespace, clusterName string) bool
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
 	// assessFn and syncFn are seams: they default to the real drift assessment and
@@ -83,6 +86,7 @@ func NewController(
 	coordinator fetch.Coordinator,
 	resolver auth.SecretResolver,
 	connector *clusterconn.Connector,
+	owns func(clusterNamespace, clusterName string) bool,
 ) *Controller {
 	c := &Controller{
 		client:        client,
@@ -91,11 +95,13 @@ func NewController(
 		coordinator:   coordinator,
 		resolver:      resolver,
 		connector:     connector,
+		owns:          owns,
 		now:           metav1.Now,
 	}
 	c.assessFn = c.assess
 	c.syncFn = c.requestSync
-	c.Controller = base.NewController("observer", c.syncHandler)
+	c.Controller = base.NewController("observer", c.syncHandler,
+		base.WithEnqueueFilter(func(obj any) bool { return releaseOwned(c.owns, obj) }))
 	utilruntime.Must(c.WatchInformer(informer.Informer()))
 	return c
 }
@@ -115,6 +121,9 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	if err != nil {
 		return err
+	}
+	if c.owns != nil && !c.owns(clusterKeyOf(rel)) {
+		return nil // another replica owns this Release's cluster shard
 	}
 	if !rel.DeletionTimestamp.IsZero() {
 		return nil // being finalized; nothing to observe
