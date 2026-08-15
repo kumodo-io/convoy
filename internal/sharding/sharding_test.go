@@ -22,8 +22,12 @@ import (
 	"testing"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
+
+const testLeaseNamespace = "convoy-system"
 
 func TestSharder_StableAndInRange(t *testing.T) {
 	s := NewSharder(16)
@@ -108,7 +112,7 @@ func newTestCoordinator(client *fake.Clientset, clk *testClock, id string, shard
 	c := NewCoordinator(client, Config{
 		Component:     "test",
 		ReplicaID:     id,
-		Namespace:     "convoy-system",
+		Namespace:     testLeaseNamespace,
 		Shards:        shards,
 		LeaseDuration: 30 * time.Second,
 		RenewInterval: 10 * time.Second,
@@ -207,5 +211,55 @@ func TestCoordinator_OnChangeFires(t *testing.T) {
 	c.tick(context.Background()) // steady state -> no change
 	if fired != before {
 		t.Fatalf("OnChange fired on steady state (%d -> %d)", before, fired)
+	}
+}
+
+func TestCoordinator_ReclaimsDeadMemberLeases(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	clk := &testClock{t: time.Unix(1_700_000_000, 0)}
+	ctx := context.Background()
+	c1 := newTestCoordinator(client, clk, "r1", 8)
+	c2 := newTestCoordinator(client, clk, "r2", 8)
+
+	// Both alive: each creates its member lease.
+	c1.tick(ctx)
+	c2.tick(ctx)
+	deadMember := c2.memberLeaseName()
+	if _, err := client.CoordinationV1().Leases(testLeaseNamespace).Get(ctx, deadMember, metav1.GetOptions{}); err != nil {
+		t.Fatalf("r2 member lease should exist after its tick: %v", err)
+	}
+
+	// r2 dies (stops ticking). Advance past the GC threshold (LeaseDuration*10).
+	clk.advance(11 * 30 * time.Second)
+	for i := 0; i < 3; i++ {
+		c1.tick(ctx)
+	}
+
+	if _, err := client.CoordinationV1().Leases(testLeaseNamespace).Get(ctx, deadMember, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("dead r2 member lease should be reclaimed, got err=%v", err)
+	}
+	// r1's own member lease must survive.
+	if _, err := client.CoordinationV1().Leases(testLeaseNamespace).Get(ctx, c1.memberLeaseName(), metav1.GetOptions{}); err != nil {
+		t.Fatalf("r1 member lease must survive GC: %v", err)
+	}
+}
+
+func TestCoordinator_KeepsBrieflyStaleMemberLease(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	clk := &testClock{t: time.Unix(1_700_000_000, 0)}
+	ctx := context.Background()
+	c1 := newTestCoordinator(client, clk, "r1", 8)
+	c2 := newTestCoordinator(client, clk, "r2", 8)
+
+	c1.tick(ctx)
+	c2.tick(ctx)
+	member := c2.memberLeaseName()
+
+	// Stale for membership (past LeaseDuration) but not past the GC threshold.
+	clk.advance(90 * time.Second)
+	c1.tick(ctx)
+
+	if _, err := client.CoordinationV1().Leases(testLeaseNamespace).Get(ctx, member, metav1.GetOptions{}); err != nil {
+		t.Fatalf("briefly-stale member lease must not be GC'd yet: %v", err)
 	}
 }

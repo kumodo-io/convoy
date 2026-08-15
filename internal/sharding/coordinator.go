@@ -43,6 +43,12 @@ const (
 	// freeHolder is the holder-identity value that marks a shard lease as
 	// available. A real holder is always a non-empty replica ID.
 	freeHolder = ""
+
+	// memberGCMultiplier sets how far past its validity a dead replica's member
+	// lease must be before it is reclaimed: LeaseDuration × this. Comfortably
+	// larger than the liveness window so a briefly-partitioned live replica is
+	// never GC'd (and if it were, it simply recreates its lease on the next tick).
+	memberGCMultiplier = 10
 )
 
 // Ownership answers, on the reconcile hot path, whether the local replica owns a
@@ -254,8 +260,17 @@ func (c *Coordinator) liveMembers(ctx context.Context) ([]string, error) {
 			continue // guard against a client that doesn't honor the label selector
 		}
 		holder := deref(l.Spec.HolderIdentity)
-		if holder != freeHolder && !c.expired(l.Spec.RenewTime) {
+		if holder == freeHolder {
+			continue
+		}
+		if !c.expired(l.Spec.RenewTime) {
 			set[holder] = true
+			continue
+		}
+		// Stale for membership. If it's another replica's lease and far past its
+		// validity, reclaim it so dead replicas' member leases don't accumulate.
+		if holder != c.cfg.ReplicaID && c.memberGCEligible(l.Spec.RenewTime) {
+			c.deleteLease(ctx, l.Name)
 		}
 	}
 	members := make([]string, 0, len(set))
@@ -368,6 +383,24 @@ func (c *Coordinator) expired(renew *metav1.MicroTime) bool {
 		return true
 	}
 	return c.now().Sub(renew.Time) > c.cfg.LeaseDuration
+}
+
+// memberGCEligible reports whether a member lease is stale enough to reclaim —
+// far beyond its validity, so only genuinely-dead replicas' leases are removed.
+func (c *Coordinator) memberGCEligible(renew *metav1.MicroTime) bool {
+	if renew == nil {
+		return true
+	}
+	return c.now().Sub(renew.Time) > c.cfg.LeaseDuration*memberGCMultiplier
+}
+
+// deleteLease removes a lease by name, ignoring a not-found (already reclaimed by
+// another replica).
+func (c *Coordinator) deleteLease(ctx context.Context, name string) {
+	err := c.client.CoordinationV1().Leases(c.cfg.Namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		klog.ErrorS(err, "reclaiming stale member lease", "lease", name)
+	}
 }
 
 func (c *Coordinator) memberLeaseName() string {

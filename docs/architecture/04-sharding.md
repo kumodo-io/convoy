@@ -38,6 +38,7 @@ Source kinds (`GitRepository`/`HelmRegistry`/`OCIRegistry`) are cluster-independ
 - **Membership** — each replica heartbeats a per-replica `Lease` (named by pod identity). The set of unexpired replica-leases is the live membership; fair share is `ceil(S / liveReplicas)`.
 - **Shard leases** — `S` `Lease` objects (`convoy-cm-shard-<i>`, `convoy-obs-shard-<i>`). A replica acquires shard leases up to its fair share, renewing them on a heartbeat, and reconciles a cluster **only while it holds a valid, unexpired lease** for that cluster's shard.
 - **Failover & rebalance** — a replica dies → its shard leases expire → survivors, seeing a membership change and free shards, acquire them up to the new fair share. Acquisition is atomic (optimistic concurrency on the `Lease`), so two replicas never both win a shard; the loser moves on. Convergence is eventual and needs no coordinator.
+- **Member-lease GC** — a dead replica's *member* lease is never renewed, so it would otherwise linger. Once a member lease is far past its validity (an order of magnitude beyond the liveness window, so a briefly-partitioned live replica is never touched), any surviving replica reclaims it by deleting it. A live replica that had its lease deleted simply recreates it on its next tick.
 
 ## controller-manager and observer shard independently
 
@@ -84,3 +85,7 @@ Sharding composes cleanly with [Persistent Storage](03-persistent-storage.md) pr
 3. `ownsShard(cluster)` gate in the Release/Cluster reconcilers (compute-time filter); source-object sharding by source UID.
 4. Idempotency guards on history-append / `/sync` / hook-arming; ownership-partitioned GC.
 5. *(scale-further)* label-selector informers.
+
+## Required follow-ups (not yet built)
+
+- **Observability.** Sharding currently emits only logs (`"shard ownership changed" owned=[…]`, lease errors). It needs **metrics** before it can be operated confidently at scale: an owned-shard-count gauge per replica, a membership-size gauge, lease acquire/renew/GC failure counters, and a rebalance-event counter — so operators can see the partition, spot an unowned shard, and alarm on renewal failures. This is gated on convoy having an observability stack at all (none exists yet), so it is tracked as part of that broader o11y work rather than inline here.

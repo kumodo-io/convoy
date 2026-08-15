@@ -50,6 +50,7 @@ func (c *Coordinator) Run(ctx context.Context) error
 3. Compute the **desired shard set** deterministically from `(myIndex, N, S)` — **striped fair-share**: this replica desires shard `i` iff `i % N == myIndex`. Even spread; deterministic, so two replicas never target the same shard (near-zero lease conflicts).
 4. Acquire/renew leases for desired shards not yet held; **release** leases for shards no longer desired (proactive release ⇒ instant handoff, not a TTL wait).
 5. If the owned set changed, fire `OnChange`.
+6. Reclaim any *other* replica's member lease that is far past validity (`> LeaseDuration × memberGCMultiplier`, default ×10), so dead replicas' member leases don't accumulate. Folded into the member-list pass; deletion is idempotent (a not-found means another replica already reclaimed it).
 
 ### Recommended durations
 
@@ -100,8 +101,8 @@ Brief overlap is safe by construction — SSA is idempotent, and `Applied`/`InSy
 ## Configuration, RBAC, observability
 
 - **Flags** (both managers): `--shards` (S, default `32`; **must be uniform fleet-wide** — changing it needs a coordinated restart; document loudly), `--replica-id` (default `$POD_NAME` / hostname), `--lease-namespace` (default pod namespace), `--lease-duration`, `--lease-renew-interval`.
-- **RBAC:** `coordination.k8s.io/leases` `get,list,watch,create,update` in the lease namespace, for both service accounts.
-- **Metrics / logs:** owned-shard count (gauge), lease acquire/renew failures, membership size, rebalance events.
+- **RBAC:** `coordination.k8s.io/leases` `get,list,watch,create,update,delete` in the lease namespace, for both service accounts (`delete` is for member-lease GC).
+- **Logs:** ownership changes (`"shard ownership changed" owned=[…]`), lease errors. **Metrics are a required follow-up, not yet built** — see [Sharding & High Availability § Required follow-ups](04-sharding.md#required-follow-ups-not-yet-built); gated on convoy having an observability stack at all.
 
 ## Testing
 
