@@ -78,6 +78,74 @@ Sharding composes cleanly with [Persistent Storage](03-persistent-storage.md) pr
 - **N=2, each sized to handle all shards** — HA: either can carry the whole load if the other dies.
 - **N=k, each sized for a fair share** — horizontal scale; `k ≤ S`.
 
+## Capacity planning
+
+Two things to size: **per-replica memory limits**, and **when to add replicas**.
+
+### Measure the inputs (don't guess)
+
+Per-replica memory is dominated by the informer caches, and within those by `Release` and `ReleaseInventory` (one each per Release, high count); `Cluster` is small and sources/rule sets are few. Measure representative sizes:
+
+```
+kubectl get release <name> -o json          | wc -c   # ≈ s_R (bytes)
+kubectl get releaseinventory <name> -o json | wc -c   # ≈ s_I
+kubectl get cluster <name> -o json          | wc -c   # ≈ s_C
+```
+
+In-memory cost per object ≈ JSON bytes × an **overhead factor** `f` (~2–3× for decoded Go objects + indices). Calibrate `f` once against a real pod's RSS rather than trusting the rule of thumb. Let `n_R` = Release count, `n_I ≈ n_R`, `n_C` = Cluster count.
+
+### Per-replica memory formula
+
+**Today** (compute-time filter — memory does **not** shard; same on every replica, any `N`):
+
+```
+cache ≈ (n_R·s_R + n_I·s_I + n_C·s_C) · f
+pod   ≈ cache + working set (render buffers, queues, Go runtime, connections)
+```
+
+**With [shard-scoped caches](05-shard-scoped-caches.md)** (planned — memory shards; scoped kinds divide by `N`, the few full-cache kinds don't):
+
+```
+cache ≈ ( (n_R·s_R + n_I·s_I + n_C·s_C) / N + sources + rule sets ) · f
+```
+
+Set the pod memory **limit** above `pod` with headroom, and set `GOMEMLIMIT` just under the limit so Go's GC targets it before the kernel OOM-kills.
+
+### Worked example
+
+`n_R = 10k`, `s_R = 20 KB`; `n_I = 10k`, `s_I = 10 KB`; `n_C = 1000`, `s_C = 5 KB`; `f = 2.5`. Raw = `200 + 100 + 5 = 305 MB`.
+
+| | per-replica cache | suggested limit (×1.5–2 for working set + headroom) |
+|---|---|---|
+| Today (any `N`) | 305 × 2.5 ≈ **760 MB** | ~1.2–1.5 GB, on **every** replica |
+| With 05, `N=5` | (305/5) × 2.5 ≈ **150 MB** | ~256–384 MB per replica |
+| With 05, `N=10` | (305/10) × 2.5 ≈ **75 MB** | ~192 MB per replica |
+
+### When to scale — two independent triggers
+
+| Trigger | Signal | Action |
+|---|---|---|
+| **Throughput** | reconcile queue depth / p99 reconcile latency rising, drift-health lagging, API QPS throttled, per-replica CPU saturated | **Add replicas** — works today (sharding splits work). |
+| **Memory** | pod RSS approaching limit / OOMKills | **Today:** raise the limit (vertical) — replicas don't help. **With 05:** add replicas. |
+
+### The object-count ceiling
+
+The Release count at which a replica hits its memory limit **today**:
+
+```
+n_R_max ≈ (cache_budget / f) / (s_R + s_I)
+```
+
+where `cache_budget` = limit − working set. E.g. a 1 GB cache budget, `f = 2.5`, `s_R + s_I = 30 KB` → `n_R_max ≈ (1 GB / 2.5) / 30 KB ≈ 13k Releases` per replica — beyond which you must raise the limit or ship [05](05-shard-scoped-caches.md). **With 05**, the same budget instead yields the **replica count needed**:
+
+```
+N ≈ ( n_R·(s_R + s_I)·f ) / cache_budget_per_replica
+```
+
+Track your Release count against these and act before the wall.
+
+> **etcd / apiserver scale with the *total*, not with replicas.** Sharding reduces the *controllers'* memory; etcd and the apiserver still hold every object. Size them against `n_R + n_I + n_C + …` independently of `N`.
+
 ## Build items
 
 1. Per-replica membership `Lease` (heartbeat) + live-membership read.

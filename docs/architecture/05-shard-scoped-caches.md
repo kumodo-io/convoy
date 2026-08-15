@@ -1,6 +1,6 @@
 # Shard-Scoped Caches
 
-> **Status: planned / design.** [Sharding & High Availability](04-sharding.md) splits *reconcile work* across replicas but not *memory*: today each replica's informers `LIST + WATCH` every object and cache the whole set, filtering ownership only at reconcile time. So per-replica memory is `O(total objects)` **regardless of replica count** — adding replicas does not reduce it. At 10k–50k Releases that becomes the binding constraint. This document designs **shard-scoped informers** so each replica caches only the objects for the shards it owns, making per-replica memory `≈ O(total / N)` — a knob you tune with replica count.
+> **Status: planned / design.** [Sharding & High Availability](04-sharding.md) splits *reconcile work* across replicas but not *memory*: today each replica's informers `LIST + WATCH` every object and cache the whole set, filtering ownership only at reconcile time. So per-replica memory is `O(total objects)` **regardless of replica count** — adding replicas does not reduce it. At 10k–50k Releases that becomes the binding constraint. This document designs **shard-scoped informers** so each replica caches only the objects for the shards it owns, making per-replica memory `≈ O(total / N)` — a knob you tune with replica count. For the concrete sizing formulas (per-replica limits, when to scale, the object-count ceiling), see [Sharding § Capacity planning](04-sharding.md#capacity-planning).
 
 ## The two partitions
 
