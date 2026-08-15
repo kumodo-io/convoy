@@ -39,6 +39,7 @@ import (
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	clustercontroller "github.com/kumodo-io/convoy/internal/controller/cluster"
@@ -48,6 +49,7 @@ import (
 	releasecontroller "github.com/kumodo-io/convoy/internal/controller/release"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
+	"github.com/kumodo-io/convoy/internal/renderstore"
 	"github.com/kumodo-io/convoy/internal/scopedinformers"
 	"github.com/kumodo-io/convoy/internal/sharding"
 	"github.com/kumodo-io/convoy/internal/waves"
@@ -98,6 +100,11 @@ type Options struct {
 	// Default off (full cache — behaviourally identical to before). Requires the
 	// shard label on those objects. See docs/architecture/05-shard-scoped-caches.md.
 	ShardScopedCache bool
+	// RenderStoreURL is the gocloud blob URL of the durable render store (e.g.
+	// "s3://bucket", "gs://bucket", "file:///var/lib/convoy/renders"). Empty
+	// disables persistence: the controller renders and applies as before, without
+	// a durable render history. See docs/architecture/03-persistent-storage.md.
+	RenderStoreURL string
 	// ReplicaID is this replica's unique shard-lease holder identity. Empty
 	// resolves from $POD_NAME, then the hostname.
 	ReplicaID string
@@ -248,7 +255,20 @@ func (o *Options) Run(ctx context.Context) error {
 	deployer := releasecontroller.NewDeployer(connector)
 	hookRunner := releasecontroller.NewHookRunner(connector)
 	inventoryStore := inventory.NewAPIStore(client, releaseInventoryInformer.Lister(), releaseInformer.Lister())
-	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, deployer, hookRunner, releasesForCluster, owns)
+
+	// Durable render store (optional). When --render-store-url is set, each applied
+	// render is persisted (content-addressed) and recorded in an ordered deploy log,
+	// backing history/rollback/diff; empty disables persistence.
+	var renderStore *renderstore.RenderStore
+	if o.RenderStoreURL != "" {
+		bs, closeStore, err := blobstore.Open(ctx, o.RenderStoreURL)
+		if err != nil {
+			return fmt.Errorf("opening render store: %w", err)
+		}
+		defer func() { _ = closeStore() }()
+		renderStore = renderstore.New(bs)
+	}
+	releaseController := releasecontroller.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, inventoryStore, renderStore, deployer, hookRunner, releasesForCluster, owns)
 
 	// Axis B fan-out: when a Release's Applied/Healthy signal flips, re-enqueue its
 	// higher-wave successors on the same cluster so they re-evaluate the cluster-wave
@@ -409,6 +429,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.IntVar(&o.Workers, "workers", o.Workers, "Number of concurrent reconcile workers.")
 	flags.IntVar(&o.Shards, "shards", o.Shards, "Fixed shard count S; work is partitioned by target cluster into S shards. Must match across the fleet.")
 	flags.BoolVar(&o.ShardScopedCache, "shard-scoped-cache", o.ShardScopedCache, "Cache only the owned shards' Releases/ReleaseInventories/Clusters so memory scales with replica count. Requires the shard label on those objects.")
+	flags.StringVar(&o.RenderStoreURL, "render-store-url", o.RenderStoreURL, "gocloud blob URL for durable render storage (e.g. s3://bucket, gs://bucket, file:///path). Empty disables render persistence/history.")
 	flags.StringVar(&o.ReplicaID, "replica-id", o.ReplicaID, "Unique shard-lease holder identity. Empty uses $POD_NAME, then the hostname.")
 	flags.StringVar(&o.LeaseNamespace, "lease-namespace", o.LeaseNamespace, "Namespace for sharding leases. Empty uses $POD_NAMESPACE, then \"convoy-system\".")
 	flags.DurationVar(&o.LeaseDuration, "lease-duration", o.LeaseDuration, "How long a held shard lease is valid without renewal.")
