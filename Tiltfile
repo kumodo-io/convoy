@@ -64,7 +64,24 @@ docker_build_with_restart(
     ],
 )
 
-k8s_yaml(kustomize('dev/deploy/single-replica'))
+# Render-store backend is selected at `tilt up` time:
+#
+#   tilt up                     # mem://  — in-process store, ephemeral (default)
+#   tilt up -- --storage=file   # file:// on a PVC — durable across restarts
+#   tilt up -- --storage=minio  # in-cluster MinIO (S3) — durable + shared
+#
+# Each is a kustomize overlay under dev/deploy/storage-<mode> on the single-replica
+# base. (The single-replica / multi-replica overlays remain for the sharding demo.)
+config.define_string('storage')
+_storage = config.parse().get('storage', 'mem')
+if _storage not in ('mem', 'file', 'minio'):
+    fail('unknown --storage %r; expected one of: mem, file, minio' % _storage)
+k8s_yaml(kustomize('dev/deploy/storage-' + _storage))
+
+# MinIO backing store (only present in the minio overlay).
+if _storage == 'minio':
+    k8s_resource('minio', labels=['convoy'])
+    k8s_resource('minio-mkbucket', resource_deps=['minio'], labels=['convoy'])
 
 k8s_resource('convoy-etcd', labels=['convoy'])
 k8s_resource(
@@ -72,10 +89,15 @@ k8s_resource(
     resource_deps=['convoy-compile', 'convoy-etcd'],
     labels=['convoy'],
 )
+# Needs the aggregated API served before it can list/watch Clusters; in minio mode
+# also wait for the bucket so the first render persist doesn't retry against a
+# missing bucket.
+_cm_deps = ['convoy-compile', 'convoy-apiserver']
+if _storage == 'minio':
+    _cm_deps.append('minio-mkbucket')
 k8s_resource(
     'convoy-controller-manager',
-    # Needs the aggregated API served before it can list/watch Clusters.
-    resource_deps=['convoy-compile', 'convoy-apiserver'],
+    resource_deps=_cm_deps,
     labels=['convoy'],
 )
 k8s_resource(

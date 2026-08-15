@@ -1,0 +1,27 @@
+# Filesystem render store overlay: a PVC mounted at /var/lib/convoy/renders, with
+# the controller pointed at file://…?create_dir=true. Durable across restarts;
+# exercises the gocloud fileblob driver.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+  - pvc.yaml
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-controller-manager
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --render-store-url=file:///var/lib/convoy/renders?create_dir=true
+      - op: add
+        path: /spec/template/spec/volumes
+        value:
+          - name: render-store
+            persistentVolumeClaim:
+              claimName: convoy-render-store
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value:
+          - name: render-store
+            mountPath: /var/lib/convoy/renders
