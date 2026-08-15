@@ -125,6 +125,35 @@ func (s *RenderStore) AppendHistory(ctx context.Context, namespace, name string,
 	return s.bs.Put(ctx, historyKey(namespace, name, entry.RenderRef, entry.SyncedAt), data)
 }
 
+// LastHistoryRef returns the renderRef of the most recent history entry, or ""
+// if the log is empty. It reads only the key list (the renderRef is encoded in
+// each key), so it is cheap enough to call on every deploy to suppress duplicate
+// consecutive entries — e.g. a re-reconcile whose view of status.lastSuccessful
+// still lags in the informer cache. The store is read-after-write consistent, so
+// it reflects an AppendHistory from an immediately-preceding reconcile.
+func (s *RenderStore) LastHistoryRef(ctx context.Context, namespace, name string) (string, error) {
+	keys, err := s.bs.List(ctx, historyDir(namespace, name))
+	if err != nil {
+		return "", fmt.Errorf("renderstore: listing history for %s/%s: %w", namespace, name, err)
+	}
+	if len(keys) == 0 {
+		return "", nil
+	}
+	return refFromHistoryKey(keys[len(keys)-1]), nil
+}
+
+// refFromHistoryKey extracts the renderRef from a history key of the form
+// "…/history/<ts>-<renderRef>.json". The timestamp layout contains no "-" and the
+// renderRef ("sha256:<hex>") contains none either, so the first "-" splits them.
+func refFromHistoryKey(key string) string {
+	base := key[strings.LastIndex(key, "/")+1:]
+	base = strings.TrimSuffix(base, ".json")
+	if i := strings.IndexByte(base, '-'); i >= 0 {
+		return base[i+1:]
+	}
+	return ""
+}
+
 // History returns a release's deploy log in chronological order (oldest first).
 // An empty log (no deploys, or a deleted release) returns an empty slice.
 func (s *RenderStore) History(ctx context.Context, namespace, name string) ([]HistoryEntry, error) {

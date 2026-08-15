@@ -28,18 +28,23 @@ import (
 	"github.com/kumodo-io/convoy/internal/renderstore"
 )
 
+const (
+	cmFile = "cm.yaml"
+	cmYAML = "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+)
+
 // TestSyncHandler_PersistsRenderAndHistory verifies persist-then-apply: a
 // successful reconcile stores the render blob and records one history entry, and
 // the blob is a reparseable manifest keyed by the release's renderRef.
 func TestSyncHandler_PersistsRenderAndHistory(t *testing.T) {
-	cm := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+	cm := cmYAML
 	coord := &fakeCoordinator{result: fetch.Result{
 		Ready:    true,
 		Revision: waveRevision,
-		Artifact: artifact.Artifact{Files: map[string][]byte{"cm.yaml": []byte(cm)}},
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cm)}},
 	}}
 	rel := manifestsRelease()
-	rel.Spec.Content = manifestsContent("cm.yaml")
+	rel.Spec.Content = manifestsContent(cmFile)
 	deployer := &fakeDeployer{}
 	c, _ := newTestController(t, rel, reachableCluster(), coord, deployer)
 
@@ -89,17 +94,49 @@ func TestSyncHandler_PersistsRenderAndHistory(t *testing.T) {
 	}
 }
 
-// TestSyncHandler_PersistFailureBlocksApply verifies the persist-then-apply
-// invariant: if the render can't be persisted, nothing is applied to the cluster.
-func TestSyncHandler_PersistFailureBlocksApply(t *testing.T) {
-	cm := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+// TestSyncHandler_HistoryDedupsAcrossReconciles guards against duplicate deploy-log
+// entries: several reconciles of one deploy (lifecycle-hook phases) run before the
+// status write lands in the informer cache, so each still sees an empty
+// lastSuccessful. The test seeds no status and reconciles twice — the cache never
+// updates between calls, reproducing that window — and asserts a single entry.
+func TestSyncHandler_HistoryDedupsAcrossReconciles(t *testing.T) {
+	cm := cmYAML
 	coord := &fakeCoordinator{result: fetch.Result{
 		Ready:    true,
 		Revision: waveRevision,
-		Artifact: artifact.Artifact{Files: map[string][]byte{"cm.yaml": []byte(cm)}},
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cm)}},
 	}}
 	rel := manifestsRelease()
-	rel.Spec.Content = manifestsContent("cm.yaml")
+	rel.Spec.Content = manifestsContent(cmFile)
+	c, _ := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	ctx := context.Background()
+	for i := 0; i < 3; i++ {
+		if err := c.syncHandler(ctx, "ns/r1"); err != nil {
+			t.Fatalf("syncHandler #%d: %v", i, err)
+		}
+	}
+	hist, err := c.renderStore.History(ctx, "ns", "r1")
+	if err != nil {
+		t.Fatalf("History: %v", err)
+	}
+	if len(hist) != 1 {
+		t.Fatalf("history has %d entries after 3 reconciles of one render, want 1 (deduped)", len(hist))
+	}
+}
+
+// TestSyncHandler_PersistFailureBlocksApply verifies the persist-then-apply
+// invariant: if the render can't be persisted, nothing is applied to the cluster.
+func TestSyncHandler_PersistFailureBlocksApply(t *testing.T) {
+	cm := cmYAML
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cm)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
 	deployer := &fakeDeployer{}
 	c, _ := newTestController(t, rel, reachableCluster(), coord, deployer)
 	c.renderStore = renderstore.New(failingBlobStore{})

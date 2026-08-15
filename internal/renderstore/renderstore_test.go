@@ -114,6 +114,25 @@ func TestHistoryOrderedChronologically(t *testing.T) {
 	}
 }
 
+// TestLastHistoryRef backs the controller's duplicate-suppression: it must report
+// the most recent entry's renderRef (parsed from the key), or "" for an empty log.
+func TestLastHistoryRef(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	if ref, err := s.LastHistoryRef(ctx, ns, name); err != nil || ref != "" {
+		t.Fatalf("LastHistoryRef on empty log = %q,%v; want \"\",nil", ref, err)
+	}
+	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: refA, SyncedAt: at(10)})
+	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: "sha256:b", SyncedAt: at(20)})
+	ref, err := s.LastHistoryRef(ctx, ns, name)
+	if err != nil {
+		t.Fatalf("LastHistoryRef: %v", err)
+	}
+	if ref != "sha256:b" {
+		t.Errorf("LastHistoryRef = %q, want sha256:b (most recent)", ref)
+	}
+}
+
 func TestHistoryEmpty(t *testing.T) {
 	hist, err := newStore().History(context.Background(), ns, name)
 	if err != nil {
