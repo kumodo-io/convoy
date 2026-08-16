@@ -67,6 +67,30 @@ func TestPutGetRenderRoundTrip(t *testing.T) {
 	}
 }
 
+// TestPutRenderIsWriteOnce verifies a stored render is immutable: a second
+// PutRender for the same renderRef leaves the original bytes untouched (blobs are
+// content-addressed, so this can only be a no-op — never a rewrite).
+func TestPutRenderIsWriteOnce(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	ref := "sha256:immutable"
+	original := "original-bytes"
+	if err := s.PutRender(ctx, ns, name, ref, []byte(original)); err != nil {
+		t.Fatalf("PutRender: %v", err)
+	}
+	// A second write for the same ref must not overwrite the stored content.
+	if err := s.PutRender(ctx, ns, name, ref, []byte("SECOND")); err != nil {
+		t.Fatalf("PutRender (repeat): %v", err)
+	}
+	got, err := s.GetRender(ctx, ns, name, ref)
+	if err != nil {
+		t.Fatalf("GetRender: %v", err)
+	}
+	if string(got) != original {
+		t.Errorf("stored render = %q, want %q (write-once; must not be rewritten)", got, original)
+	}
+}
+
 func TestGetRenderMissingIsErrNotFound(t *testing.T) {
 	ctx := context.Background()
 	s := newStore()

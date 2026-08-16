@@ -88,7 +88,7 @@ A `history/` entry is recorded the **first time a render is deployed** — histo
 A render that reaches a cluster **must** already be in the store, or live state and recorded history could diverge. This is an ordering invariant, not a tunable policy:
 
 1. **Render** the Release → compute `renderRef`.
-2. **Persist** the blob to `<ns>/<name>/blobs/<renderRef>`. Content-addressed ⇒ idempotent: a re-apply of the same render just re-stores identical bytes (a dedup overwrite), so the persist runs unconditionally on every apply rather than guarding on an existence check.
+2. **Persist** the blob to `<ns>/<name>/blobs/<renderRef>`. Blobs are **write-once**: an `Exists` check short-circuits, so an already-stored render is left untouched (the key is its content hash, so it holds identical bytes). A stored render is thus immutable — never rewritten after creation, only read or deleted — which keeps it tamper-evident and its mtime stable across re-applies and rollbacks.
 3. **Apply** the manifest set to the cluster (SSA).
 4. On apply success, **commit**: if the render changed, append a `<ns>/<name>/history/<ts>-<renderRef>.json` entry **to the store**; set `status.lastSuccessful.renderRef` (the current pointer) in etcd; update inventory. "Changed" is decided against the **last logged history entry** (read back from the store, which is read-after-write consistent), *not* against `status.lastSuccessful` — the latter lags in the informer cache across the several reconciles one deploy triggers (e.g. lifecycle-hook phases), which would otherwise append duplicate entries for a single deploy. Appending history is best-effort: the blob (the rollback target) is already durable, so a failed append is logged, not fatal.
 

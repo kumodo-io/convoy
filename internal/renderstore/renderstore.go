@@ -89,15 +89,24 @@ func releasePrefix(namespace, name string) string {
 	return namespace + "/" + name + "/"
 }
 
-// PutRender stores a render's content addressed by renderRef. It is idempotent:
-// the same renderRef always carries the same bytes, so a repeat Put (e.g. a
-// reconcile retry) re-stores identical content and dedups. It does not touch the
-// history log — that is a separate commit step (AppendHistory).
+// PutRender stores a render's content addressed by renderRef. Blobs are
+// **write-once and immutable**: because the key is the content hash, an existing
+// blob already holds identical bytes, so PutRender leaves it untouched (an Exists
+// check short-circuits the write). A stored render is therefore never rewritten
+// after creation — only read or deleted — so it is tamper-evident and its mtime is
+// stable across re-applies/rollbacks. It does not touch the history log — that is a
+// separate commit step (AppendHistory).
 func (s *RenderStore) PutRender(ctx context.Context, namespace, name, renderRef string, content []byte) error {
 	if renderRef == "" {
 		return fmt.Errorf("renderstore: empty renderRef")
 	}
-	return s.bs.Put(ctx, blobKey(namespace, name, renderRef), content)
+	key := blobKey(namespace, name, renderRef)
+	if ok, err := s.bs.Exists(ctx, key); err != nil {
+		return fmt.Errorf("renderstore: checking blob %s: %w", renderRef, err)
+	} else if ok {
+		return nil // already stored; immutable, do not rewrite
+	}
+	return s.bs.Put(ctx, key, content)
 }
 
 // GetRender returns a stored render's content, or blobstore.ErrNotFound if the
