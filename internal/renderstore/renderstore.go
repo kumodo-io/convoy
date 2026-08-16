@@ -76,6 +76,10 @@ func historyDir(namespace, name string) string {
 	return namespace + "/" + name + "/history/"
 }
 
+func blobsDir(namespace, name string) string {
+	return namespace + "/" + name + "/blobs/"
+}
+
 func historyKey(namespace, name, renderRef string, syncedAt metav1.Time) string {
 	ts := syncedAt.UTC().Format(historyTimeLayout)
 	return historyDir(namespace, name) + ts + "-" + renderRef + ".json"
@@ -85,15 +89,24 @@ func releasePrefix(namespace, name string) string {
 	return namespace + "/" + name + "/"
 }
 
-// PutRender stores a render's content addressed by renderRef. It is idempotent:
-// the same renderRef always carries the same bytes, so a repeat Put (e.g. a
-// reconcile retry) re-stores identical content and dedups. It does not touch the
-// history log — that is a separate commit step (AppendHistory).
+// PutRender stores a render's content addressed by renderRef. Blobs are
+// **write-once and immutable**: because the key is the content hash, an existing
+// blob already holds identical bytes, so PutRender leaves it untouched (an Exists
+// check short-circuits the write). A stored render is therefore never rewritten
+// after creation — only read or deleted — so it is tamper-evident and its mtime is
+// stable across re-applies/rollbacks. It does not touch the history log — that is a
+// separate commit step (AppendHistory).
 func (s *RenderStore) PutRender(ctx context.Context, namespace, name, renderRef string, content []byte) error {
 	if renderRef == "" {
 		return fmt.Errorf("renderstore: empty renderRef")
 	}
-	return s.bs.Put(ctx, blobKey(namespace, name, renderRef), content)
+	key := blobKey(namespace, name, renderRef)
+	if ok, err := s.bs.Exists(ctx, key); err != nil {
+		return fmt.Errorf("renderstore: checking blob %s: %w", renderRef, err)
+	} else if ok {
+		return nil // already stored; immutable, do not rewrite
+	}
+	return s.bs.Put(ctx, key, content)
 }
 
 // GetRender returns a stored render's content, or blobstore.ErrNotFound if the
@@ -125,21 +138,35 @@ func (s *RenderStore) AppendHistory(ctx context.Context, namespace, name string,
 	return s.bs.Put(ctx, historyKey(namespace, name, entry.RenderRef, entry.SyncedAt), data)
 }
 
-// LastHistoryRef returns the renderRef of the most recent history entry, or ""
-// if the log is empty. It reads only the key list (the renderRef is encoded in
-// each key), so it is cheap enough to call on every deploy to suppress duplicate
-// consecutive entries — e.g. a re-reconcile whose view of status.lastSuccessful
-// still lags in the informer cache. The store is read-after-write consistent, so
-// it reflects an AppendHistory from an immediately-preceding reconcile.
-func (s *RenderStore) LastHistoryRef(ctx context.Context, namespace, name string) (string, error) {
+// HistoryCount returns the number of deploy-log entries currently stored for a
+// release. It lists keys only (no content reads), so it is cheap to call on
+// reconcile to populate status.resolvedRetentionPolicy.historyCount.
+func (s *RenderStore) HistoryCount(ctx context.Context, namespace, name string) (int, error) {
 	keys, err := s.bs.List(ctx, historyDir(namespace, name))
 	if err != nil {
-		return "", fmt.Errorf("renderstore: listing history for %s/%s: %w", namespace, name, err)
+		return 0, fmt.Errorf("renderstore: counting history for %s/%s: %w", namespace, name, err)
 	}
-	if len(keys) == 0 {
-		return "", nil
+	return len(keys), nil
+}
+
+// HasHistoryRef reports whether the deploy log already contains an entry for
+// renderRef. It reads only the key list (the renderRef is encoded in each key),
+// so it is cheap enough to call on every deploy to keep history a set of *distinct*
+// renders: a redeploy of an already-logged render (a rollback, or a re-reconcile
+// whose view of status still lags in the informer cache) appends nothing. The
+// store is read-after-write consistent, so it reflects an immediately-preceding
+// AppendHistory.
+func (s *RenderStore) HasHistoryRef(ctx context.Context, namespace, name, renderRef string) (bool, error) {
+	refs, err := s.historyRefs(ctx, namespace, name)
+	if err != nil {
+		return false, err
 	}
-	return refFromHistoryKey(keys[len(keys)-1]), nil
+	for _, r := range refs {
+		if r == renderRef {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // refFromHistoryKey extracts the renderRef from a history key of the form
@@ -174,6 +201,89 @@ func (s *RenderStore) History(ctx context.Context, namespace, name string) ([]Hi
 		entries = append(entries, e)
 	}
 	return entries, nil
+}
+
+// GC applies retention to a release: it prunes the history log to the newest
+// keepHistory entries, then deletes any blob no longer referenced by a surviving
+// history entry or by one of protectedRefs. protectedRefs shields renders that
+// aren't in the (pruned) log but must survive — the current/last-attempted
+// render (covering the persist→commit window) and any active rollback pin.
+//
+// keepHistory <= 0 means "retain all history" (GC is effectively disabled); no
+// blobs are reclaimed either, since every render stays referenced.
+func (s *RenderStore) GC(ctx context.Context, namespace, name string, keepHistory int, protectedRefs ...string) error {
+	if keepHistory <= 0 {
+		return nil
+	}
+	if err := s.pruneHistory(ctx, namespace, name, keepHistory); err != nil {
+		return err
+	}
+	// referenced = surviving history refs ∪ protectedRefs.
+	refs, err := s.historyRefs(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	referenced := make(map[string]bool, len(refs)+len(protectedRefs))
+	for _, r := range refs {
+		referenced[r] = true
+	}
+	for _, r := range protectedRefs {
+		if r != "" {
+			referenced[r] = true
+		}
+	}
+	return s.gcBlobs(ctx, namespace, name, referenced)
+}
+
+// pruneHistory deletes all but the newest keep history entries (keys are ordered
+// oldest-first, so the oldest len-keep are removed).
+func (s *RenderStore) pruneHistory(ctx context.Context, namespace, name string, keep int) error {
+	keys, err := s.bs.List(ctx, historyDir(namespace, name))
+	if err != nil {
+		return fmt.Errorf("renderstore: listing history for prune: %w", err)
+	}
+	if len(keys) <= keep {
+		return nil
+	}
+	for _, key := range keys[:len(keys)-keep] {
+		if err := s.bs.Delete(ctx, key); err != nil {
+			return fmt.Errorf("renderstore: pruning history entry %q: %w", key, err)
+		}
+	}
+	return nil
+}
+
+// historyRefs returns the renderRefs of the current history entries (parsed from
+// the keys, no content reads).
+func (s *RenderStore) historyRefs(ctx context.Context, namespace, name string) ([]string, error) {
+	keys, err := s.bs.List(ctx, historyDir(namespace, name))
+	if err != nil {
+		return nil, fmt.Errorf("renderstore: listing history refs: %w", err)
+	}
+	refs := make([]string, 0, len(keys))
+	for _, key := range keys {
+		refs = append(refs, refFromHistoryKey(key))
+	}
+	return refs, nil
+}
+
+// gcBlobs deletes every blob whose renderRef is not in referenced.
+func (s *RenderStore) gcBlobs(ctx context.Context, namespace, name string, referenced map[string]bool) error {
+	keys, err := s.bs.List(ctx, blobsDir(namespace, name))
+	if err != nil {
+		return fmt.Errorf("renderstore: listing blobs for GC: %w", err)
+	}
+	prefix := blobsDir(namespace, name)
+	for _, key := range keys {
+		ref := strings.TrimPrefix(key, prefix)
+		if referenced[ref] {
+			continue
+		}
+		if err := s.bs.Delete(ctx, key); err != nil {
+			return fmt.Errorf("renderstore: GC deleting blob %q: %w", key, err)
+		}
+	}
+	return nil
 }
 
 // DeleteRelease drops a release's entire prefix (blobs + history). Used when a

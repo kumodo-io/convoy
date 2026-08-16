@@ -208,26 +208,22 @@ func (PinStrategy) PrepareForUpdate(ctx context.Context, obj, old runtime.Object
 	metav1.SetMetaDataAnnotation(&newRelease.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
 }
 
-// ValidateUpdate allows only a freeze pin to the current render. Pinning to any
-// other render (rollback) requires durable render history and is rejected here.
+// ValidateUpdate allows pinning to the current render (freeze) or to any past
+// render (rollback). It does not verify the target render exists — that requires
+// the render store, which the apiserver does not hold; the release controller
+// validates a rollback target against the store and reports via status if the
+// pinned render is unavailable. The only structural guard is that at least one
+// successful render exists to pin to.
 func (PinStrategy) ValidateUpdate(_ context.Context, obj, old runtime.Object) field.ErrorList {
 	newRelease := obj.(*core.Release)
 	oldRelease := old.(*core.Release)
 	// PrepareForUpdate has already cleared an empty pin to nil, so a non-nil Pin
-	// here always carries a RenderRef the caller intends to freeze.
+	// here always carries a RenderRef the caller intends to pin (freeze or rollback).
 	if newRelease.Pin == nil {
 		return nil // unpin is always allowed
 	}
-	ref := newRelease.Pin.RenderRef
-	current := ""
-	if oldRelease.Status.LastSuccessful != nil {
-		current = oldRelease.Status.LastSuccessful.RenderRef
-	}
-	if current == "" {
+	if oldRelease.Status.LastSuccessful == nil || oldRelease.Status.LastSuccessful.RenderRef == "" {
 		return field.ErrorList{field.Forbidden(field.NewPath("pin", "renderRef"), "cannot pin before a successful render")}
-	}
-	if ref != current {
-		return field.ErrorList{field.Invalid(field.NewPath("pin", "renderRef"), ref, "only the current render may be pinned (rollback requires render history)")}
 	}
 	return nil
 }

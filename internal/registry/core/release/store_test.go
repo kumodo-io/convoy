@@ -181,7 +181,7 @@ func TestStatusUpdate(t *testing.T) {
 	release.Status.HealthSummary.Total = 14
 	release.Status.HealthSummary.Healthy = 14
 	// A spec change submitted through /status must be ignored.
-	release.Spec.RetentionPolicy.KeepHistory = 99
+	release.Spec.RetentionPolicy.KeepHistory = new(99)
 
 	updatedObj, _, err := statusStorage.Update(
 		ctx,
@@ -200,8 +200,8 @@ func TestStatusUpdate(t *testing.T) {
 	if updated.Status.HealthSummary.Total != 14 {
 		t.Errorf("expected status.healthSummary.total to persist, got %d", updated.Status.HealthSummary.Total)
 	}
-	if updated.Spec.RetentionPolicy.KeepHistory != 0 {
-		t.Errorf("expected spec change to be ignored by /status, got keepHistory=%d", updated.Spec.RetentionPolicy.KeepHistory)
+	if updated.Spec.RetentionPolicy.KeepHistory != nil {
+		t.Errorf("expected spec change to be ignored by /status, got keepHistory=%d", *updated.Spec.RetentionPolicy.KeepHistory)
 	}
 }
 
@@ -271,10 +271,11 @@ func TestPinFreezeCurrentAndUnpin(t *testing.T) {
 	}
 }
 
-// TestPinRejectsNonCurrentAndPremature verifies /pin only allows freezing the
-// current render: pinning a different render (rollback) or pinning before any
-// successful render is rejected.
-func TestPinRejectsNonCurrentAndPremature(t *testing.T) {
+// TestPinRejectsPrematureAllowsRollback verifies /pin rejects pinning before any
+// successful render, but allows pinning to a past render (rollback) once one
+// exists — the apiserver does not verify the target is stored (the controller
+// does that against the render store).
+func TestPinRejectsPrematureAllowsRollback(t *testing.T) {
 	storage, statusStorage, pinStorage, _, server := newStorage(t)
 	defer server.Terminate(t)
 
@@ -290,9 +291,13 @@ func TestPinRejectsNonCurrentAndPremature(t *testing.T) {
 
 	setLastSuccessfulRender(t, ctx, statusStorage, "foo", "sha-abc")
 
-	// Pinning a render other than the current one (rollback) is rejected.
-	if _, err := pin(ctx, pinStorage, "foo", "sha-old"); !apierrors.IsInvalid(err) {
-		t.Fatalf("expected Invalid pinning a non-current render, got %v", err)
+	// Pinning to a past render (rollback) is now allowed at the API layer.
+	pinned, err := pin(ctx, pinStorage, "foo", "sha-old")
+	if err != nil {
+		t.Fatalf("expected rollback pin to be allowed, got %v", err)
+	}
+	if pinned.Pin == nil || pinned.Pin.RenderRef != "sha-old" {
+		t.Errorf("expected pin.renderRef=sha-old, got %+v", pinned.Pin)
 	}
 }
 

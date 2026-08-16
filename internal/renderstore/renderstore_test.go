@@ -32,6 +32,8 @@ const (
 	ns   = "default"
 	name = "podinfo"
 	refA = "sha256:a"
+	refB = "sha256:b"
+	refC = "sha256:c"
 )
 
 func at(sec int) metav1.Time {
@@ -62,6 +64,30 @@ func TestPutGetRenderRoundTrip(t *testing.T) {
 	}
 	if ok, _ := s.HasRender(ctx, ns, name, ref); !ok {
 		t.Errorf("HasRender = false, want true")
+	}
+}
+
+// TestPutRenderIsWriteOnce verifies a stored render is immutable: a second
+// PutRender for the same renderRef leaves the original bytes untouched (blobs are
+// content-addressed, so this can only be a no-op — never a rewrite).
+func TestPutRenderIsWriteOnce(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	ref := "sha256:immutable"
+	original := "original-bytes"
+	if err := s.PutRender(ctx, ns, name, ref, []byte(original)); err != nil {
+		t.Fatalf("PutRender: %v", err)
+	}
+	// A second write for the same ref must not overwrite the stored content.
+	if err := s.PutRender(ctx, ns, name, ref, []byte("SECOND")); err != nil {
+		t.Fatalf("PutRender (repeat): %v", err)
+	}
+	got, err := s.GetRender(ctx, ns, name, ref)
+	if err != nil {
+		t.Fatalf("GetRender: %v", err)
+	}
+	if string(got) != original {
+		t.Errorf("stored render = %q, want %q (write-once; must not be rewritten)", got, original)
 	}
 }
 
@@ -114,22 +140,24 @@ func TestHistoryOrderedChronologically(t *testing.T) {
 	}
 }
 
-// TestLastHistoryRef backs the controller's duplicate-suppression: it must report
-// the most recent entry's renderRef (parsed from the key), or "" for an empty log.
-func TestLastHistoryRef(t *testing.T) {
+// TestHasHistoryRef backs the controller's duplicate-suppression: it reports
+// whether a render is anywhere in the log, so a rollback to a non-latest render is
+// not re-logged.
+func TestHasHistoryRef(t *testing.T) {
 	ctx := context.Background()
 	s := newStore()
-	if ref, err := s.LastHistoryRef(ctx, ns, name); err != nil || ref != "" {
-		t.Fatalf("LastHistoryRef on empty log = %q,%v; want \"\",nil", ref, err)
+	if ok, err := s.HasHistoryRef(ctx, ns, name, refA); err != nil || ok {
+		t.Fatalf("HasHistoryRef on empty log = %v,%v; want false,nil", ok, err)
 	}
 	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: refA, SyncedAt: at(10)})
-	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: "sha256:b", SyncedAt: at(20)})
-	ref, err := s.LastHistoryRef(ctx, ns, name)
-	if err != nil {
-		t.Fatalf("LastHistoryRef: %v", err)
+	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: refB, SyncedAt: at(20)})
+
+	// refA is present but NOT the most recent — must still report true.
+	if ok, err := s.HasHistoryRef(ctx, ns, name, refA); err != nil || !ok {
+		t.Errorf("HasHistoryRef(refA) = %v,%v; want true,nil (present, non-latest)", ok, err)
 	}
-	if ref != "sha256:b" {
-		t.Errorf("LastHistoryRef = %q, want sha256:b (most recent)", ref)
+	if ok, _ := s.HasHistoryRef(ctx, ns, name, refC); ok {
+		t.Errorf("HasHistoryRef(refC) = true, want false (never logged)")
 	}
 }
 
@@ -151,6 +179,103 @@ func TestAppendHistoryValidation(t *testing.T) {
 	}
 	if err := s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: refA}); err == nil {
 		t.Errorf("AppendHistory with zero syncedAt: want error")
+	}
+}
+
+// seedDeploys stores three renders (a,b,c) with blobs and history at t=10,20,30.
+func seedDeploys(t *testing.T, s *renderstore.RenderStore) {
+	t.Helper()
+	ctx := context.Background()
+	for i, ref := range []string{refA, refB, refC} {
+		if err := s.PutRender(ctx, ns, name, ref, []byte(ref)); err != nil {
+			t.Fatalf("PutRender %s: %v", ref, err)
+		}
+		if err := s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: ref, SyncedAt: at(10 * (i + 1))}); err != nil {
+			t.Fatalf("AppendHistory %s: %v", ref, err)
+		}
+	}
+}
+
+func has(t *testing.T, s *renderstore.RenderStore, ref string) bool {
+	t.Helper()
+	ok, err := s.HasRender(context.Background(), ns, name, ref)
+	if err != nil {
+		t.Fatalf("HasRender %s: %v", ref, err)
+	}
+	return ok
+}
+
+// TestHistoryCount reports the number of deploy-log entries.
+func TestHistoryCount(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	if n, err := s.HistoryCount(ctx, ns, name); err != nil || n != 0 {
+		t.Fatalf("HistoryCount empty = %d,%v; want 0,nil", n, err)
+	}
+	seedDeploys(t, s)
+	if n, err := s.HistoryCount(ctx, ns, name); err != nil || n != 3 {
+		t.Errorf("HistoryCount = %d,%v; want 3,nil", n, err)
+	}
+}
+
+// TestGC prunes history to the newest keepHistory entries and reclaims the blobs
+// no longer referenced.
+func TestGC(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	seedDeploys(t, s)
+
+	if err := s.GC(ctx, ns, name, 2); err != nil {
+		t.Fatalf("GC: %v", err)
+	}
+	hist, _ := s.History(ctx, ns, name)
+	if len(hist) != 2 || hist[0].RenderRef != refB || hist[1].RenderRef != refC {
+		t.Fatalf("history after GC = %v, want [b c]", hist)
+	}
+	if has(t, s, refA) {
+		t.Error("blob a should be reclaimed (pruned from history, not protected)")
+	}
+	if !has(t, s, refB) || !has(t, s, refC) {
+		t.Error("blobs b and c should survive (still in history)")
+	}
+}
+
+// TestGCProtectsRefs keeps a protected render's blob even when its history entry
+// is pruned — e.g. the current render or an active rollback pin.
+func TestGCProtectsRefs(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	seedDeploys(t, s)
+
+	// Keep only the newest (c); protect a (pruned from history) explicitly.
+	if err := s.GC(ctx, ns, name, 1, refA); err != nil {
+		t.Fatalf("GC: %v", err)
+	}
+	if !has(t, s, refA) {
+		t.Error("protected blob a should survive despite history prune")
+	}
+	if has(t, s, refB) {
+		t.Error("blob b should be reclaimed (pruned and unprotected)")
+	}
+	if !has(t, s, refC) {
+		t.Error("blob c should survive (newest history entry)")
+	}
+}
+
+// TestGCKeepZeroRetainsAll confirms keepHistory<=0 disables GC entirely.
+func TestGCKeepZeroRetainsAll(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	seedDeploys(t, s)
+
+	if err := s.GC(ctx, ns, name, 0); err != nil {
+		t.Fatalf("GC: %v", err)
+	}
+	if hist, _ := s.History(ctx, ns, name); len(hist) != 3 {
+		t.Errorf("history = %d entries, want 3 (GC disabled)", len(hist))
+	}
+	if !has(t, s, refA) || !has(t, s, refB) || !has(t, s, refC) {
+		t.Error("all blobs should survive when GC is disabled")
 	}
 }
 

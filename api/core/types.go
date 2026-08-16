@@ -401,7 +401,7 @@ type ReleaseWaveStrategySpec struct {
 }
 
 type ReleaseRetentionPolicySpec struct {
-	KeepHistory int
+	KeepHistory *int
 }
 
 type ReleaseDeletionPolicy struct {

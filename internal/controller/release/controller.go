@@ -49,6 +49,7 @@ import (
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/fetch"
@@ -229,6 +230,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		newStatus.LastHandledSyncAt = outcome.handledSyncAt
 	}
 	newStatus.Waves = outcome.waves
+	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
 
 	// Roll up lifecycle-hook progress (status.lifecycle + LifecycleSucceeded) from the
 	// durable ReleaseInventory the gate maintains — controller-owned, parity with waves.
@@ -361,6 +363,15 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 		}
 		statusAC.WithLastSuccessful(ls)
 	}
+	// resolvedRetentionPolicy is controller-owned (it reflects the GC policy this
+	// controller enforces). Assert it explicitly so it doesn't clobber the sibling
+	// observer-owned healthSummary.
+	rp := &corev1alpha1ac.ResolvedRetentionPolicyStatusApplyConfiguration{}
+	if err := jsonRoundTrip(s.ResolvedRetentionPolicy, rp); err != nil {
+		return nil, err
+	}
+	statusAC.WithResolvedRetentionPolicy(rp)
+
 	if s.ReconciledAt != nil {
 		statusAC.WithReconciledAt(*s.ReconciledAt)
 	}
@@ -508,6 +519,15 @@ func (c *Controller) finalize(ctx context.Context, key string, rel *corev1alpha1
 	// than the Release vanishing and orphaning its ReleaseInventory.
 	if err := c.inventory.Delete(ctx, rel.Namespace, rel.Name); err != nil {
 		return fmt.Errorf("deleting inventory for %s/%s: %w", rel.Namespace, rel.Name, err)
+	}
+
+	// Drop the release's render store prefix (all blobs + history) before removing
+	// the finalizer, so a failure retries rather than leaking storage after the
+	// Release is gone. No-op when no render store is configured.
+	if c.renderStore != nil {
+		if err := c.renderStore.DeleteRelease(ctx, rel.Namespace, rel.Name); err != nil {
+			return fmt.Errorf("deleting render store for %s/%s: %w", rel.Namespace, rel.Name, err)
+		}
 	}
 
 	// remove finalizer
@@ -804,7 +824,59 @@ func (c *Controller) stageRender(ctx context.Context, st *reconcileState) (recon
 	st.objects = objects
 	st.attempt.ResolvedMutations = resolvedMutations
 	st.attempt.RenderRef = renderRef(objects)
+
+	// A pin overrides the freshly-rendered source render. Freezing to the current
+	// render (refs equal) falls through unchanged. Pinning to a *different* render
+	// is a rollback: load that render from the store and apply it instead of
+	// re-rendering source (which may not reproduce it). The controller is the
+	// validation point for a rollback target — an absent store or missing blob is
+	// reported (held), never silently ignored.
+	if out, done := c.resolvePinnedRender(ctx, st); done {
+		return stop(out, nil)
+	}
 	return cont()
+}
+
+// resolvePinnedRender applies a rollback pin: when the Release is pinned to a
+// render other than the freshly-rendered one, it replaces the render to apply with
+// the pinned render loaded from the store. It returns (outcome, true) to halt the
+// pipeline when the pin cannot be honored (no store, or the render is missing).
+func (c *Controller) resolvePinnedRender(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
+	p := st.rel.Pin
+	if p == nil || p.RenderRef == "" || p.RenderRef == st.attempt.RenderRef {
+		return reconcileOutcome{}, false // no pin, or freezing to the current render
+	}
+	if c.renderStore == nil {
+		out, _ := st.fail(conditionReasonPinned,
+			fmt.Sprintf("cannot roll back to render %s: no render store configured", p.RenderRef),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
+		return out, true
+	}
+	data, err := c.renderStore.GetRender(ctx, st.rel.Namespace, st.rel.Name, p.RenderRef)
+	if errors.Is(err, blobstore.ErrNotFound) {
+		out, _ := st.fail(conditionReasonPinned,
+			fmt.Sprintf("pinned render %s is not available in the store", p.RenderRef),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, nil)
+		return out, true
+	}
+	if err != nil {
+		out, e := st.fail(conditionReasonDeployFailed,
+			fmt.Sprintf("loading pinned render %s: %v", p.RenderRef, err),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, err)
+		_ = e
+		return out, true
+	}
+	pinned, err := render.ParseManifest(data)
+	if err != nil {
+		out, _ := st.fail(conditionReasonDeployFailed,
+			fmt.Sprintf("parsing pinned render %s: %v", p.RenderRef, err),
+			corev1alpha1.ReleaseRenderAttemptStageRendering, err)
+		return out, true
+	}
+	// Apply the pinned render, not the source render.
+	st.objects = pinned
+	st.attempt.RenderRef = p.RenderRef
+	return reconcileOutcome{}, false
 }
 
 // stageGates evaluates the pre-apply holds — freeze pin, manual-mode sync gate, and
@@ -813,17 +885,10 @@ func (c *Controller) stageRender(ctx context.Context, st *reconcileState) (recon
 func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, error) {
 	rel := st.rel
 
-	// Honor a freeze pin: hold (do not apply) when the current render differs from
-	// the pinned render — i.e. spec/source/values changed since the pin. Freezing
-	// to the current render (refs equal) applies normally (idempotent). Pinning to
-	// a *previous* render (rollback) is storage-gated and not handled here.
-	if p := rel.Pin; p != nil && p.RenderRef != "" && p.RenderRef != st.attempt.RenderRef {
-		return stop(reconcileOutcome{
-			reason:  conditionReasonPinned,
-			message: fmt.Sprintf("pinned to render %s; withholding current render %s", p.RenderRef, st.attempt.RenderRef),
-			attempt: st.attempt,
-		}, nil) // terminal hold; resync/unpin re-checks
-	}
+	// The pin has already been resolved in stageRender: st.attempt.RenderRef is the
+	// render to apply (the current source render, or a pinned/rolled-back render
+	// loaded from the store), so no freeze-withhold is needed here — a valid pin
+	// applies its render idempotently, holding the cluster at it.
 
 	// Manual-mode sync gate. In manual mode (syncPolicy.automatic=false) apply only
 	// when an explicit /sync is pending. Otherwise observe without applying: report
@@ -1046,6 +1111,7 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	attempt.SyncedResources = int64(len(applied))
 
 	c.recordHistory(ctx, rel, now, attempt)
+	c.runGC(ctx, rel, attempt.RenderRef)
 
 	outcome := reconcileOutcome{
 		ready:   true,
@@ -1226,10 +1292,9 @@ func renderRef(objects []*unstructured.Unstructured) string {
 }
 
 // renderManifest serializes the rendered objects into the bytes stored as the
-// render blob: a JSON array reparseable by readers (rollback, diff). It is a pure
-// function of objects, so a given renderRef always maps to identical blob content.
+// render blob (see render.MarshalManifest for the format).
 func renderManifest(objects []*unstructured.Unstructured) ([]byte, error) {
-	return json.Marshal(objects)
+	return render.MarshalManifest(objects)
 }
 
 // persistRender durably stores a render before it is applied (persist-then-apply).
@@ -1248,12 +1313,13 @@ func (c *Controller) persistRender(ctx context.Context, namespace, name, renderR
 	return nil
 }
 
-// recordHistory appends a deploy-log entry when the render differs from the last
-// logged deploy. It compares against the last *history* entry, not
-// status.lastSuccessful: the latter lags in the informer cache, so several quick
-// reconciles of one deploy (e.g. lifecycle-hook phases) would each still see the
-// pre-write status and append duplicate entries. The store is read-after-write
-// consistent, so the last history entry always reflects a preceding append.
+// recordHistory logs a render the first time it is deployed. The deploy log is a
+// set of *distinct* renders (each renderRef appears once), so it appends only when
+// the render is not already in the log. This suppresses two kinds of duplicate:
+// several quick reconciles of one deploy (status.lastSuccessful lags in the informer
+// cache, so we can't rely on it — the store is read-after-write consistent and is
+// the source of truth), and a rollback (re-applying a render already in history).
+// The rollback itself remains auditable via status.pin (pinnedAt/pinnedBy).
 //
 // Best-effort: the render blob is already persisted (the rollback target is safe),
 // so a failed append is logged rather than failing an otherwise-successful deploy
@@ -1262,12 +1328,12 @@ func (c *Controller) recordHistory(ctx context.Context, rel *corev1alpha1.Releas
 	if c.renderStore == nil {
 		return
 	}
-	last, err := c.renderStore.LastHistoryRef(ctx, rel.Namespace, rel.Name)
+	exists, err := c.renderStore.HasHistoryRef(ctx, rel.Namespace, rel.Name, attempt.RenderRef)
 	if err != nil {
-		klog.ErrorS(err, "reading last render history", "release", rel.Name)
+		klog.ErrorS(err, "reading render history", "release", rel.Name)
 		return
 	}
-	if attempt.RenderRef == last {
+	if exists {
 		return
 	}
 	if err := c.renderStore.AppendHistory(ctx, rel.Namespace, rel.Name, renderstore.HistoryEntry{
@@ -1276,6 +1342,63 @@ func (c *Controller) recordHistory(ctx context.Context, rel *corev1alpha1.Releas
 		Summary:   renderSummary(attempt.ResolvedSource),
 	}); err != nil {
 		klog.ErrorS(err, "appending render history", "release", rel.Name, "renderRef", attempt.RenderRef)
+	}
+}
+
+// defaultKeepHistory is the retention applied when spec.retentionPolicy.keepHistory
+// is unset (nil): keep the newest N deploys. An explicit 0 means unlimited.
+const defaultKeepHistory = 10
+
+// effectiveKeepHistory resolves the retention policy: nil (unset) ⇒ the default;
+// an explicit value is used as-is (0 ⇒ unlimited, N ⇒ keep the newest N). The
+// resolved value is what status.resolvedRetentionPolicy.keepHistory reports and
+// what GC enforces (GC treats <= 0 as unlimited).
+func effectiveKeepHistory(rel *corev1alpha1.Release) int {
+	if kh := rel.Spec.RetentionPolicy.KeepHistory; kh != nil {
+		return *kh
+	}
+	return defaultKeepHistory
+}
+
+// resolvedRetentionStatus reports the effective retention policy and the actual
+// number of history entries currently in the store (0 when no store is configured).
+func (c *Controller) resolvedRetentionStatus(ctx context.Context, rel *corev1alpha1.Release) corev1alpha1.ResolvedRetentionPolicyStatus {
+	out := corev1alpha1.ResolvedRetentionPolicyStatus{KeepHistory: effectiveKeepHistory(rel)}
+	if c.renderStore != nil {
+		if n, err := c.renderStore.HistoryCount(ctx, rel.Namespace, rel.Name); err != nil {
+			klog.ErrorS(err, "counting render history", "release", rel.Name)
+		} else {
+			out.HistoryCount = n
+		}
+	}
+	return out
+}
+
+// runGC applies the Release's retention policy to its render store: prune the
+// history log to keepHistory entries and reclaim unreferenced blobs. Best-effort
+// (logged, never fails a reconcile). protectedRefs shields renders not in the
+// pruned log that must survive: the just-applied render, the prior current/attempted
+// pointers (covering the persist→commit window), and any active rollback pin.
+func (c *Controller) runGC(ctx context.Context, rel *corev1alpha1.Release, currentRef string) {
+	if c.renderStore == nil {
+		return
+	}
+	keep := effectiveKeepHistory(rel)
+	if keep <= 0 {
+		return // unlimited (explicit keepHistory=0): retain everything
+	}
+	protected := []string{currentRef}
+	if ls := rel.Status.LastSuccessful; ls != nil {
+		protected = append(protected, ls.RenderRef)
+	}
+	if la := rel.Status.LastAttempted; la != nil {
+		protected = append(protected, la.RenderRef)
+	}
+	if p := rel.Pin; p != nil {
+		protected = append(protected, p.RenderRef)
+	}
+	if err := c.renderStore.GC(ctx, rel.Namespace, rel.Name, keep, protected...); err != nil {
+		klog.ErrorS(err, "render store GC", "release", rel.Name)
 	}
 }
 

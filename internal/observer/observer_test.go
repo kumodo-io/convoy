@@ -51,7 +51,7 @@ func newTestController(t *testing.T, rel *corev1alpha1.Release) (*Controller, *f
 	if err := relInformer.Informer().GetStore().Add(rel); err != nil {
 		t.Fatalf("seeding release store: %v", err)
 	}
-	c := NewController(client, relInformer, clInformer.Lister(), nil, nil, nil, nil)
+	c := NewController(client, relInformer, clInformer.Lister(), nil, nil, nil, nil, nil)
 	fixed := metav1.NewTime(time.Date(2026, 7, 8, 12, 0, 0, 0, time.UTC))
 	c.now = func() metav1.Time { return fixed }
 	return c, client

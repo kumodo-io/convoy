@@ -21,16 +21,23 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/render"
 	"github.com/kumodo-io/convoy/internal/renderstore"
 )
 
 const (
-	cmFile = "cm.yaml"
-	cmYAML = "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+	cmFile    = "cm.yaml"
+	cmYAML    = "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+	oldCMName = "old-cm"
 )
 
 // TestSyncHandler_PersistsRenderAndHistory verifies persist-then-apply: a
@@ -74,7 +81,7 @@ func TestSyncHandler_PersistsRenderAndHistory(t *testing.T) {
 	if err := json.Unmarshal(raw, &objs); err != nil {
 		t.Fatalf("blob is not a JSON manifest array: %v", err)
 	}
-	if len(objs) != 1 || objs[0]["kind"] != "ConfigMap" {
+	if len(objs) != 1 || objs[0]["kind"] != configMapKind {
 		t.Errorf("blob manifest = %v, want one ConfigMap", objs)
 	}
 
@@ -149,6 +156,221 @@ func TestSyncHandler_PersistFailureBlocksApply(t *testing.T) {
 	}
 	if len(deployer.waveCalls) != 0 {
 		t.Errorf("deployer applied %d wave(s) despite a persist failure; persist must precede apply", len(deployer.waveCalls))
+	}
+}
+
+// TestSyncHandler_RollbackAppliesStoredRender verifies a rollback pin: pinned to a
+// past render present in the store, the controller applies that stored render's
+// objects — not what source renders to now.
+func TestSyncHandler_RollbackAppliesStoredRender(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}}, // current source renders "cm"
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	const rollbackRef = "sha256:rollback"
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: rollbackRef})
+	deployer := &fakeDeployer{}
+	c, _ := newTestController(t, rel, reachableCluster(), coord, deployer)
+
+	// Seed the store with a *different* past render (a ConfigMap named "old-cm").
+	oldCM := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": configMapKind,
+		"metadata": map[string]any{"name": oldCMName, "namespace": "ns"},
+	}}
+	manifest, err := render.MarshalManifest([]*unstructured.Unstructured{oldCM})
+	if err != nil {
+		t.Fatalf("MarshalManifest: %v", err)
+	}
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+	if err := c.renderStore.PutRender(context.Background(), "ns", "r1", rollbackRef, manifest); err != nil {
+		t.Fatalf("PutRender: %v", err)
+	}
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 1 || len(deployer.waveCalls[0]) != 1 {
+		t.Fatalf("expected one applied object, got waves %v", deployer.waveCalls)
+	}
+	if got := deployer.waveCalls[0][0].GetName(); got != oldCMName {
+		t.Errorf("applied object = %q, want the stored render's %q (rollback)", got, oldCMName)
+	}
+}
+
+// TestSyncHandler_RollbackDoesNotDuplicateHistory verifies that rolling back to a
+// render already in the deploy log does not append a second entry for it — history
+// is a set of distinct renders.
+func TestSyncHandler_RollbackDoesNotDuplicateHistory(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	const rollbackRef = "sha256:rollback"
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: rollbackRef})
+	c, _ := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	ctx := context.Background()
+	oldCM := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": configMapKind,
+		"metadata": map[string]any{"name": oldCMName, "namespace": "ns"},
+	}}
+	manifest, _ := render.MarshalManifest([]*unstructured.Unstructured{oldCM})
+	_ = c.renderStore.PutRender(ctx, "ns", "r1", rollbackRef, manifest)
+	// The rollback target was deployed before, so it already has a history entry.
+	_ = c.renderStore.AppendHistory(ctx, "ns", "r1",
+		renderstore.HistoryEntry{RenderRef: rollbackRef, SyncedAt: metav1.NewTime(time.Date(2026, 6, 24, 12, 0, 0, 0, time.UTC))})
+
+	if err := c.syncHandler(ctx, "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	hist, _ := c.renderStore.History(ctx, "ns", "r1")
+	if len(hist) != 1 {
+		t.Fatalf("history has %d entries after rollback, want 1 (no duplicate for a re-deployed render)", len(hist))
+	}
+	if hist[0].RenderRef != rollbackRef {
+		t.Errorf("history entry = %s, want the rollback ref %s", hist[0].RenderRef, rollbackRef)
+	}
+}
+
+// TestSyncHandler_RollbackToMissingRenderHolds verifies a pin to a render absent
+// from the store holds (does not apply) and reports Pinned.
+func TestSyncHandler_RollbackToMissingRenderHolds(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: "sha256:ghost"})
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	c.renderStore = renderstore.New(blobstore.NewMemory()) // empty store
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if deployer.called {
+		t.Error("Deploy called despite the pinned render being absent from the store")
+	}
+	if got := statusUpdate(client.Actions()); got == nil {
+		t.Fatalf("expected status write")
+	} else if s, r := readyReason(got); s != metav1.ConditionFalse || r != conditionReasonPinned {
+		t.Errorf("Ready = %s/%s, want False/Pinned", s, r)
+	}
+}
+
+// TestFinalize_DeletesRenderStore verifies finalizing a Release drops its render
+// store prefix (blobs + history).
+func TestFinalize_DeletesRenderStore(t *testing.T) {
+	rel := deletingRelease(true, false) // keepWorkloads: skip cluster prune
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	ctx := context.Background()
+	_ = c.renderStore.PutRender(ctx, "ns", "r1", "sha256:kept", []byte("x"))
+	_ = c.renderStore.AppendHistory(ctx, "ns", "r1", renderstore.HistoryEntry{RenderRef: "sha256:kept", SyncedAt: metav1.Now()})
+
+	if err := c.syncHandler(ctx, "ns/r1"); err != nil {
+		t.Fatalf("syncHandler (finalize): %v", err)
+	}
+	if ok, _ := c.renderStore.HasRender(ctx, "ns", "r1", "sha256:kept"); ok {
+		t.Error("render blob survived finalize")
+	}
+	if hist, _ := c.renderStore.History(ctx, "ns", "r1"); len(hist) != 0 {
+		t.Errorf("history survived finalize: %d entries", len(hist))
+	}
+}
+
+// TestSyncHandler_GCPrunesHistoryOnReconcile verifies a successful reconcile
+// applies the retention policy: older history entries beyond keepHistory (and
+// their blobs) are reclaimed.
+func TestSyncHandler_GCPrunesHistoryOnReconcile(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	rel.Spec.RetentionPolicy.KeepHistory = new(1)
+	c, _ := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	ctx := context.Background()
+	// Two older deploys already in the log (before the fixed reconcile time).
+	old := metav1.NewTime(time.Date(2026, 6, 24, 12, 0, 0, 0, time.UTC))
+	for _, ref := range []string{"sha256:old1", "sha256:old2"} {
+		_ = c.renderStore.PutRender(ctx, "ns", "r1", ref, []byte(ref))
+		_ = c.renderStore.AppendHistory(ctx, "ns", "r1", renderstore.HistoryEntry{RenderRef: ref, SyncedAt: old})
+	}
+
+	if err := c.syncHandler(ctx, "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+
+	// keepHistory=1 → only the newest entry (this reconcile's render) survives.
+	hist, _ := c.renderStore.History(ctx, "ns", "r1")
+	if len(hist) != 1 {
+		t.Fatalf("history = %d entries after GC, want 1", len(hist))
+	}
+	if ok, _ := c.renderStore.HasRender(ctx, "ns", "r1", "sha256:old1"); ok {
+		t.Error("pruned blob old1 should be reclaimed")
+	}
+}
+
+// TestEffectiveKeepHistory covers the retention resolution: nil ⇒ default,
+// explicit 0 ⇒ unlimited, explicit N ⇒ N.
+func TestEffectiveKeepHistory(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.RetentionPolicy.KeepHistory = nil
+	if got := effectiveKeepHistory(rel); got != defaultKeepHistory {
+		t.Errorf("nil keepHistory = %d, want default %d", got, defaultKeepHistory)
+	}
+	rel.Spec.RetentionPolicy.KeepHistory = new(0)
+	if got := effectiveKeepHistory(rel); got != 0 {
+		t.Errorf("explicit 0 keepHistory = %d, want 0 (unlimited)", got)
+	}
+	rel.Spec.RetentionPolicy.KeepHistory = new(5)
+	if got := effectiveKeepHistory(rel); got != 5 {
+		t.Errorf("explicit 5 keepHistory = %d, want 5", got)
+	}
+}
+
+// TestSyncHandler_PopulatesResolvedRetentionStatus verifies a reconcile reports
+// the effective retention and the actual stored history count — the status bug
+// where resolvedRetentionPolicy was never written.
+func TestSyncHandler_PopulatesResolvedRetentionStatus(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	rel.Spec.RetentionPolicy.KeepHistory = new(0) // unlimited: nothing pruned
+	c, client := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	// A pre-existing older deploy, plus this reconcile's — count should be 2.
+	_ = c.renderStore.PutRender(context.Background(), "ns", "r1", "sha256:old", []byte("old"))
+	_ = c.renderStore.AppendHistory(context.Background(), "ns", "r1",
+		renderstore.HistoryEntry{RenderRef: "sha256:old", SyncedAt: metav1.NewTime(time.Date(2026, 6, 24, 12, 0, 0, 0, time.UTC))})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected status write")
+	}
+	rp := got.Status.ResolvedRetentionPolicy
+	if rp.KeepHistory != 0 {
+		t.Errorf("resolved keepHistory = %d, want 0 (unlimited)", rp.KeepHistory)
+	}
+	if rp.HistoryCount != 2 {
+		t.Errorf("resolved historyCount = %d, want 2 (old + this reconcile)", rp.HistoryCount)
 	}
 }
 

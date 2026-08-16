@@ -22,6 +22,7 @@ package observermanager
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -39,6 +40,7 @@ import (
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	gitrepositorycontroller "github.com/kumodo-io/convoy/internal/controller/gitrepository"
 	helmregistrycontroller "github.com/kumodo-io/convoy/internal/controller/helmregistry"
@@ -46,6 +48,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/inventory"
 	"github.com/kumodo-io/convoy/internal/observer"
+	"github.com/kumodo-io/convoy/internal/renderstore"
 	"github.com/kumodo-io/convoy/internal/scopedinformers"
 	"github.com/kumodo-io/convoy/internal/sharding"
 )
@@ -91,6 +94,10 @@ type Options struct {
 	// per-replica memory scales with replica count. Default off (full cache).
 	// Requires the shard label on those objects.
 	ShardScopedCache bool
+	// RenderStoreURL is the gocloud blob URL of the durable render store (must match
+	// the controller-manager's). Empty disables the store-backed read features
+	// (/history and historical /diff). See docs/architecture/03-persistent-storage.md.
+	RenderStoreURL string
 	// ReplicaID is this replica's shard-lease holder identity. Empty resolves
 	// from $POD_NAME, then the hostname.
 	ReplicaID string
@@ -193,7 +200,19 @@ func (o *Options) Run(ctx context.Context) error {
 		OCIFetcher:     ociFetcher,
 	})
 
-	obs := observer.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector, owns)
+	// Durable render store (optional; must match the controller-manager's URL when
+	// set). Backs the /history and historical /diff read features.
+	var renderStore *renderstore.RenderStore
+	if o.RenderStoreURL != "" {
+		bs, closeStore, err := blobstore.Open(ctx, o.RenderStoreURL)
+		if err != nil {
+			return fmt.Errorf("opening render store: %w", err)
+		}
+		defer func() { _ = closeStore() }()
+		renderStore = renderstore.New(bs)
+	}
+
+	obs := observer.NewController(client, releaseInformer, clusterInformer.Lister(), coordinator, resolver, connector, renderStore, owns)
 	healthCtl := observer.NewHealthController(client, releaseInformer, clusterInformer.Lister(), connector,
 		globalRuleSetInformer.Lister(), ruleSetInformer.Lister(), releaseInventoryInformer.Lister(), owns)
 	// The drift loop hosts the HTTP server; wire the /health lookup to the health
@@ -333,6 +352,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.StringVar(&o.ServeAddr, "serve-addr", o.ServeAddr, "Address for the on-demand HTTP server (/preview) the apiserver proxies to.")
 	flags.IntVar(&o.Shards, "shards", o.Shards, "Fixed shard count S; work is partitioned by target cluster. Must match across the fleet.")
 	flags.BoolVar(&o.ShardScopedCache, "shard-scoped-cache", o.ShardScopedCache, "Cache only the owned shards' Releases/ReleaseInventories/Clusters so memory scales with replica count. Requires the shard label on those objects.")
+	flags.StringVar(&o.RenderStoreURL, "render-store-url", o.RenderStoreURL, "gocloud blob URL for the durable render store (must match the controller-manager's). Empty disables /history and historical /diff.")
 	flags.StringVar(&o.ReplicaID, "replica-id", o.ReplicaID, "Unique shard-lease holder identity. Empty uses $POD_NAME, then the hostname.")
 	flags.StringVar(&o.LeaseNamespace, "lease-namespace", o.LeaseNamespace, "Namespace for sharding leases. Empty uses $POD_NAMESPACE, then \"convoy-system\".")
 	flags.DurationVar(&o.LeaseDuration, "lease-duration", o.LeaseDuration, "How long a held shard lease is valid without renewal.")

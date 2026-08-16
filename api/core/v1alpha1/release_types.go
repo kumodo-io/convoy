@@ -635,9 +635,12 @@ type ReleaseWaveStrategySpec struct {
 
 // ReleaseRetentionPolicySpec defines the desired state of the release retention policy.
 type ReleaseRetentionPolicySpec struct {
-	// KeepHistory defines how many historical (rendered, applied) records to retain in S3.
-	// Drives /history pagination depth and rollback range.
-	KeepHistory int `json:"keepHistory"`
+	// KeepHistory is how many historical (rendered, applied) records to retain in the
+	// render store. It drives /history depth and the rollback range. Unset (nil) uses
+	// a default; an explicit 0 means unlimited (retain all); a positive N keeps the
+	// newest N. The current render is always retained regardless.
+	// +optional
+	KeepHistory *int `json:"keepHistory,omitempty"`
 }
 
 // ReleaseDeletionPolicy defines a per-Release deletion behaviour:

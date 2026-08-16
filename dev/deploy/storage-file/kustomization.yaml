@@ -1,6 +1,8 @@
-# Filesystem render store overlay: a PVC mounted at /var/lib/convoy/renders, with
-# the controller pointed at file://… Durable across restarts; exercises the gocloud
-# fileblob driver.
+# Filesystem render store overlay: a PVC mounted at /var/lib/convoy/renders on both
+# the controller (writer) and observer (reader), with each pointed at file://…
+# Durable across restarts and shared between the two pods (single-node kind: a RWO
+# PVC mounted by pods co-scheduled on the one node). Exercises the gocloud fileblob
+# driver and the store-backed read features end to end.
 #
 # no_tmp_dir=true is required: without it fileblob writes to a temp file under
 # $TMPDIR (/tmp) and renames into place, which fails with "invalid cross-device
@@ -15,7 +17,7 @@ patches:
   - target:
       kind: Deployment
       name: convoy-controller-manager
-    patch: |-
+    patch: &fileStore |-
       - op: add
         path: /spec/template/spec/containers/0/args/-
         value: --render-store-url=file:///var/lib/convoy/renders?create_dir=true&no_tmp_dir=true
@@ -30,3 +32,7 @@ patches:
         value:
           - name: render-store
             mountPath: /var/lib/convoy/renders
+  - target:
+      kind: Deployment
+      name: convoy-observer
+    patch: *fileStore

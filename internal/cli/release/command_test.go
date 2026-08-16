@@ -29,6 +29,7 @@ import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/healthresult"
+	"github.com/kumodo-io/convoy/internal/renderstore"
 )
 
 const ConfigMapKind = "ConfigMap"
@@ -48,11 +49,15 @@ type fakeClient struct {
 	previewPayload []byte
 	previewErr     error
 	diffCalled     bool
+	diffRenderRef  string
 	diffPayload    []byte
 	diffErr        error
 	healthCalled   bool
 	healthPayload  []byte
 	healthErr      error
+	historyCalled  bool
+	historyPayload []byte
+	historyErr     error
 	setMutations   []corev1alpha1.ReleaseMutation
 	setLifecycle   *corev1alpha1.ReleaseLifecycle
 	setLifecycleOK bool
@@ -96,8 +101,9 @@ func (f *fakeClient) Preview(_ context.Context, _, _ string) ([]byte, error) {
 	return f.previewPayload, nil
 }
 
-func (f *fakeClient) Diff(_ context.Context, _, _ string) ([]byte, error) {
+func (f *fakeClient) Diff(_ context.Context, _, _, renderRef string) ([]byte, error) {
 	f.diffCalled = true
+	f.diffRenderRef = renderRef
 	if f.diffErr != nil {
 		return nil, f.diffErr
 	}
@@ -110,6 +116,14 @@ func (f *fakeClient) Health(_ context.Context, _, _ string) ([]byte, error) {
 		return nil, f.healthErr
 	}
 	return f.healthPayload, nil
+}
+
+func (f *fakeClient) History(_ context.Context, _, _ string) ([]byte, error) {
+	f.historyCalled = true
+	if f.historyErr != nil {
+		return nil, f.historyErr
+	}
+	return f.historyPayload, nil
 }
 
 func (f *fakeClient) SetMutations(_ context.Context, _, _ string, mutations []corev1alpha1.ReleaseMutation) (*corev1alpha1.Release, error) {
@@ -232,6 +246,38 @@ func TestRunPreview(t *testing.T) {
 	}
 }
 
+func TestRunHistory(t *testing.T) {
+	entries := []renderstore.HistoryEntry{
+		{RenderRef: "sha256:b", SyncedAt: metav1.Now(), Summary: "url@r2"},
+		{RenderRef: "sha256:a", SyncedAt: metav1.Now(), Summary: "url@r1"},
+	}
+	payload, _ := json.Marshal(entries)
+	f := &fakeClient{rel: releaseWithRender("sha256:b"), historyPayload: payload}
+	var out bytes.Buffer
+
+	if err := runHistory(context.Background(), &out, f, "ns", "r1", ""); err != nil {
+		t.Fatalf("runHistory returned error: %v", err)
+	}
+	if !f.historyCalled {
+		t.Error("History was not called")
+	}
+	if !strings.Contains(out.String(), "sha256:b") || !strings.Contains(out.String(), "url@r2") {
+		t.Errorf("output = %q, want it to list the deploy entries", out.String())
+	}
+}
+
+func TestRunDiff_PassesRenderRefForHistorical(t *testing.T) {
+	f := &fakeClient{rel: releaseWithRender("sha256:cur"), diffPayload: []byte(`{"objects":[]}`)}
+	var out bytes.Buffer
+
+	if err := runDiff(context.Background(), &out, f, "ns", "r1", "sha256:old", "json"); err != nil {
+		t.Fatalf("runDiff returned error: %v", err)
+	}
+	if f.diffRenderRef != "sha256:old" {
+		t.Errorf("diff renderRef = %q, want sha256:old (historical diff)", f.diffRenderRef)
+	}
+}
+
 func TestRunPreview_ErrorPropagates(t *testing.T) {
 	f := &fakeClient{rel: releaseWithRender("sha256:cur"), previewErr: errors.New("observer unavailable")}
 	var out bytes.Buffer
@@ -262,7 +308,7 @@ func TestRunDiff_HumanReadable(t *testing.T) {
 	f := &fakeClient{rel: releaseWithRender("sha256:cur"), diffPayload: diffPayload(t, result)}
 	var out bytes.Buffer
 
-	if err := runDiff(context.Background(), &out, f, "ns", "r1", ""); err != nil {
+	if err := runDiff(context.Background(), &out, f, "ns", "r1", "", ""); err != nil {
 		t.Fatalf("runDiff returned error: %v", err)
 	}
 	s := out.String()
@@ -288,7 +334,7 @@ func TestRunDiff_InSync(t *testing.T) {
 	f := &fakeClient{rel: releaseWithRender("sha256:cur"), diffPayload: diffPayload(t, result)}
 	var out bytes.Buffer
 
-	if err := runDiff(context.Background(), &out, f, "ns", "r1", ""); err != nil {
+	if err := runDiff(context.Background(), &out, f, "ns", "r1", "", ""); err != nil {
 		t.Fatalf("runDiff returned error: %v", err)
 	}
 	if !strings.Contains(out.String(), "in sync") {
@@ -340,7 +386,7 @@ func TestRunDiff_JSONPassthrough(t *testing.T) {
 	f := &fakeClient{rel: releaseWithRender("sha256:cur"), diffPayload: raw}
 	var out bytes.Buffer
 
-	if err := runDiff(context.Background(), &out, f, "ns", "r1", "json"); err != nil {
+	if err := runDiff(context.Background(), &out, f, "ns", "r1", "", "json"); err != nil {
 		t.Fatalf("runDiff returned error: %v", err)
 	}
 	if out.String() != string(raw) {

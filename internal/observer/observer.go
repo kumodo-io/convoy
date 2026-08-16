@@ -24,6 +24,7 @@ package observer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,11 +39,14 @@ import (
 	coreinformers "github.com/kumodo-io/convoy/api/generated/informers/externalversions/core/v1alpha1"
 	corelisters "github.com/kumodo-io/convoy/api/generated/listers/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/auth"
+	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/clusterconn"
 	"github.com/kumodo-io/convoy/internal/controller/base"
 	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/fetch"
 	"github.com/kumodo-io/convoy/internal/healthresult"
+	"github.com/kumodo-io/convoy/internal/render"
+	"github.com/kumodo-io/convoy/internal/renderstore"
 )
 
 // Controller runs the drift-detection loop, keyed on Release. It embeds the
@@ -55,6 +59,10 @@ type Controller struct {
 	coordinator   fetch.Coordinator
 	resolver      auth.SecretResolver
 	connector     *clusterconn.Connector
+	// renderStore serves the store-backed read features: /history (the deploy log)
+	// and historical /diff (a stored render vs live). nil disables them (they
+	// return ServiceUnavailable).
+	renderStore *renderstore.RenderStore
 	// owns reports whether this replica owns a Release's target-cluster shard.
 	// nil disables sharding.
 	owns func(clusterNamespace, clusterName string) bool
@@ -86,6 +94,7 @@ func NewController(
 	coordinator fetch.Coordinator,
 	resolver auth.SecretResolver,
 	connector *clusterconn.Connector,
+	renderStore *renderstore.RenderStore,
 	owns func(clusterNamespace, clusterName string) bool,
 ) *Controller {
 	c := &Controller{
@@ -95,6 +104,7 @@ func NewController(
 		coordinator:   coordinator,
 		resolver:      resolver,
 		connector:     connector,
+		renderStore:   renderStore,
 		owns:          owns,
 		now:           metav1.Now,
 	}
@@ -182,6 +192,38 @@ func (c *Controller) assess(ctx context.Context, rel *corev1alpha1.Release) (boo
 // disagree. A non-nil error means the diff couldn't be produced (source/cluster
 // absent or unreachable, unsupported config).
 func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diffresult.Result, error) {
+	objects, err := c.renderDesired(ctx, rel)
+	if err != nil {
+		return nil, err
+	}
+	return c.diffObjects(ctx, rel, objects)
+}
+
+// diffStored diffs a stored (past) render against the live cluster: "what would
+// change if this Release were rolled back to renderRef". It reads the render from
+// the store rather than re-rendering source, so it works even when source has
+// moved on. Requires a render store.
+func (c *Controller) diffStored(ctx context.Context, rel *corev1alpha1.Release, renderRef string) (*diffresult.Result, error) {
+	if c.renderStore == nil {
+		return nil, fmt.Errorf("historical diff requires a render store (none configured)")
+	}
+	data, err := c.renderStore.GetRender(ctx, rel.Namespace, rel.Name, renderRef)
+	if errors.Is(err, blobstore.ErrNotFound) {
+		return nil, fmt.Errorf("render %s not found in store for %s/%s", renderRef, rel.Namespace, rel.Name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	objects, err := render.ParseManifest(data)
+	if err != nil {
+		return nil, fmt.Errorf("parsing stored render %s: %w", renderRef, err)
+	}
+	return c.diffObjects(ctx, rel, objects)
+}
+
+// diffObjects resolves the target cluster and diffs the given desired objects
+// against its live state.
+func (c *Controller) diffObjects(ctx context.Context, rel *corev1alpha1.Release, objects []*unstructured.Unstructured) (*diffresult.Result, error) {
 	clusterNamespace := rel.Spec.ClusterRef.Namespace
 	if clusterNamespace == "" {
 		clusterNamespace = rel.Namespace
@@ -194,11 +236,6 @@ func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diff
 		return nil, fmt.Errorf("target cluster %s is not reachable", cluster.Name)
 	}
 
-	objects, err := c.renderDesired(ctx, rel)
-	if err != nil {
-		return nil, err
-	}
-
 	dyn, mapper, err := c.connector.DynamicClients(ctx, cluster)
 	if err != nil {
 		return nil, err
@@ -206,10 +243,42 @@ func (c *Controller) diff(ctx context.Context, rel *corev1alpha1.Release) (*diff
 	return computeDiff(ctx, dyn, mapper, objects)
 }
 
-// renderDesired renders the Release's desired objects via the shared helper,
-// resolving the target cluster (best-effort) for the mutation templating context.
+// renderDesired returns the Release's desired objects. When the Release is pinned
+// to a render held in the store, that pinned render IS the desired state — the
+// controller applies it (freeze/rollback), so drift, preview, and default diff must
+// assess against it, not against what source renders now. Otherwise a rolled-back
+// release would report perpetual drift (and, in automatic mode, churn syncs the
+// controller can't resolve). Falls back to rendering current source when there is
+// no pin, no store, or the pinned render isn't stored.
 func (c *Controller) renderDesired(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, error) {
+	if objs, ok, err := c.pinnedRender(ctx, rel); err != nil {
+		return nil, err
+	} else if ok {
+		return objs, nil
+	}
 	return renderReleaseObjects(ctx, c.coordinator, c.resolver, rel, resolveClusterRef(c.clusterLister, rel))
+}
+
+// pinnedRender returns the pinned render's objects from the store. ok is false
+// (render current source instead) when the Release is not pinned, no store is
+// configured, or the pinned render is not in the store.
+func (c *Controller) pinnedRender(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, bool, error) {
+	p := rel.Pin
+	if p == nil || p.RenderRef == "" || c.renderStore == nil {
+		return nil, false, nil
+	}
+	data, err := c.renderStore.GetRender(ctx, rel.Namespace, rel.Name, p.RenderRef)
+	if errors.Is(err, blobstore.ErrNotFound) {
+		return nil, false, nil // pinned render not stored: fall back to source
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	objs, err := render.ParseManifest(data)
+	if err != nil {
+		return nil, false, fmt.Errorf("parsing pinned render %s: %w", p.RenderRef, err)
+	}
+	return objs, true, nil
 }
 
 // scheduleRecheck schedules the next drift re-check at the Release's sync
