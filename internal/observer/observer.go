@@ -243,10 +243,42 @@ func (c *Controller) diffObjects(ctx context.Context, rel *corev1alpha1.Release,
 	return computeDiff(ctx, dyn, mapper, objects)
 }
 
-// renderDesired renders the Release's desired objects via the shared helper,
-// resolving the target cluster (best-effort) for the mutation templating context.
+// renderDesired returns the Release's desired objects. When the Release is pinned
+// to a render held in the store, that pinned render IS the desired state — the
+// controller applies it (freeze/rollback), so drift, preview, and default diff must
+// assess against it, not against what source renders now. Otherwise a rolled-back
+// release would report perpetual drift (and, in automatic mode, churn syncs the
+// controller can't resolve). Falls back to rendering current source when there is
+// no pin, no store, or the pinned render isn't stored.
 func (c *Controller) renderDesired(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, error) {
+	if objs, ok, err := c.pinnedRender(ctx, rel); err != nil {
+		return nil, err
+	} else if ok {
+		return objs, nil
+	}
 	return renderReleaseObjects(ctx, c.coordinator, c.resolver, rel, resolveClusterRef(c.clusterLister, rel))
+}
+
+// pinnedRender returns the pinned render's objects from the store. ok is false
+// (render current source instead) when the Release is not pinned, no store is
+// configured, or the pinned render is not in the store.
+func (c *Controller) pinnedRender(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, bool, error) {
+	p := rel.Pin
+	if p == nil || p.RenderRef == "" || c.renderStore == nil {
+		return nil, false, nil
+	}
+	data, err := c.renderStore.GetRender(ctx, rel.Namespace, rel.Name, p.RenderRef)
+	if errors.Is(err, blobstore.ErrNotFound) {
+		return nil, false, nil // pinned render not stored: fall back to source
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	objs, err := render.ParseManifest(data)
+	if err != nil {
+		return nil, false, fmt.Errorf("parsing pinned render %s: %w", p.RenderRef, err)
+	}
+	return objs, true, nil
 }
 
 // scheduleRecheck schedules the next drift re-check at the Release's sync
