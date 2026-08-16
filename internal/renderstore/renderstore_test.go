@@ -32,6 +32,8 @@ const (
 	ns   = "default"
 	name = "podinfo"
 	refA = "sha256:a"
+	refB = "sha256:b"
+	refC = "sha256:c"
 )
 
 func at(sec int) metav1.Time {
@@ -151,6 +153,90 @@ func TestAppendHistoryValidation(t *testing.T) {
 	}
 	if err := s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: refA}); err == nil {
 		t.Errorf("AppendHistory with zero syncedAt: want error")
+	}
+}
+
+// seedDeploys stores three renders (a,b,c) with blobs and history at t=10,20,30.
+func seedDeploys(t *testing.T, s *renderstore.RenderStore) {
+	t.Helper()
+	ctx := context.Background()
+	for i, ref := range []string{refA, refB, refC} {
+		if err := s.PutRender(ctx, ns, name, ref, []byte(ref)); err != nil {
+			t.Fatalf("PutRender %s: %v", ref, err)
+		}
+		if err := s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: ref, SyncedAt: at(10 * (i + 1))}); err != nil {
+			t.Fatalf("AppendHistory %s: %v", ref, err)
+		}
+	}
+}
+
+func has(t *testing.T, s *renderstore.RenderStore, ref string) bool {
+	t.Helper()
+	ok, err := s.HasRender(context.Background(), ns, name, ref)
+	if err != nil {
+		t.Fatalf("HasRender %s: %v", ref, err)
+	}
+	return ok
+}
+
+// TestGC prunes history to the newest keepHistory entries and reclaims the blobs
+// no longer referenced.
+func TestGC(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	seedDeploys(t, s)
+
+	if err := s.GC(ctx, ns, name, 2); err != nil {
+		t.Fatalf("GC: %v", err)
+	}
+	hist, _ := s.History(ctx, ns, name)
+	if len(hist) != 2 || hist[0].RenderRef != refB || hist[1].RenderRef != refC {
+		t.Fatalf("history after GC = %v, want [b c]", hist)
+	}
+	if has(t, s, refA) {
+		t.Error("blob a should be reclaimed (pruned from history, not protected)")
+	}
+	if !has(t, s, refB) || !has(t, s, refC) {
+		t.Error("blobs b and c should survive (still in history)")
+	}
+}
+
+// TestGCProtectsRefs keeps a protected render's blob even when its history entry
+// is pruned — e.g. the current render or an active rollback pin.
+func TestGCProtectsRefs(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	seedDeploys(t, s)
+
+	// Keep only the newest (c); protect a (pruned from history) explicitly.
+	if err := s.GC(ctx, ns, name, 1, refA); err != nil {
+		t.Fatalf("GC: %v", err)
+	}
+	if !has(t, s, refA) {
+		t.Error("protected blob a should survive despite history prune")
+	}
+	if has(t, s, refB) {
+		t.Error("blob b should be reclaimed (pruned and unprotected)")
+	}
+	if !has(t, s, refC) {
+		t.Error("blob c should survive (newest history entry)")
+	}
+}
+
+// TestGCKeepZeroRetainsAll confirms keepHistory<=0 disables GC entirely.
+func TestGCKeepZeroRetainsAll(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	seedDeploys(t, s)
+
+	if err := s.GC(ctx, ns, name, 0); err != nil {
+		t.Fatalf("GC: %v", err)
+	}
+	if hist, _ := s.History(ctx, ns, name); len(hist) != 3 {
+		t.Errorf("history = %d entries, want 3 (GC disabled)", len(hist))
+	}
+	if !has(t, s, refA) || !has(t, s, refB) || !has(t, s, refC) {
+		t.Error("all blobs should survive when GC is disabled")
 	}
 }
 

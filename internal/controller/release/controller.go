@@ -511,6 +511,15 @@ func (c *Controller) finalize(ctx context.Context, key string, rel *corev1alpha1
 		return fmt.Errorf("deleting inventory for %s/%s: %w", rel.Namespace, rel.Name, err)
 	}
 
+	// Drop the release's render store prefix (all blobs + history) before removing
+	// the finalizer, so a failure retries rather than leaking storage after the
+	// Release is gone. No-op when no render store is configured.
+	if c.renderStore != nil {
+		if err := c.renderStore.DeleteRelease(ctx, rel.Namespace, rel.Name); err != nil {
+			return fmt.Errorf("deleting render store for %s/%s: %w", rel.Namespace, rel.Name, err)
+		}
+	}
+
 	// remove finalizer
 	updated := rel.DeepCopy()
 	updated.Finalizers = slices.DeleteFunc(rel.Finalizers, func(finalizer string) bool {
@@ -1092,6 +1101,7 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	attempt.SyncedResources = int64(len(applied))
 
 	c.recordHistory(ctx, rel, now, attempt)
+	c.runGC(ctx, rel, attempt.RenderRef)
 
 	outcome := reconcileOutcome{
 		ready:   true,
@@ -1321,6 +1331,34 @@ func (c *Controller) recordHistory(ctx context.Context, rel *corev1alpha1.Releas
 		Summary:   renderSummary(attempt.ResolvedSource),
 	}); err != nil {
 		klog.ErrorS(err, "appending render history", "release", rel.Name, "renderRef", attempt.RenderRef)
+	}
+}
+
+// runGC applies the Release's retention policy to its render store: prune the
+// history log to keepHistory entries and reclaim unreferenced blobs. Best-effort
+// (logged, never fails a reconcile). protectedRefs shields renders not in the
+// pruned log that must survive: the just-applied render, the prior current/attempted
+// pointers (covering the persist→commit window), and any active rollback pin.
+func (c *Controller) runGC(ctx context.Context, rel *corev1alpha1.Release, currentRef string) {
+	if c.renderStore == nil {
+		return
+	}
+	keep := rel.Spec.RetentionPolicy.KeepHistory
+	if keep <= 0 {
+		return // retention disabled
+	}
+	protected := []string{currentRef}
+	if ls := rel.Status.LastSuccessful; ls != nil {
+		protected = append(protected, ls.RenderRef)
+	}
+	if la := rel.Status.LastAttempted; la != nil {
+		protected = append(protected, la.RenderRef)
+	}
+	if p := rel.Pin; p != nil {
+		protected = append(protected, p.RenderRef)
+	}
+	if err := c.renderStore.GC(ctx, rel.Namespace, rel.Name, keep, protected...); err != nil {
+		klog.ErrorS(err, "render store GC", "release", rel.Name)
 	}
 }
 

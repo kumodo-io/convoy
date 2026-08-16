@@ -76,6 +76,10 @@ func historyDir(namespace, name string) string {
 	return namespace + "/" + name + "/history/"
 }
 
+func blobsDir(namespace, name string) string {
+	return namespace + "/" + name + "/blobs/"
+}
+
 func historyKey(namespace, name, renderRef string, syncedAt metav1.Time) string {
 	ts := syncedAt.UTC().Format(historyTimeLayout)
 	return historyDir(namespace, name) + ts + "-" + renderRef + ".json"
@@ -174,6 +178,89 @@ func (s *RenderStore) History(ctx context.Context, namespace, name string) ([]Hi
 		entries = append(entries, e)
 	}
 	return entries, nil
+}
+
+// GC applies retention to a release: it prunes the history log to the newest
+// keepHistory entries, then deletes any blob no longer referenced by a surviving
+// history entry or by one of protectedRefs. protectedRefs shields renders that
+// aren't in the (pruned) log but must survive — the current/last-attempted
+// render (covering the persist→commit window) and any active rollback pin.
+//
+// keepHistory <= 0 means "retain all history" (GC is effectively disabled); no
+// blobs are reclaimed either, since every render stays referenced.
+func (s *RenderStore) GC(ctx context.Context, namespace, name string, keepHistory int, protectedRefs ...string) error {
+	if keepHistory <= 0 {
+		return nil
+	}
+	if err := s.pruneHistory(ctx, namespace, name, keepHistory); err != nil {
+		return err
+	}
+	// referenced = surviving history refs ∪ protectedRefs.
+	refs, err := s.historyRefs(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	referenced := make(map[string]bool, len(refs)+len(protectedRefs))
+	for _, r := range refs {
+		referenced[r] = true
+	}
+	for _, r := range protectedRefs {
+		if r != "" {
+			referenced[r] = true
+		}
+	}
+	return s.gcBlobs(ctx, namespace, name, referenced)
+}
+
+// pruneHistory deletes all but the newest keep history entries (keys are ordered
+// oldest-first, so the oldest len-keep are removed).
+func (s *RenderStore) pruneHistory(ctx context.Context, namespace, name string, keep int) error {
+	keys, err := s.bs.List(ctx, historyDir(namespace, name))
+	if err != nil {
+		return fmt.Errorf("renderstore: listing history for prune: %w", err)
+	}
+	if len(keys) <= keep {
+		return nil
+	}
+	for _, key := range keys[:len(keys)-keep] {
+		if err := s.bs.Delete(ctx, key); err != nil {
+			return fmt.Errorf("renderstore: pruning history entry %q: %w", key, err)
+		}
+	}
+	return nil
+}
+
+// historyRefs returns the renderRefs of the current history entries (parsed from
+// the keys, no content reads).
+func (s *RenderStore) historyRefs(ctx context.Context, namespace, name string) ([]string, error) {
+	keys, err := s.bs.List(ctx, historyDir(namespace, name))
+	if err != nil {
+		return nil, fmt.Errorf("renderstore: listing history refs: %w", err)
+	}
+	refs := make([]string, 0, len(keys))
+	for _, key := range keys {
+		refs = append(refs, refFromHistoryKey(key))
+	}
+	return refs, nil
+}
+
+// gcBlobs deletes every blob whose renderRef is not in referenced.
+func (s *RenderStore) gcBlobs(ctx context.Context, namespace, name string, referenced map[string]bool) error {
+	keys, err := s.bs.List(ctx, blobsDir(namespace, name))
+	if err != nil {
+		return fmt.Errorf("renderstore: listing blobs for GC: %w", err)
+	}
+	prefix := blobsDir(namespace, name)
+	for _, key := range keys {
+		ref := strings.TrimPrefix(key, prefix)
+		if referenced[ref] {
+			continue
+		}
+		if err := s.bs.Delete(ctx, key); err != nil {
+			return fmt.Errorf("renderstore: GC deleting blob %q: %w", key, err)
+		}
+	}
+	return nil
 }
 
 // DeleteRelease drops a release's entire prefix (blobs + history). Used when a

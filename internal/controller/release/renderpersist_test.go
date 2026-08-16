@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -217,6 +218,65 @@ func TestSyncHandler_RollbackToMissingRenderHolds(t *testing.T) {
 		t.Fatalf("expected status write")
 	} else if s, r := readyReason(got); s != metav1.ConditionFalse || r != conditionReasonPinned {
 		t.Errorf("Ready = %s/%s, want False/Pinned", s, r)
+	}
+}
+
+// TestFinalize_DeletesRenderStore verifies finalizing a Release drops its render
+// store prefix (blobs + history).
+func TestFinalize_DeletesRenderStore(t *testing.T) {
+	rel := deletingRelease(true, false) // keepWorkloads: skip cluster prune
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	ctx := context.Background()
+	_ = c.renderStore.PutRender(ctx, "ns", "r1", "sha256:kept", []byte("x"))
+	_ = c.renderStore.AppendHistory(ctx, "ns", "r1", renderstore.HistoryEntry{RenderRef: "sha256:kept", SyncedAt: metav1.Now()})
+
+	if err := c.syncHandler(ctx, "ns/r1"); err != nil {
+		t.Fatalf("syncHandler (finalize): %v", err)
+	}
+	if ok, _ := c.renderStore.HasRender(ctx, "ns", "r1", "sha256:kept"); ok {
+		t.Error("render blob survived finalize")
+	}
+	if hist, _ := c.renderStore.History(ctx, "ns", "r1"); len(hist) != 0 {
+		t.Errorf("history survived finalize: %d entries", len(hist))
+	}
+}
+
+// TestSyncHandler_GCPrunesHistoryOnReconcile verifies a successful reconcile
+// applies the retention policy: older history entries beyond keepHistory (and
+// their blobs) are reclaimed.
+func TestSyncHandler_GCPrunesHistoryOnReconcile(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	rel.Spec.RetentionPolicy.KeepHistory = 1
+	c, _ := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	ctx := context.Background()
+	// Two older deploys already in the log (before the fixed reconcile time).
+	old := metav1.NewTime(time.Date(2026, 6, 24, 12, 0, 0, 0, time.UTC))
+	for _, ref := range []string{"sha256:old1", "sha256:old2"} {
+		_ = c.renderStore.PutRender(ctx, "ns", "r1", ref, []byte(ref))
+		_ = c.renderStore.AppendHistory(ctx, "ns", "r1", renderstore.HistoryEntry{RenderRef: ref, SyncedAt: old})
+	}
+
+	if err := c.syncHandler(ctx, "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+
+	// keepHistory=1 → only the newest entry (this reconcile's render) survives.
+	hist, _ := c.renderStore.History(ctx, "ns", "r1")
+	if len(hist) != 1 {
+		t.Fatalf("history = %d entries after GC, want 1", len(hist))
+	}
+	if ok, _ := c.renderStore.HasRender(ctx, "ns", "r1", "sha256:old1"); ok {
+		t.Error("pruned blob old1 should be reclaimed")
 	}
 }
 
