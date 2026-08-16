@@ -77,7 +77,7 @@ The **object store is the authoritative, self-contained history** — it answers
 - **History for a release** → `list <ns>/<name>/history/`.
 - **Ordered timeline / track changes** → `history/` keys are timestamp-prefixed, so the listing *is* chronological; each entry carries `syncedAt` and a summary of what changed. Ordering needs no counter and nothing in etcd; same-instant ties break on the `renderRef` suffix.
 - **Historical diff** → fetch a stored `blobs/<renderRef>` and diff it against the live cluster (`/diff?render=<ref>`) — "what rolling back to this render would change".
-- **Rollback** → pin to a past `renderRef`; the controller fetches its `blobs/<renderRef>`, applies it, and appends a new `history/` entry for the rollback deploy.
+- **Rollback** → pin to a past `renderRef`; the controller fetches its `blobs/<renderRef>`, applies it, and appends a new `history/` entry for the rollback deploy. While pinned, the observer treats the **pinned render as the desired state** for drift, preview, and default diff (loading it from the store) — so a correctly-applied rollback reads *in-sync*, and self-heal restores the pinned render rather than fighting it with the current source render.
 
 **etcd holds only current state** — `status.lastSuccessful.renderRef` (what is deployed *now*), like any Kubernetes object. It never holds a history list. The two prefixes serve two access patterns: `blobs/` is fetch-by-`renderRef` (the current pointer, a rollback target) and dedups identical content; `history/` is the ordered log of small metadata records. This is the container-registry shape — blobs by digest plus a per-repository tag/manifest log.
 
