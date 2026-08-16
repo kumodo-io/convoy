@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
@@ -14,7 +15,10 @@ import (
 	cliclient "github.com/kumodo-io/convoy/internal/cli/client"
 	"github.com/kumodo-io/convoy/internal/diffresult"
 	"github.com/kumodo-io/convoy/internal/healthresult"
+	"github.com/kumodo-io/convoy/internal/renderstore"
 )
+
+const outputJSON = "json"
 
 // Command groups the release-scoped verbs (pin/unpin/sync). Grouping by
 // resource keeps a resource's operations together and leaves room for sibling
@@ -31,6 +35,7 @@ func Command(f *cliclient.ConfigFlags) *cobra.Command {
 		newReleasePreviewCmd(f),
 		newReleaseDiffCmd(f),
 		newReleaseHealthCmd(f),
+		newReleaseHistoryCmd(f),
 		newReleaseMutationsCmd(f),
 		newReleaseLifecycleCmd(f),
 	)
@@ -134,7 +139,7 @@ func newReleasePinCmd(f *cliclient.ConfigFlags) *cobra.Command {
 	var renderRef string
 	cmd := &cobra.Command{
 		Use:   "pin <name>",
-		Short: "Pin a release to a render, withholding newer renders until unpinned",
+		Short: "Pin a release to a render: freeze the current one, or roll back to a past --render-ref, until unpinned",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, namespace, err := f.Client()
@@ -195,6 +200,7 @@ func newReleasePreviewCmd(f *cliclient.ConfigFlags) *cobra.Command {
 
 func newReleaseDiffCmd(f *cliclient.ConfigFlags) *cobra.Command {
 	var output string
+	var renderRef string
 	cmd := &cobra.Command{
 		Use:   "diff <name>",
 		Short: "Show how a release's live state differs from its desired render",
@@ -204,7 +210,26 @@ func newReleaseDiffCmd(f *cliclient.ConfigFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runDiff(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], output)
+			return runDiff(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], renderRef, output)
+		},
+	}
+	cmd.Flags().StringVarP(&output, "output", "o", "", "output format: empty for human-readable, or 'json' for the raw result")
+	cmd.Flags().StringVar(&renderRef, "render", "", "diff a stored (past) render against live instead of the current source render (what rolling back to it would change)")
+	return cmd
+}
+
+func newReleaseHistoryCmd(f *cliclient.ConfigFlags) *cobra.Command {
+	var output string
+	cmd := &cobra.Command{
+		Use:   "history <name>",
+		Short: "Show a release's ordered deploy history (requires a render store)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, namespace, err := f.Client()
+			if err != nil {
+				return err
+			}
+			return runHistory(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], output)
 		},
 	}
 	cmd.Flags().StringVarP(&output, "output", "o", "", "output format: empty for human-readable, or 'json' for the raw result")
@@ -283,12 +308,12 @@ func runPreview(ctx context.Context, out io.Writer, client cliclient.Client, nam
 	return nil
 }
 
-func runDiff(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, output string) error {
-	raw, err := client.Diff(ctx, namespace, name)
+func runDiff(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, renderRef, output string) error {
+	raw, err := client.Diff(ctx, namespace, name, renderRef)
 	if err != nil {
 		return err
 	}
-	if output == "json" {
+	if output == outputJSON {
 		_, err := out.Write(raw)
 		return err
 	}
@@ -300,12 +325,29 @@ func runDiff(ctx context.Context, out io.Writer, client cliclient.Client, namesp
 	return renderDiff(out, &result)
 }
 
+func runHistory(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, output string) error {
+	raw, err := client.History(ctx, namespace, name)
+	if err != nil {
+		return err
+	}
+	if output == outputJSON {
+		_, err := out.Write(raw)
+		return err
+	}
+
+	var entries []renderstore.HistoryEntry
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return fmt.Errorf("decoding history: %w", err)
+	}
+	return renderHistory(out, entries)
+}
+
 func runHealth(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name, output string) error {
 	raw, err := client.Health(ctx, namespace, name)
 	if err != nil {
 		return err
 	}
-	if output == "json" {
+	if output == outputJSON {
 		_, err := out.Write(raw)
 		return err
 	}
@@ -482,6 +524,22 @@ func renderDiff(out io.Writer, result *diffresult.Result) error {
 			if _, err := fmt.Fprintln(out, line); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// renderHistory writes the deploy log (newest first) one line per entry:
+// syncedAt, renderRef, and the resolved-source summary.
+func renderHistory(out io.Writer, entries []renderstore.HistoryEntry) error {
+	if len(entries) == 0 {
+		_, err := fmt.Fprintln(out, "no deploy history")
+		return err
+	}
+	for _, e := range entries {
+		if _, err := fmt.Fprintf(out, "%s\t%s\t%s\n",
+			e.SyncedAt.UTC().Format(time.RFC3339), e.RenderRef, e.Summary); err != nil {
+			return err
 		}
 	}
 	return nil

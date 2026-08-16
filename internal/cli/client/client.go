@@ -42,11 +42,15 @@ type Client interface {
 	// YAML) via the /preview subresource.
 	Preview(ctx context.Context, namespace, name string) ([]byte, error)
 	// Diff returns the structured per-object drift for a Release (JSON) via the
-	// /diff subresource.
-	Diff(ctx context.Context, namespace, name string) ([]byte, error)
+	// /diff subresource. A non-empty renderRef diffs that stored (past) render
+	// against live instead of the current source render.
+	Diff(ctx context.Context, namespace, name, renderRef string) ([]byte, error)
 	// Health returns the per-object health for a Release (JSON) via the /health
 	// subresource.
 	Health(ctx context.Context, namespace, name string) ([]byte, error)
+	// History returns the ordered deploy log for a Release (JSON, newest first) via
+	// the /history subresource.
+	History(ctx context.Context, namespace, name string) ([]byte, error)
 	// SetMutations replaces the Release's mutation pipeline via the /mutations
 	// subresource.
 	SetMutations(ctx context.Context, namespace, name string, mutations []corev1alpha1.ReleaseMutation) (*corev1alpha1.Release, error)
@@ -128,13 +132,28 @@ func (c *restClient) Preview(ctx context.Context, namespace, name string) ([]byt
 }
 
 // Diff GETs the /diff subresource (proxied to the observer); the response body
-// is a diffresult.Result as JSON.
-func (c *restClient) Diff(ctx context.Context, namespace, name string) ([]byte, error) {
+// is a diffresult.Result as JSON. A non-empty renderRef is forwarded as ?render=,
+// selecting a historical diff (that stored render vs. live).
+func (c *restClient) Diff(ctx context.Context, namespace, name, renderRef string) ([]byte, error) {
+	req := c.rc.Get().
+		Namespace(namespace).
+		Resource("releases").
+		Name(name).
+		SubResource("diff")
+	if renderRef != "" {
+		req = req.Param("render", renderRef)
+	}
+	return req.Do(ctx).Raw()
+}
+
+// History GETs the /history subresource (proxied to the observer); the response
+// body is a JSON array of deploy-log entries, newest first.
+func (c *restClient) History(ctx context.Context, namespace, name string) ([]byte, error) {
 	return c.rc.Get().
 		Namespace(namespace).
 		Resource("releases").
 		Name(name).
-		SubResource("diff").
+		SubResource("history").
 		Do(ctx).
 		Raw()
 }
