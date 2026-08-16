@@ -1313,12 +1313,13 @@ func (c *Controller) persistRender(ctx context.Context, namespace, name, renderR
 	return nil
 }
 
-// recordHistory appends a deploy-log entry when the render differs from the last
-// logged deploy. It compares against the last *history* entry, not
-// status.lastSuccessful: the latter lags in the informer cache, so several quick
-// reconciles of one deploy (e.g. lifecycle-hook phases) would each still see the
-// pre-write status and append duplicate entries. The store is read-after-write
-// consistent, so the last history entry always reflects a preceding append.
+// recordHistory logs a render the first time it is deployed. The deploy log is a
+// set of *distinct* renders (each renderRef appears once), so it appends only when
+// the render is not already in the log. This suppresses two kinds of duplicate:
+// several quick reconciles of one deploy (status.lastSuccessful lags in the informer
+// cache, so we can't rely on it — the store is read-after-write consistent and is
+// the source of truth), and a rollback (re-applying a render already in history).
+// The rollback itself remains auditable via status.pin (pinnedAt/pinnedBy).
 //
 // Best-effort: the render blob is already persisted (the rollback target is safe),
 // so a failed append is logged rather than failing an otherwise-successful deploy
@@ -1327,12 +1328,12 @@ func (c *Controller) recordHistory(ctx context.Context, rel *corev1alpha1.Releas
 	if c.renderStore == nil {
 		return
 	}
-	last, err := c.renderStore.LastHistoryRef(ctx, rel.Namespace, rel.Name)
+	exists, err := c.renderStore.HasHistoryRef(ctx, rel.Namespace, rel.Name, attempt.RenderRef)
 	if err != nil {
-		klog.ErrorS(err, "reading last render history", "release", rel.Name)
+		klog.ErrorS(err, "reading render history", "release", rel.Name)
 		return
 	}
-	if attempt.RenderRef == last {
+	if exists {
 		return
 	}
 	if err := c.renderStore.AppendHistory(ctx, rel.Namespace, rel.Name, renderstore.HistoryEntry{

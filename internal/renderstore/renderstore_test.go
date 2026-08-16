@@ -116,22 +116,24 @@ func TestHistoryOrderedChronologically(t *testing.T) {
 	}
 }
 
-// TestLastHistoryRef backs the controller's duplicate-suppression: it must report
-// the most recent entry's renderRef (parsed from the key), or "" for an empty log.
-func TestLastHistoryRef(t *testing.T) {
+// TestHasHistoryRef backs the controller's duplicate-suppression: it reports
+// whether a render is anywhere in the log, so a rollback to a non-latest render is
+// not re-logged.
+func TestHasHistoryRef(t *testing.T) {
 	ctx := context.Background()
 	s := newStore()
-	if ref, err := s.LastHistoryRef(ctx, ns, name); err != nil || ref != "" {
-		t.Fatalf("LastHistoryRef on empty log = %q,%v; want \"\",nil", ref, err)
+	if ok, err := s.HasHistoryRef(ctx, ns, name, refA); err != nil || ok {
+		t.Fatalf("HasHistoryRef on empty log = %v,%v; want false,nil", ok, err)
 	}
 	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: refA, SyncedAt: at(10)})
-	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: "sha256:b", SyncedAt: at(20)})
-	ref, err := s.LastHistoryRef(ctx, ns, name)
-	if err != nil {
-		t.Fatalf("LastHistoryRef: %v", err)
+	_ = s.AppendHistory(ctx, ns, name, renderstore.HistoryEntry{RenderRef: refB, SyncedAt: at(20)})
+
+	// refA is present but NOT the most recent — must still report true.
+	if ok, err := s.HasHistoryRef(ctx, ns, name, refA); err != nil || !ok {
+		t.Errorf("HasHistoryRef(refA) = %v,%v; want true,nil (present, non-latest)", ok, err)
 	}
-	if ref != "sha256:b" {
-		t.Errorf("LastHistoryRef = %q, want sha256:b (most recent)", ref)
+	if ok, _ := s.HasHistoryRef(ctx, ns, name, refC); ok {
+		t.Errorf("HasHistoryRef(refC) = true, want false (never logged)")
 	}
 }
 

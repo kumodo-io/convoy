@@ -140,21 +140,24 @@ func (s *RenderStore) HistoryCount(ctx context.Context, namespace, name string) 
 	return len(keys), nil
 }
 
-// LastHistoryRef returns the renderRef of the most recent history entry, or ""
-// if the log is empty. It reads only the key list (the renderRef is encoded in
-// each key), so it is cheap enough to call on every deploy to suppress duplicate
-// consecutive entries — e.g. a re-reconcile whose view of status.lastSuccessful
-// still lags in the informer cache. The store is read-after-write consistent, so
-// it reflects an AppendHistory from an immediately-preceding reconcile.
-func (s *RenderStore) LastHistoryRef(ctx context.Context, namespace, name string) (string, error) {
-	keys, err := s.bs.List(ctx, historyDir(namespace, name))
+// HasHistoryRef reports whether the deploy log already contains an entry for
+// renderRef. It reads only the key list (the renderRef is encoded in each key),
+// so it is cheap enough to call on every deploy to keep history a set of *distinct*
+// renders: a redeploy of an already-logged render (a rollback, or a re-reconcile
+// whose view of status still lags in the informer cache) appends nothing. The
+// store is read-after-write consistent, so it reflects an immediately-preceding
+// AppendHistory.
+func (s *RenderStore) HasHistoryRef(ctx context.Context, namespace, name, renderRef string) (bool, error) {
+	refs, err := s.historyRefs(ctx, namespace, name)
 	if err != nil {
-		return "", fmt.Errorf("renderstore: listing history for %s/%s: %w", namespace, name, err)
+		return false, err
 	}
-	if len(keys) == 0 {
-		return "", nil
+	for _, r := range refs {
+		if r == renderRef {
+			return true, nil
+		}
 	}
-	return refFromHistoryKey(keys[len(keys)-1]), nil
+	return false, nil
 }
 
 // refFromHistoryKey extracts the renderRef from a history key of the form

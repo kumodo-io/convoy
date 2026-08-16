@@ -35,8 +35,9 @@ import (
 )
 
 const (
-	cmFile = "cm.yaml"
-	cmYAML = "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+	cmFile    = "cm.yaml"
+	cmYAML    = "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n"
+	oldCMName = "old-cm"
 )
 
 // TestSyncHandler_PersistsRenderAndHistory verifies persist-then-apply: a
@@ -80,7 +81,7 @@ func TestSyncHandler_PersistsRenderAndHistory(t *testing.T) {
 	if err := json.Unmarshal(raw, &objs); err != nil {
 		t.Fatalf("blob is not a JSON manifest array: %v", err)
 	}
-	if len(objs) != 1 || objs[0]["kind"] != "ConfigMap" {
+	if len(objs) != 1 || objs[0]["kind"] != configMapKind {
 		t.Errorf("blob manifest = %v, want one ConfigMap", objs)
 	}
 
@@ -176,8 +177,8 @@ func TestSyncHandler_RollbackAppliesStoredRender(t *testing.T) {
 
 	// Seed the store with a *different* past render (a ConfigMap named "old-cm").
 	oldCM := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "v1", "kind": "ConfigMap",
-		"metadata": map[string]any{"name": "old-cm", "namespace": "ns"},
+		"apiVersion": "v1", "kind": configMapKind,
+		"metadata": map[string]any{"name": oldCMName, "namespace": "ns"},
 	}}
 	manifest, err := render.MarshalManifest([]*unstructured.Unstructured{oldCM})
 	if err != nil {
@@ -194,8 +195,47 @@ func TestSyncHandler_RollbackAppliesStoredRender(t *testing.T) {
 	if len(deployer.waveCalls) != 1 || len(deployer.waveCalls[0]) != 1 {
 		t.Fatalf("expected one applied object, got waves %v", deployer.waveCalls)
 	}
-	if got := deployer.waveCalls[0][0].GetName(); got != "old-cm" {
-		t.Errorf("applied object = %q, want the stored render's %q (rollback)", got, "old-cm")
+	if got := deployer.waveCalls[0][0].GetName(); got != oldCMName {
+		t.Errorf("applied object = %q, want the stored render's %q (rollback)", got, oldCMName)
+	}
+}
+
+// TestSyncHandler_RollbackDoesNotDuplicateHistory verifies that rolling back to a
+// render already in the deploy log does not append a second entry for it — history
+// is a set of distinct renders.
+func TestSyncHandler_RollbackDoesNotDuplicateHistory(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	const rollbackRef = "sha256:rollback"
+	rel.Pin = new(corev1alpha1.ReleasePin{RenderRef: rollbackRef})
+	c, _ := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	ctx := context.Background()
+	oldCM := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": configMapKind,
+		"metadata": map[string]any{"name": oldCMName, "namespace": "ns"},
+	}}
+	manifest, _ := render.MarshalManifest([]*unstructured.Unstructured{oldCM})
+	_ = c.renderStore.PutRender(ctx, "ns", "r1", rollbackRef, manifest)
+	// The rollback target was deployed before, so it already has a history entry.
+	_ = c.renderStore.AppendHistory(ctx, "ns", "r1",
+		renderstore.HistoryEntry{RenderRef: rollbackRef, SyncedAt: metav1.NewTime(time.Date(2026, 6, 24, 12, 0, 0, 0, time.UTC))})
+
+	if err := c.syncHandler(ctx, "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	hist, _ := c.renderStore.History(ctx, "ns", "r1")
+	if len(hist) != 1 {
+		t.Fatalf("history has %d entries after rollback, want 1 (no duplicate for a re-deployed render)", len(hist))
+	}
+	if hist[0].RenderRef != rollbackRef {
+		t.Errorf("history entry = %s, want the rollback ref %s", hist[0].RenderRef, rollbackRef)
 	}
 }
 
