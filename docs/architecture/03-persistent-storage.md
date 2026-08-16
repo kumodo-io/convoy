@@ -1,6 +1,6 @@
 # Persistent Storage
 
-> **Status: write path implemented; read features pending.** The durable backend is built (`internal/blobstore`, `internal/renderstore`) and wired behind `--render-store-url` (a [gocloud.dev/blob](https://gocloud.dev) URL — `s3://`, `gs://`, `azblob://`, `file://`, `mem://`). When set, the release controller **persists each render before applying it (persist-then-apply)** and appends an ordered deploy-log entry, so renders and history are now durable. Still **pending** (slices 5–6): surfacing them — the `/history` subresource, enabling **rollback** in `/pin` validation, **diff against a previous render** in the observer, and **GC/retention** (`keepHistory` + prefix-delete on finalize). Source artifacts remain in the in-process cache (repopulated on fetch); only renders are persisted. This document specifies the interface and semantics; the concrete backend is gocloud, mocked at the `BlobStore` seam in tests.
+> **Status: implemented.** The durable backend (`internal/blobstore`, `internal/renderstore`) is wired behind `--render-store-url` (a [gocloud.dev/blob](https://gocloud.dev) URL — `s3://`, `gs://`, `azblob://`, `file://`, `mem://`) on the **controller-manager** (writes) and the **observer** (reads). The controller **persists each render before applying it (persist-then-apply)** and appends an ordered deploy log; the read/rollback features are live: **`/history`** and **historical `/diff`** (a stored render vs. live) served by the observer, **rollback** via `/pin` (the apiserver allows the pin; the controller validates the target against the store and applies the stored render), and **GC/retention** (`keepHistory` + reference-aware blob reclaim on reconcile, whole-prefix delete on finalize). The **apiserver holds no store** — it proxies `/history` and `/diff` to the observer. Source artifacts remain in the in-process cache (repopulated on fetch); only renders are persisted. The concrete backend is gocloud, mocked at the `BlobStore` seam in tests.
 
 ## Why storage, and why so little of it
 
@@ -23,7 +23,7 @@ Two consequences settle the shape of this design:
 
 ## What storage gates (and what it doesn't)
 
-A persistent backend flips exactly one thing — whether a render store is configured — which ungates the operations that need a durable record of a *past* render. Everything else works identically with or without it. (The write path — persist-then-apply and the history log — is implemented; the read features in the right-hand column are slice 5, still pending.)
+A persistent backend flips exactly one thing — whether a render store is configured — which ungates the operations that need a durable record of a *past* render. Everything else works identically with or without it. (Both columns are implemented; the right-hand features simply require `--render-store-url` to be set.)
 
 | Works with the in-memory store                                 | Needs a persistent store                                     |
 |----------------------------------------------------------------|--------------------------------------------------------------|
@@ -49,8 +49,8 @@ type BlobStore interface {
 ```
 
 - **Backends:** an in-process `NewMemory()` (dev / tests / the mock double) and a gocloud-backed impl opened from a URL (`blobstore.Open(ctx, url)`) — see [Configuration & credentials](#configuration--credentials). gocloud is the *only* place a concrete cloud SDK is referenced; everything above `BlobStore` mocks it. Anything gocloud can't serve is just another `BlobStore` impl.
-- **`RenderStore`** (`internal/renderstore`) layers the render/history semantics over a `BlobStore`, keyed by `(namespace, name, renderRef)`: `PutRender` / `GetRender` / `HasRender` (rollback validation), and `AppendHistory` / `History` / `LastHistoryRef` (the ordered deploy log), plus `DeleteRelease` (drop a release's prefix). It is unit-tested against `NewMemory()` — never a real cloud.
-- **Gating is by presence, not a capability method.** A component with a render store configured (non-nil) persists and can serve the time-travel features; without one it behaves exactly as before. There is no `PersistsRenders()` method. (Wiring the read features to check the store and reject when absent is slice 5 — pending.)
+- **`RenderStore`** (`internal/renderstore`) layers the render/history semantics over a `BlobStore`, keyed by `(namespace, name, renderRef)`: `PutRender` / `GetRender` / `HasRender` (rollback validation), `AppendHistory` / `History` / `LastHistoryRef` (the ordered deploy log), `GC` (retention + reference-aware blob reclaim), and `DeleteRelease` (drop a release's prefix). It is unit-tested against `NewMemory()` — never a real cloud.
+- **Gating is by presence, not a capability method.** A component with a render store configured (non-nil) persists and serves the time-travel features; without one it behaves exactly as before. There is no `PersistsRenders()` method. A read feature invoked with no store configured returns `ServiceUnavailable`.
 
 ## Object layout & keying
 
@@ -76,8 +76,8 @@ The **object store is the authoritative, self-contained history** — it answers
 
 - **History for a release** → `list <ns>/<name>/history/`.
 - **Ordered timeline / track changes** → `history/` keys are timestamp-prefixed, so the listing *is* chronological; each entry carries `syncedAt` and a summary of what changed. Ordering needs no counter and nothing in etcd; same-instant ties break on the `renderRef` suffix.
-- **Historical diff** → fetch two entries' `blobs/<renderRef>` and diff.
-- **Rollback** → fetch an old entry's `blobs/<renderRef>`, apply it, and append a new `history/` entry for the rollback event.
+- **Historical diff** → fetch a stored `blobs/<renderRef>` and diff it against the live cluster (`/diff?render=<ref>`) — "what rolling back to this render would change".
+- **Rollback** → pin to a past `renderRef`; the controller fetches its `blobs/<renderRef>`, applies it, and appends a new `history/` entry for the rollback deploy.
 
 **etcd holds only current state** — `status.lastSuccessful.renderRef` (what is deployed *now*), like any Kubernetes object. It never holds a history list. The two prefixes serve two access patterns: `blobs/` is fetch-by-`renderRef` (the current pointer, a rollback target) and dedups identical content; `history/` is the ordered log of small metadata records. This is the container-registry shape — blobs by digest plus a per-repository tag/manifest log.
 
@@ -98,16 +98,15 @@ Every failure point stays consistent under level-triggered reconciliation:
 - **Apply (3) fails** → the blob is already stored and referenced by `status.lastAttempted` (so it is not orphaned); the failure is recorded; retry re-applies (idempotent persist + idempotent SSA).
 - **Commit (4) fails after apply** → the cluster has the render and the blob exists; the next reconcile re-renders (same `renderRef`), re-persists (no-op), re-applies (no-op), and re-commits. Eventually consistent, never inconsistent.
 
-Because the blob is written in step 2 but only referenced — by the current pointer (`status.lastAttempted`/`lastSuccessful.renderRef`) or a `history/` entry — from step 4, GC must not reap a blob during that window; the GC grace window below covers it.
+Because the blob is written in step 2 but only referenced — by the current pointer (`status.lastAttempted`/`lastSuccessful.renderRef`) or a `history/` entry — from step 4, GC must not reap a blob during that window. GC covers it by **reference protection** rather than a timer: it always protects the current render plus `status.lastAttempted`/`lastSuccessful.renderRef` (and any active pin), so a just-persisted-not-yet-committed blob is never eligible (see [History & retention](#history--retention)).
 
 ## History & retention
 
-**History lives in the store** (implemented) — the release's `history/` prefix is an ordered log of deploy events, one small object each, appended on change. Depth is limited only by retention, not by any etcd object size — etcd carries just the current `renderRef` pointer.
+**History lives in the store** — the release's `history/` prefix is an ordered log of deploy events, one small object each, appended on change. Depth is limited only by retention, not by any etcd object size — etcd carries just the current `renderRef` pointer.
 
-> **Retention & GC are planned (slice 6, not built).** The `spec.retentionPolicy.keepHistory` field exists on the API but is **not yet enforced**: history and blobs currently accumulate. The reclaimer below is the design:
-
-- **Per-release, reference-aware GC.** For each release, list `<ns>/<name>/history/`, keep the newest `keepHistory` entries, delete the rest; then delete any `blobs/<renderRef>` no longer referenced by a surviving `history/` entry or the current pointer, **older than a grace window** (e.g. 1h — this also covers the persist→commit gap above). Deleting a Release drops its whole `<ns>/<name>/` prefix via `RenderStore.DeleteRelease` — one operation, no bucket-wide sweep (the method exists; wiring it into the finalizer is part of this slice).
-- **Partitioned by ownership, no global runner.** GC runs on every replica but each reclaims only the Releases in the clusters it owns (see [Sharding](04-sharding.md)) — exclusive ownership means it cannot race itself, so no leader is needed.
+- **Per-release, reference-aware GC** (implemented — `RenderStore.GC`). On each successful reconcile the controller prunes `<ns>/<name>/history/` to the newest `spec.retentionPolicy.keepHistory` entries, then deletes any `blobs/<renderRef>` not referenced by a surviving `history/` entry or by a **protected ref**. Protected refs are the render just applied, `status.lastSuccessful`/`lastAttempted.renderRef`, and any active pin — so the current render, the persist→commit window, and a rollback target are never reclaimed (this replaces a time-based grace window: protection is by reference, not clock). `keepHistory <= 0` disables GC (retain everything).
+- **Deleting a Release** drops its whole `<ns>/<name>/` prefix via `RenderStore.DeleteRelease`, wired into the finalizer (alongside the inventory delete, before the finalizer is removed) — one operation, no bucket-wide sweep.
+- **Partitioned by ownership, no global runner.** GC piggybacks on reconcile, which runs only for the Releases in the clusters a replica owns (see [Sharding](04-sharding.md)) — exclusive ownership means it cannot race itself, so no leader is needed.
 - Object-store **lifecycle rules are a backstop only** — time-based expiry can't be reference-aware and would happily delete a still-pinned render, so it can never be the primary reclaimer.
 
 ## Configuration & credentials
@@ -152,16 +151,17 @@ Either way, credentials are wired at the pod — env vars, a mounted file, or th
 ServiceAccount identity — and never passed to convoy as flags or embedded in
 `--render-store-url`.
 
-**Every component that opens the store needs this access.** Today that is the
-**controller-manager** (the write path — the only store consumer wired so far). When
-the read features land (`/history`, rollback validation, historical `/diff`), the
-**observer** and the **aggregated apiserver** open the same bucket too, so the
-identity/credentials must be granted to all three ServiceAccounts — scoped
-least-privilege to the bucket (see [Security](#security)).
+**Two components open the store, and both need this access:** the
+**controller-manager** (persist-then-apply, rollback apply, GC) and the **observer**
+(`/history`, historical `/diff`). Grant the identity/credentials to both their
+ServiceAccounts, scoped least-privilege to the bucket (see [Security](#security)).
+The **aggregated apiserver does not** open the store — it only proxies `/history`
+and `/diff` to the observer and relaxes `/pin` validation for rollback (the
+controller does the store-backed check), so it needs no bucket access.
 
 ## Topology & scaling
 
-The release controller (writes renders, reads them for rollback), the observer (reads past renders for historical diff), and the aggregated apiserver (`/history`, rollback validation) all point at the **same bucket**. Today only the controller is wired (the write path); the observer and apiserver join when the read features land (slice 5). Content-addressed + shared means **no coordination and no separate service** — the store is an in-process library behind the interface. The seam stays clean enough to extract a dedicated `convoy-artifact` service later (a single-writer/caching front, as Flux does) if fleet scale ever demands it, but that is not needed to ship this backend.
+The release controller (writes renders, reads them for rollback + GC) and the observer (reads past renders for `/history` and historical diff) point at the **same bucket**. The aggregated apiserver does not touch the store — it proxies `/history`/`/diff` to the observer and leaves rollback validation to the controller. Content-addressed + shared means **no coordination and no separate service** — the store is an in-process library behind the interface. The seam stays clean enough to extract a dedicated `convoy-artifact` service later (a single-writer/caching front, as Flux does) if fleet scale ever demands it, but that is not needed to ship this backend.
 
 Compute is partitioned by **cluster shard** — see [Sharding & High Availability](04-sharding.md). That model is exclusive-ownership, which is what keeps this backend simple:
 
@@ -189,9 +189,9 @@ Rendered manifests can contain whatever the source produced — including inline
 
 Enabling durable storage is a **configuration switch** (`--render-store-url`), not a migration: content-addressed keys mean a fresh backend simply starts empty and fills as renders happen. Switching backends (or from none) loses nothing that was durable (etcd is untouched); it only changes whether renders survive a restart.
 
-Build order:
+Build order (all done):
 
-1. **(done)** `BlobStore` interface (context + error) + gocloud backend + in-memory backend; opened from `--render-store-url`.
-2. **(done)** `RenderStore` wrapper over `BlobStore`; **persist-then-apply**; store the render bytes keyed by `renderRef` on the release controller's apply path.
-3. **(partly done)** `history/` deploy-log entries are appended on change (best-effort). **Remaining:** un-gate the read features — enable rollback in `/pin` validation, implement the `/history` subresource, and historical `/diff` in the observer — by giving those components the render store and checking for a stored render.
-4. **(remaining)** ownership-partitioned, reference-aware GC with a grace window, `keepHistory` retention, and prefix-delete on finalize.
+1. **(done)** `BlobStore` interface + gocloud backend + in-memory backend; opened from `--render-store-url`.
+2. **(done)** `RenderStore` over `BlobStore`; **persist-then-apply**; store the render bytes keyed by `renderRef` on the release controller's apply path; append `history/` on change (deduped against the last logged entry).
+3. **(done)** Read/rollback features: `/history` and historical `/diff` served by the observer (proxied by the apiserver); rollback via `/pin` — the apiserver allows a past-render pin, the controller validates it against the store and applies the stored render (holding with `Pinned` if it is absent).
+4. **(done)** Ownership-partitioned, reference-aware GC (`keepHistory` retention + protected-ref blob reclaim) on reconcile, and whole-prefix delete on finalize.
