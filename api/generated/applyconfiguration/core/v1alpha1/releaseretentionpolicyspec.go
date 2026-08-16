@@ -23,8 +23,10 @@ package v1alpha1
 //
 // ReleaseRetentionPolicySpec defines the desired state of the release retention policy.
 type ReleaseRetentionPolicySpecApplyConfiguration struct {
-	// KeepHistory defines how many historical (rendered, applied) records to retain in S3.
-	// Drives /history pagination depth and rollback range.
+	// KeepHistory is how many historical (rendered, applied) records to retain in the
+	// render store. It drives /history depth and the rollback range. Unset (nil) uses
+	// a default; an explicit 0 means unlimited (retain all); a positive N keeps the
+	// newest N. The current render is always retained regardless.
 	KeepHistory *int `json:"keepHistory,omitempty"`
 }
 

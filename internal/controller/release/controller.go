@@ -230,6 +230,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		newStatus.LastHandledSyncAt = outcome.handledSyncAt
 	}
 	newStatus.Waves = outcome.waves
+	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
 
 	// Roll up lifecycle-hook progress (status.lifecycle + LifecycleSucceeded) from the
 	// durable ReleaseInventory the gate maintains — controller-owned, parity with waves.
@@ -362,6 +363,15 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 		}
 		statusAC.WithLastSuccessful(ls)
 	}
+	// resolvedRetentionPolicy is controller-owned (it reflects the GC policy this
+	// controller enforces). Assert it explicitly so it doesn't clobber the sibling
+	// observer-owned healthSummary.
+	rp := &corev1alpha1ac.ResolvedRetentionPolicyStatusApplyConfiguration{}
+	if err := jsonRoundTrip(s.ResolvedRetentionPolicy, rp); err != nil {
+		return nil, err
+	}
+	statusAC.WithResolvedRetentionPolicy(rp)
+
 	if s.ReconciledAt != nil {
 		statusAC.WithReconciledAt(*s.ReconciledAt)
 	}
@@ -1334,6 +1344,35 @@ func (c *Controller) recordHistory(ctx context.Context, rel *corev1alpha1.Releas
 	}
 }
 
+// defaultKeepHistory is the retention applied when spec.retentionPolicy.keepHistory
+// is unset (nil): keep the newest N deploys. An explicit 0 means unlimited.
+const defaultKeepHistory = 10
+
+// effectiveKeepHistory resolves the retention policy: nil (unset) ⇒ the default;
+// an explicit value is used as-is (0 ⇒ unlimited, N ⇒ keep the newest N). The
+// resolved value is what status.resolvedRetentionPolicy.keepHistory reports and
+// what GC enforces (GC treats <= 0 as unlimited).
+func effectiveKeepHistory(rel *corev1alpha1.Release) int {
+	if kh := rel.Spec.RetentionPolicy.KeepHistory; kh != nil {
+		return *kh
+	}
+	return defaultKeepHistory
+}
+
+// resolvedRetentionStatus reports the effective retention policy and the actual
+// number of history entries currently in the store (0 when no store is configured).
+func (c *Controller) resolvedRetentionStatus(ctx context.Context, rel *corev1alpha1.Release) corev1alpha1.ResolvedRetentionPolicyStatus {
+	out := corev1alpha1.ResolvedRetentionPolicyStatus{KeepHistory: effectiveKeepHistory(rel)}
+	if c.renderStore != nil {
+		if n, err := c.renderStore.HistoryCount(ctx, rel.Namespace, rel.Name); err != nil {
+			klog.ErrorS(err, "counting render history", "release", rel.Name)
+		} else {
+			out.HistoryCount = n
+		}
+	}
+	return out
+}
+
 // runGC applies the Release's retention policy to its render store: prune the
 // history log to keepHistory entries and reclaim unreferenced blobs. Best-effort
 // (logged, never fails a reconcile). protectedRefs shields renders not in the
@@ -1343,9 +1382,9 @@ func (c *Controller) runGC(ctx context.Context, rel *corev1alpha1.Release, curre
 	if c.renderStore == nil {
 		return
 	}
-	keep := rel.Spec.RetentionPolicy.KeepHistory
+	keep := effectiveKeepHistory(rel)
 	if keep <= 0 {
-		return // retention disabled
+		return // unlimited (explicit keepHistory=0): retain everything
 	}
 	protected := []string{currentRef}
 	if ls := rel.Status.LastSuccessful; ls != nil {

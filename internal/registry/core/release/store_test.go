@@ -181,7 +181,7 @@ func TestStatusUpdate(t *testing.T) {
 	release.Status.HealthSummary.Total = 14
 	release.Status.HealthSummary.Healthy = 14
 	// A spec change submitted through /status must be ignored.
-	release.Spec.RetentionPolicy.KeepHistory = 99
+	release.Spec.RetentionPolicy.KeepHistory = new(99)
 
 	updatedObj, _, err := statusStorage.Update(
 		ctx,
@@ -200,8 +200,8 @@ func TestStatusUpdate(t *testing.T) {
 	if updated.Status.HealthSummary.Total != 14 {
 		t.Errorf("expected status.healthSummary.total to persist, got %d", updated.Status.HealthSummary.Total)
 	}
-	if updated.Spec.RetentionPolicy.KeepHistory != 0 {
-		t.Errorf("expected spec change to be ignored by /status, got keepHistory=%d", updated.Spec.RetentionPolicy.KeepHistory)
+	if updated.Spec.RetentionPolicy.KeepHistory != nil {
+		t.Errorf("expected spec change to be ignored by /status, got keepHistory=%d", *updated.Spec.RetentionPolicy.KeepHistory)
 	}
 }
 

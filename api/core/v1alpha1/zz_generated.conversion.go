@@ -2001,7 +2001,7 @@ func Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(in *core.Release
 }
 
 func autoConvert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(in *ReleaseRetentionPolicySpec, out *core.ReleaseRetentionPolicySpec, s conversion.Scope) error {
-	out.KeepHistory = in.KeepHistory
+	out.KeepHistory = (*int)(unsafe.Pointer(in.KeepHistory))
 	return nil
 }
 
@@ -2011,7 +2011,7 @@ func Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicyS
 }
 
 func autoConvert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(in *core.ReleaseRetentionPolicySpec, out *ReleaseRetentionPolicySpec, s conversion.Scope) error {
-	out.KeepHistory = in.KeepHistory
+	out.KeepHistory = (*int)(unsafe.Pointer(in.KeepHistory))
 	return nil
 }
 

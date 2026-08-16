@@ -129,6 +129,17 @@ func (s *RenderStore) AppendHistory(ctx context.Context, namespace, name string,
 	return s.bs.Put(ctx, historyKey(namespace, name, entry.RenderRef, entry.SyncedAt), data)
 }
 
+// HistoryCount returns the number of deploy-log entries currently stored for a
+// release. It lists keys only (no content reads), so it is cheap to call on
+// reconcile to populate status.resolvedRetentionPolicy.historyCount.
+func (s *RenderStore) HistoryCount(ctx context.Context, namespace, name string) (int, error) {
+	keys, err := s.bs.List(ctx, historyDir(namespace, name))
+	if err != nil {
+		return 0, fmt.Errorf("renderstore: counting history for %s/%s: %w", namespace, name, err)
+	}
+	return len(keys), nil
+}
+
 // LastHistoryRef returns the renderRef of the most recent history entry, or ""
 // if the log is empty. It reads only the key list (the renderRef is encoded in
 // each key), so it is cheap enough to call on every deploy to suppress duplicate

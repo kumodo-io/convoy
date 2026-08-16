@@ -254,7 +254,7 @@ func TestSyncHandler_GCPrunesHistoryOnReconcile(t *testing.T) {
 	}}
 	rel := manifestsRelease()
 	rel.Spec.Content = manifestsContent(cmFile)
-	rel.Spec.RetentionPolicy.KeepHistory = 1
+	rel.Spec.RetentionPolicy.KeepHistory = new(1)
 	c, _ := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
 	c.renderStore = renderstore.New(blobstore.NewMemory())
 
@@ -277,6 +277,60 @@ func TestSyncHandler_GCPrunesHistoryOnReconcile(t *testing.T) {
 	}
 	if ok, _ := c.renderStore.HasRender(ctx, "ns", "r1", "sha256:old1"); ok {
 		t.Error("pruned blob old1 should be reclaimed")
+	}
+}
+
+// TestEffectiveKeepHistory covers the retention resolution: nil ⇒ default,
+// explicit 0 ⇒ unlimited, explicit N ⇒ N.
+func TestEffectiveKeepHistory(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Spec.RetentionPolicy.KeepHistory = nil
+	if got := effectiveKeepHistory(rel); got != defaultKeepHistory {
+		t.Errorf("nil keepHistory = %d, want default %d", got, defaultKeepHistory)
+	}
+	rel.Spec.RetentionPolicy.KeepHistory = new(0)
+	if got := effectiveKeepHistory(rel); got != 0 {
+		t.Errorf("explicit 0 keepHistory = %d, want 0 (unlimited)", got)
+	}
+	rel.Spec.RetentionPolicy.KeepHistory = new(5)
+	if got := effectiveKeepHistory(rel); got != 5 {
+		t.Errorf("explicit 5 keepHistory = %d, want 5", got)
+	}
+}
+
+// TestSyncHandler_PopulatesResolvedRetentionStatus verifies a reconcile reports
+// the effective retention and the actual stored history count — the status bug
+// where resolvedRetentionPolicy was never written.
+func TestSyncHandler_PopulatesResolvedRetentionStatus(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	rel.Spec.RetentionPolicy.KeepHistory = new(0) // unlimited: nothing pruned
+	c, client := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	// A pre-existing older deploy, plus this reconcile's — count should be 2.
+	_ = c.renderStore.PutRender(context.Background(), "ns", "r1", "sha256:old", []byte("old"))
+	_ = c.renderStore.AppendHistory(context.Background(), "ns", "r1",
+		renderstore.HistoryEntry{RenderRef: "sha256:old", SyncedAt: metav1.NewTime(time.Date(2026, 6, 24, 12, 0, 0, 0, time.UTC))})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatalf("expected status write")
+	}
+	rp := got.Status.ResolvedRetentionPolicy
+	if rp.KeepHistory != 0 {
+		t.Errorf("resolved keepHistory = %d, want 0 (unlimited)", rp.KeepHistory)
+	}
+	if rp.HistoryCount != 2 {
+		t.Errorf("resolved historyCount = %d, want 2 (old + this reconcile)", rp.HistoryCount)
 	}
 }
 

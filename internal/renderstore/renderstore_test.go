@@ -179,6 +179,19 @@ func has(t *testing.T, s *renderstore.RenderStore, ref string) bool {
 	return ok
 }
 
+// TestHistoryCount reports the number of deploy-log entries.
+func TestHistoryCount(t *testing.T) {
+	ctx := context.Background()
+	s := newStore()
+	if n, err := s.HistoryCount(ctx, ns, name); err != nil || n != 0 {
+		t.Fatalf("HistoryCount empty = %d,%v; want 0,nil", n, err)
+	}
+	seedDeploys(t, s)
+	if n, err := s.HistoryCount(ctx, ns, name); err != nil || n != 3 {
+		t.Errorf("HistoryCount = %d,%v; want 3,nil", n, err)
+	}
+}
+
 // TestGC prunes history to the newest keepHistory entries and reclaims the blobs
 // no longer referenced.
 func TestGC(t *testing.T) {
