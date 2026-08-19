@@ -36,6 +36,15 @@ const (
 	// writes) to gate Axis B cluster waves on a predecessor Release's health.
 	conditionHealthy = "Healthy"
 
+	// conditionInSync is the observer-owned condition the controller READS to know
+	// the live cluster matches the current render (used, with Healthy, to confirm a
+	// render is genuinely healthy before advancing lastHealthy / the rollout).
+	conditionInSync = "InSync"
+
+	// conditionRolloutSucceeded mirrors status.rollout.state for kubectl visibility:
+	// True=Succeeded, False=Failed/RolledBack (reason names which), Unknown=Progressing.
+	conditionRolloutSucceeded = "RolloutSucceeded"
+
 	conditionReasonApplied              = "Applied"
 	conditionReasonSourceNotReady       = "SourceNotReady"
 	conditionReasonValuesNotReady       = "ValuesNotReady"
@@ -48,6 +57,10 @@ const (
 	conditionReasonWaitingForSync       = "WaitingForSync"
 	conditionReasonWaitingForWaveHealth = "WaitingForWaveHealth"
 	conditionReasonWaveFailed           = "WaveFailed"
+	// conditionReasonRolloutFailed is the Applied-condition reason while a Release
+	// holds a render whose rollout failed (health did not converge within the
+	// failurePolicy deadline). Held until a spec change or /sync --force.
+	conditionReasonRolloutFailed = "RolloutFailed"
 	// Axis B (Release-within-cluster ordering): the Release is holding for
 	// predecessor Releases on the same cluster to clear their bar, or has given up
 	// on a bounded (waitForHealthyWithTimeout) wait.
