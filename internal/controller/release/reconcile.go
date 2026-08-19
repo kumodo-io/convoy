@@ -41,6 +41,7 @@ const (
 	conditionReasonValuesNotReady       = "ValuesNotReady"
 	conditionReasonClusterNotReady      = "ClusterNotReady"
 	conditionReasonUnsupported          = "Unsupported"
+	conditionReasonUnappliable          = "Unappliable"
 	conditionReasonDeployFailed         = "DeployFailed"
 	conditionReasonPruneFailed          = "PruneFailed"
 	conditionReasonPinned               = "Pinned"

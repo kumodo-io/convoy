@@ -652,7 +652,11 @@ type reconcileState struct {
 	manual      bool
 	pending     bool
 	requestedAt *metav1.Time
-	attempt     corev1alpha1.ReleaseAttemptedRenderStatus
+	// force is set when this reconcile satisfies a /sync?force request: it bypasses
+	// the pre-apply dry-run and clears a held Failed/RolledBack rollout (wired in a
+	// later slice). Default false.
+	force   bool
+	attempt corev1alpha1.ReleaseAttemptedRenderStatus
 
 	// Produced by stageRender, consumed by stageGates/stageSync.
 	art     artifact.Artifact
@@ -931,6 +935,26 @@ func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, err
 	return cont()
 }
 
+// dryRunGate pre-flights the render with a dry-run apply before it is persisted or
+// applied: a render that can never apply (immutable-field edit, schema/RBAC/admission
+// rejection) is caught here, so it is neither stored nor applied — nothing to roll
+// back, no orphan blob. It is lenient about not-yet-existing types (a CR whose CRD is
+// an earlier wave is skipped). A /sync?force reconcile bypasses it (the real apply
+// still gates). On failure it returns a terminal Unappliable outcome (nil err ⇒
+// re-checked on the poll interval, not hot-retried): a permanent cause waits for a
+// spec fix; a transient one (a webhook briefly down) recovers on the next poll, or
+// the user can /sync --force. See docs/architecture/06-progressive-rollout.md.
+func (c *Controller) dryRunGate(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
+	if st.force {
+		return reconcileOutcome{}, false
+	}
+	if err := c.deployer.DryRun(ctx, st.cluster, st.objects); err != nil {
+		out, _ := st.fail(conditionReasonUnappliable, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+		return out, true
+	}
+	return reconcileOutcome{}, false
+}
+
 // stageSync applies the rendered objects to the target cluster in ascending
 // sync-wave order, prunes orphans on the success path, and records the durable
 // inventory. It is the terminal stage: it always produces the reconcile outcome.
@@ -942,6 +966,12 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// attempt is threaded by value here and updated on the success path; the fail
 	// helper stamps st.attempt, which equals this copy on every non-success path.
 	attempt := st.attempt
+
+	// Dry-run before persisting: a render that can never apply is caught here, so it
+	// is neither stored nor applied.
+	if out, done := c.dryRunGate(ctx, st); done {
+		return out, nil
+	}
 
 	// persist-then-apply: durably store this render (content-addressed by its
 	// renderRef) before applying anything. A crash mid-apply then leaves the render

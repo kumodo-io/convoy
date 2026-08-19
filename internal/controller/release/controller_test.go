@@ -44,6 +44,11 @@ import (
 const (
 	dummyFile      = "app.yaml"
 	configMapKind  = "ConfigMap"
+	apiVersionKey  = "apiVersion"
+	metadataKey    = "metadata"
+	kindKey        = "kind"
+	nameKey        = "name"
+	namespaceKey   = "namespace"
 	dummyRevision  = "abc123"
 	dummyURL       = "https://example.com/repo.git"
 	dummyCluster   = "target"
@@ -53,12 +58,19 @@ const (
 )
 
 type fakeDeployer struct {
-	got       []*unstructured.Unstructured
-	waveCalls [][]*unstructured.Unstructured
-	called    bool
-	err       error
-	pruned    []inventory.Ref
-	pruneErr  error
+	got          []*unstructured.Unstructured
+	waveCalls    [][]*unstructured.Unstructured
+	called       bool
+	err          error
+	pruned       []inventory.Ref
+	pruneErr     error
+	dryRunCalled bool
+	dryRunErr    error
+}
+
+func (d *fakeDeployer) DryRun(_ context.Context, _ *corev1alpha1.Cluster, _ []*unstructured.Unstructured) error {
+	d.dryRunCalled = true
+	return d.dryRunErr
 }
 
 func (d *fakeDeployer) Deploy(_ context.Context, _ *corev1alpha1.Cluster, objects []*unstructured.Unstructured) ([]inventory.Ref, error) {
