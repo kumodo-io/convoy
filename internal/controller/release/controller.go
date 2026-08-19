@@ -1464,38 +1464,55 @@ func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcil
 	}
 	prior := rel.Status.Rollout
 	renderRef := outcome.attempt.RenderRef
+	if renderRef == "" {
+		return prior
+	}
+
+	// A forced sync (/sync?force) re-drives the render: flush any held terminal rollout
+	// to a fresh Progressing (or Succeeded, if already healthy), with a fresh deadline
+	// clock — regardless of whether this reconcile fully applied, since a re-drive may
+	// hold at a wave while rolling out. Without this, a forced re-drive that holds
+	// would leave the stale Failed/RolledBack in place.
+	if forced {
+		return c.freshRollout(renderRef, healthy)
+	}
 
 	// A render whose rollout is already terminal stays put (Succeeded holds;
 	// Failed/RolledBack are held terminal states — heldRolloutRender stops the apply).
-	// A forced sync resets this: it re-drives the render, so a fresh rollout opens.
-	if !forced && prior != nil && prior.RenderRef == renderRef && rolloutStateTerminal(prior.State) {
+	if prior != nil && prior.RenderRef == renderRef && rolloutStateTerminal(prior.State) {
 		return prior
 	}
 	// Only a render that actually applied this reconcile drives the gate; otherwise
 	// (a hold, or a pre-apply failure) carry the prior forward.
-	if !outcome.applied || renderRef == "" {
+	if !outcome.applied {
 		return prior
 	}
 
 	// Anchor the deadline clock at the render's first apply and preserve it across
-	// reconciles (the render re-applies idempotently each pass). A forced sync starts
-	// a fresh clock.
+	// reconciles (the render re-applies idempotently each pass).
 	startedAt := c.now()
-	if !forced && prior != nil && prior.RenderRef == renderRef && !prior.StartedAt.IsZero() {
+	if prior != nil && prior.RenderRef == renderRef && !prior.StartedAt.IsZero() {
 		startedAt = prior.StartedAt
 	}
 
 	// The failure path (deadline exceeded) is decided in the reconcile flow (releaseGate
 	// / the wave loop), where a rollback can be applied — not here. This only reports
 	// the non-failure states.
+	state := corev1alpha1.RolloutStateProgressing
 	if healthy {
-		return &corev1alpha1.RolloutStatus{
-			State: corev1alpha1.RolloutStateSucceeded, RenderRef: renderRef, StartedAt: startedAt,
-		}
+		state = corev1alpha1.RolloutStateSucceeded
 	}
-	return &corev1alpha1.RolloutStatus{
-		State: corev1alpha1.RolloutStateProgressing, RenderRef: renderRef, StartedAt: startedAt,
+	return &corev1alpha1.RolloutStatus{State: state, RenderRef: renderRef, StartedAt: startedAt}
+}
+
+// freshRollout opens a rollout at the current time: Succeeded if the render is
+// already healthy, else Progressing. Used when a forced sync re-drives a render.
+func (c *Controller) freshRollout(renderRef string, healthy bool) *corev1alpha1.RolloutStatus {
+	state := corev1alpha1.RolloutStateProgressing
+	if healthy {
+		state = corev1alpha1.RolloutStateSucceeded
 	}
+	return &corev1alpha1.RolloutStatus{State: state, RenderRef: renderRef, StartedAt: c.now()}
 }
 
 // releaseGate is the terminal-wave health gate: on a reconcile where the render R is

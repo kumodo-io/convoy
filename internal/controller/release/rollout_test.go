@@ -417,6 +417,51 @@ func TestRollout_ForceClearsHeldRenderAndBypassesDryRun(t *testing.T) {
 	}
 }
 
+// TestRollout_ForceFlushesRolledBackEvenWhenHolding is the regression for the bug
+// where /sync --force on a RolledBack render left the stale RolledBack in place when
+// the re-drive held at a wave (outcome.applied=false). Force must flush it to a fresh
+// Progressing regardless.
+func TestRollout_ForceFlushesRolledBackEvenWhenHolding(t *testing.T) {
+	// Discover the render.
+	probe := manifestsRelease()
+	pc, pclient := newTestController(t, probe, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	if err := pc.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("probe: %v", err)
+	}
+	renderRef := statusUpdate(pclient.Actions()).Status.LastAttempted.RenderRef
+
+	rel := manifestsRelease()
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure, time.Minute)
+	oldStart := metav1.NewTime(time.Date(2026, 6, 25, 11, 0, 0, 0, time.UTC))
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateRolledBack, RenderRef: renderRef, StartedAt: oldStart,
+		Message: "old rollback",
+	}
+	rel.Annotations = map[string]string{
+		corev1alpha1.SyncForceRequestedAtAnnotation: "2026-06-25T12:00:00Z",
+	}
+	// Deployer errors so the apply holds (outcome.applied stays false) — the
+	// re-drive does not fully complete this reconcile.
+	deployer := &fakeDeployer{err: errors.New("apply held")}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	setHealth(c, false)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		// A deploy error requeues; the status write still happens first.
+		t.Logf("syncHandler returned (expected on a held/failed apply): %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil || got.Status.Rollout == nil {
+		t.Fatalf("no rollout status written")
+	}
+	if got.Status.Rollout.State != corev1alpha1.RolloutStateProgressing {
+		t.Errorf("state = %s, want Progressing (force must flush the stale RolledBack)", got.Status.Rollout.State)
+	}
+	if !got.Status.Rollout.StartedAt.After(oldStart.Time) {
+		t.Errorf("startedAt = %v, want a fresh time after the old %v", got.Status.Rollout.StartedAt, oldStart)
+	}
+}
+
 // TestRollout_HeldFailedRenderNotReapplied: a render whose rollout Failed is not
 // re-applied on the next reconcile.
 func TestRollout_HeldFailedRenderNotReapplied(t *testing.T) {

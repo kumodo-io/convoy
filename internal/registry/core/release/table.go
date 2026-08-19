@@ -45,6 +45,7 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 			{Name: "Content", Type: helper.StringValueString, Description: "Content interpretation type"},
 			{Name: "Source", Type: helper.StringValueString, Description: "Referenced source (type/name)"},
 			{Name: "Cluster", Type: helper.StringValueString, Description: "Target cluster"},
+			{Name: "State", Type: helper.StringValueString, Description: "State of the release"},
 			{Name: "Applied", Type: helper.StringValueString, Description: "Whether the release render is applied"},
 			{Name: "InSync", Type: helper.StringValueString, Description: "Whether the release is in sync"},
 			{Name: "Healthy", Type: helper.StringValueString, Description: "Whether the release is healthy"},
@@ -79,8 +80,12 @@ func (tableConvertor) ConvertToTable(_ context.Context, object runtime.Object, _
 		if healthyIdx >= 0 {
 			healthy = string(r.Status.Conditions[healthyIdx].Status)
 		}
+		rolloutState := unknownState
+		if r.Status.Rollout != nil {
+			rolloutState = string(r.Status.Rollout.State)
+		}
 		return metav1.TableRow{
-			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, applied, inSync, healthy, lifecycleColumn(r), age},
+			Cells:  []any{r.Name, string(r.Spec.Content.Type), sourceString(r.Spec.Source), r.Spec.ClusterRef.Name, rolloutState, applied, inSync, healthy, lifecycleColumn(r), age},
 			Object: runtime.RawExtension{Object: r},
 		}
 	}
