@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/fetch"
@@ -372,6 +373,47 @@ func TestSyncHandler_PopulatesResolvedRetentionStatus(t *testing.T) {
 	if rp.HistoryCount != 2 {
 		t.Errorf("resolved historyCount = %d, want 2 (old + this reconcile)", rp.HistoryCount)
 	}
+}
+
+// TestSyncHandler_LastHealthySetWhenInSyncAndHealthy verifies status.lastHealthy is
+// written to the current render only when the release is both InSync and Healthy
+// (the observer-confirmed signal), and is NOT set otherwise.
+func TestSyncHandler_LastHealthySetWhenInSyncAndHealthy(t *testing.T) {
+	const condInSync, condHealthy = "InSync", "Healthy"
+
+	newHealthy := func(inSync, healthy metav1.ConditionStatus) (*Controller, *fakeclient.Clientset) {
+		rel := manifestsRelease()
+		rel.Status.Conditions = []metav1.Condition{
+			{Type: condInSync, Status: inSync, Reason: condInSync},
+			{Type: condHealthy, Status: healthy, Reason: condHealthy},
+		}
+		return newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	}
+
+	t.Run("in-sync and healthy sets lastHealthy", func(t *testing.T) {
+		c, client := newHealthy(metav1.ConditionTrue, metav1.ConditionTrue)
+		if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+			t.Fatalf("syncHandler: %v", err)
+		}
+		got := statusUpdate(client.Actions())
+		if got == nil || got.Status.LastHealthy == nil {
+			t.Fatalf("lastHealthy not set when InSync+Healthy: %+v", got.Status.LastHealthy)
+		}
+		if got.Status.LastHealthy.RenderRef != got.Status.LastAttempted.RenderRef {
+			t.Errorf("lastHealthy.renderRef = %q, want current render %q",
+				got.Status.LastHealthy.RenderRef, got.Status.LastAttempted.RenderRef)
+		}
+	})
+
+	t.Run("healthy but out of sync does not set lastHealthy", func(t *testing.T) {
+		c, client := newHealthy(metav1.ConditionFalse, metav1.ConditionTrue)
+		if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+			t.Fatalf("syncHandler: %v", err)
+		}
+		if got := statusUpdate(client.Actions()); got != nil && got.Status.LastHealthy != nil {
+			t.Errorf("lastHealthy set despite InSync=False: %+v", got.Status.LastHealthy)
+		}
+	})
 }
 
 // failingBlobStore fails every write, to exercise the persist-then-apply guard.

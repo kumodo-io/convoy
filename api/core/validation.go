@@ -316,6 +316,50 @@ func knownWaveStrategy(s ReleaseWaveStrategy) bool {
 	}
 }
 
+func knownRollbackPolicy(p RollbackPolicy) bool {
+	switch p {
+	case RollbackPolicyNever, RollbackPolicyOnWaveFailure, RollbackPolicyOnReleaseFailure:
+		return true
+	default:
+		return false
+	}
+}
+
+// validateFailurePolicy validates spec.failurePolicy. rollback must be a known
+// policy; a rollback other than Never needs a deadline (the health-convergence
+// clock a rollout verdict is measured against), and that deadline must exceed the
+// health-assessment deadline — the observer keeps a resource Progressing until its
+// own deadline elapses, so a shorter release deadline would give up while the
+// workload is still legitimately starting. See docs/architecture/06-progressive-rollout.md.
+func validateFailurePolicy(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	fp := spec.FailurePolicy
+	if fp == nil {
+		return allErrs
+	}
+	if !knownRollbackPolicy(fp.Rollback) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("rollback"), fp.Rollback, []string{
+			string(RollbackPolicyNever),
+			string(RollbackPolicyOnWaveFailure),
+			string(RollbackPolicyOnReleaseFailure),
+		}))
+	}
+	if fp.Rollback != RollbackPolicyNever {
+		if fp.Deadline == nil {
+			allErrs = append(allErrs, field.Required(fldPath.Child("deadline"),
+				"is required when rollback is not Never"))
+		} else if fp.Deadline.Duration <= 0 {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("deadline"), fp.Deadline.Duration.String(),
+				"must be positive"))
+		} else if ha := spec.HealthAssessment; ha != nil && ha.Deadline != nil &&
+			fp.Deadline.Duration <= ha.Deadline.Duration {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("deadline"), fp.Deadline.Duration.String(),
+				fmt.Sprintf("must be greater than spec.healthAssessment.deadline (%s)", ha.Deadline.Duration)))
+		}
+	}
+	return allErrs
+}
+
 func knownJSONPatchOp(op JSONPatchOperation) bool {
 	switch op {
 	case JSONPatchOperationAdd, JSONPatchOperationRemove, JSONPatchOperationReplace,
@@ -549,6 +593,8 @@ func validateReleaseSpec(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList
 				string(ReleaseWaveStrategyWaitForHealthyWithTimeout),
 			}))
 	}
+
+	allErrs = append(allErrs, validateFailurePolicy(spec, fldPath.Child("failurePolicy"))...)
 
 	return allErrs
 }

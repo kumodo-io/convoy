@@ -231,6 +231,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	newStatus.Waves = outcome.waves
 	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
+	newStatus.LastHealthy = lastHealthy(rel, &newStatus, outcome.attempt.RenderRef)
 
 	// Roll up lifecycle-hook progress (status.lifecycle + LifecycleSucceeded) from the
 	// durable ReleaseInventory the gate maintains — controller-owned, parity with waves.
@@ -362,6 +363,12 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 			return nil, err
 		}
 		statusAC.WithLastSuccessful(ls)
+	}
+	// lastHealthy is controller-owned: the last render confirmed healthy, the
+	// failurePolicy rollback target. Only assert when set (advance-only); omitting
+	// it when nil doesn't clobber a value this manager previously wrote.
+	if s.LastHealthy != nil {
+		statusAC.WithLastHealthy(corev1alpha1ac.LastHealthy().WithRenderRef(s.LastHealthy.RenderRef))
 	}
 	// resolvedRetentionPolicy is controller-owned (it reflects the GC policy this
 	// controller enforces). Assert it explicitly so it doesn't clobber the sibling
@@ -1237,6 +1244,33 @@ func gitRefString(ref *corev1alpha1.ReleaseGitRepositoryRefSpec) string {
 // snapshots the inputs of the pinned render, taken from status.lastSuccessful —
 // while a pin holds the controller never applies, so lastSuccessful is the pinned
 // render.
+// conditionInSync is the observer-owned condition the controller READS to know the
+// live cluster matches the current render. It is defined by the observer; the
+// controller only reads it (never writes it), so a local const suffices.
+const conditionInSync = "InSync"
+
+// lastHealthy resolves status.lastHealthy: the last render confirmed healthy, the
+// rollback target for failurePolicy. A render is confirmed healthy when the live
+// cluster both matches it (InSync=True) and passes health (Healthy=True) — both
+// observer-owned, so they reflect the *currently deployed* render, not a render
+// just applied this reconcile that the observer hasn't re-assessed. It is written
+// independent of failurePolicy (a rollback target accrues before the policy is
+// enabled) and only ever advances — an unhealthy blip does not clear it, so the
+// prior good render remains available to roll back to.
+func lastHealthy(rel *corev1alpha1.Release, newStatus *corev1alpha1.ReleaseStatus, currentRenderRef string) *corev1alpha1.LastHealthy {
+	if currentRenderRef != "" &&
+		conditionIsTrueStatus(newStatus, conditionInSync) &&
+		conditionIsTrueStatus(newStatus, conditionHealthy) {
+		return &corev1alpha1.LastHealthy{RenderRef: currentRenderRef}
+	}
+	return rel.Status.LastHealthy // carry the prior value forward (advance-only)
+}
+
+// conditionIsTrueStatus reports whether a status's condition is True.
+func conditionIsTrueStatus(s *corev1alpha1.ReleaseStatus, condType string) bool {
+	return apimeta.IsStatusConditionTrue(s.Conditions, condType)
+}
+
 func pinStatus(rel *corev1alpha1.Release) *corev1alpha1.ReleasePinStatus {
 	if rel.Pin == nil {
 		return nil // unpinned
