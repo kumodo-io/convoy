@@ -374,6 +374,28 @@ const (
 	RollbackPolicyOnReleaseFailure RollbackPolicy = "OnReleaseFailure"
 )
 
+// RolloutState reflects the current rollout state.
+// +enum
+type RolloutState string
+
+const (
+	// RolloutStateFailed reflects the state when the release rollout was
+	// failed. This is a terminal state if no rollback was configured.
+	RolloutStateFailed RolloutState = "Failed"
+
+	// RolloutStateSucceeded reflects the state when the release rollout
+	// was successfully finished. This is a terminal state.
+	RolloutStateSucceeded RolloutState = "Succeeded"
+
+	// RolloutStateRolledBack reflects the state when the release rollout
+	// was rolled back after failure. This is a terminal state.
+	RolloutStateRolledBack RolloutState = "RolledBack"
+
+	// RolloutStateProgressing reflects the state when the release rollout
+	// is in progress.
+	RolloutStateProgressing RolloutState = "Progressing"
+)
+
 // ReleaseSpec defines the desired state of the Release.
 type ReleaseSpec struct {
 	// Source is the content source of the release.
@@ -918,6 +940,9 @@ type ReleaseStatus struct {
 	// LastAttempted is the last attempted sync attempt.
 	LastAttempted *ReleaseAttemptedRenderStatus `json:"lastAttempted,omitempty"`
 
+	// LastHealthy is the reference to the last healthy applied render.
+	LastHealthy *LastHealthy `json:"lastHealthy,omitempty"`
+
 	// Waves reflects the order in which resources were applied and their health status.
 	// Each wave entry represents a group of resources applied together, with a state indicating
 	// whether they have been fully applied and healthy, are in progress, or have failed.
@@ -939,6 +964,9 @@ type ReleaseStatus struct {
 
 	// LastHandledSyncAt reflects the timestamp when the last sync was handled
 	LastHandledSyncAt *metav1.Time `json:"lastHandledSyncAt,omitempty"`
+
+	// Rollout reflects the release rollout state.
+	Rollout *RolloutStatus `json:"rollout,omitempty"`
 }
 
 // ReleasePinStatus reflects the observed state of the ReleasePin.
@@ -1230,6 +1258,26 @@ type ReleaseHealthSummary struct {
 
 	// Unknown is the number of resources in an unknown state.
 	Unknown int32 `json:"unknown"`
+}
+
+// LastHealthy contains the last healthy render reference.
+type LastHealthy struct {
+	RenderRef string `json:"renderRef"`
+}
+
+// RolloutStatus reflects the release rollout status.
+type RolloutStatus struct {
+	// State reflects the rollout state.
+	State RolloutState `json:"state"`
+
+	// RenderRef reflects the reference to the render being rolled out.
+	RenderRef string `json:"renderRef"`
+
+	// StartedAt contains the timestamp when the rollout started.
+	StartedAt metav1.Time `json:"startedAt"`
+
+	// Message contains the human-readable message about the failure reason.
+	Message string `json:"message,omitempty"`
 }
 
 // +genclient
