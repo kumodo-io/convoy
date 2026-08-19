@@ -300,6 +300,25 @@ func (o *Options) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Wake the release controller when the observer writes per-resource health to a
+	// ReleaseInventory (State / AssessedRenderRef changes). The RI shares its Release's
+	// namespace/name, so its key IS the Release key. Without this the controller only
+	// re-reads health on its poll interval, so the failurePolicy rollout gate would
+	// confirm a render healthy up to a whole poll late — which can cross the deadline
+	// and wrongly roll back a workload that became healthy in time. Membership changes
+	// are ignored here (the observer's health loop handles the "resource appeared" poke).
+	if _, err := releaseInventoryInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: func(oldObj, newObj any) {
+			oldInv, ok1 := oldObj.(*corev1alpha1.ReleaseInventory)
+			newInv, ok2 := newObj.(*corev1alpha1.ReleaseInventory)
+			if ok1 && ok2 && inventory.HealthChanged(oldInv, newInv) {
+				releaseController.EnqueueAfter(newInv.Namespace+"/"+newInv.Name, 0)
+			}
+		},
+	}); err != nil {
+		return err
+	}
+
 	// On a shard reassignment, re-drive the work this replica now owns. Informer
 	// ADDs cover the initial set; this handles rebalances (a replica joining or
 	// leaving) without waiting for the next informer resync.

@@ -28,6 +28,8 @@ const (
 	kindConfigMap   = "ConfigMap"
 	groupApps       = "apps"
 	nameAPI         = "api"
+	nameCfg         = "cfg"
+	caseIdentical   = "identical"
 	hookNameMigrate = "migrate"
 )
 

@@ -31,12 +31,12 @@ spec:
         - type: inline
           inline:
             image:
-              tag: 6.11.0
+              tag: 6.14.0
             probes:
               readiness:
-                initialDelaySeconds: 30
+                initialDelaySeconds: 10
               liveness:
-                initialDelaySeconds: 30
+                initialDelaySeconds: 10
   syncPolicy:
     automatic: true
     prune:
@@ -48,7 +48,7 @@ spec:
     globalRuleSetSelector:
       matchLabels:
         convoy.kumodo.io/default: "true"
-    deadline: 40s
+    deadline: 20s
   failurePolicy:
     rollback: OnReleaseFailure
-    deadline: 45s
+    deadline: 30s
