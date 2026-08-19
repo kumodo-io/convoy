@@ -31,6 +31,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/artifact"
 	"github.com/kumodo-io/convoy/internal/blobstore"
 	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/inventory"
 	"github.com/kumodo-io/convoy/internal/render"
 	"github.com/kumodo-io/convoy/internal/renderstore"
 )
@@ -47,12 +48,54 @@ func withFailurePolicy(rel *corev1alpha1.Release, rollback corev1alpha1.Rollback
 	}
 }
 
-// seedConditions sets observer-owned InSync/Healthy on a Release.
-func seedConditions(rel *corev1alpha1.Release, inSync, healthy metav1.ConditionStatus) {
-	rel.Status.Conditions = []metav1.Condition{
-		{Type: "InSync", Status: inSync, Reason: "InSync"},
-		{Type: "Healthy", Status: healthy, Reason: "Healthy"},
+// TestRenderHealthy_GatesOnAssessedRenderRef is the regression test for the bug
+// where a fresh render was reported healthy against the previous render's stale
+// assessment. renderHealthy must require the observer to have assessed THIS render
+// (AssessedRenderRef == renderRef), not just find resources Healthy.
+func TestRenderHealthy_GatesOnAssessedRenderRef(t *testing.T) {
+	ctx := context.Background()
+	rel := manifestsRelease()
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{} // health-gated
+	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+
+	healthy := corev1alpha1.ResourceStateHealthy
+	newRef, oldRef := "sha256:new", "sha256:old"
+
+	seed := func(state *corev1alpha1.ResourceState, assessedRef string) {
+		_ = c.inventory.Put(ctx, "ns", "r1", []inventory.Ref{
+			{Version: "v1", Kind: configMapKind, Name: "cm", State: state, AssessedRenderRef: assessedRef},
+		})
 	}
+
+	// Healthy, but the assessment is for the OLD render → NOT healthy for the new one.
+	seed(&healthy, oldRef)
+	if c.renderHealthy(ctx, rel, newRef) {
+		t.Error("renderHealthy trusted a stale assessment (AssessedRenderRef=old)")
+	}
+	// Healthy AND assessed for the new render → healthy.
+	seed(&healthy, newRef)
+	if !c.renderHealthy(ctx, rel, newRef) {
+		t.Error("renderHealthy false despite Healthy + AssessedRenderRef=new")
+	}
+	// Assessed for the new render but not yet Healthy → not healthy.
+	degraded := corev1alpha1.ResourceStateDegraded
+	seed(&degraded, newRef)
+	if c.renderHealthy(ctx, rel, newRef) {
+		t.Error("renderHealthy true despite a Degraded resource")
+	}
+	// No health assessment configured → nothing to wait for → healthy.
+	relNoHealth := manifestsRelease()
+	if !c.renderHealthy(ctx, relNoHealth, newRef) {
+		t.Error("renderHealthy false with no healthAssessment (should be inert-by-passing)")
+	}
+}
+
+// setHealth overrides the controller's render-health seam so the rollout
+// state-machine tests can assert Succeeded/Progressing/Failed without depending on
+// the in-memory inventory double (which doesn't model the apiStore's SSA
+// co-ownership of the observer-written health fields).
+func setHealth(c *Controller, healthy bool) {
+	c.healthFn = func(context.Context, *corev1alpha1.Release, string) bool { return healthy }
 }
 
 // TestRollout_ProgressingThenSucceeded: a fresh apply that isn't yet observer-
@@ -61,9 +104,9 @@ func seedConditions(rel *corev1alpha1.Release, inSync, healthy metav1.ConditionS
 func TestRollout_ProgressingThenSucceeded(t *testing.T) {
 	rel := manifestsRelease()
 	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure, 5*time.Minute)
-	// Not yet confirmed healthy (observer hasn't re-assessed the fresh apply).
-	seedConditions(rel, metav1.ConditionFalse, metav1.ConditionTrue)
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	// Not yet confirmed healthy (observer hasn't re-assessed the fresh apply).
+	setHealth(c, false)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -83,11 +126,11 @@ func TestRollout_ProgressingThenSucceeded(t *testing.T) {
 		t.Errorf("RolloutSucceeded condition = %+v, want Unknown", cond)
 	}
 
-	// Next reconcile: observer has confirmed InSync+Healthy → Succeeded.
+	// Next reconcile: observer has confirmed the render healthy → Succeeded.
 	rel2 := got.DeepCopy()
 	rel2.Spec = rel.Spec
-	seedConditions(rel2, metav1.ConditionTrue, metav1.ConditionTrue)
 	c2, client2 := newTestController(t, rel2, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	setHealth(c2, true)
 	if err := c2.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler #2: %v", err)
 	}
@@ -107,13 +150,13 @@ func TestRollout_ProgressingThenSucceeded(t *testing.T) {
 func TestRollout_FailsAfterDeadline(t *testing.T) {
 	rel := manifestsRelease()
 	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure, time.Minute)
-	seedConditions(rel, metav1.ConditionFalse, metav1.ConditionFalse) // never healthy
 	// Prior rollout started 2 minutes ago (past the 1m deadline).
 	started := metav1.NewTime(time.Date(2026, 6, 25, 11, 58, 0, 0, time.UTC))
 	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
 		State: corev1alpha1.RolloutStateProgressing, StartedAt: started,
 	}
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	setHealth(c, false) // never healthy
 	// The prior rollout's renderRef must match this reconcile's render; fill it after
 	// we know the render. Simplest: run once to discover the render, then re-run.
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
@@ -127,11 +170,11 @@ func TestRollout_FailsAfterDeadline(t *testing.T) {
 
 	rel2 := manifestsRelease()
 	withFailurePolicy(rel2, corev1alpha1.RollbackPolicyOnReleaseFailure, time.Minute)
-	seedConditions(rel2, metav1.ConditionFalse, metav1.ConditionFalse)
 	rel2.Status.Rollout = &corev1alpha1.RolloutStatus{
 		State: corev1alpha1.RolloutStateProgressing, RenderRef: renderRef, StartedAt: started,
 	}
 	c2, client2 := newTestController(t, rel2, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	setHealth(c2, false)
 	if err := c2.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler #2: %v", err)
 	}
@@ -147,8 +190,7 @@ func TestRollout_FailsAfterDeadline(t *testing.T) {
 // TestRollout_NoPolicyNoRolloutStatus: without a failurePolicy, no rollout status
 // is written (behaviour is unchanged from before the feature).
 func TestRollout_NoPolicyNoRolloutStatus(t *testing.T) {
-	rel := manifestsRelease() // no failurePolicy
-	seedConditions(rel, metav1.ConditionTrue, metav1.ConditionTrue)
+	rel := manifestsRelease() // no failurePolicy, no healthAssessment
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -167,9 +209,8 @@ func TestRollout_NoPolicyNoRolloutStatus(t *testing.T) {
 func TestRollout_NoHealthConfiguredSucceedsImmediately(t *testing.T) {
 	rel := manifestsRelease()
 	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure, time.Minute)
-	// No spec.healthAssessment → observer writes Healthy=True (NotConfigured). Model
-	// the converged steady state: InSync=True, Healthy=True.
-	seedConditions(rel, metav1.ConditionTrue, metav1.ConditionTrue)
+	// No spec.healthAssessment → renderHealthy returns true (nothing to assess), so
+	// the real health path is exercised (no seam override).
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -197,7 +238,6 @@ func rolloutWithLastHealthy(t *testing.T, rollback corev1alpha1.RollbackPolicy, 
 
 	rel := manifestsRelease()
 	withFailurePolicy(rel, rollback, deadline)
-	seedConditions(rel, metav1.ConditionFalse, metav1.ConditionFalse) // never healthy
 	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
 	started := metav1.NewTime(time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC).Add(-age))
 	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
@@ -205,6 +245,7 @@ func rolloutWithLastHealthy(t *testing.T, rollback corev1alpha1.RollbackPolicy, 
 	}
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	setHealth(c, false) // never healthy
 
 	// Seed the last-healthy render in the store.
 	lh := &unstructured.Unstructured{Object: map[string]any{
@@ -356,6 +397,7 @@ func TestRollout_ForceClearsHeldRenderAndBypassesDryRun(t *testing.T) {
 	// dry-run would fail — force must bypass it.
 	deployer := &fakeDeployer{dryRunErr: errors.New("field is immutable")}
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	setHealth(c, false) // re-driven render is not yet healthy → resets to Progressing
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)

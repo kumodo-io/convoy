@@ -30,6 +30,8 @@ spec:
       values:
         - type: inline
           inline:
+            image:
+              tag: 6.11.0
             probes:
               readiness:
                 initialDelaySeconds: 30
@@ -46,4 +48,7 @@ spec:
     globalRuleSetSelector:
       matchLabels:
         convoy.kumodo.io/default: "true"
-    deadline: 1m
+    deadline: 40s
+  failurePolicy:
+    rollback: OnReleaseFailure
+    deadline: 45s

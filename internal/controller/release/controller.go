@@ -105,6 +105,12 @@ type Controller struct {
 	failures *failureCounts
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
+	// healthFn reports whether a render is confirmed healthy (its resources assessed
+	// Healthy for that render). It defaults to renderHealthy and is a test seam so the
+	// rollout state-machine tests don't depend on the in-memory inventory double,
+	// which — unlike the SSA-co-owned apiStore — doesn't preserve observer-written
+	// health fields across the controller's inventory writes.
+	healthFn func(ctx context.Context, rel *corev1alpha1.Release, renderRef string) bool
 }
 
 // failureCounts is a concurrency-safe per-key consecutive-failure counter.
@@ -163,6 +169,7 @@ func NewController(
 		failures:           newFailureCounts(),
 		now:                metav1.Now,
 	}
+	c.healthFn = c.renderHealthy
 	c.Controller = base.NewController("release", c.syncHandler,
 		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation),
 		// Shard by the Release's target cluster: keep only Releases whose cluster
@@ -231,7 +238,11 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	newStatus.Waves = outcome.waves
 	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
-	newStatus.LastHealthy = lastHealthy(rel, &newStatus, outcome.attempt.RenderRef)
+	// "Current render healthy" is the observer's per-resource assessment of THIS
+	// render (AssessedRenderRef == render && all Healthy) — not the release-level
+	// conditions, which lag a fresh apply. Drives both lastHealthy and the gate.
+	healthy := c.healthFn(ctx, rel, outcome.attempt.RenderRef)
+	newStatus.LastHealthy = lastHealthy(rel, outcome.attempt.RenderRef, healthy)
 	// A forced sync (/sync?force) re-drives a held render and resets its rollout;
 	// record which force request was handled so it is one-shot.
 	forceAt, forced := pendingForceSync(rel)
@@ -243,7 +254,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	if outcome.rollout != nil {
 		newStatus.Rollout = outcome.rollout
 	} else {
-		newStatus.Rollout = c.evaluateRollout(rel, &newStatus, outcome, forced)
+		newStatus.Rollout = c.evaluateRollout(rel, outcome, forced, healthy)
 	}
 	if cond := rolloutCondition(newStatus.Rollout, rel.Generation, c.now()); cond != nil {
 		apimeta.SetStatusCondition(&newStatus.Conditions, *cond)
@@ -1372,25 +1383,41 @@ func gitRefString(ref *corev1alpha1.ReleaseGitRepositoryRefSpec) string {
 // snapshots the inputs of the pinned render, taken from status.lastSuccessful —
 // while a pin holds the controller never applies, so lastSuccessful is the pinned
 // render.
-// currentRenderHealthy reports whether the *currently deployed* render is confirmed
-// healthy: the live cluster both matches it (InSync=True) and passes health
-// (Healthy=True). Both conditions are observer-owned, so they reflect the deployed
-// render — not a render just applied this reconcile that the observer hasn't
-// re-assessed yet (InSync is briefly False after a fresh apply). This is the
-// async-safe signal that "render R is healthy" for both lastHealthy and the rollout
-// gate. Note: with no health rules the observer reports Healthy=True (NotConfigured),
-// so a converged unconfigured release counts as healthy.
-func currentRenderHealthy(s *corev1alpha1.ReleaseStatus) bool {
-	return apimeta.IsStatusConditionTrue(s.Conditions, conditionInSync) &&
-		apimeta.IsStatusConditionTrue(s.Conditions, conditionHealthy)
+// renderHealthy reports whether the render renderRef is confirmed healthy: the
+// observer has assessed *this* render — every applied resource's AssessedRenderRef
+// equals renderRef — and found all resources Healthy. Checking AssessedRenderRef is
+// essential: it stops the gate trusting a stale assessment of a *previous* render.
+// Right after a new render applies, its resources carry RenderRef=renderRef but the
+// observer's AssessedRenderRef still points at the old render (and the release-level
+// Healthy condition is still the old render's True) — so a plain InSync+Healthy
+// check would succeed prematurely, before the new workload (e.g. a rolling update's
+// new pods) is actually healthy. With no health assessment configured there is
+// nothing to wait for, so an applied render counts as healthy (inert-by-passing).
+func (c *Controller) renderHealthy(ctx context.Context, rel *corev1alpha1.Release, renderRef string) bool {
+	if rel.Spec.HealthAssessment == nil {
+		return true
+	}
+	if renderRef == "" {
+		return false
+	}
+	refs, _, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
+	if err != nil || len(refs) == 0 {
+		return false
+	}
+	for _, r := range refs {
+		if r.AssessedRenderRef != renderRef || r.State == nil || *r.State != corev1alpha1.ResourceStateHealthy {
+			return false
+		}
+	}
+	return true
 }
 
 // lastHealthy resolves status.lastHealthy: the last render confirmed healthy, the
 // rollback target for failurePolicy. Written independent of failurePolicy (a
 // rollback target accrues before the policy is enabled) and only ever advances — an
 // unhealthy blip does not clear it, so the prior good render stays available.
-func lastHealthy(rel *corev1alpha1.Release, newStatus *corev1alpha1.ReleaseStatus, currentRenderRef string) *corev1alpha1.LastHealthy {
-	if currentRenderRef != "" && currentRenderHealthy(newStatus) {
+func lastHealthy(rel *corev1alpha1.Release, currentRenderRef string, healthy bool) *corev1alpha1.LastHealthy {
+	if currentRenderRef != "" && healthy {
 		return &corev1alpha1.LastHealthy{RenderRef: currentRenderRef}
 	}
 	return rel.Status.LastHealthy // carry the prior value forward (advance-only)
@@ -1430,7 +1457,7 @@ func heldRolloutRender(rel *corev1alpha1.Release, currentRenderRef string, force
 //
 // startedAt anchors the deadline clock: it is set when the render first applies and
 // preserved across reconciles (the render re-applies idempotently each pass).
-func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, newStatus *corev1alpha1.ReleaseStatus, outcome reconcileOutcome, forced bool) *corev1alpha1.RolloutStatus {
+func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcileOutcome, forced, healthy bool) *corev1alpha1.RolloutStatus {
 	fp := rel.Spec.FailurePolicy
 	if fp == nil {
 		return nil
@@ -1461,7 +1488,7 @@ func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, newStatus *corev
 	// The failure path (deadline exceeded) is decided in the reconcile flow (releaseGate
 	// / the wave loop), where a rollback can be applied — not here. This only reports
 	// the non-failure states.
-	if currentRenderHealthy(newStatus) {
+	if healthy {
 		return &corev1alpha1.RolloutStatus{
 			State: corev1alpha1.RolloutStateSucceeded, RenderRef: renderRef, StartedAt: startedAt,
 		}
@@ -1486,7 +1513,7 @@ func (c *Controller) releaseGate(ctx context.Context, st *reconcileState) (recon
 		prior.RenderRef != st.attempt.RenderRef || prior.State != corev1alpha1.RolloutStateProgressing {
 		return reconcileOutcome{}, false
 	}
-	if currentRenderHealthy(&rel.Status) || st.now.Sub(prior.StartedAt.Time) <= fp.Deadline.Duration {
+	if c.healthFn(ctx, rel, st.attempt.RenderRef) || st.now.Sub(prior.StartedAt.Time) <= fp.Deadline.Duration {
 		return reconcileOutcome{}, false // healthy or still within the deadline: proceed
 	}
 	msg := fmt.Sprintf("release did not become healthy within %s", fp.Deadline.Duration)

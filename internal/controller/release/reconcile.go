@@ -36,11 +36,6 @@ const (
 	// writes) to gate Axis B cluster waves on a predecessor Release's health.
 	conditionHealthy = "Healthy"
 
-	// conditionInSync is the observer-owned condition the controller READS to know
-	// the live cluster matches the current render (used, with Healthy, to confirm a
-	// render is genuinely healthy before advancing lastHealthy / the rollout).
-	conditionInSync = "InSync"
-
 	// conditionRolloutSucceeded mirrors status.rollout.state for kubectl visibility:
 	// True=Succeeded, False=Failed/RolledBack (reason names which), Unknown=Progressing.
 	conditionRolloutSucceeded = "RolloutSucceeded"
