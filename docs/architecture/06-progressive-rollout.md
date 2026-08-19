@@ -50,16 +50,28 @@ status:
   lastHealthy:
     renderRef: sha256:abc…      # last render that reached healthy — the rollback target
   rollout:
-    state: Progressing | Succeeded | Failed
-    renderRef: sha256:def…      # the render this rollout is about
+    state: Progressing | Succeeded | Failed | RolledBack
+    renderRef: sha256:def…      # the render this rollout is about (the FAILED render on Failed/RolledBack)
     startedAt: 2026-08-17T09:00:00Z   # anchors the terminal-wave deadline clock
-    message: "…"                # human reason on Failed (which resource stayed degraded, or the dry-run error)
+    message: "…"                # human reason on Failed/RolledBack (which resource stayed degraded; what it rolled back to)
 ```
 
-- **`lastHealthy`** — a pointer with a required `renderRef`: **nil ⇒ no rollback target** (nothing has ever gone healthy); non-nil ⇒ its `renderRef` is guaranteed set and stored in the render store. Updated the moment a render reaches healthy, **independent of `failurePolicy`** — so a rollback target accrues even before the policy is enabled.
-- **`rollout`** — the state machine for the render being rolled out, keyed by `renderRef`. `startedAt` is set when the terminal wave applies and anchors the `deadline` clock. It is deliberately **separate from the live `Healthy` condition**: `rollout.state` is the *convergence outcome of a rollout*, not the *current health of the workload*. A `Succeeded` rollout whose workload later degrades stays `Succeeded` (see [Edge cases](#edge-cases)).
+- **`lastHealthy`** — a pointer with a required `renderRef`: **nil ⇒ no rollback target** (nothing has ever gone healthy); non-nil ⇒ its `renderRef` is guaranteed set and stored in the render store. Updated the moment a render reaches healthy, **independent of `failurePolicy`** — so a rollback target accrues even before the policy is enabled. On `RolledBack` it is also *what is now running*, so `rollout.renderRef` (the failed render) and `lastHealthy.renderRef` (the render rolled back to) together describe the rollback with no extra field.
+- **`rollout`** — the state machine for the render being rolled out, keyed by `renderRef`. `startedAt` is set when the terminal wave applies and anchors the `deadline` clock. It is deliberately **separate from the live `Healthy` condition**: `rollout.state` is the *convergence outcome of a rollout*, not the *current health of the workload*. A `Succeeded` rollout whose workload later degrades stays `Succeeded`; a `RolledBack` rollout whose last-healthy target then also fails to run stays `RolledBack` while the live `Healthy` condition honestly reports `False` (see [Edge cases](#edge-cases)).
 
-A release-level `Progressing`/`Failed` **condition** mirrors `rollout.state` for `kubectl` visibility, alongside the existing `Applied`/`Healthy`/`InSync`.
+### Rollout states
+
+```
+Progressing ─ healthy within budget ─────────────────────────────▶ Succeeded    (terminal)
+     │
+     └─ unhealthy past wave-timeout / deadline ─▶ Failed
+                                                   ├─ rollback = Never / no target ─▶ (terminal, bad render still applied)
+                                                   └─ rollback applies last-healthy ─▶ RolledBack (terminal, good render running)
+```
+
+`Failed` and `RolledBack` are both **held** terminal states: the controller does not re-drive the failed render; a spec change (new `renderRef`) or `/sync --force` resets the machine. `Failed` means the bad render is still applied and unhealthy; `RolledBack` means it was reverted to `lastHealthy`. `RolledBack` is entered the moment the rollback render is **applied** — last-healthy is a known-good render applied idempotently, so it is not re-gated.
+
+A release-level `RolloutSucceeded` **condition** mirrors `rollout.state` for `kubectl` visibility, alongside the existing `Applied`/`Healthy`/`InSync`: `True` for `Succeeded`, `False` for `Failed`/`RolledBack` (with the reason naming which), `Unknown` while `Progressing`.
 
 ## The apply path
 
@@ -78,7 +90,7 @@ When the **terminal** wave applies, the controller opens the release gate:
 - Set `rollout = {state: Progressing, renderRef: R, startedAt: now}` and **requeue** (the controller polls health on each reconcile like the wave gate; it never blocks a worker). `startedAt` persists.
 - On each reconcile while `Progressing`:
   - **Release healthy** (`Applied=True` and `Healthy=True`) → `rollout.state = Succeeded`, `lastHealthy.renderRef = R`. Terminal.
-  - **`now − startedAt > deadline`** and still unhealthy → **release failure** → apply the rollback policy, `rollout.state = Failed`. Terminal.
+  - **`now − startedAt > deadline`** and still unhealthy → **release failure** → `rollout.state = Failed`, then apply the rollback policy (below), which may advance it to `RolledBack`.
   - Otherwise → still converging; requeue.
 
 Intermediate wave failures (step 4) are the *other* entry into the failure path — surfaced during apply, before the release gate opens. Either failure (wave or release) runs the rollback policy below.
@@ -90,30 +102,30 @@ Health is read from the same observer-written rollup on the `ReleaseInventory` t
 On a failure whose trigger the policy selects (`OnWaveFailure`: any wave or release failure; `OnReleaseFailure`: release failure only) **and** `lastHealthy` is set:
 
 - Apply `lastHealthy.renderRef`'s stored render **once** ([03 rollback path](03-persistent-storage.md#object-layout--keying) — fetch the blob, apply it).
-- Set `rollout.state = Failed` with a `message` (the desired render R failed; the cluster now holds the last-good render).
+- Set `rollout.state = RolledBack` with a `message` (the desired render R failed; the cluster now holds the last-good render `lastHealthy.renderRef`).
 - **Stop.** The controller does not re-apply R. No history entry for the rollback (that render is already in the log — history is a set of distinct renders). No second attempt, no good↔bad flapping.
 
-`rollback: Never`, or a failure the policy doesn't select, or **no `lastHealthy`** (e.g. the first-ever deploy fails, nothing to fall back to) → `rollout.state = Failed`, leave the failed render applied, stop.
+`rollback: Never`, or a failure the policy doesn't select, or **no `lastHealthy`** (e.g. the first-ever deploy fails, nothing to fall back to) → the rollout stays at `rollout.state = Failed`, the failed render is left applied, stop.
 
 ## The three sync modes
 
-"Give up" means the **automatic** reconcile loop stops re-driving a `Failed` render — not that convoy refuses all retries.
+"Give up" means the **automatic** reconcile loop stops re-driving a render that ended `Failed` or `RolledBack` — not that convoy refuses all retries.
 
-| Trigger | Dry-run | On a `Failed` render |
-|---------|---------|----------------------|
+| Trigger | Dry-run | On a `Failed` / `RolledBack` render |
+|---------|---------|-------------------------------------|
 | Controller auto-reconcile | yes | **holds** — does not re-apply |
 | `/sync` | yes | **holds** |
-| `/sync?force=true` | **bypassed** | **clears `Failed`**, applies directly |
+| `/sync?force=true` | **bypassed** | **clears the held state**, applies directly |
 
-`Failed` is terminal for a `renderRef` until the **spec changes** (new `renderRef` resets the state machine) or **`/sync --force`** is issued. Plain `/sync` is the normal reconcile-request path and does not override `Failed`.
+A `Failed` / `RolledBack` render is held until the **spec changes** (new `renderRef` resets the state machine) or **`/sync --force`** is issued. Plain `/sync` is the normal reconcile-request path and does not override a held render.
 
 ### Implementing force
 
-`/sync` only stamps an annotation that wakes the controller; the apply, dry-run-bypass, and `Failed`-clear happen in the **controller** (a separate process). So force is communicated **through the object**, mirroring the existing `SyncRequestedAtAnnotation` / `status.lastHandledSyncAt` pair one-to-one:
+`/sync` only stamps an annotation that wakes the controller; the apply, dry-run-bypass, and held-state (`Failed`/`RolledBack`) clear happen in the **controller** (a separate process). So force is communicated **through the object**, mirroring the existing `SyncRequestedAtAnnotation` / `status.lastHandledSyncAt` pair one-to-one:
 
 - **New annotation** `convoy.kumodo.io/sync-force-requested-at` + **new status field** `status.lastHandledForceSyncAt`.
 - The `/sync` `Connect` handler reads `force` from its request (`req.URL.Query().Get("force")`); when set it stamps **both** the normal annotation (to wake the controller as today) and the force annotation (to mark intent).
-- The controller's `pendingForceSync(rel)` (twin of `pendingSync`) reports a new force request when the force annotation's time is newer than `status.lastHandledForceSyncAt`. On such a reconcile it **clears `rollout.state = Failed`** and **skips dry-run**, then records the force time (one-shot).
+- The controller's `pendingForceSync(rel)` (twin of `pendingSync`) reports a new force request when the force annotation's time is newer than `status.lastHandledForceSyncAt`. On such a reconcile it **clears the held `Failed`/`RolledBack` state** and **skips dry-run**, then records the force time (one-shot).
 - CLI: `convoy release sync --force` → `POST /sync?force=true`.
 
 Force bypasses dry-run safely: the real apply is still the gate (SSA rejects a genuinely-invalid manifest); it only skips the pre-flight — useful when the dry-run itself is failing transiently (a webhook is down) or the user simply wants to push through.
@@ -125,20 +137,20 @@ Force bypasses dry-run safely: the real apply is still the gate (SSA rejects a g
 - **A converged release later degrades** (creds expire on a healthy, unchanged Release). Does **not** trigger a rollback: the gate runs only during a rollout (a new render converging), and this render's rollout is already `Succeeded`. Doubly safe — even if it did, `lastHealthy.renderRef == the running render`, so a rollback is a no-op.
 - **Wave strategy interaction.** `OnWaveFailure`'s intermediate-wave rollback only fires when intermediate waves are health-gated *with a timeout* (`waveStrategy: waitForHealthyWithTimeout`); under `waitForHealthy` (unbounded) an intermediate wave holds indefinitely with no `WaveFailed`, as today. The terminal-wave `deadline` applies under any strategy. `waitForApplied` (no health gating) leaves intermediate waves ungated but still applies the release `deadline` to the terminal wave.
 - **User `/pin`.** An explicit pin is the user's deliberate override and takes precedence: while pinned, the controller applies the pinned render and `failurePolicy` does not open a rollout against a source render the user has overridden.
-- **Manual sync mode** (`syncPolicy.automatic=false`). The apply (and thus the rollout) happens only when a `/sync` is pending; once applied, the gate + policy run identically. A `Failed` render is re-driven only by `/sync --force` or a spec change.
+- **Manual sync mode** (`syncPolicy.automatic=false`). The apply (and thus the rollout) happens only when a `/sync` is pending; once applied, the gate + policy run identically. A `Failed`/`RolledBack` render is re-driven only by `/sync --force` or a spec change.
 
 ## What this reuses vs. adds
 
 **Reuses:** the observer's health assessment + per-resource rollup on `ReleaseInventory` ([01](01-health-assessment.md)); SSA `DryRunAll` (observer diff path); the render store + rollback-apply ([03](03-persistent-storage.md)); the sync-wave gate + `status.waves[].StartedAt`; the `/sync` annotation + `lastHandledSyncAt` request-tracking.
 
-**Adds:** top-level `spec.failurePolicy{rollback, deadline}` + the `deadline > healthAssessment.deadline` validation; `status.lastHealthy` + `status.rollout` + a `Progressing`/`Failed` condition; the always-on dry-run step + `Deployer.DryRun` (lenient on unknown types); the terminal-wave release gate; the `sync-force-requested-at` annotation + `lastHandledForceSyncAt`.
+**Adds:** top-level `spec.failurePolicy{rollback, deadline}` + the `deadline > healthAssessment.deadline` validation; `status.lastHealthy` + `status.rollout` (states `Progressing`/`Succeeded`/`Failed`/`RolledBack`) + a `RolloutSucceeded` condition; the always-on dry-run step + `Deployer.DryRun` (lenient on unknown types); the terminal-wave release gate; the `sync-force-requested-at` annotation + `lastHandledForceSyncAt`.
 
 ## Build items
 
-1. **API** — `spec.failurePolicy{rollback enum, deadline}`; `status.lastHealthy`, `status.rollout`; the `Progressing`/`Failed` condition; validation `deadline > healthAssessment.deadline`; codegen. `lastHealthy` is written whenever a render reaches healthy (independent of `failurePolicy`).
+1. **API** — `spec.failurePolicy{rollback enum, deadline}`; `status.lastHealthy`, `status.rollout` (states `Progressing`/`Succeeded`/`Failed`/`RolledBack`); the `RolloutSucceeded` condition; validation `deadline > healthAssessment.deadline`; codegen. `lastHealthy` is written whenever a render reaches healthy (independent of `failurePolicy`).
 2. **Dry-run** — `Deployer.DryRun` (SSA `DryRunAll`, lenient on not-yet-existing types); the pre-persist dry-run step; wire the `un-appliable` failure to a clear condition/reason.
-3. **Release gate + state machine** — open the rollout when the terminal wave applies; `Progressing → Succeeded/Failed` on the deadline; requeue cadence; terminal-hold on `Failed`.
-4. **Rollback** — one-shot apply of `lastHealthy` per the `rollback` enum (wave vs release failure); resting states for `Never` / no-target.
+3. **Release gate + state machine** — open the rollout when the terminal wave applies; `Progressing → Succeeded` / `→ Failed` on the deadline; requeue cadence; terminal-hold on `Failed`/`RolledBack`.
+4. **Rollback** — one-shot apply of `lastHealthy` per the `rollback` enum (wave vs release failure), transitioning `Failed → RolledBack`; resting at `Failed` for `Never` / no-target.
 5. **Force sync** — `sync-force-requested-at` + `lastHandledForceSyncAt`; `/sync?force` handler; `pendingForceSync`; CLI `--force`.
 
 ## Open decisions
