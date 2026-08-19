@@ -1472,6 +1472,10 @@ func (in *ReleaseStatus) DeepCopyInto(out *ReleaseStatus) {
 		in, out := &in.LastHandledSyncAt, &out.LastHandledSyncAt
 		*out = (*in).DeepCopy()
 	}
+	if in.LastHandledForceSyncAt != nil {
+		in, out := &in.LastHandledForceSyncAt, &out.LastHandledForceSyncAt
+		*out = (*in).DeepCopy()
+	}
 	if in.Rollout != nil {
 		in, out := &in.Rollout, &out.Rollout
 		*out = new(RolloutStatus)

@@ -56,6 +56,10 @@ type ReleaseStatusApplyConfiguration struct {
 	HealthSummary *ReleaseHealthSummaryApplyConfiguration `json:"healthSummary,omitempty"`
 	// LastHandledSyncAt reflects the timestamp when the last sync was handled
 	LastHandledSyncAt *metav1.Time `json:"lastHandledSyncAt,omitempty"`
+	// LastHandledForceSyncAt reflects the timestamp of the last handled forced sync
+	// (/sync?force=true). A force request newer than this bypasses the pre-apply
+	// dry-run and clears a held Failed/RolledBack rollout.
+	LastHandledForceSyncAt *metav1.Time `json:"lastHandledForceSyncAt,omitempty"`
 	// Rollout reflects the release rollout state.
 	Rollout *RolloutStatusApplyConfiguration `json:"rollout,omitempty"`
 }
@@ -177,6 +181,14 @@ func (b *ReleaseStatusApplyConfiguration) WithHealthSummary(value *ReleaseHealth
 // If called multiple times, the LastHandledSyncAt field is set to the value of the last call.
 func (b *ReleaseStatusApplyConfiguration) WithLastHandledSyncAt(value metav1.Time) *ReleaseStatusApplyConfiguration {
 	b.LastHandledSyncAt = &value
+	return b
+}
+
+// WithLastHandledForceSyncAt sets the LastHandledForceSyncAt field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the LastHandledForceSyncAt field is set to the value of the last call.
+func (b *ReleaseStatusApplyConfiguration) WithLastHandledForceSyncAt(value metav1.Time) *ReleaseStatusApplyConfiguration {
+	b.LastHandledForceSyncAt = &value
 	return b
 }
 

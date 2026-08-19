@@ -169,7 +169,8 @@ func newReleaseUnpinCmd(f *cliclient.ConfigFlags) *cobra.Command {
 }
 
 func newReleaseSyncCmd(f *cliclient.ConfigFlags) *cobra.Command {
-	return &cobra.Command{
+	var force bool
+	cmd := &cobra.Command{
 		Use:   "sync <name>",
 		Short: "Request an immediate reconcile of a release (and apply, in manual sync mode)",
 		Args:  cobra.ExactArgs(1),
@@ -178,9 +179,11 @@ func newReleaseSyncCmd(f *cliclient.ConfigFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runSync(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0])
+			return runSync(cmd.Context(), cmd.OutOrStdout(), client, namespace, args[0], force)
 		},
 	}
+	cmd.Flags().BoolVar(&force, "force", false, "bypass the pre-apply dry-run and clear a held Failed/RolledBack rollout, re-driving the render")
+	return cmd
 }
 
 func newReleasePreviewCmd(f *cliclient.ConfigFlags) *cobra.Command {
@@ -287,11 +290,15 @@ func runUnpin(ctx context.Context, out io.Writer, client cliclient.Client, names
 	return nil
 }
 
-func runSync(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name string) error {
-	if _, err := client.Sync(ctx, namespace, name); err != nil {
+func runSync(ctx context.Context, out io.Writer, client cliclient.Client, namespace, name string, force bool) error {
+	if _, err := client.Sync(ctx, namespace, name, force); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(out, "requested sync for %s/%s\n", namespace, name); err != nil {
+	verb := "requested sync"
+	if force {
+		verb = "requested forced sync"
+	}
+	if _, err := fmt.Fprintf(out, "%s for %s/%s\n", verb, namespace, name); err != nil {
 		return err
 	}
 	return nil

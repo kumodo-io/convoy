@@ -232,12 +232,18 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	newStatus.Waves = outcome.waves
 	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
 	newStatus.LastHealthy = lastHealthy(rel, &newStatus, outcome.attempt.RenderRef)
+	// A forced sync (/sync?force) re-drives a held render and resets its rollout;
+	// record which force request was handled so it is one-shot.
+	forceAt, forced := pendingForceSync(rel)
+	if forced {
+		newStatus.LastHandledForceSyncAt = forceAt
+	}
 	// A failure/rollback outcome carries its own rollout decision; otherwise compute
 	// the non-failure state (Progressing/Succeeded, or carry prior forward).
 	if outcome.rollout != nil {
 		newStatus.Rollout = outcome.rollout
 	} else {
-		newStatus.Rollout = c.evaluateRollout(rel, &newStatus, outcome)
+		newStatus.Rollout = c.evaluateRollout(rel, &newStatus, outcome, forced)
 	}
 	if cond := rolloutCondition(newStatus.Rollout, rel.Generation, c.now()); cond != nil {
 		apimeta.SetStatusCondition(&newStatus.Conditions, *cond)
@@ -331,6 +337,27 @@ func pendingSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
 	}
 	requestedAt := metav1.NewTime(t.Truncate(time.Second))
 	if h := rel.Status.LastHandledSyncAt; h != nil && !requestedAt.After(h.Time) {
+		return nil, false
+	}
+	return &requestedAt, true
+}
+
+// pendingForceSync reports whether an unhandled forced-sync request is stamped on
+// the Release (the twin of pendingSync for the force annotation): the
+// sync-force-requested-at annotation parses to a time after
+// status.lastHandledForceSyncAt. A forced sync bypasses the pre-apply dry-run and
+// clears a held Failed/RolledBack rollout.
+func pendingForceSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
+	raw := rel.Annotations[corev1alpha1.SyncForceRequestedAtAnnotation]
+	if raw == "" {
+		return nil, false
+	}
+	t, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return nil, false
+	}
+	requestedAt := metav1.NewTime(t.Truncate(time.Second))
+	if h := rel.Status.LastHandledForceSyncAt; h != nil && !requestedAt.After(h.Time) {
 		return nil, false
 	}
 	return &requestedAt, true
@@ -432,6 +459,9 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 	}
 	if s.LastHandledSyncAt != nil {
 		statusAC.WithLastHandledSyncAt(*s.LastHandledSyncAt)
+	}
+	if s.LastHandledForceSyncAt != nil {
+		statusAC.WithLastHandledForceSyncAt(*s.LastHandledForceSyncAt)
 	}
 
 	// waves is a listType=map keyed by number, fully owned by this controller: it
@@ -713,10 +743,12 @@ type reconcileState struct {
 	pending     bool
 	requestedAt *metav1.Time
 	// force is set when this reconcile satisfies a /sync?force request: it bypasses
-	// the pre-apply dry-run and clears a held Failed/RolledBack rollout (wired in a
-	// later slice). Default false.
-	force   bool
-	attempt corev1alpha1.ReleaseAttemptedRenderStatus
+	// the pre-apply dry-run and clears a held Failed/RolledBack rollout.
+	force bool
+	// forceRequestedAt is the force-request time this reconcile handled, recorded in
+	// status.lastHandledForceSyncAt so the one-shot force isn't re-triggered.
+	forceRequestedAt *metav1.Time
+	attempt          corev1alpha1.ReleaseAttemptedRenderStatus
 
 	// Produced by stageRender, consumed by stageGates/stageSync.
 	art     artifact.Artifact
@@ -729,12 +761,15 @@ type reconcileState struct {
 func (c *Controller) newReconcileState(rel *corev1alpha1.Release) *reconcileState {
 	now := c.now()
 	requestedAt, pending := pendingSync(rel)
+	forceAt, force := pendingForceSync(rel)
 	return &reconcileState{
-		rel:         rel,
-		now:         now,
-		manual:      !rel.Spec.SyncPolicy.Automatic,
-		pending:     pending,
-		requestedAt: requestedAt,
+		rel:              rel,
+		now:              now,
+		manual:           !rel.Spec.SyncPolicy.Automatic,
+		pending:          pending,
+		requestedAt:      requestedAt,
+		force:            force,
+		forceRequestedAt: forceAt,
 		attempt: corev1alpha1.ReleaseAttemptedRenderStatus{
 			AttemptedAt:    &now,
 			ResolvedSource: resolvedSourceFrom(rel),
@@ -1395,7 +1430,7 @@ func heldRolloutRender(rel *corev1alpha1.Release, currentRenderRef string, force
 //
 // startedAt anchors the deadline clock: it is set when the render first applies and
 // preserved across reconciles (the render re-applies idempotently each pass).
-func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, newStatus *corev1alpha1.ReleaseStatus, outcome reconcileOutcome) *corev1alpha1.RolloutStatus {
+func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, newStatus *corev1alpha1.ReleaseStatus, outcome reconcileOutcome, forced bool) *corev1alpha1.RolloutStatus {
 	fp := rel.Spec.FailurePolicy
 	if fp == nil {
 		return nil
@@ -1405,7 +1440,8 @@ func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, newStatus *corev
 
 	// A render whose rollout is already terminal stays put (Succeeded holds;
 	// Failed/RolledBack are held terminal states — heldRolloutRender stops the apply).
-	if prior != nil && prior.RenderRef == renderRef && rolloutStateTerminal(prior.State) {
+	// A forced sync resets this: it re-drives the render, so a fresh rollout opens.
+	if !forced && prior != nil && prior.RenderRef == renderRef && rolloutStateTerminal(prior.State) {
 		return prior
 	}
 	// Only a render that actually applied this reconcile drives the gate; otherwise
@@ -1415,9 +1451,10 @@ func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, newStatus *corev
 	}
 
 	// Anchor the deadline clock at the render's first apply and preserve it across
-	// reconciles (the render re-applies idempotently each pass).
+	// reconciles (the render re-applies idempotently each pass). A forced sync starts
+	// a fresh clock.
 	startedAt := c.now()
-	if prior != nil && prior.RenderRef == renderRef && !prior.StartedAt.IsZero() {
+	if !forced && prior != nil && prior.RenderRef == renderRef && !prior.StartedAt.IsZero() {
 		startedAt = prior.StartedAt
 	}
 

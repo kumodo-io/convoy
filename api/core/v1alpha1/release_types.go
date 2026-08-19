@@ -965,6 +965,11 @@ type ReleaseStatus struct {
 	// LastHandledSyncAt reflects the timestamp when the last sync was handled
 	LastHandledSyncAt *metav1.Time `json:"lastHandledSyncAt,omitempty"`
 
+	// LastHandledForceSyncAt reflects the timestamp of the last handled forced sync
+	// (/sync?force=true). A force request newer than this bypasses the pre-apply
+	// dry-run and clears a held Failed/RolledBack rollout.
+	LastHandledForceSyncAt *metav1.Time `json:"lastHandledForceSyncAt,omitempty"`
+
 	// Rollout reflects the release rollout state.
 	Rollout *RolloutStatus `json:"rollout,omitempty"`
 }

@@ -3959,6 +3959,12 @@ func schema_convoy_api_core_v1alpha1_ReleaseStatus(ref common.ReferenceCallback)
 							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
 						},
 					},
+					"lastHandledForceSyncAt": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastHandledForceSyncAt reflects the timestamp of the last handled forced sync (/sync?force=true). A force request newer than this bypasses the pre-apply dry-run and clears a held Failed/RolledBack rollout.",
+							Ref:         ref(metav1.Time{}.OpenAPIModelName()),
+						},
+					},
 					"rollout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Rollout reflects the release rollout state.",

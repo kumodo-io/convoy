@@ -18,6 +18,7 @@ package release
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -326,6 +327,51 @@ func TestRollout_NeverStaysFailed(t *testing.T) {
 	}
 	if deployer.called {
 		t.Error("rollback applied despite rollback=Never")
+	}
+}
+
+// TestRollout_ForceClearsHeldRenderAndBypassesDryRun: /sync --force re-drives a held
+// Failed render — applying it despite a failing dry-run and resetting the rollout to
+// Progressing.
+func TestRollout_ForceClearsHeldRenderAndBypassesDryRun(t *testing.T) {
+	// Discover the render this spec produces.
+	probe := manifestsRelease()
+	pc, pclient := newTestController(t, probe, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	if err := pc.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("probe: %v", err)
+	}
+	renderRef := statusUpdate(pclient.Actions()).Status.LastAttempted.RenderRef
+
+	rel := manifestsRelease()
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure, time.Minute)
+	// Held Failed for the current render.
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateFailed, RenderRef: renderRef,
+		StartedAt: metav1.NewTime(time.Date(2026, 6, 25, 11, 0, 0, 0, time.UTC)),
+	}
+	// A newer forced-sync request than any handled one.
+	rel.Annotations = map[string]string{
+		corev1alpha1.SyncForceRequestedAtAnnotation: "2026-06-25T12:00:00Z",
+	}
+	// dry-run would fail — force must bypass it.
+	deployer := &fakeDeployer{dryRunErr: errors.New("field is immutable")}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if !deployer.called {
+		t.Error("force did not re-apply the held render")
+	}
+	if deployer.dryRunCalled {
+		t.Error("force did not bypass the dry-run")
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateProgressing {
+		t.Errorf("rollout state = %v, want Progressing (force reset)", got.Status.Rollout)
+	}
+	if got.Status.LastHandledForceSyncAt == nil {
+		t.Error("lastHandledForceSyncAt not recorded (force must be one-shot)")
 	}
 }
 

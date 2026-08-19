@@ -36,8 +36,9 @@ type Client interface {
 	Pin(ctx context.Context, namespace, name, renderRef string) (*corev1alpha1.Release, error)
 	// Unpin clears the Release's pin via the /pin subresource.
 	Unpin(ctx context.Context, namespace, name string) (*corev1alpha1.Release, error)
-	// Sync requests a reconcile via the /sync subresource.
-	Sync(ctx context.Context, namespace, name string) (*corev1alpha1.Release, error)
+	// Sync requests a reconcile via the /sync subresource. force=true additionally
+	// bypasses the pre-apply dry-run and clears a held Failed/RolledBack rollout.
+	Sync(ctx context.Context, namespace, name string, force bool) (*corev1alpha1.Release, error)
 	// Preview returns the rendered desired objects for a Release (multi-document
 	// YAML) via the /preview subresource.
 	Preview(ctx context.Context, namespace, name string) ([]byte, error)
@@ -104,16 +105,17 @@ func (c *restClient) Unpin(ctx context.Context, namespace, name string) (*corev1
 	return c.putPin(ctx, namespace, name, nil)
 }
 
-func (c *restClient) Sync(ctx context.Context, namespace, name string) (*corev1alpha1.Release, error) {
+func (c *restClient) Sync(ctx context.Context, namespace, name string, force bool) (*corev1alpha1.Release, error) {
 	result := &corev1alpha1.Release{}
-	err := c.rc.Post().
+	req := c.rc.Post().
 		Namespace(namespace).
 		Resource("releases").
 		Name(name).
-		SubResource("sync").
-		Do(ctx).
-		Into(result)
-	if err != nil {
+		SubResource("sync")
+	if force {
+		req = req.Param("force", "true")
+	}
+	if err := req.Do(ctx).Into(result); err != nil {
 		return nil, err
 	}
 	return result, nil

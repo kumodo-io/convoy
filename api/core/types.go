@@ -529,6 +529,7 @@ type ReleaseStatus struct {
 	Lifecycle               LifecycleStatus
 	HealthSummary           ReleaseHealthSummary
 	LastHandledSyncAt       *metav1.Time
+	LastHandledForceSyncAt  *metav1.Time
 	Rollout                 *RolloutStatus
 }
 

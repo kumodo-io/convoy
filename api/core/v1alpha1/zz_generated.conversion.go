@@ -2220,6 +2220,7 @@ func autoConvert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus,
 		return err
 	}
 	out.LastHandledSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledSyncAt))
+	out.LastHandledForceSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledForceSyncAt))
 	out.Rollout = (*core.RolloutStatus)(unsafe.Pointer(in.Rollout))
 	return nil
 }
@@ -2249,6 +2250,7 @@ func autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseSt
 		return err
 	}
 	out.LastHandledSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledSyncAt))
+	out.LastHandledForceSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledForceSyncAt))
 	out.Rollout = (*RolloutStatus)(unsafe.Pointer(in.Rollout))
 	return nil
 }
