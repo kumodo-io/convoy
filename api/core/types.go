@@ -272,6 +272,14 @@ const (
 	LifecycleHookRunAfterHealthy LifecycleHookRunAfter = "Healthy"
 )
 
+type RollbackPolicy string
+
+const (
+	RollbackPolicyNever            RollbackPolicy = "Never"
+	RollbackPolicyOnWaveFailure    RollbackPolicy = "OnWaveFailure"
+	RollbackPolicyOnReleaseFailure RollbackPolicy = "OnReleaseFailure"
+)
+
 type ReleaseSpec struct {
 	Source           ReleaseSourceSpec
 	Content          ReleaseContentSpec
@@ -280,6 +288,7 @@ type ReleaseSpec struct {
 	RetentionPolicy  ReleaseRetentionPolicySpec
 	DeletionPolicy   ReleaseDeletionPolicy
 	HealthAssessment *ReleaseHealthAssessment
+	FailurePolicy    *ReleaseFailurePolicy
 }
 
 type ReleaseSourceSpec struct {
@@ -413,6 +422,11 @@ type ReleaseHealthAssessment struct {
 	GlobalRuleSetSelector *metav1.LabelSelector
 	LocalRuleSetSelector  *metav1.LabelSelector
 	Deadline              *metav1.Duration
+}
+
+type ReleaseFailurePolicy struct {
+	Rollback RollbackPolicy
+	Deadline *metav1.Duration
 }
 
 type ReleaseMutation struct {

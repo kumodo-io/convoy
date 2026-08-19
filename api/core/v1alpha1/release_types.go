@@ -356,6 +356,24 @@ const (
 	LifecycleHookRunAfterHealthy LifecycleHookRunAfter = "Healthy"
 )
 
+// RollbackPolicy defines the rollback action taken in case of rollout failure.
+// +enum
+type RollbackPolicy string
+
+const (
+	// RollbackPolicyNever defines that no rollback will be performed.
+	RollbackPolicyNever RollbackPolicy = "Never"
+
+	// RollbackPolicyOnWaveFailure defines that the rollback will be
+	// performed on the first occurred wave rollout failure.
+	RollbackPolicyOnWaveFailure RollbackPolicy = "OnWaveFailure"
+
+	// RollbackPolicyOnReleaseFailure defines that the rollback will
+	// be performed if the release won't get healthy within defined
+	// deadline after all waves were applied.
+	RollbackPolicyOnReleaseFailure RollbackPolicy = "OnReleaseFailure"
+)
+
 // ReleaseSpec defines the desired state of the Release.
 type ReleaseSpec struct {
 	// Source is the content source of the release.
@@ -381,6 +399,9 @@ type ReleaseSpec struct {
 	// HealthAssessment defines the health assessment configuration
 	// for resources delivered by the Release.
 	HealthAssessment *ReleaseHealthAssessment `json:"healthAssessment,omitempty"`
+
+	// FailurePolicy is the failure policy for the release.
+	FailurePolicy *ReleaseFailurePolicy `json:"failurePolicy,omitempty"`
 }
 
 // ReleaseSourceSpec defines the source for the release.
@@ -659,9 +680,27 @@ type ReleaseDeletionPolicy struct {
 // ReleaseHealthAssessment defines selectors to get the health rules along
 // with assessment deadline anchor.
 type ReleaseHealthAssessment struct {
+	// GlobalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector]
+	// that will be used to collect the cluster-scoped [github.com/kumodo-io/convoy/api/extensions/v1alpha1.GlobalHealthRuleSet]
 	GlobalRuleSetSelector *metav1.LabelSelector `json:"globalRuleSetSelector,omitempty"`
-	LocalRuleSetSelector  *metav1.LabelSelector `json:"localRuleSetSelector,omitempty"`
-	Deadline              *metav1.Duration      `json:"deadline,omitempty"`
+
+	// LocalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector]
+	// that will be used to collect the namespaced [github.com/kumodo-io/convoy/api/extensions/v1alpha1.HealthRuleSet],
+	// These rule sets will be looked up in the Release namespace.
+	LocalRuleSetSelector *metav1.LabelSelector `json:"localRuleSetSelector,omitempty"`
+
+	// Deadline is the interval within what the deployed resources must pass collected health rules.
+	Deadline *metav1.Duration `json:"deadline,omitempty"`
+}
+
+// ReleaseFailurePolicy defines the behaviour on Release rollout failure.
+type ReleaseFailurePolicy struct {
+	// Rollback defines the rollback policy.
+	Rollback RollbackPolicy `json:"rollback"`
+
+	// Deadline defines the interval within what the deployed resources must enter the healthy state
+	// according to applicable health rules.
+	Deadline *metav1.Duration `json:"deadline,omitempty"`
 }
 
 // ReleaseMutation defines the desired state of the ReleaseMutation.

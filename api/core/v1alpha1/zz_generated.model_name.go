@@ -162,6 +162,11 @@ func (in ReleaseDeletionPolicy) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseFailurePolicy) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseFailurePolicy"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseGitRepositoryRefSpec) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseGitRepositoryRefSpec"
 }

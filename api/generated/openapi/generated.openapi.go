@@ -82,6 +82,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
 		v1alpha1.ReleaseContentSpec{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
 		v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicy(ref),
+		v1alpha1.ReleaseFailurePolicy{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseFailurePolicy(ref),
 		v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref),
 		v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref),
 		v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseHealthAssessment(ref),
@@ -2523,6 +2524,37 @@ func schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicy(ref common.ReferenceC
 	}
 }
 
+func schema_convoy_api_core_v1alpha1_ReleaseFailurePolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ReleaseFailurePolicy defines the behaviour on Release rollout failure.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"rollback": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Rollback defines the rollback policy.\n\nPossible enum values:\n - `\"Never\"` defines that no rollback will be performed.\n - `\"OnReleaseFailure\"` defines that the rollback will be performed if the release won't get healthy within defined deadline after all waves were applied.\n - `\"OnWaveFailure\"` defines that the rollback will be performed on the first occurred wave rollout failure.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Never", "OnReleaseFailure", "OnWaveFailure"},
+						},
+					},
+					"deadline": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Deadline defines the interval within what the deployed resources must enter the healthy state according to applicable health rules.",
+							Ref:         ref(metav1.Duration{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"rollback"},
+			},
+		},
+		Dependencies: []string{
+			metav1.Duration{}.OpenAPIModelName()},
+	}
+}
+
 func schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -2610,17 +2642,20 @@ func schema_convoy_api_core_v1alpha1_ReleaseHealthAssessment(ref common.Referenc
 				Properties: map[string]spec.Schema{
 					"globalRuleSetSelector": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref(metav1.LabelSelector{}.OpenAPIModelName()),
+							Description: "GlobalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector] that will be used to collect the cluster-scoped [github.com/kumodo-io/convoy/api/extensions/v1alpha1.GlobalHealthRuleSet]",
+							Ref:         ref(metav1.LabelSelector{}.OpenAPIModelName()),
 						},
 					},
 					"localRuleSetSelector": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref(metav1.LabelSelector{}.OpenAPIModelName()),
+							Description: "LocalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector] that will be used to collect the namespaced [github.com/kumodo-io/convoy/api/extensions/v1alpha1.HealthRuleSet], These rule sets will be looked up in the Release namespace.",
+							Ref:         ref(metav1.LabelSelector{}.OpenAPIModelName()),
 						},
 					},
 					"deadline": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref(metav1.Duration{}.OpenAPIModelName()),
+							Description: "Deadline is the interval within what the deployed resources must pass collected health rules.",
+							Ref:         ref(metav1.Duration{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -3763,12 +3798,18 @@ func schema_convoy_api_core_v1alpha1_ReleaseSpec(ref common.ReferenceCallback) c
 							Ref:         ref(v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName()),
 						},
 					},
+					"failurePolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FailurePolicy is the failure policy for the release.",
+							Ref:         ref(v1alpha1.ReleaseFailurePolicy{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"source", "content", "clusterRef", "syncPolicy", "retentionPolicy", "deletionPolicy"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentSpec{}.OpenAPIModelName(), v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName(), v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName(), v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName(), v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName(), v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()},
+			v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName(), v1alpha1.ReleaseContentSpec{}.OpenAPIModelName(), v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName(), v1alpha1.ReleaseFailurePolicy{}.OpenAPIModelName(), v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName(), v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName(), v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName(), v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName()},
 	}
 }
 

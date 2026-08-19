@@ -122,6 +122,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseContentSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseDeletionPolicy"):
 		return &applyconfigurationcorev1alpha1.ReleaseDeletionPolicyApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseFailurePolicy"):
+		return &applyconfigurationcorev1alpha1.ReleaseFailurePolicyApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositoryRefSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseGitRepositoryRefSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositorySpec"):
