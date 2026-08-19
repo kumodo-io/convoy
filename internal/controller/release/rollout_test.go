@@ -23,8 +23,20 @@ import (
 
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
+	"github.com/kumodo-io/convoy/internal/artifact"
+	"github.com/kumodo-io/convoy/internal/blobstore"
+	"github.com/kumodo-io/convoy/internal/fetch"
+	"github.com/kumodo-io/convoy/internal/render"
+	"github.com/kumodo-io/convoy/internal/renderstore"
+)
+
+const (
+	lastHealthyRef = "sha256:lasthealthy"
+	lhCMName       = "lh-cm"
 )
 
 func withFailurePolicy(rel *corev1alpha1.Release, rollback corev1alpha1.RollbackPolicy, deadline time.Duration) {
@@ -164,6 +176,156 @@ func TestRollout_NoHealthConfiguredSucceedsImmediately(t *testing.T) {
 	got := statusUpdate(client.Actions())
 	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateSucceeded {
 		t.Errorf("state = %v, want Succeeded (no health rules → inert-by-passing)", got.Status.Rollout)
+	}
+}
+
+// rolloutTestController builds a controller whose render store holds a seeded
+// last-healthy render (a ConfigMap named lhName), with the Release's
+// status.lastHealthy pointing at it and a Progressing rollout for the current
+// render started `age` ago. It returns the controller, client, deployer, and the
+// current render ref (discovered by a probe reconcile).
+func rolloutWithLastHealthy(t *testing.T, rollback corev1alpha1.RollbackPolicy, deadline, age time.Duration, lhName string) (*Controller, *fakeclient.Clientset, *fakeDeployer, string) {
+	t.Helper()
+	// Probe the render ref this spec produces.
+	probe := manifestsRelease()
+	pc, pclient := newTestController(t, probe, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	if err := pc.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("probe: %v", err)
+	}
+	renderRef := statusUpdate(pclient.Actions()).Status.LastAttempted.RenderRef
+
+	rel := manifestsRelease()
+	withFailurePolicy(rel, rollback, deadline)
+	seedConditions(rel, metav1.ConditionFalse, metav1.ConditionFalse) // never healthy
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
+	started := metav1.NewTime(time.Date(2026, 6, 25, 12, 0, 0, 0, time.UTC).Add(-age))
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateProgressing, RenderRef: renderRef, StartedAt: started,
+	}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	// Seed the last-healthy render in the store.
+	lh := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": configMapKind,
+		"metadata": map[string]any{"name": lhName, "namespace": "ns"},
+	}}
+	manifest, err := render.MarshalManifest([]*unstructured.Unstructured{lh})
+	if err != nil {
+		t.Fatalf("MarshalManifest: %v", err)
+	}
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+	if err := c.renderStore.PutRender(context.Background(), "ns", "r1", lastHealthyRef, manifest); err != nil {
+		t.Fatalf("PutRender: %v", err)
+	}
+	return c, client, deployer, renderRef
+}
+
+// TestRollout_ReleaseFailureRollsBack: past the deadline & unhealthy, OnReleaseFailure
+// applies the last-healthy render and transitions to RolledBack.
+func TestRollout_ReleaseFailureRollsBack(t *testing.T) {
+	c, client, deployer, failedRef := rolloutWithLastHealthy(t, corev1alpha1.RollbackPolicyOnReleaseFailure, time.Minute, 2*time.Minute, lhCMName)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout.State != corev1alpha1.RolloutStateRolledBack {
+		t.Fatalf("state = %s, want RolledBack", got.Status.Rollout.State)
+	}
+	if got.Status.Rollout.RenderRef != failedRef {
+		t.Errorf("rollout.renderRef = %s, want the failed render %s", got.Status.Rollout.RenderRef, failedRef)
+	}
+	// The last-healthy render (lh-cm) was applied, not the failed source render.
+	if !deployer.called || deployer.got[0].GetName() != lhCMName {
+		t.Errorf("rollback did not apply the last-healthy render; deployed %v", deployer.got)
+	}
+}
+
+// TestRollout_OnReleaseFailureIgnoresWaveFailure: a wave failure under
+// OnReleaseFailure does NOT roll back — it stays Failed.
+func TestRollout_OnReleaseFailureIgnoresWaveFailure(t *testing.T) {
+	// A wave failure needs a multi-wave, health-gated, bounded release. Build one
+	// whose wave 1 waits on wave 0's health with a timeout, and wave 0 never healthy.
+	early := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w0\n  annotations:\n    convoy.kumodo.io/sync-wave: \"0\"\n    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1s\"\n"
+	late := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w1\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1s\"\n"
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready: true, Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{w0File: []byte(early), w1File: []byte(late)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(w0File, w1File)
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure, time.Minute)
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{} // health-gated
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
+	// Wave 0 applied 2s ago (past its 1s timeout), never healthy → wave 1 fails.
+	started := metav1.NewTime(time.Date(2026, 6, 25, 11, 59, 58, 0, time.UTC))
+	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{{Number: 0, StartedAt: &started}}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateFailed {
+		t.Errorf("state = %v, want Failed (OnReleaseFailure must not roll back a wave failure)", got.Status.Rollout)
+	}
+}
+
+// TestRollout_OnWaveFailureRollsBackOnWaveFailure: a wave failure under
+// OnWaveFailure rolls back to last-healthy.
+func TestRollout_OnWaveFailureRollsBackOnWaveFailure(t *testing.T) {
+	early := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w0\n  annotations:\n    convoy.kumodo.io/sync-wave: \"0\"\n    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1s\"\n"
+	late := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w1\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1s\"\n"
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready: true, Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{w0File: []byte(early), w1File: []byte(late)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(w0File, w1File)
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnWaveFailure, time.Minute)
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{}
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
+	started := metav1.NewTime(time.Date(2026, 6, 25, 11, 59, 58, 0, time.UTC))
+	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{{Number: 0, StartedAt: &started}}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
+
+	// Seed the last-healthy render.
+	lh := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": configMapKind,
+		"metadata": map[string]any{"name": lhCMName, "namespace": "ns"},
+	}}
+	manifest, _ := render.MarshalManifest([]*unstructured.Unstructured{lh})
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+	_ = c.renderStore.PutRender(context.Background(), "ns", "r1", lastHealthyRef, manifest)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateRolledBack {
+		t.Fatalf("state = %v, want RolledBack (OnWaveFailure rolls back a wave failure)", got.Status.Rollout)
+	}
+	if got := deployer.got; len(got) == 0 || got[len(got)-1].GetName() != lhCMName {
+		t.Errorf("last apply was not the last-healthy render: %v", deployer.got)
+	}
+}
+
+// TestRollout_NeverStaysFailed: rollback=Never never rolls back, even with a target.
+func TestRollout_NeverStaysFailed(t *testing.T) {
+	c, client, deployer, _ := rolloutWithLastHealthy(t, corev1alpha1.RollbackPolicyNever, time.Minute, 2*time.Minute, lhCMName)
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout.State != corev1alpha1.RolloutStateFailed {
+		t.Errorf("state = %s, want Failed (rollback=Never)", got.Status.Rollout.State)
+	}
+	if deployer.called {
+		t.Error("rollback applied despite rollback=Never")
 	}
 }
 

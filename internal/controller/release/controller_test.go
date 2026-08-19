@@ -49,6 +49,8 @@ const (
 	kindKey        = "kind"
 	nameKey        = "name"
 	namespaceKey   = "namespace"
+	w0File         = "w0.yaml"
+	w1File         = "w1.yaml"
 	dummyRevision  = "abc123"
 	dummyURL       = "https://example.com/repo.git"
 	dummyCluster   = "target"
@@ -405,13 +407,13 @@ func gatedCoordinator(wave1Ann string) *fakeCoordinator {
 	w1 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: after\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n" + wave1Ann
 	return &fakeCoordinator{result: fetch.Result{
 		Ready: true, Revision: waveRevision,
-		Artifact: artifact.Artifact{Files: map[string][]byte{"w0.yaml": []byte(w0), "w1.yaml": []byte(w1)}},
+		Artifact: artifact.Artifact{Files: map[string][]byte{w0File: []byte(w0), w1File: []byte(w1)}},
 	}}
 }
 
 func gatedRelease() *corev1alpha1.Release {
 	rel := manifestsRelease()
-	rel.Spec.Content = manifestsContent("w0.yaml", "w1.yaml")
+	rel.Spec.Content = manifestsContent(w0File, w1File)
 	// A health bar only applies when the release has a health assessment; without
 	// one there is nothing to wait for, so the controller advances immediately.
 	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{}
@@ -444,13 +446,13 @@ func threeWaveCoordinator(wave2Ann string) *fakeCoordinator {
 	w2 := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w2\n  annotations:\n    convoy.kumodo.io/sync-wave: \"2\"\n" + wave2Ann
 	return &fakeCoordinator{result: fetch.Result{
 		Ready: true, Revision: waveRevision,
-		Artifact: artifact.Artifact{Files: map[string][]byte{"w0.yaml": []byte(w0), "w1.yaml": []byte(w1), "w2.yaml": []byte(w2)}},
+		Artifact: artifact.Artifact{Files: map[string][]byte{w0File: []byte(w0), w1File: []byte(w1), "w2.yaml": []byte(w2)}},
 	}}
 }
 
 func threeWaveRelease() *corev1alpha1.Release {
 	rel := manifestsRelease()
-	rel.Spec.Content = manifestsContent("w0.yaml", "w1.yaml", "w2.yaml")
+	rel.Spec.Content = manifestsContent(w0File, w1File, "w2.yaml")
 	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{}
 	return rel
 }
