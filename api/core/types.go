@@ -435,7 +435,6 @@ type ReleaseHealthAssessment struct {
 
 type ReleaseFailurePolicy struct {
 	Rollback RollbackPolicy
-	Deadline *metav1.Duration
 }
 
 type ReleaseMutation struct {

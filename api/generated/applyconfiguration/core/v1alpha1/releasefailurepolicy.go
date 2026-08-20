@@ -20,7 +20,6 @@ package v1alpha1
 
 import (
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ReleaseFailurePolicyApplyConfiguration represents a declarative configuration of the ReleaseFailurePolicy type for use
@@ -30,9 +29,6 @@ import (
 type ReleaseFailurePolicyApplyConfiguration struct {
 	// Rollback defines the rollback policy.
 	Rollback *corev1alpha1.RollbackPolicy `json:"rollback,omitempty"`
-	// Deadline defines the interval within what the deployed resources must enter the healthy state
-	// according to applicable health rules.
-	Deadline *v1.Duration `json:"deadline,omitempty"`
 }
 
 // ReleaseFailurePolicyApplyConfiguration constructs a declarative configuration of the ReleaseFailurePolicy type for use with
@@ -46,13 +42,5 @@ func ReleaseFailurePolicy() *ReleaseFailurePolicyApplyConfiguration {
 // If called multiple times, the Rollback field is set to the value of the last call.
 func (b *ReleaseFailurePolicyApplyConfiguration) WithRollback(value corev1alpha1.RollbackPolicy) *ReleaseFailurePolicyApplyConfiguration {
 	b.Rollback = &value
-	return b
-}
-
-// WithDeadline sets the Deadline field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Deadline field is set to the value of the last call.
-func (b *ReleaseFailurePolicyApplyConfiguration) WithDeadline(value v1.Duration) *ReleaseFailurePolicyApplyConfiguration {
-	b.Deadline = &value
 	return b
 }

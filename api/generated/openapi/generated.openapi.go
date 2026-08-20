@@ -2563,18 +2563,10 @@ func schema_convoy_api_core_v1alpha1_ReleaseFailurePolicy(ref common.ReferenceCa
 							Enum:        []interface{}{"Never", "OnReleaseFailure", "OnWaveFailure"},
 						},
 					},
-					"deadline": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Deadline defines the interval within what the deployed resources must enter the healthy state according to applicable health rules.",
-							Ref:         ref(metav1.Duration{}.OpenAPIModelName()),
-						},
-					},
 				},
 				Required: []string{"rollback"},
 			},
 		},
-		Dependencies: []string{
-			metav1.Duration{}.OpenAPIModelName()},
 	}
 }
 

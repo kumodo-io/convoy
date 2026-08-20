@@ -1518,7 +1518,6 @@ func Convert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(in *co
 
 func autoConvert_v1alpha1_ReleaseFailurePolicy_To_core_ReleaseFailurePolicy(in *ReleaseFailurePolicy, out *core.ReleaseFailurePolicy, s conversion.Scope) error {
 	out.Rollback = core.RollbackPolicy(in.Rollback)
-	out.Deadline = (*v1.Duration)(unsafe.Pointer(in.Deadline))
 	return nil
 }
 
@@ -1529,7 +1528,6 @@ func Convert_v1alpha1_ReleaseFailurePolicy_To_core_ReleaseFailurePolicy(in *Rele
 
 func autoConvert_core_ReleaseFailurePolicy_To_v1alpha1_ReleaseFailurePolicy(in *core.ReleaseFailurePolicy, out *ReleaseFailurePolicy, s conversion.Scope) error {
 	out.Rollback = RollbackPolicy(in.Rollback)
-	out.Deadline = (*v1.Duration)(unsafe.Pointer(in.Deadline))
 	return nil
 }
 

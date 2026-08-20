@@ -719,10 +719,6 @@ type ReleaseHealthAssessment struct {
 type ReleaseFailurePolicy struct {
 	// Rollback defines the rollback policy.
 	Rollback RollbackPolicy `json:"rollback"`
-
-	// Deadline defines the interval within what the deployed resources must enter the healthy state
-	// according to applicable health rules.
-	Deadline *metav1.Duration `json:"deadline,omitempty"`
 }
 
 // ReleaseMutation defines the desired state of the ReleaseMutation.
