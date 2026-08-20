@@ -105,12 +105,12 @@ type Controller struct {
 	failures *failureCounts
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
-	// healthFn reports whether a render is confirmed healthy (its resources assessed
-	// Healthy for that render). It defaults to renderHealthy and is a test seam so the
-	// rollout state-machine tests don't depend on the in-memory inventory double,
-	// which — unlike the SSA-co-owned apiStore — doesn't preserve observer-written
-	// health fields across the controller's inventory writes.
-	healthFn func(ctx context.Context, rel *corev1alpha1.Release, renderRef string) bool
+	// healthFn returns the observer's verdict on a render (Healthy / Degraded /
+	// Pending). It defaults to renderStatus and is a test seam so the rollout
+	// state-machine tests don't depend on the in-memory inventory double, which —
+	// unlike the SSA-co-owned apiStore — doesn't preserve observer-written health
+	// fields across the controller's inventory writes.
+	healthFn func(ctx context.Context, rel *corev1alpha1.Release, renderRef string) renderVerdict
 }
 
 // failureCounts is a concurrency-safe per-key consecutive-failure counter.
@@ -169,7 +169,7 @@ func NewController(
 		failures:           newFailureCounts(),
 		now:                metav1.Now,
 	}
-	c.healthFn = c.renderHealthy
+	c.healthFn = c.renderStatus
 	c.Controller = base.NewController("release", c.syncHandler,
 		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation),
 		// Shard by the Release's target cluster: keep only Releases whose cluster
@@ -238,10 +238,11 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	newStatus.Waves = outcome.waves
 	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
-	// "Current render healthy" is the observer's per-resource assessment of THIS
-	// render (AssessedRenderRef == render && all Healthy) — not the release-level
-	// conditions, which lag a fresh apply. Drives both lastHealthy and the gate.
-	healthy := c.healthFn(ctx, rel, outcome.attempt.RenderRef)
+	// The observer's per-resource verdict on THIS render (AssessedRenderRef == render):
+	// Healthy (all Healthy), Degraded (≥1 Degraded), or Pending — not the release-level
+	// conditions, which lag a fresh apply. Drives lastHealthy, the gate, and the rollout.
+	verdict := c.healthFn(ctx, rel, outcome.attempt.RenderRef)
+	healthy := verdict == renderVerdictHealthy
 	newStatus.LastHealthy = lastHealthy(rel, outcome.attempt.RenderRef, healthy)
 	// A forced sync (/sync?force) re-drives a held render and resets its rollout;
 	// record which force request was handled so it is one-shot.
@@ -254,7 +255,7 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	if outcome.rollout != nil {
 		newStatus.Rollout = outcome.rollout
 	} else {
-		newStatus.Rollout = c.evaluateRollout(rel, outcome, forced, healthy)
+		newStatus.Rollout = c.evaluateRollout(rel, outcome, forced, verdict)
 	}
 	if cond := rolloutCondition(newStatus.Rollout, rel.Generation, c.now()); cond != nil {
 		apimeta.SetStatusCondition(&newStatus.Conditions, *cond)
@@ -305,27 +306,21 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 }
 
-// rolloutPollInterval bounds how often a Progressing rollout re-checks health and
-// the deadline. It is needed because status-only writes (the observer's health
-// updates) don't wake the controller, and spec.syncPolicy.interval may be 0 — so a
-// rollout must drive its own re-check.
+// rolloutPollInterval bounds how often a Progressing rollout re-checks the observer's
+// verdict. The controller is also woken directly on ReleaseInventory health changes
+// (the primary trigger); this poll is the safety net, needed because status-only
+// writes don't always wake the controller and spec.syncPolicy.interval may be 0.
 const rolloutPollInterval = 10 * time.Second
 
 // requeueAfter is the terminal-outcome requeue delay: the Release's poll interval,
-// but a Progressing rollout re-checks sooner (bounded by rolloutPollInterval, and
-// no later than its remaining deadline) so it detects health/timeout promptly even
-// when the poll interval is long or unset.
+// but a Progressing rollout re-checks at least as often as rolloutPollInterval so it
+// picks up a verdict promptly even when the poll interval is long or unset (in
+// addition to the wake-on-health trigger).
 func requeueAfter(rel *corev1alpha1.Release, newStatus corev1alpha1.ReleaseStatus) time.Duration {
 	d := syncRequeueAfter(rel)
 	if r := newStatus.Rollout; r != nil && r.State == corev1alpha1.RolloutStateProgressing {
-		poll := rolloutPollInterval
-		if fp := rel.Spec.FailurePolicy; fp != nil && fp.Deadline != nil {
-			if remaining := fp.Deadline.Duration - time.Since(r.StartedAt.Time); remaining > 0 && remaining < poll {
-				poll = remaining
-			}
-		}
-		if d <= 0 || poll < d {
-			d = poll
+		if d <= 0 || rolloutPollInterval < d {
+			d = rolloutPollInterval
 		}
 	}
 	return d
@@ -833,15 +828,13 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	if out, done, err := c.stageRender(ctx, st); done {
 		return out, err
 	}
-	// Hold a render whose rollout already failed (or rolled back): do not re-apply
-	// it. Reset only by a spec change (a new renderRef) or /sync --force. Reads the
-	// persisted prior rollout, so the decision precedes any apply.
-	if heldRolloutRender(rel, st.attempt.RenderRef, st.force) {
-		return reconcileOutcome{
-			reason:  conditionReasonRolloutFailed,
-			message: fmt.Sprintf("rollout of render %s did not converge; holding (spec change or /sync --force to retry)", st.attempt.RenderRef),
-			attempt: st.attempt,
-		}, nil
+	// A RolledBack rollout keeps the LAST-HEALTHY render applied, not the failed source
+	// render: re-assert it each reconcile so Applied stays true and drift is corrected
+	// on the running render. Reset only by a spec change (source renders a different
+	// renderRef) or /sync --force; a user pin or a forced sync overrides. Reads the
+	// persisted prior rollout, so the decision precedes any apply of the source render.
+	if out, done := c.reassertRollback(ctx, st); done {
+		return out, nil
 	}
 	if out, done, err := c.stageGates(st); done {
 		return out, err
@@ -1089,9 +1082,9 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 		return out, nil
 	}
 
-	// Release gate: an in-flight rollout of this render whose failurePolicy deadline
-	// has elapsed without it becoming healthy fails now (and rolls back if the policy
-	// selects it) — before re-applying the failed render.
+	// Release gate: an in-flight rollout of this render that the observer has assessed
+	// Degraded fails now (and rolls back if the policy selects it) — before re-applying
+	// the failed render.
 	if out, done := c.releaseGate(ctx, st); done {
 		return out, nil
 	}
@@ -1383,33 +1376,60 @@ func gitRefString(ref *corev1alpha1.ReleaseGitRepositoryRefSpec) string {
 // snapshots the inputs of the pinned render, taken from status.lastSuccessful —
 // while a pin holds the controller never applies, so lastSuccessful is the pinned
 // render.
-// renderHealthy reports whether the render renderRef is confirmed healthy: the
-// observer has assessed *this* render — every applied resource's AssessedRenderRef
-// equals renderRef — and found all resources Healthy. Checking AssessedRenderRef is
-// essential: it stops the gate trusting a stale assessment of a *previous* render.
-// Right after a new render applies, its resources carry RenderRef=renderRef but the
-// observer's AssessedRenderRef still points at the old render (and the release-level
-// Healthy condition is still the old render's True) — so a plain InSync+Healthy
-// check would succeed prematurely, before the new workload (e.g. a rolling update's
-// new pods) is actually healthy. With no health assessment configured there is
-// nothing to wait for, so an applied render counts as healthy (inert-by-passing).
-func (c *Controller) renderHealthy(ctx context.Context, rel *corev1alpha1.Release, renderRef string) bool {
+// renderVerdict is the observer's verdict on a render, read from the per-resource
+// health the observer persists on the ReleaseInventory. It is the sole input to the
+// rollout gate: the gate acts only on positive evidence (Healthy or Degraded) and
+// waits on Pending, so an apiserver/observer outage (no fresh verdict) can never trip
+// a false failure.
+type renderVerdict int
+
+const (
+	// renderVerdictPending: not enough evidence yet — nothing applied, the assessment
+	// still points at a previous render, or resources are still Progressing/Unknown.
+	renderVerdictPending renderVerdict = iota
+	// renderVerdictHealthy: every applied resource was assessed against THIS render and
+	// found Healthy.
+	renderVerdictHealthy
+	// renderVerdictDegraded: at least one resource assessed against THIS render is
+	// Degraded — the observer's definitive "did not converge" verdict.
+	renderVerdictDegraded
+)
+
+// renderStatus returns the observer's verdict on render renderRef. Checking each
+// resource's AssessedRenderRef == renderRef is essential: it stops the gate trusting a
+// stale assessment of a *previous* render — right after a new render applies its
+// resources carry RenderRef=renderRef but the observer's AssessedRenderRef still points
+// at the old render, so a plain "all Healthy" check would succeed prematurely, before
+// the new workload (e.g. a rolling update's new pods) is actually healthy. A single
+// resource Degraded for this render is a fail-fast Degraded verdict; otherwise the
+// verdict is Healthy only when every resource is Healthy for this render, and Pending
+// until then. With no health assessment there is nothing to wait for, so a render is
+// Healthy by passing (the policy is inert).
+func (c *Controller) renderStatus(ctx context.Context, rel *corev1alpha1.Release, renderRef string) renderVerdict {
 	if rel.Spec.HealthAssessment == nil {
-		return true
+		return renderVerdictHealthy
 	}
 	if renderRef == "" {
-		return false
+		return renderVerdictPending
 	}
 	refs, _, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
 	if err != nil || len(refs) == 0 {
-		return false
+		return renderVerdictPending
 	}
+	allHealthy := true
 	for _, r := range refs {
-		if r.AssessedRenderRef != renderRef || r.State == nil || *r.State != corev1alpha1.ResourceStateHealthy {
-			return false
+		assessed := r.AssessedRenderRef == renderRef && r.State != nil
+		if assessed && *r.State == corev1alpha1.ResourceStateDegraded {
+			return renderVerdictDegraded // positive failure evidence: fail fast
+		}
+		if !assessed || *r.State != corev1alpha1.ResourceStateHealthy {
+			allHealthy = false
 		}
 	}
-	return true
+	if allHealthy {
+		return renderVerdictHealthy
+	}
+	return renderVerdictPending
 }
 
 // lastHealthy resolves status.lastHealthy: the last render confirmed healthy, the
@@ -1423,41 +1443,47 @@ func lastHealthy(rel *corev1alpha1.Release, currentRenderRef string, healthy boo
 	return rel.Status.LastHealthy // carry the prior value forward (advance-only)
 }
 
-// rolloutStateTerminal reports whether a rollout state is terminal (no further
-// automatic driving of that render): Succeeded, Failed, or RolledBack.
-func rolloutStateTerminal(st corev1alpha1.RolloutState) bool {
-	return st == corev1alpha1.RolloutStateSucceeded ||
-		st == corev1alpha1.RolloutStateFailed ||
-		st == corev1alpha1.RolloutStateRolledBack
-}
-
-// heldRolloutRender reports whether this reconcile must HOLD (not re-apply) because
-// the current render's rollout already reached a held terminal state (Failed or
-// RolledBack). Succeeded is terminal but not held — a succeeded render re-applies
-// idempotently (self-heal). Only meaningful under a failurePolicy; a force reconcile
-// overrides the hold. It reads the *persisted* prior rollout, so the decision is
-// made before any apply.
-func heldRolloutRender(rel *corev1alpha1.Release, currentRenderRef string, force bool) bool {
-	if rel.Spec.FailurePolicy == nil || force {
-		return false
+// reassertRollback maintains a RolledBack rollout's steady state: while the rollout is
+// RolledBack for the current source render (no spec change) and neither pinned nor
+// forced, it re-applies the LAST-HEALTHY render so the cluster stays on it and Applied
+// stays true — the failed source render must never run. Returns (outcome, true) when
+// it takes over the reconcile. A missing store or last-healthy pointer leaves it to
+// the normal path (which just re-applies the source render). Reads the persisted prior
+// rollout, so the decision precedes any apply of the source render.
+func (c *Controller) reassertRollback(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
+	rel := st.rel
+	if st.force || rel.Pin != nil || rel.Spec.FailurePolicy == nil {
+		return reconcileOutcome{}, false
 	}
 	r := rel.Status.Rollout
-	return r != nil && r.RenderRef == currentRenderRef &&
-		(r.State == corev1alpha1.RolloutStateFailed || r.State == corev1alpha1.RolloutStateRolledBack)
+	if r == nil || r.State != corev1alpha1.RolloutStateRolledBack || r.RenderRef != st.attempt.RenderRef {
+		return reconcileOutcome{}, false
+	}
+	if rel.Status.LastHealthy == nil || c.renderStore == nil {
+		return reconcileOutcome{}, false
+	}
+	// The rollout's startedAt and message carry forward unchanged (this is the same
+	// RolledBack state, re-asserted — not a new failure).
+	return c.applyRollback(ctx, st, r.StartedAt, r.Message)
 }
 
-// evaluateRollout computes status.rollout after a reconcile. It is active only under
-// a failurePolicy; without one it returns nil (no rollout tracking — today's
-// behaviour). The rollout state machine, keyed by renderRef:
-//   - a render that applied this reconcile and is confirmed healthy → Succeeded;
-//   - applied, not yet healthy, past the deadline → Failed (Slice 4 turns this into
-//     a rollback); within the deadline → Progressing;
-//   - a render whose rollout already reached a terminal state is left as-is;
-//   - anything else (no apply this reconcile, e.g. a hold) carries the prior forward.
+// evaluateRollout computes status.rollout after a reconcile that did NOT produce its
+// own rollout decision (rollback/re-assert set outcome.rollout directly). Active only
+// under a failurePolicy; without one it returns nil. Keyed by renderRef:
+//   - forced (/sync?force): a fresh rollout (Succeeded if already healthy, else
+//     Progressing) — a re-drive resets a held terminal state.
+//   - a render that didn't apply this reconcile (a hold, a pre-apply failure): carry
+//     the prior forward.
+//   - a terminal render: Succeeded stays Succeeded (even if it later degrades);
+//     RolledBack stays (it is maintained by reassertRollback, not here); Failed
+//     advances to Succeeded if it self-heals, else stays Failed (its one-shot
+//     rollback, if any, already ran).
+//   - otherwise (Progressing/fresh): Healthy → Succeeded; Degraded → Failed (the
+//     rollback, if the policy selected it, was applied in releaseGate — reaching here
+//     means it wasn't, so the failed render stays applied); else → Progressing.
 //
-// startedAt anchors the deadline clock: it is set when the render first applies and
-// preserved across reconciles (the render re-applies idempotently each pass).
-func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcileOutcome, forced, healthy bool) *corev1alpha1.RolloutStatus {
+// startedAt is set when the render first applies and preserved across reconciles.
+func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcileOutcome, forced bool, verdict renderVerdict) *corev1alpha1.RolloutStatus {
 	fp := rel.Spec.FailurePolicy
 	if fp == nil {
 		return nil
@@ -1467,42 +1493,44 @@ func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcil
 	if renderRef == "" {
 		return prior
 	}
-
-	// A forced sync (/sync?force) re-drives the render: flush any held terminal rollout
-	// to a fresh Progressing (or Succeeded, if already healthy), with a fresh deadline
-	// clock — regardless of whether this reconcile fully applied, since a re-drive may
-	// hold at a wave while rolling out. Without this, a forced re-drive that holds
-	// would leave the stale Failed/RolledBack in place.
 	if forced {
-		return c.freshRollout(renderRef, healthy)
+		return c.freshRollout(renderRef, verdict == renderVerdictHealthy)
 	}
-
-	// A render whose rollout is already terminal stays put (Succeeded holds;
-	// Failed/RolledBack are held terminal states — heldRolloutRender stops the apply).
-	if prior != nil && prior.RenderRef == renderRef && rolloutStateTerminal(prior.State) {
-		return prior
-	}
-	// Only a render that actually applied this reconcile drives the gate; otherwise
-	// (a hold, or a pre-apply failure) carry the prior forward.
 	if !outcome.applied {
 		return prior
 	}
 
-	// Anchor the deadline clock at the render's first apply and preserve it across
-	// reconciles (the render re-applies idempotently each pass).
 	startedAt := c.now()
 	if prior != nil && prior.RenderRef == renderRef && !prior.StartedAt.IsZero() {
 		startedAt = prior.StartedAt
 	}
 
-	// The failure path (deadline exceeded) is decided in the reconcile flow (releaseGate
-	// / the wave loop), where a rollback can be applied — not here. This only reports
-	// the non-failure states.
-	state := corev1alpha1.RolloutStateProgressing
-	if healthy {
-		state = corev1alpha1.RolloutStateSucceeded
+	// A render whose rollout is already terminal for this render.
+	if prior != nil && prior.RenderRef == renderRef {
+		switch prior.State {
+		case corev1alpha1.RolloutStateSucceeded, corev1alpha1.RolloutStateRolledBack:
+			return prior
+		case corev1alpha1.RolloutStateFailed:
+			if verdict == renderVerdictHealthy {
+				return succeededRollout(renderRef, startedAt) // self-heal recovery
+			}
+			return prior // one-shot: never rolls back again
+		}
 	}
-	return &corev1alpha1.RolloutStatus{State: state, RenderRef: renderRef, StartedAt: startedAt}
+
+	switch verdict {
+	case renderVerdictHealthy:
+		return succeededRollout(renderRef, startedAt)
+	case renderVerdictDegraded:
+		return &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateFailed, RenderRef: renderRef, StartedAt: startedAt}
+	default:
+		return &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateProgressing, RenderRef: renderRef, StartedAt: startedAt}
+	}
+}
+
+// succeededRollout is a Succeeded rollout status for renderRef.
+func succeededRollout(renderRef string, startedAt metav1.Time) *corev1alpha1.RolloutStatus {
+	return &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateSucceeded, RenderRef: renderRef, StartedAt: startedAt}
 }
 
 // freshRollout opens a rollout at the current time: Succeeded if the render is
@@ -1515,26 +1543,31 @@ func (c *Controller) freshRollout(renderRef string, healthy bool) *corev1alpha1.
 	return &corev1alpha1.RolloutStatus{State: state, RenderRef: renderRef, StartedAt: c.now()}
 }
 
-// releaseGate is the terminal-wave health gate: on a reconcile where the render R is
-// already fully applied (a prior pass) and its rollout is still Progressing, it
-// fails the rollout once the failurePolicy deadline elapses without R becoming
-// healthy — before re-applying R, so a rollback isn't preceded by a wasteful re-apply
-// of the failed render. Returns (outcome, true) to terminate the reconcile with a
-// failure/rollback; (_, false) to let the normal apply proceed (healthy, within
-// deadline, or no in-flight rollout).
+// releaseGate is the terminal-wave health gate: on a reconcile where render R is
+// already fully applied and its rollout is still Progressing, it reads the observer's
+// verdict for R. A Degraded verdict (positive "did not converge" evidence) fails the
+// rollout — rolling back before re-applying the failed render when the policy selects
+// it. Healthy or Pending (still converging, or no fresh assessment — e.g. an observer
+// outage) let the normal apply proceed, so a rollout waits indefinitely for a verdict
+// rather than failing on the absence of one. Returns (outcome, true) only when it rolls
+// back; otherwise (_, false) — a non-rollback Degraded falls through to the normal
+// apply, and evaluateRollout marks the render Failed.
 func (c *Controller) releaseGate(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
 	rel := st.rel
 	fp := rel.Spec.FailurePolicy
 	prior := rel.Status.Rollout
-	if fp == nil || fp.Deadline == nil || prior == nil ||
+	if fp == nil || prior == nil ||
 		prior.RenderRef != st.attempt.RenderRef || prior.State != corev1alpha1.RolloutStateProgressing {
 		return reconcileOutcome{}, false
 	}
-	if c.healthFn(ctx, rel, st.attempt.RenderRef) || st.now.Sub(prior.StartedAt.Time) <= fp.Deadline.Duration {
-		return reconcileOutcome{}, false // healthy or still within the deadline: proceed
+	if c.healthFn(ctx, rel, st.attempt.RenderRef) != renderVerdictDegraded {
+		return reconcileOutcome{}, false // healthy or still converging: proceed
 	}
-	msg := fmt.Sprintf("release did not become healthy within %s", fp.Deadline.Duration)
-	return c.handleRolloutFailure(ctx, st, failureRelease, prior.StartedAt, msg), true
+	msg := "release did not become healthy (a resource reported Degraded)"
+	if out, ok := c.attemptRollback(ctx, st, failureRelease, prior.StartedAt, msg); ok {
+		return out, true
+	}
+	return reconcileOutcome{}, false
 }
 
 // waveHealthGate is the hold/fail decision for a health-gated wave whose
@@ -1566,10 +1599,10 @@ func (c *Controller) waveHealthGate(ctx context.Context, st *reconcileState, wav
 	}
 }
 
-// handleRolloutFailure builds the outcome for a rollout failure: it rolls back to
-// last-healthy when the policy selects this failure kind and a rollback target
-// exists, otherwise marks the rollout Failed (the bad render stays applied, held).
-func (c *Controller) handleRolloutFailure(ctx context.Context, st *reconcileState, kind failureKind, startedAt metav1.Time, msg string) reconcileOutcome {
+// attemptRollback rolls back to the last-healthy render when the failurePolicy selects
+// this failure kind and a rollback target exists. Returns (outcome, true) when it rolled
+// back; else (_, false) so the caller decides the non-rollback outcome (Failed).
+func (c *Controller) attemptRollback(ctx context.Context, st *reconcileState, kind failureKind, startedAt metav1.Time, msg string) (reconcileOutcome, bool) {
 	rel := st.rel
 	eligible := false
 	switch rel.Spec.FailurePolicy.Rollback {
@@ -1578,13 +1611,23 @@ func (c *Controller) handleRolloutFailure(ctx context.Context, st *reconcileStat
 	case corev1alpha1.RollbackPolicyOnReleaseFailure:
 		eligible = kind == failureRelease
 	}
-	if eligible && rel.Status.LastHealthy != nil && c.renderStore != nil {
-		if out, ok := c.applyRollback(ctx, st, startedAt, msg); ok {
-			return out
-		}
-		// Rollback couldn't be applied (store/deploy error, logged): fall through to
-		// Failed so the failed render is at least reported and held.
+	if !eligible || rel.Status.LastHealthy == nil || c.renderStore == nil {
+		return reconcileOutcome{}, false
 	}
+	rolloutMsg := fmt.Sprintf("%s; rolled back to %s", msg, rel.Status.LastHealthy.RenderRef)
+	return c.applyRollback(ctx, st, startedAt, rolloutMsg)
+}
+
+// handleRolloutFailure builds the outcome for a wave-level rollout failure: it rolls
+// back to last-healthy when the policy selects this failure kind and a target exists,
+// otherwise marks the rollout Failed (the partial rollout stays as applied, not
+// re-driven).
+func (c *Controller) handleRolloutFailure(ctx context.Context, st *reconcileState, kind failureKind, startedAt metav1.Time, msg string) reconcileOutcome {
+	if out, ok := c.attemptRollback(ctx, st, kind, startedAt, msg); ok {
+		return out
+	}
+	// Rollback not selected or couldn't be applied (store/deploy error, logged): report
+	// Failed so the failed render is surfaced.
 	out, _ := st.fail(conditionReasonRolloutFailed, msg, corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
 	out.rollout = &corev1alpha1.RolloutStatus{
 		State: corev1alpha1.RolloutStateFailed, RenderRef: st.attempt.RenderRef, StartedAt: startedAt, Message: msg,
@@ -1593,11 +1636,16 @@ func (c *Controller) handleRolloutFailure(ctx context.Context, st *reconcileStat
 }
 
 // applyRollback restores the last-healthy render: it fetches that render from the
-// store, applies it, prunes what the failed render added but it does not have, and
-// records the inventory — then reports RolledBack (rollout.renderRef stays the
-// FAILED render; lastHealthy.renderRef is what now runs). Returns ok=false (logged)
-// if any step fails, so the caller can fall back to Failed.
-func (c *Controller) applyRollback(ctx context.Context, st *reconcileState, startedAt metav1.Time, failMsg string) (reconcileOutcome, bool) {
+// store, applies it, prunes what the failed render added, and records the inventory
+// (stamped with the last-healthy renderRef, so the observer assesses the RUNNING
+// render). It then reports the render as applied — Applied stays true — with
+// rollout=RolledBack keyed by the FAILED render, so terminal stickiness and recovery
+// (spec change / /sync --force) work. status.lastAttempted/lastSuccessful record the
+// last-healthy render (what actually runs). Returns ok=false (logged) if any step
+// fails, so the caller can fall back to Failed. Used both for the initial rollback and
+// to re-assert it on later reconciles (reassertRollback); rolloutMsg is the final
+// message (no further wrapping).
+func (c *Controller) applyRollback(ctx context.Context, st *reconcileState, startedAt metav1.Time, rolloutMsg string) (reconcileOutcome, bool) {
 	rel := st.rel
 	failedRef := st.attempt.RenderRef
 	lhRef := rel.Status.LastHealthy.RenderRef
@@ -1628,14 +1676,21 @@ func (c *Controller) applyRollback(ctx context.Context, st *reconcileState, star
 		klog.ErrorS(err, "rollback: recording inventory", "release", rel.Name)
 		return reconcileOutcome{}, false
 	}
-	msg := fmt.Sprintf("%s; rolled back to %s", failMsg, lhRef)
-	klog.InfoS("rolled back release to last-healthy render", "release", rel.Name, "failed", failedRef, "rolledBackTo", lhRef)
+	klog.InfoS("holding release on last-healthy render", "release", rel.Name, "failed", failedRef, "running", lhRef)
+	// Record the last-healthy render as what is applied/attempted; the rollout keeps
+	// the FAILED render as its key.
+	st.attempt.RenderRef = lhRef
+	st.attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseSucceeded
+	st.attempt.SyncedAt = &st.now
+	st.attempt.SyncedResources = int64(len(applied))
 	return reconcileOutcome{
+		ready:   true,
+		applied: true,
 		reason:  conditionReasonRolledBack,
-		message: msg,
+		message: rolloutMsg,
 		attempt: st.attempt,
 		rollout: &corev1alpha1.RolloutStatus{
-			State: corev1alpha1.RolloutStateRolledBack, RenderRef: failedRef, StartedAt: startedAt, Message: msg,
+			State: corev1alpha1.RolloutStateRolledBack, RenderRef: failedRef, StartedAt: startedAt, Message: rolloutMsg,
 		},
 	}, true
 }
@@ -1801,7 +1856,8 @@ func (c *Controller) resolvedRetentionStatus(ctx context.Context, rel *corev1alp
 // history log to keepHistory entries and reclaim unreferenced blobs. Best-effort
 // (logged, never fails a reconcile). protectedRefs shields renders not in the
 // pruned log that must survive: the just-applied render, the prior current/attempted
-// pointers (covering the persist→commit window), and any active rollback pin.
+// pointers (covering the persist→commit window), any active rollback pin, and the
+// last-healthy render (a RolledBack rollout's running target).
 func (c *Controller) runGC(ctx context.Context, rel *corev1alpha1.Release, currentRef string) {
 	if c.renderStore == nil {
 		return
@@ -1819,6 +1875,11 @@ func (c *Controller) runGC(ctx context.Context, rel *corev1alpha1.Release, curre
 	}
 	if p := rel.Pin; p != nil {
 		protected = append(protected, p.RenderRef)
+	}
+	// The rollback target must survive GC, or a RolledBack rollout couldn't re-assert
+	// the render it is running.
+	if lh := rel.Status.LastHealthy; lh != nil {
+		protected = append(protected, lh.RenderRef)
 	}
 	if err := c.renderStore.GC(ctx, rel.Namespace, rel.Name, keep, protected...); err != nil {
 		klog.ErrorS(err, "render store GC", "release", rel.Name)

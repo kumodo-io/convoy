@@ -325,12 +325,12 @@ func knownRollbackPolicy(p RollbackPolicy) bool {
 	}
 }
 
-// validateFailurePolicy validates spec.failurePolicy. rollback must be a known
-// policy; a rollback other than Never needs a deadline (the health-convergence
-// clock a rollout verdict is measured against), and that deadline must exceed the
-// health-assessment deadline — the observer keeps a resource Progressing until its
-// own deadline elapses, so a shorter release deadline would give up while the
-// workload is still legitimately starting. See docs/architecture/06-progressive-rollout.md.
+// validateFailurePolicy validates spec.failurePolicy. rollback must be a known policy.
+// A rollback other than Never requires spec.healthAssessment.deadline: the Degraded
+// verdict is the only thing that fails a rollout, and a resource escalates to Degraded
+// only once that deadline elapses — without it a failing rollout would wait forever and
+// the policy could never act, so an enabled-looking policy that can never fire is a
+// configuration error, not a silent no-op. See docs/architecture/06-progressive-rollout.md.
 func validateFailurePolicy(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	fp := spec.FailurePolicy
@@ -345,16 +345,9 @@ func validateFailurePolicy(spec *ReleaseSpec, fldPath *field.Path) field.ErrorLi
 		}))
 	}
 	if fp.Rollback != RollbackPolicyNever {
-		if fp.Deadline == nil {
-			allErrs = append(allErrs, field.Required(fldPath.Child("deadline"),
-				"is required when rollback is not Never"))
-		} else if fp.Deadline.Duration <= 0 {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("deadline"), fp.Deadline.Duration.String(),
-				"must be positive"))
-		} else if ha := spec.HealthAssessment; ha != nil && ha.Deadline != nil &&
-			fp.Deadline.Duration <= ha.Deadline.Duration {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("deadline"), fp.Deadline.Duration.String(),
-				fmt.Sprintf("must be greater than spec.healthAssessment.deadline (%s)", ha.Deadline.Duration)))
+		if ha := spec.HealthAssessment; ha == nil || ha.Deadline == nil {
+			allErrs = append(allErrs, field.Required(field.NewPath("spec", "healthAssessment", "deadline"),
+				"is required when spec.failurePolicy.rollback is not Never"))
 		}
 	}
 	return allErrs

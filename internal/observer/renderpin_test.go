@@ -36,11 +36,7 @@ import (
 func TestPinnedRender(t *testing.T) {
 	ctx := context.Background()
 	rs := renderstore.New(blobstore.NewMemory())
-	pinned := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "v1", "kind": "ConfigMap",
-		"metadata": map[string]any{"name": "pinned-cm", "namespace": "ns"},
-	}}
-	manifest, err := render.MarshalManifest([]*unstructured.Unstructured{pinned})
+	manifest, err := render.MarshalManifest([]*unstructured.Unstructured{configMapUnstructured("pinned-cm")})
 	if err != nil {
 		t.Fatalf("MarshalManifest: %v", err)
 	}

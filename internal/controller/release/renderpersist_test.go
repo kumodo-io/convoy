@@ -415,7 +415,7 @@ func TestSyncHandler_LastHealthySetWhenRenderHealthy(t *testing.T) {
 	run := func(healthy bool) *corev1alpha1.Release {
 		rel := manifestsRelease()
 		c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
-		c.healthFn = func(context.Context, *corev1alpha1.Release, string) bool { return healthy }
+		setHealth(c, healthy)
 		if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 			t.Fatalf("syncHandler: %v", err)
 		}

@@ -52,9 +52,9 @@ const (
 	conditionReasonWaitingForSync       = "WaitingForSync"
 	conditionReasonWaitingForWaveHealth = "WaitingForWaveHealth"
 	conditionReasonWaveFailed           = "WaveFailed"
-	// conditionReasonRolloutFailed is the Applied-condition reason while a Release
-	// holds a render whose rollout failed (health did not converge within the
-	// failurePolicy deadline). Held until a spec change or /sync --force.
+	// conditionReasonRolloutFailed is the Applied-condition reason for a wave-level
+	// rollout failure that was not rolled back (the render's observer verdict never
+	// converged, or an intermediate wave timed out, and the policy did not roll back).
 	conditionReasonRolloutFailed = "RolloutFailed"
 	// conditionReasonRolledBack is the Applied-condition reason after a failed render
 	// was rolled back to the last-healthy render (the cluster now runs last-healthy).

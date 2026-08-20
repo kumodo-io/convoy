@@ -365,39 +365,44 @@ func TestValidateRelease_FailurePolicy(t *testing.T) {
 		}
 	})
 
-	t.Run("Never needs no deadline", func(t *testing.T) {
+	t.Run("Never needs no health assessment", func(t *testing.T) {
 		rel := validRelease()
 		rel.Spec.FailurePolicy = &ReleaseFailurePolicy{Rollback: RollbackPolicyNever}
 		if errs := ValidateRelease(rel); len(errs) != 0 {
-			t.Errorf("rollback=Never without deadline rejected: %v", errs)
+			t.Errorf("rollback=Never without healthAssessment rejected: %v", errs)
 		}
 	})
 
-	t.Run("non-Never requires deadline", func(t *testing.T) {
-		rel := validRelease()
+	t.Run("non-Never requires healthAssessment.deadline", func(t *testing.T) {
+		rel := validRelease() // no healthAssessment
 		rel.Spec.FailurePolicy = &ReleaseFailurePolicy{Rollback: RollbackPolicyOnReleaseFailure}
-		if errs := ValidateRelease(rel); !hasErrOn(errs, "failurePolicy.deadline") {
-			t.Errorf("missing deadline with rollback!=Never not rejected: %v", errs)
+		if errs := ValidateRelease(rel); !hasErrOn(errs, "healthAssessment.deadline") {
+			t.Errorf("rollback!=Never without healthAssessment.deadline not rejected: %v", errs)
 		}
 	})
 
-	t.Run("deadline must exceed healthAssessment.deadline", func(t *testing.T) {
+	t.Run("non-Never with healthAssessment but no deadline rejected", func(t *testing.T) {
+		rel := validRelease()
+		rel.Spec.HealthAssessment = &ReleaseHealthAssessment{} // deadline nil
+		rel.Spec.FailurePolicy = &ReleaseFailurePolicy{Rollback: RollbackPolicyOnWaveFailure}
+		if errs := ValidateRelease(rel); !hasErrOn(errs, "healthAssessment.deadline") {
+			t.Errorf("rollback!=Never with a deadline-less healthAssessment not rejected: %v", errs)
+		}
+	})
+
+	t.Run("non-Never with healthAssessment.deadline is valid", func(t *testing.T) {
 		rel := validRelease()
 		rel.Spec.HealthAssessment = &ReleaseHealthAssessment{Deadline: dur(2 * time.Minute)}
-		rel.Spec.FailurePolicy = &ReleaseFailurePolicy{Rollback: RollbackPolicyOnWaveFailure, Deadline: dur(time.Minute)}
-		if !hasErrOn(ValidateRelease(rel), "failurePolicy.deadline") {
-			t.Errorf("deadline <= healthAssessment.deadline not rejected")
-		}
-		// Greater is accepted.
-		rel.Spec.FailurePolicy.Deadline = dur(5 * time.Minute)
+		rel.Spec.FailurePolicy = &ReleaseFailurePolicy{Rollback: RollbackPolicyOnWaveFailure}
 		if errs := ValidateRelease(rel); len(errs) != 0 {
-			t.Errorf("deadline > healthAssessment.deadline rejected: %v", errs)
+			t.Errorf("rollback!=Never with healthAssessment.deadline rejected: %v", errs)
 		}
 	})
 
 	t.Run("unknown rollback policy rejected", func(t *testing.T) {
 		rel := validRelease()
-		rel.Spec.FailurePolicy = &ReleaseFailurePolicy{Rollback: RollbackPolicy(unknownValue), Deadline: dur(time.Minute)}
+		rel.Spec.HealthAssessment = &ReleaseHealthAssessment{Deadline: dur(time.Minute)}
+		rel.Spec.FailurePolicy = &ReleaseFailurePolicy{Rollback: RollbackPolicy(unknownValue)}
 		if !hasErrOn(ValidateRelease(rel), "failurePolicy.rollback") {
 			t.Errorf("unknown rollback policy not rejected")
 		}

@@ -256,7 +256,39 @@ func (c *Controller) renderDesired(ctx context.Context, rel *corev1alpha1.Releas
 	} else if ok {
 		return objs, nil
 	}
+	if objs, ok, err := c.rolledBackRender(ctx, rel); err != nil {
+		return nil, err
+	} else if ok {
+		return objs, nil
+	}
 	return renderReleaseObjects(ctx, c.coordinator, c.resolver, rel, resolveClusterRef(c.clusterLister, rel))
+}
+
+// rolledBackRender returns the last-healthy render's objects when the Release's rollout
+// is RolledBack: the controller keeps that render (not the failed source render)
+// applied, so drift, preview, and default diff must assess against it — otherwise a
+// rolled-back release would report perpetual drift. ok is false (render current source
+// instead) when the rollout is not RolledBack, there is no last-healthy pointer or
+// store, or the last-healthy render is not in the store. A user pin takes precedence
+// (checked first in renderDesired).
+func (c *Controller) rolledBackRender(ctx context.Context, rel *corev1alpha1.Release) ([]*unstructured.Unstructured, bool, error) {
+	r := rel.Status.Rollout
+	lh := rel.Status.LastHealthy
+	if r == nil || r.State != corev1alpha1.RolloutStateRolledBack || lh == nil || lh.RenderRef == "" || c.renderStore == nil {
+		return nil, false, nil
+	}
+	data, err := c.renderStore.GetRender(ctx, rel.Namespace, rel.Name, lh.RenderRef)
+	if errors.Is(err, blobstore.ErrNotFound) {
+		return nil, false, nil // last-healthy render not stored: fall back to source
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	objs, err := render.ParseManifest(data)
+	if err != nil {
+		return nil, false, fmt.Errorf("parsing last-healthy render %s: %w", lh.RenderRef, err)
+	}
+	return objs, true, nil
 }
 
 // pinnedRender returns the pinned render's objects from the store. ok is false
