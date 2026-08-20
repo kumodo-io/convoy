@@ -316,6 +316,43 @@ func knownWaveStrategy(s ReleaseWaveStrategy) bool {
 	}
 }
 
+func knownRollbackPolicy(p RollbackPolicy) bool {
+	switch p {
+	case RollbackPolicyNever, RollbackPolicyOnWaveFailure, RollbackPolicyOnReleaseFailure:
+		return true
+	default:
+		return false
+	}
+}
+
+// validateFailurePolicy validates spec.failurePolicy. rollback must be a known policy.
+// A rollback other than Never requires spec.healthAssessment.deadline: the Degraded
+// verdict is the only thing that fails a rollout, and a resource escalates to Degraded
+// only once that deadline elapses — without it a failing rollout would wait forever and
+// the policy could never act, so an enabled-looking policy that can never fire is a
+// configuration error, not a silent no-op. See docs/architecture/06-progressive-rollout.md.
+func validateFailurePolicy(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	fp := spec.FailurePolicy
+	if fp == nil {
+		return allErrs
+	}
+	if !knownRollbackPolicy(fp.Rollback) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("rollback"), fp.Rollback, []string{
+			string(RollbackPolicyNever),
+			string(RollbackPolicyOnWaveFailure),
+			string(RollbackPolicyOnReleaseFailure),
+		}))
+	}
+	if fp.Rollback != RollbackPolicyNever {
+		if ha := spec.HealthAssessment; ha == nil || ha.Deadline == nil {
+			allErrs = append(allErrs, field.Required(field.NewPath("spec", "healthAssessment", "deadline"),
+				"is required when spec.failurePolicy.rollback is not Never"))
+		}
+	}
+	return allErrs
+}
+
 func knownJSONPatchOp(op JSONPatchOperation) bool {
 	switch op {
 	case JSONPatchOperationAdd, JSONPatchOperationRemove, JSONPatchOperationReplace,
@@ -549,6 +586,8 @@ func validateReleaseSpec(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList
 				string(ReleaseWaveStrategyWaitForHealthyWithTimeout),
 			}))
 	}
+
+	allErrs = append(allErrs, validateFailurePolicy(spec, fldPath.Child("failurePolicy"))...)
 
 	return allErrs
 }

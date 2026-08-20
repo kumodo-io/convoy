@@ -77,6 +77,11 @@ func (in ClusterStatus) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in LastHealthy) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.LastHealthy"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in LifecycleHookJobTemplate) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.LifecycleHookJobTemplate"
 }
@@ -159,6 +164,11 @@ func (in ReleaseContentSpec) OpenAPIModelName() string {
 // OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ReleaseDeletionPolicy) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ReleaseDeletionPolicy"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in ReleaseFailurePolicy) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.ReleaseFailurePolicy"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
@@ -324,6 +334,11 @@ func (in ResourceInventoryItem) OpenAPIModelName() string {
 // OpenAPIModelName returns the OpenAPI model name for this type.
 func (in ResourceWaveStatus) OpenAPIModelName() string {
 	return "io.kumodo.convoy.core.v1alpha1.ResourceWaveStatus"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
+func (in RolloutStatus) OpenAPIModelName() string {
+	return "io.kumodo.convoy.core.v1alpha1.RolloutStatus"
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.

@@ -177,8 +177,8 @@ func TestSyncHandler_RollbackAppliesStoredRender(t *testing.T) {
 
 	// Seed the store with a *different* past render (a ConfigMap named "old-cm").
 	oldCM := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "v1", "kind": configMapKind,
-		"metadata": map[string]any{"name": oldCMName, "namespace": "ns"},
+		apiVersionKey: "v1", kindKey: configMapKind,
+		metadataKey: map[string]any{nameKey: oldCMName, namespaceKey: "ns"},
 	}}
 	manifest, err := render.MarshalManifest([]*unstructured.Unstructured{oldCM})
 	if err != nil {
@@ -218,8 +218,8 @@ func TestSyncHandler_RollbackDoesNotDuplicateHistory(t *testing.T) {
 
 	ctx := context.Background()
 	oldCM := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "v1", "kind": configMapKind,
-		"metadata": map[string]any{"name": oldCMName, "namespace": "ns"},
+		apiVersionKey: "v1", kindKey: configMapKind,
+		metadataKey: map[string]any{nameKey: oldCMName, namespaceKey: "ns"},
 	}}
 	manifest, _ := render.MarshalManifest([]*unstructured.Unstructured{oldCM})
 	_ = c.renderStore.PutRender(ctx, "ns", "r1", rollbackRef, manifest)
@@ -372,6 +372,72 @@ func TestSyncHandler_PopulatesResolvedRetentionStatus(t *testing.T) {
 	if rp.HistoryCount != 2 {
 		t.Errorf("resolved historyCount = %d, want 2 (old + this reconcile)", rp.HistoryCount)
 	}
+}
+
+// TestSyncHandler_DryRunFailureBlocksPersistAndApply verifies the pre-apply
+// dry-run: when it fails, the render is neither persisted nor applied.
+func TestSyncHandler_DryRunFailureBlocksPersistAndApply(t *testing.T) {
+	coord := &fakeCoordinator{result: fetch.Result{
+		Ready:    true,
+		Revision: waveRevision,
+		Artifact: artifact.Artifact{Files: map[string][]byte{cmFile: []byte(cmYAML)}},
+	}}
+	rel := manifestsRelease()
+	rel.Spec.Content = manifestsContent(cmFile)
+	deployer := &fakeDeployer{dryRunErr: errors.New("field is immutable")}
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
+	bs := blobstore.NewMemory()
+	c.renderStore = renderstore.New(bs)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if !deployer.dryRunCalled {
+		t.Error("dry-run was not called")
+	}
+	if deployer.called {
+		t.Error("real apply happened despite a failing dry-run")
+	}
+	if blobs, _ := bs.List(context.Background(), "ns/r1/blobs/"); len(blobs) != 0 {
+		t.Errorf("render was persisted despite a failing dry-run: %v", blobs)
+	}
+	if got := statusUpdate(client.Actions()); got == nil {
+		t.Fatal("expected status write")
+	} else if _, r := readyReason(got); r != conditionReasonUnappliable {
+		t.Errorf("reason = %s, want Unappliable", r)
+	}
+}
+
+// TestSyncHandler_LastHealthySetWhenRenderHealthy verifies status.lastHealthy is
+// written to the current render only when that render is confirmed healthy (the
+// observer's per-render assessment, via the health seam), and NOT otherwise.
+func TestSyncHandler_LastHealthySetWhenRenderHealthy(t *testing.T) {
+	run := func(healthy bool) *corev1alpha1.Release {
+		rel := manifestsRelease()
+		c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+		setHealth(c, healthy)
+		if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+			t.Fatalf("syncHandler: %v", err)
+		}
+		return statusUpdate(client.Actions())
+	}
+
+	t.Run("render healthy sets lastHealthy", func(t *testing.T) {
+		got := run(true)
+		if got == nil || got.Status.LastHealthy == nil {
+			t.Fatalf("lastHealthy not set when the render is healthy: %+v", got.Status.LastHealthy)
+		}
+		if got.Status.LastHealthy.RenderRef != got.Status.LastAttempted.RenderRef {
+			t.Errorf("lastHealthy.renderRef = %q, want current render %q",
+				got.Status.LastHealthy.RenderRef, got.Status.LastAttempted.RenderRef)
+		}
+	})
+
+	t.Run("render not healthy does not set lastHealthy", func(t *testing.T) {
+		if got := run(false); got != nil && got.Status.LastHealthy != nil {
+			t.Errorf("lastHealthy set despite the render not being healthy: %+v", got.Status.LastHealthy)
+		}
+	})
 }
 
 // failingBlobStore fails every write, to exercise the persist-then-apply guard.

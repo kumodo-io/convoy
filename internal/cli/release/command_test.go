@@ -45,6 +45,7 @@ type fakeClient struct {
 	pinCalled      bool
 	unpinned       bool
 	synced         bool
+	syncForced     bool
 	previewCalled  bool
 	previewPayload []byte
 	previewErr     error
@@ -88,8 +89,9 @@ func (f *fakeClient) Unpin(_ context.Context, _, _ string) (*corev1alpha1.Releas
 	return r, nil
 }
 
-func (f *fakeClient) Sync(_ context.Context, _, _ string) (*corev1alpha1.Release, error) {
+func (f *fakeClient) Sync(_ context.Context, _, _ string, force bool) (*corev1alpha1.Release, error) {
 	f.synced = true
+	f.syncForced = force
 	return f.rel, nil
 }
 
@@ -219,7 +221,7 @@ func TestRunSync(t *testing.T) {
 	f := &fakeClient{rel: releaseWithRender("sha256:cur")}
 	var out bytes.Buffer
 
-	if err := runSync(context.Background(), &out, f, "ns", "r1"); err != nil {
+	if err := runSync(context.Background(), &out, f, "ns", "r1", false); err != nil {
 		t.Fatalf("runSync returned error: %v", err)
 	}
 	if !f.synced {
@@ -227,6 +229,23 @@ func TestRunSync(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "requested sync") {
 		t.Errorf("output = %q, want it to confirm the sync request", out.String())
+	}
+	if f.syncForced {
+		t.Error("plain sync should not be forced")
+	}
+}
+
+func TestRunSync_Force(t *testing.T) {
+	f := &fakeClient{rel: releaseWithRender("sha256:cur")}
+	var out bytes.Buffer
+	if err := runSync(context.Background(), &out, f, "ns", "r1", true); err != nil {
+		t.Fatalf("runSync --force: %v", err)
+	}
+	if !f.syncForced {
+		t.Error("force flag not passed through to the client")
+	}
+	if !strings.Contains(out.String(), "forced sync") {
+		t.Errorf("output = %q, want it to confirm the forced sync", out.String())
 	}
 }
 

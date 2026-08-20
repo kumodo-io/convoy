@@ -356,6 +356,46 @@ const (
 	LifecycleHookRunAfterHealthy LifecycleHookRunAfter = "Healthy"
 )
 
+// RollbackPolicy defines the rollback action taken in case of rollout failure.
+// +enum
+type RollbackPolicy string
+
+const (
+	// RollbackPolicyNever defines that no rollback will be performed.
+	RollbackPolicyNever RollbackPolicy = "Never"
+
+	// RollbackPolicyOnWaveFailure defines that the rollback will be
+	// performed on the first occurred wave rollout failure.
+	RollbackPolicyOnWaveFailure RollbackPolicy = "OnWaveFailure"
+
+	// RollbackPolicyOnReleaseFailure defines that the rollback will
+	// be performed if the release won't get healthy within defined
+	// deadline after all waves were applied.
+	RollbackPolicyOnReleaseFailure RollbackPolicy = "OnReleaseFailure"
+)
+
+// RolloutState reflects the current rollout state.
+// +enum
+type RolloutState string
+
+const (
+	// RolloutStateFailed reflects the state when the release rollout was
+	// failed. This is a terminal state if no rollback was configured.
+	RolloutStateFailed RolloutState = "Failed"
+
+	// RolloutStateSucceeded reflects the state when the release rollout
+	// was successfully finished. This is a terminal state.
+	RolloutStateSucceeded RolloutState = "Succeeded"
+
+	// RolloutStateRolledBack reflects the state when the release rollout
+	// was rolled back after failure. This is a terminal state.
+	RolloutStateRolledBack RolloutState = "RolledBack"
+
+	// RolloutStateProgressing reflects the state when the release rollout
+	// is in progress.
+	RolloutStateProgressing RolloutState = "Progressing"
+)
+
 // ReleaseSpec defines the desired state of the Release.
 type ReleaseSpec struct {
 	// Source is the content source of the release.
@@ -381,6 +421,9 @@ type ReleaseSpec struct {
 	// HealthAssessment defines the health assessment configuration
 	// for resources delivered by the Release.
 	HealthAssessment *ReleaseHealthAssessment `json:"healthAssessment,omitempty"`
+
+	// FailurePolicy is the failure policy for the release.
+	FailurePolicy *ReleaseFailurePolicy `json:"failurePolicy,omitempty"`
 }
 
 // ReleaseSourceSpec defines the source for the release.
@@ -659,9 +702,23 @@ type ReleaseDeletionPolicy struct {
 // ReleaseHealthAssessment defines selectors to get the health rules along
 // with assessment deadline anchor.
 type ReleaseHealthAssessment struct {
+	// GlobalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector]
+	// that will be used to collect the cluster-scoped [github.com/kumodo-io/convoy/api/extensions/v1alpha1.GlobalHealthRuleSet]
 	GlobalRuleSetSelector *metav1.LabelSelector `json:"globalRuleSetSelector,omitempty"`
-	LocalRuleSetSelector  *metav1.LabelSelector `json:"localRuleSetSelector,omitempty"`
-	Deadline              *metav1.Duration      `json:"deadline,omitempty"`
+
+	// LocalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector]
+	// that will be used to collect the namespaced [github.com/kumodo-io/convoy/api/extensions/v1alpha1.HealthRuleSet],
+	// These rule sets will be looked up in the Release namespace.
+	LocalRuleSetSelector *metav1.LabelSelector `json:"localRuleSetSelector,omitempty"`
+
+	// Deadline is the interval within what the deployed resources must pass collected health rules.
+	Deadline *metav1.Duration `json:"deadline,omitempty"`
+}
+
+// ReleaseFailurePolicy defines the behaviour on Release rollout failure.
+type ReleaseFailurePolicy struct {
+	// Rollback defines the rollback policy.
+	Rollback RollbackPolicy `json:"rollback"`
 }
 
 // ReleaseMutation defines the desired state of the ReleaseMutation.
@@ -879,6 +936,9 @@ type ReleaseStatus struct {
 	// LastAttempted is the last attempted sync attempt.
 	LastAttempted *ReleaseAttemptedRenderStatus `json:"lastAttempted,omitempty"`
 
+	// LastHealthy is the reference to the last healthy applied render.
+	LastHealthy *LastHealthy `json:"lastHealthy,omitempty"`
+
 	// Waves reflects the order in which resources were applied and their health status.
 	// Each wave entry represents a group of resources applied together, with a state indicating
 	// whether they have been fully applied and healthy, are in progress, or have failed.
@@ -900,6 +960,14 @@ type ReleaseStatus struct {
 
 	// LastHandledSyncAt reflects the timestamp when the last sync was handled
 	LastHandledSyncAt *metav1.Time `json:"lastHandledSyncAt,omitempty"`
+
+	// LastHandledForceSyncAt reflects the timestamp of the last handled forced sync
+	// (/sync?force=true). A force request newer than this bypasses the pre-apply
+	// dry-run and clears a held Failed/RolledBack rollout.
+	LastHandledForceSyncAt *metav1.Time `json:"lastHandledForceSyncAt,omitempty"`
+
+	// Rollout reflects the release rollout state.
+	Rollout *RolloutStatus `json:"rollout,omitempty"`
 }
 
 // ReleasePinStatus reflects the observed state of the ReleasePin.
@@ -1191,6 +1259,26 @@ type ReleaseHealthSummary struct {
 
 	// Unknown is the number of resources in an unknown state.
 	Unknown int32 `json:"unknown"`
+}
+
+// LastHealthy contains the last healthy render reference.
+type LastHealthy struct {
+	RenderRef string `json:"renderRef"`
+}
+
+// RolloutStatus reflects the release rollout status.
+type RolloutStatus struct {
+	// State reflects the rollout state.
+	State RolloutState `json:"state"`
+
+	// RenderRef reflects the reference to the render being rolled out.
+	RenderRef string `json:"renderRef"`
+
+	// StartedAt contains the timestamp when the rollout started.
+	StartedAt metav1.Time `json:"startedAt"`
+
+	// Message contains the human-readable message about the failure reason.
+	Message string `json:"message,omitempty"`
 }
 
 // +genclient

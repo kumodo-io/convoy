@@ -90,7 +90,7 @@ func TestAPIStore_SurvivesRestart(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
 		Inventory: []corev1alpha1.ResourceInventoryItem{
 			{Group: groupApps, Version: "v1", Kind: kindDeployment, Namespace: "ns", Name: nameAPI, Wave: &wave},
-			{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: "cfg"},
+			{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: nameCfg},
 		},
 	}
 	store, _ := newAPIStore(t, existing)
@@ -149,7 +149,7 @@ func TestMembershipChanged(t *testing.T) {
 	healthy := corev1alpha1.ResourceStateHealthy
 	degraded := corev1alpha1.ResourceStateDegraded
 	dep := corev1alpha1.ResourceInventoryItem{Group: groupApps, Kind: kindDeployment, Namespace: "ns", Name: nameAPI}
-	cfg := corev1alpha1.ResourceInventoryItem{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: "cfg"}
+	cfg := corev1alpha1.ResourceInventoryItem{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: nameCfg}
 
 	inv := func(items ...corev1alpha1.ResourceInventoryItem) *corev1alpha1.ReleaseInventory {
 		return &corev1alpha1.ReleaseInventory{Inventory: items}
@@ -160,7 +160,7 @@ func TestMembershipChanged(t *testing.T) {
 		old, new *corev1alpha1.ReleaseInventory
 		want     bool
 	}{
-		{"identical", inv(dep), inv(dep), false},
+		{caseIdentical, inv(dep), inv(dep), false},
 		{"item added", inv(dep), inv(dep, cfg), true},
 		{"item removed", inv(dep, cfg), inv(dep), true},
 		{"identity swapped, same count", inv(dep), inv(cfg), true},
@@ -175,6 +175,48 @@ func TestMembershipChanged(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := MembershipChanged(tc.old, tc.new); got != tc.want {
 				t.Errorf("MembershipChanged = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHealthChanged(t *testing.T) {
+	healthy := corev1alpha1.ResourceStateHealthy
+	progressing := corev1alpha1.ResourceStateProgressing
+	dep := corev1alpha1.ResourceInventoryItem{Group: groupApps, Kind: kindDeployment, Namespace: "ns", Name: nameAPI}
+	withState := func(s *corev1alpha1.ResourceState, assessed string) corev1alpha1.ResourceInventoryItem {
+		d := dep
+		d.State, d.AssessedRenderRef = s, assessed
+		return d
+	}
+	inv := func(items ...corev1alpha1.ResourceInventoryItem) *corev1alpha1.ReleaseInventory {
+		return &corev1alpha1.ReleaseInventory{Inventory: items}
+	}
+
+	tests := []struct {
+		name     string
+		old, new *corev1alpha1.ReleaseInventory
+		want     bool
+	}{
+		{caseIdentical, inv(withState(&healthy, "r1")), inv(withState(&healthy, "r1")), false},
+		{"state changed", inv(withState(&progressing, "r1")), inv(withState(&healthy, "r1")), true},
+		{"assessedRenderRef changed", inv(withState(&healthy, "r1")), inv(withState(&healthy, "r2")), true},
+		{"controller-only field (renderRef) ignored", func() *corev1alpha1.ReleaseInventory {
+			d := withState(&healthy, "r1")
+			d.RenderRef = "r1"
+			return inv(d)
+		}(), func() *corev1alpha1.ReleaseInventory {
+			d := withState(&healthy, "r1")
+			d.RenderRef = "r2" // controller-owned; must not count as a health change
+			return inv(d)
+		}(), false},
+		{"item added", inv(withState(&healthy, "r1")), inv(withState(&healthy, "r1"),
+			corev1alpha1.ResourceInventoryItem{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: nameCfg}), true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := HealthChanged(tc.old, tc.new); got != tc.want {
+				t.Errorf("HealthChanged = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -206,7 +248,7 @@ func TestHooksArmChanged(t *testing.T) {
 		old, new *corev1alpha1.ReleaseInventory
 		want     bool
 	}{
-		{"identical", inv(base), inv(base), false},
+		{caseIdentical, inv(base), inv(base), false},
 		{"hook added", inv(), inv(base), true},
 		{
 			name: "re-armed: workloadName changed",

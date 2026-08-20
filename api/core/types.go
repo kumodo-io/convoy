@@ -272,6 +272,23 @@ const (
 	LifecycleHookRunAfterHealthy LifecycleHookRunAfter = "Healthy"
 )
 
+type RollbackPolicy string
+
+const (
+	RollbackPolicyNever            RollbackPolicy = "Never"
+	RollbackPolicyOnWaveFailure    RollbackPolicy = "OnWaveFailure"
+	RollbackPolicyOnReleaseFailure RollbackPolicy = "OnReleaseFailure"
+)
+
+type RolloutState string
+
+const (
+	RolloutStateFailed      RolloutState = "Failed"
+	RolloutStateSucceeded   RolloutState = "Succeeded"
+	RolloutStateRolledBack  RolloutState = "RolledBack"
+	RolloutStateProgressing RolloutState = "Progressing"
+)
+
 type ReleaseSpec struct {
 	Source           ReleaseSourceSpec
 	Content          ReleaseContentSpec
@@ -280,6 +297,7 @@ type ReleaseSpec struct {
 	RetentionPolicy  ReleaseRetentionPolicySpec
 	DeletionPolicy   ReleaseDeletionPolicy
 	HealthAssessment *ReleaseHealthAssessment
+	FailurePolicy    *ReleaseFailurePolicy
 }
 
 type ReleaseSourceSpec struct {
@@ -415,6 +433,10 @@ type ReleaseHealthAssessment struct {
 	Deadline              *metav1.Duration
 }
 
+type ReleaseFailurePolicy struct {
+	Rollback RollbackPolicy
+}
+
 type ReleaseMutation struct {
 	Type         ReleaseMutationType
 	Target       ReleaseMutationTarget
@@ -499,12 +521,15 @@ type ReleaseStatus struct {
 	ResolvedRetentionPolicy ResolvedRetentionPolicyStatus
 	LastSuccessful          *ReleaseAttemptedRenderStatus
 	LastAttempted           *ReleaseAttemptedRenderStatus
+	LastHealthy             *LastHealthy
 	Waves                   []ResourceWaveStatus
 	ReconciledAt            *metav1.Time
 	HistoryTruncated        bool
 	Lifecycle               LifecycleStatus
 	HealthSummary           ReleaseHealthSummary
 	LastHandledSyncAt       *metav1.Time
+	LastHandledForceSyncAt  *metav1.Time
+	Rollout                 *RolloutStatus
 }
 
 type ReleasePinStatus struct {
@@ -622,6 +647,17 @@ type ReleaseHealthSummary struct {
 	Degraded    int32
 	Suspended   int32
 	Unknown     int32
+}
+
+type LastHealthy struct {
+	RenderRef string
+}
+
+type RolloutStatus struct {
+	State     RolloutState
+	RenderRef string
+	StartedAt metav1.Time
+	Message   string
 }
 
 // +genclient

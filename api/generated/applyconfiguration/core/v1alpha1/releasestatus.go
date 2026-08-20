@@ -40,6 +40,8 @@ type ReleaseStatusApplyConfiguration struct {
 	LastSuccessful *ReleaseAttemptedRenderStatusApplyConfiguration `json:"lastSuccessful,omitempty"`
 	// LastAttempted is the last attempted sync attempt.
 	LastAttempted *ReleaseAttemptedRenderStatusApplyConfiguration `json:"lastAttempted,omitempty"`
+	// LastHealthy is the reference to the last healthy applied render.
+	LastHealthy *LastHealthyApplyConfiguration `json:"lastHealthy,omitempty"`
 	// Waves reflects the order in which resources were applied and their health status.
 	// Each wave entry represents a group of resources applied together, with a state indicating
 	// whether they have been fully applied and healthy, are in progress, or have failed.
@@ -54,6 +56,12 @@ type ReleaseStatusApplyConfiguration struct {
 	HealthSummary *ReleaseHealthSummaryApplyConfiguration `json:"healthSummary,omitempty"`
 	// LastHandledSyncAt reflects the timestamp when the last sync was handled
 	LastHandledSyncAt *metav1.Time `json:"lastHandledSyncAt,omitempty"`
+	// LastHandledForceSyncAt reflects the timestamp of the last handled forced sync
+	// (/sync?force=true). A force request newer than this bypasses the pre-apply
+	// dry-run and clears a held Failed/RolledBack rollout.
+	LastHandledForceSyncAt *metav1.Time `json:"lastHandledForceSyncAt,omitempty"`
+	// Rollout reflects the release rollout state.
+	Rollout *RolloutStatusApplyConfiguration `json:"rollout,omitempty"`
 }
 
 // ReleaseStatusApplyConfiguration constructs a declarative configuration of the ReleaseStatus type for use with
@@ -115,6 +123,14 @@ func (b *ReleaseStatusApplyConfiguration) WithLastAttempted(value *ReleaseAttemp
 	return b
 }
 
+// WithLastHealthy sets the LastHealthy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the LastHealthy field is set to the value of the last call.
+func (b *ReleaseStatusApplyConfiguration) WithLastHealthy(value *LastHealthyApplyConfiguration) *ReleaseStatusApplyConfiguration {
+	b.LastHealthy = value
+	return b
+}
+
 // WithWaves adds the given value to the Waves field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Waves field.
@@ -165,5 +181,21 @@ func (b *ReleaseStatusApplyConfiguration) WithHealthSummary(value *ReleaseHealth
 // If called multiple times, the LastHandledSyncAt field is set to the value of the last call.
 func (b *ReleaseStatusApplyConfiguration) WithLastHandledSyncAt(value metav1.Time) *ReleaseStatusApplyConfiguration {
 	b.LastHandledSyncAt = &value
+	return b
+}
+
+// WithLastHandledForceSyncAt sets the LastHandledForceSyncAt field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the LastHandledForceSyncAt field is set to the value of the last call.
+func (b *ReleaseStatusApplyConfiguration) WithLastHandledForceSyncAt(value metav1.Time) *ReleaseStatusApplyConfiguration {
+	b.LastHandledForceSyncAt = &value
+	return b
+}
+
+// WithRollout sets the Rollout field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Rollout field is set to the value of the last call.
+func (b *ReleaseStatusApplyConfiguration) WithRollout(value *RolloutStatusApplyConfiguration) *ReleaseStatusApplyConfiguration {
+	b.Rollout = value
 	return b
 }

@@ -184,6 +184,42 @@ func (s *apiStore) GetHooks(ctx context.Context, namespace, name string) ([]core
 // health-field updates on existing entries, so the observer's health loop can
 // watch the inventory for "a resource was applied" and wake on that, without
 // re-waking on its own health writes.
+// HealthChanged reports whether the observer-owned per-resource health of a
+// ReleaseInventory changed between two revisions — any item's State or
+// AssessedRenderRef differs (including an item added or removed). It lets the
+// release controller wake promptly when the observer writes health back, so the
+// failurePolicy rollout gate confirms a render healthy within ~a watch latency
+// rather than up to a whole poll interval later. It ignores the controller's own
+// fields (RenderRef, wave), so the controller's inventory writes don't self-wake.
+func HealthChanged(oldInv, newInv *corev1alpha1.ReleaseInventory) bool {
+	type health struct {
+		state    string
+		assessed string
+	}
+	index := func(inv *corev1alpha1.ReleaseInventory) map[string]health {
+		m := make(map[string]health, len(inv.Inventory))
+		for i := range inv.Inventory {
+			it := inv.Inventory[i]
+			state := ""
+			if it.State != nil {
+				state = string(*it.State)
+			}
+			m[itemIdentityID(it)] = health{state: state, assessed: it.AssessedRenderRef}
+		}
+		return m
+	}
+	old, cur := index(oldInv), index(newInv)
+	if len(old) != len(cur) {
+		return true
+	}
+	for id, h := range cur {
+		if old[id] != h {
+			return true
+		}
+	}
+	return false
+}
+
 func MembershipChanged(oldInv, newInv *corev1alpha1.ReleaseInventory) bool {
 	if len(oldInv.Inventory) != len(newInv.Inventory) {
 		return true

@@ -22,6 +22,13 @@ package v1alpha1
 // applies when its value is newer than status.lastHandledSyncAt.
 const SyncRequestedAtAnnotation = "convoy.kumodo.io/sync-requested-at"
 
+// SyncForceRequestedAtAnnotation is stamped (with an RFC3339 timestamp) by the
+// /sync subresource for a forced sync (/sync?force=true). When its value is newer
+// than status.lastHandledForceSyncAt, the controller bypasses the pre-apply dry-run
+// and clears a held Failed/RolledBack rollout, re-driving the render. The normal
+// SyncRequestedAtAnnotation is stamped alongside it to wake the controller.
+const SyncForceRequestedAtAnnotation = "convoy.kumodo.io/sync-force-requested-at"
+
 const (
 	// ReleaseKind is a string value for release kind
 	ReleaseKind = "Release"

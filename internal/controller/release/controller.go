@@ -105,6 +105,12 @@ type Controller struct {
 	failures *failureCounts
 	// now is injectable for tests; defaults to metav1.Now.
 	now func() metav1.Time
+	// healthFn returns the observer's verdict on a render (Healthy / Degraded /
+	// Pending). It defaults to renderStatus and is a test seam so the rollout
+	// state-machine tests don't depend on the in-memory inventory double, which —
+	// unlike the SSA-co-owned apiStore — doesn't preserve observer-written health
+	// fields across the controller's inventory writes.
+	healthFn func(ctx context.Context, rel *corev1alpha1.Release, renderRef string) renderVerdict
 }
 
 // failureCounts is a concurrency-safe per-key consecutive-failure counter.
@@ -163,6 +169,7 @@ func NewController(
 		failures:           newFailureCounts(),
 		now:                metav1.Now,
 	}
+	c.healthFn = c.renderStatus
 	c.Controller = base.NewController("release", c.syncHandler,
 		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation),
 		// Shard by the Release's target cluster: keep only Releases whose cluster
@@ -231,6 +238,28 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	newStatus.Waves = outcome.waves
 	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
+	// The observer's per-resource verdict on THIS render (AssessedRenderRef == render):
+	// Healthy (all Healthy), Degraded (≥1 Degraded), or Pending — not the release-level
+	// conditions, which lag a fresh apply. Drives lastHealthy, the gate, and the rollout.
+	verdict := c.healthFn(ctx, rel, outcome.attempt.RenderRef)
+	healthy := verdict == renderVerdictHealthy
+	newStatus.LastHealthy = lastHealthy(rel, outcome.attempt.RenderRef, healthy)
+	// A forced sync (/sync?force) re-drives a held render and resets its rollout;
+	// record which force request was handled so it is one-shot.
+	forceAt, forced := pendingForceSync(rel)
+	if forced {
+		newStatus.LastHandledForceSyncAt = forceAt
+	}
+	// A failure/rollback outcome carries its own rollout decision; otherwise compute
+	// the non-failure state (Progressing/Succeeded, or carry prior forward).
+	if outcome.rollout != nil {
+		newStatus.Rollout = outcome.rollout
+	} else {
+		newStatus.Rollout = c.evaluateRollout(rel, outcome, forced, verdict)
+	}
+	if cond := rolloutCondition(newStatus.Rollout, rel.Generation, c.now()); cond != nil {
+		apimeta.SetStatusCondition(&newStatus.Conditions, *cond)
+	}
 
 	// Roll up lifecycle-hook progress (status.lifecycle + LifecycleSucceeded) from the
 	// durable ReleaseInventory the gate maintains — controller-owned, parity with waves.
@@ -270,11 +299,31 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		// mode keeps observing (drift/sync-state) on the interval, it just won't apply
 		// until a /sync arrives.
 		c.failures.reset(key)
-		if d := syncRequeueAfter(rel); d > 0 {
+		if d := requeueAfter(rel, newStatus); d > 0 {
 			c.EnqueueAfter(key, d)
 		}
 		return nil
 	}
+}
+
+// rolloutPollInterval bounds how often a Progressing rollout re-checks the observer's
+// verdict. The controller is also woken directly on ReleaseInventory health changes
+// (the primary trigger); this poll is the safety net, needed because status-only
+// writes don't always wake the controller and spec.syncPolicy.interval may be 0.
+const rolloutPollInterval = 10 * time.Second
+
+// requeueAfter is the terminal-outcome requeue delay: the Release's poll interval,
+// but a Progressing rollout re-checks at least as often as rolloutPollInterval so it
+// picks up a verdict promptly even when the poll interval is long or unset (in
+// addition to the wake-on-health trigger).
+func requeueAfter(rel *corev1alpha1.Release, newStatus corev1alpha1.ReleaseStatus) time.Duration {
+	d := syncRequeueAfter(rel)
+	if r := newStatus.Rollout; r != nil && r.State == corev1alpha1.RolloutStateProgressing {
+		if d <= 0 || rolloutPollInterval < d {
+			d = rolloutPollInterval
+		}
+	}
+	return d
 }
 
 // pendingSync reports whether an unhandled /sync request is stamped on the
@@ -299,6 +348,27 @@ func pendingSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
 	return &requestedAt, true
 }
 
+// pendingForceSync reports whether an unhandled forced-sync request is stamped on
+// the Release (the twin of pendingSync for the force annotation): the
+// sync-force-requested-at annotation parses to a time after
+// status.lastHandledForceSyncAt. A forced sync bypasses the pre-apply dry-run and
+// clears a held Failed/RolledBack rollout.
+func pendingForceSync(rel *corev1alpha1.Release) (*metav1.Time, bool) {
+	raw := rel.Annotations[corev1alpha1.SyncForceRequestedAtAnnotation]
+	if raw == "" {
+		return nil, false
+	}
+	t, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return nil, false
+	}
+	requestedAt := metav1.NewTime(t.Truncate(time.Second))
+	if h := rel.Status.LastHandledForceSyncAt; h != nil && !requestedAt.After(h.Time) {
+		return nil, false
+	}
+	return &requestedAt, true
+}
+
 // ownedStatusApplyConfig builds a Server-Side Apply configuration carrying only
 // the status fields this controller owns. The top-level config is built field by
 // field — NOT round-tripped from the whole ReleaseStatus struct — because that
@@ -316,7 +386,7 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 	// clobber the observer's values back to a stale copy on each reconcile. conditions
 	// is a listType=map keyed by type, so asserting only ours leaves the others
 	// untouched; omitting LifecycleSucceeded when absent relinquishes it (no hooks).
-	for _, condType := range []string{conditionApplied, conditionLifecycleSucceeded} {
+	for _, condType := range []string{conditionApplied, conditionLifecycleSucceeded, conditionRolloutSucceeded} {
 		cond := apimeta.FindStatusCondition(s.Conditions, condType)
 		if cond == nil {
 			continue
@@ -363,6 +433,24 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 		}
 		statusAC.WithLastSuccessful(ls)
 	}
+	// lastHealthy is controller-owned: the last render confirmed healthy, the
+	// failurePolicy rollback target. Only assert when set (advance-only); omitting
+	// it when nil doesn't clobber a value this manager previously wrote.
+	if s.LastHealthy != nil {
+		statusAC.WithLastHealthy(corev1alpha1ac.LastHealthy().WithRenderRef(s.LastHealthy.RenderRef))
+	}
+	// rollout is controller-owned (the failurePolicy state machine). Only assert when
+	// set; omitting it when nil leaves any prior value untouched.
+	if s.Rollout != nil {
+		rollout := corev1alpha1ac.RolloutStatus().
+			WithState(s.Rollout.State).
+			WithRenderRef(s.Rollout.RenderRef).
+			WithStartedAt(s.Rollout.StartedAt)
+		if s.Rollout.Message != "" {
+			rollout.WithMessage(s.Rollout.Message)
+		}
+		statusAC.WithRollout(rollout)
+	}
 	// resolvedRetentionPolicy is controller-owned (it reflects the GC policy this
 	// controller enforces). Assert it explicitly so it doesn't clobber the sibling
 	// observer-owned healthSummary.
@@ -377,6 +465,9 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 	}
 	if s.LastHandledSyncAt != nil {
 		statusAC.WithLastHandledSyncAt(*s.LastHandledSyncAt)
+	}
+	if s.LastHandledForceSyncAt != nil {
+		statusAC.WithLastHandledForceSyncAt(*s.LastHandledForceSyncAt)
 	}
 
 	// waves is a listType=map keyed by number, fully owned by this controller: it
@@ -629,7 +720,19 @@ type reconcileOutcome struct {
 	// waves is the per-wave apply progress for status.waves (controller owns the
 	// `applied` field; the observer owns `healthy`).
 	waves []corev1alpha1.ResourceWaveStatus
+	// rollout, when set, is the failurePolicy rollout decision this reconcile reached
+	// (a failure or a rollback). nil means "no explicit decision" — syncHandler then
+	// computes the non-failure state (Progressing/Succeeded) via evaluateRollout.
+	rollout *corev1alpha1.RolloutStatus
 }
+
+// failureKind distinguishes which failurePolicy trigger a rollout failure matches.
+type failureKind int
+
+const (
+	failureWave    failureKind = iota // an intermediate wave did not go healthy in time
+	failureRelease                    // the whole release did not go healthy within the deadline
+)
 
 // reconcile runs fetch → render → apply → prune, building an attempt record. In
 // automatic mode it applies on the success path (drift correction); in manual
@@ -645,7 +748,13 @@ type reconcileState struct {
 	manual      bool
 	pending     bool
 	requestedAt *metav1.Time
-	attempt     corev1alpha1.ReleaseAttemptedRenderStatus
+	// force is set when this reconcile satisfies a /sync?force request: it bypasses
+	// the pre-apply dry-run and clears a held Failed/RolledBack rollout.
+	force bool
+	// forceRequestedAt is the force-request time this reconcile handled, recorded in
+	// status.lastHandledForceSyncAt so the one-shot force isn't re-triggered.
+	forceRequestedAt *metav1.Time
+	attempt          corev1alpha1.ReleaseAttemptedRenderStatus
 
 	// Produced by stageRender, consumed by stageGates/stageSync.
 	art     artifact.Artifact
@@ -658,12 +767,15 @@ type reconcileState struct {
 func (c *Controller) newReconcileState(rel *corev1alpha1.Release) *reconcileState {
 	now := c.now()
 	requestedAt, pending := pendingSync(rel)
+	forceAt, force := pendingForceSync(rel)
 	return &reconcileState{
-		rel:         rel,
-		now:         now,
-		manual:      !rel.Spec.SyncPolicy.Automatic,
-		pending:     pending,
-		requestedAt: requestedAt,
+		rel:              rel,
+		now:              now,
+		manual:           !rel.Spec.SyncPolicy.Automatic,
+		pending:          pending,
+		requestedAt:      requestedAt,
+		force:            force,
+		forceRequestedAt: forceAt,
 		attempt: corev1alpha1.ReleaseAttemptedRenderStatus{
 			AttemptedAt:    &now,
 			ResolvedSource: resolvedSourceFrom(rel),
@@ -715,6 +827,14 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	st := c.newReconcileState(rel)
 	if out, done, err := c.stageRender(ctx, st); done {
 		return out, err
+	}
+	// A RolledBack rollout keeps the LAST-HEALTHY render applied, not the failed source
+	// render: re-assert it each reconcile so Applied stays true and drift is corrected
+	// on the running render. Reset only by a spec change (source renders a different
+	// renderRef) or /sync --force; a user pin or a forced sync overrides. Reads the
+	// persisted prior rollout, so the decision precedes any apply of the source render.
+	if out, done := c.reassertRollback(ctx, st); done {
+		return out, nil
 	}
 	if out, done, err := c.stageGates(st); done {
 		return out, err
@@ -924,6 +1044,26 @@ func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, err
 	return cont()
 }
 
+// dryRunGate pre-flights the render with a dry-run apply before it is persisted or
+// applied: a render that can never apply (immutable-field edit, schema/RBAC/admission
+// rejection) is caught here, so it is neither stored nor applied — nothing to roll
+// back, no orphan blob. It is lenient about not-yet-existing types (a CR whose CRD is
+// an earlier wave is skipped). A /sync?force reconcile bypasses it (the real apply
+// still gates). On failure it returns a terminal Unappliable outcome (nil err ⇒
+// re-checked on the poll interval, not hot-retried): a permanent cause waits for a
+// spec fix; a transient one (a webhook briefly down) recovers on the next poll, or
+// the user can /sync --force. See docs/architecture/06-progressive-rollout.md.
+func (c *Controller) dryRunGate(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
+	if st.force {
+		return reconcileOutcome{}, false
+	}
+	if err := c.deployer.DryRun(ctx, st.cluster, st.objects); err != nil {
+		out, _ := st.fail(conditionReasonUnappliable, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+		return out, true
+	}
+	return reconcileOutcome{}, false
+}
+
 // stageSync applies the rendered objects to the target cluster in ascending
 // sync-wave order, prunes orphans on the success path, and records the durable
 // inventory. It is the terminal stage: it always produces the reconcile outcome.
@@ -935,6 +1075,19 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// attempt is threaded by value here and updated on the success path; the fail
 	// helper stamps st.attempt, which equals this copy on every non-success path.
 	attempt := st.attempt
+
+	// Dry-run before persisting: a render that can never apply is caught here, so it
+	// is neither stored nor applied.
+	if out, done := c.dryRunGate(ctx, st); done {
+		return out, nil
+	}
+
+	// Release gate: an in-flight rollout of this render that the observer has assessed
+	// Degraded fails now (and rolls back if the policy selects it) — before re-applying
+	// the failed render.
+	if out, done := c.releaseGate(ctx, st); done {
+		return out, nil
+	}
 
 	// persist-then-apply: durably store this render (content-addressed by its
 	// renderRef) before applying anything. A crash mid-apply then leaves the render
@@ -1006,22 +1159,8 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 		// holds exactly that wave's refs; health is the observer-persisted rollup over
 		// them — no dependency on this controller's own status.
 		if i > 0 && waveGroups[i].NeedsHealth && !precedingWaveHealthy(prevWaveApplied, stateByID, noHealthBar) {
-			// Anchor a bounded wait at the immediately-preceding wave's first apply.
-			prevStarted := prior[int64(waveGroups[i-1].Number)].StartedAt
-			if waveGroups[i].Bounded && prevStarted != nil && now.Sub(prevStarted.Time) > waveGroups[i].Timeout {
-				out, _ := fail(conditionReasonWaveFailed, fmt.Sprintf("sync wave %d: preceding wave %d not healthy within %s", w.Number, waveGroups[i-1].Number, waveGroups[i].Timeout), corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
-				out.waves = waveStatuses
-				return out, nil
-			}
-			// Not healthy yet: hold. Partial rollout — do NOT prune or advance
-			// lastSuccessful. Requeues on the poll interval; the observer records the
-			// preceding wave's health in the meantime.
-			return reconcileOutcome{
-				reason:  conditionReasonWaitingForWaveHealth,
-				message: fmt.Sprintf("waiting for wave %d to become healthy before applying wave %d", waveGroups[i-1].Number, w.Number),
-				attempt: attempt,
-				waves:   waveStatuses,
-			}, nil
+			out := c.waveHealthGate(ctx, st, waveGroups, i, prior, waveStatuses)
+			return out, nil
 		}
 
 		waveApplied, err := c.deployer.Deploy(ctx, cluster, w.Objects)
@@ -1237,6 +1376,345 @@ func gitRefString(ref *corev1alpha1.ReleaseGitRepositoryRefSpec) string {
 // snapshots the inputs of the pinned render, taken from status.lastSuccessful —
 // while a pin holds the controller never applies, so lastSuccessful is the pinned
 // render.
+// renderVerdict is the observer's verdict on a render, read from the per-resource
+// health the observer persists on the ReleaseInventory. It is the sole input to the
+// rollout gate: the gate acts only on positive evidence (Healthy or Degraded) and
+// waits on Pending, so an apiserver/observer outage (no fresh verdict) can never trip
+// a false failure.
+type renderVerdict int
+
+const (
+	// renderVerdictPending: not enough evidence yet — nothing applied, the assessment
+	// still points at a previous render, or resources are still Progressing/Unknown.
+	renderVerdictPending renderVerdict = iota
+	// renderVerdictHealthy: every applied resource was assessed against THIS render and
+	// found Healthy.
+	renderVerdictHealthy
+	// renderVerdictDegraded: at least one resource assessed against THIS render is
+	// Degraded — the observer's definitive "did not converge" verdict.
+	renderVerdictDegraded
+)
+
+// renderStatus returns the observer's verdict on render renderRef. Checking each
+// resource's AssessedRenderRef == renderRef is essential: it stops the gate trusting a
+// stale assessment of a *previous* render — right after a new render applies its
+// resources carry RenderRef=renderRef but the observer's AssessedRenderRef still points
+// at the old render, so a plain "all Healthy" check would succeed prematurely, before
+// the new workload (e.g. a rolling update's new pods) is actually healthy. A single
+// resource Degraded for this render is a fail-fast Degraded verdict; otherwise the
+// verdict is Healthy only when every resource is Healthy for this render, and Pending
+// until then. With no health assessment there is nothing to wait for, so a render is
+// Healthy by passing (the policy is inert).
+func (c *Controller) renderStatus(ctx context.Context, rel *corev1alpha1.Release, renderRef string) renderVerdict {
+	if rel.Spec.HealthAssessment == nil {
+		return renderVerdictHealthy
+	}
+	if renderRef == "" {
+		return renderVerdictPending
+	}
+	refs, _, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
+	if err != nil || len(refs) == 0 {
+		return renderVerdictPending
+	}
+	allHealthy := true
+	for _, r := range refs {
+		assessed := r.AssessedRenderRef == renderRef && r.State != nil
+		if assessed && *r.State == corev1alpha1.ResourceStateDegraded {
+			return renderVerdictDegraded // positive failure evidence: fail fast
+		}
+		if !assessed || *r.State != corev1alpha1.ResourceStateHealthy {
+			allHealthy = false
+		}
+	}
+	if allHealthy {
+		return renderVerdictHealthy
+	}
+	return renderVerdictPending
+}
+
+// lastHealthy resolves status.lastHealthy: the last render confirmed healthy, the
+// rollback target for failurePolicy. Written independent of failurePolicy (a
+// rollback target accrues before the policy is enabled) and only ever advances — an
+// unhealthy blip does not clear it, so the prior good render stays available.
+func lastHealthy(rel *corev1alpha1.Release, currentRenderRef string, healthy bool) *corev1alpha1.LastHealthy {
+	if currentRenderRef != "" && healthy {
+		return &corev1alpha1.LastHealthy{RenderRef: currentRenderRef}
+	}
+	return rel.Status.LastHealthy // carry the prior value forward (advance-only)
+}
+
+// reassertRollback maintains a RolledBack rollout's steady state: while the rollout is
+// RolledBack for the current source render (no spec change) and neither pinned nor
+// forced, it re-applies the LAST-HEALTHY render so the cluster stays on it and Applied
+// stays true — the failed source render must never run. Returns (outcome, true) when
+// it takes over the reconcile. A missing store or last-healthy pointer leaves it to
+// the normal path (which just re-applies the source render). Reads the persisted prior
+// rollout, so the decision precedes any apply of the source render.
+func (c *Controller) reassertRollback(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
+	rel := st.rel
+	if st.force || rel.Pin != nil || rel.Spec.FailurePolicy == nil {
+		return reconcileOutcome{}, false
+	}
+	r := rel.Status.Rollout
+	if r == nil || r.State != corev1alpha1.RolloutStateRolledBack || r.RenderRef != st.attempt.RenderRef {
+		return reconcileOutcome{}, false
+	}
+	if rel.Status.LastHealthy == nil || c.renderStore == nil {
+		return reconcileOutcome{}, false
+	}
+	// The rollout's startedAt and message carry forward unchanged (this is the same
+	// RolledBack state, re-asserted — not a new failure).
+	return c.applyRollback(ctx, st, r.StartedAt, r.Message)
+}
+
+// evaluateRollout computes status.rollout after a reconcile that did NOT produce its
+// own rollout decision (rollback/re-assert set outcome.rollout directly). Active only
+// under a failurePolicy; without one it returns nil. Keyed by renderRef:
+//   - forced (/sync?force): a fresh rollout (Succeeded if already healthy, else
+//     Progressing) — a re-drive resets a held terminal state.
+//   - a render that didn't apply this reconcile (a hold, a pre-apply failure): carry
+//     the prior forward.
+//   - a terminal render: Succeeded stays Succeeded (even if it later degrades);
+//     RolledBack stays (it is maintained by reassertRollback, not here); Failed
+//     advances to Succeeded if it self-heals, else stays Failed (its one-shot
+//     rollback, if any, already ran).
+//   - otherwise (Progressing/fresh): Healthy → Succeeded; Degraded → Failed (the
+//     rollback, if the policy selected it, was applied in releaseGate — reaching here
+//     means it wasn't, so the failed render stays applied); else → Progressing.
+//
+// startedAt is set when the render first applies and preserved across reconciles.
+func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcileOutcome, forced bool, verdict renderVerdict) *corev1alpha1.RolloutStatus {
+	fp := rel.Spec.FailurePolicy
+	if fp == nil {
+		return nil
+	}
+	prior := rel.Status.Rollout
+	renderRef := outcome.attempt.RenderRef
+	if renderRef == "" {
+		return prior
+	}
+	if forced {
+		return c.freshRollout(renderRef, verdict == renderVerdictHealthy)
+	}
+	if !outcome.applied {
+		return prior
+	}
+
+	startedAt := c.now()
+	if prior != nil && prior.RenderRef == renderRef && !prior.StartedAt.IsZero() {
+		startedAt = prior.StartedAt
+	}
+
+	// A render whose rollout is already terminal for this render.
+	if prior != nil && prior.RenderRef == renderRef {
+		switch prior.State {
+		case corev1alpha1.RolloutStateSucceeded, corev1alpha1.RolloutStateRolledBack:
+			return prior
+		case corev1alpha1.RolloutStateFailed:
+			if verdict == renderVerdictHealthy {
+				return succeededRollout(renderRef, startedAt) // self-heal recovery
+			}
+			return prior // one-shot: never rolls back again
+		}
+	}
+
+	switch verdict {
+	case renderVerdictHealthy:
+		return succeededRollout(renderRef, startedAt)
+	case renderVerdictDegraded:
+		return &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateFailed, RenderRef: renderRef, StartedAt: startedAt}
+	default:
+		return &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateProgressing, RenderRef: renderRef, StartedAt: startedAt}
+	}
+}
+
+// succeededRollout is a Succeeded rollout status for renderRef.
+func succeededRollout(renderRef string, startedAt metav1.Time) *corev1alpha1.RolloutStatus {
+	return &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateSucceeded, RenderRef: renderRef, StartedAt: startedAt}
+}
+
+// freshRollout opens a rollout at the current time: Succeeded if the render is
+// already healthy, else Progressing. Used when a forced sync re-drives a render.
+func (c *Controller) freshRollout(renderRef string, healthy bool) *corev1alpha1.RolloutStatus {
+	state := corev1alpha1.RolloutStateProgressing
+	if healthy {
+		state = corev1alpha1.RolloutStateSucceeded
+	}
+	return &corev1alpha1.RolloutStatus{State: state, RenderRef: renderRef, StartedAt: c.now()}
+}
+
+// releaseGate is the terminal-wave health gate: on a reconcile where render R is
+// already fully applied and its rollout is still Progressing, it reads the observer's
+// verdict for R. A Degraded verdict (positive "did not converge" evidence) fails the
+// rollout — rolling back before re-applying the failed render when the policy selects
+// it. Healthy or Pending (still converging, or no fresh assessment — e.g. an observer
+// outage) let the normal apply proceed, so a rollout waits indefinitely for a verdict
+// rather than failing on the absence of one. Returns (outcome, true) only when it rolls
+// back; otherwise (_, false) — a non-rollback Degraded falls through to the normal
+// apply, and evaluateRollout marks the render Failed.
+func (c *Controller) releaseGate(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
+	rel := st.rel
+	fp := rel.Spec.FailurePolicy
+	prior := rel.Status.Rollout
+	if fp == nil || prior == nil ||
+		prior.RenderRef != st.attempt.RenderRef || prior.State != corev1alpha1.RolloutStateProgressing {
+		return reconcileOutcome{}, false
+	}
+	if c.healthFn(ctx, rel, st.attempt.RenderRef) != renderVerdictDegraded {
+		return reconcileOutcome{}, false // healthy or still converging: proceed
+	}
+	msg := "release did not become healthy (a resource reported Degraded)"
+	if out, ok := c.attemptRollback(ctx, st, failureRelease, prior.StartedAt, msg); ok {
+		return out, true
+	}
+	return reconcileOutcome{}, false
+}
+
+// waveHealthGate is the hold/fail decision for a health-gated wave whose
+// immediately-preceding wave is not yet healthy: a bounded wait that has elapsed is
+// a wave failure (which failurePolicy may roll back; otherwise the terminal
+// WaveFailed outcome), and otherwise a hold that requeues.
+func (c *Controller) waveHealthGate(ctx context.Context, st *reconcileState, waveGroups []waves.Wave, i int, prior map[int64]corev1alpha1.ResourceWaveStatus, waveStatuses []corev1alpha1.ResourceWaveStatus) reconcileOutcome {
+	w, prev := waveGroups[i], waveGroups[i-1]
+	prevStarted := prior[int64(prev.Number)].StartedAt
+	if w.Bounded && prevStarted != nil && st.now.Sub(prevStarted.Time) > w.Timeout {
+		msg := fmt.Sprintf("sync wave %d: preceding wave %d not healthy within %s", w.Number, prev.Number, w.Timeout)
+		if st.rel.Spec.FailurePolicy != nil {
+			out := c.handleRolloutFailure(ctx, st, failureWave, st.now, msg)
+			out.waves = waveStatuses
+			return out
+		}
+		out, _ := st.fail(conditionReasonWaveFailed, msg, corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+		out.waves = waveStatuses
+		return out
+	}
+	// Not healthy yet: hold. Partial rollout — do NOT prune or advance lastSuccessful.
+	// Requeues on the poll interval; the observer records the preceding wave's health
+	// in the meantime.
+	return reconcileOutcome{
+		reason:  conditionReasonWaitingForWaveHealth,
+		message: fmt.Sprintf("waiting for wave %d to become healthy before applying wave %d", prev.Number, w.Number),
+		attempt: st.attempt,
+		waves:   waveStatuses,
+	}
+}
+
+// attemptRollback rolls back to the last-healthy render when the failurePolicy selects
+// this failure kind and a rollback target exists. Returns (outcome, true) when it rolled
+// back; else (_, false) so the caller decides the non-rollback outcome (Failed).
+func (c *Controller) attemptRollback(ctx context.Context, st *reconcileState, kind failureKind, startedAt metav1.Time, msg string) (reconcileOutcome, bool) {
+	rel := st.rel
+	eligible := false
+	switch rel.Spec.FailurePolicy.Rollback {
+	case corev1alpha1.RollbackPolicyOnWaveFailure:
+		eligible = true // any wave or release failure
+	case corev1alpha1.RollbackPolicyOnReleaseFailure:
+		eligible = kind == failureRelease
+	}
+	if !eligible || rel.Status.LastHealthy == nil || c.renderStore == nil {
+		return reconcileOutcome{}, false
+	}
+	rolloutMsg := fmt.Sprintf("%s; rolled back to %s", msg, rel.Status.LastHealthy.RenderRef)
+	return c.applyRollback(ctx, st, startedAt, rolloutMsg)
+}
+
+// handleRolloutFailure builds the outcome for a wave-level rollout failure: it rolls
+// back to last-healthy when the policy selects this failure kind and a target exists,
+// otherwise marks the rollout Failed (the partial rollout stays as applied, not
+// re-driven).
+func (c *Controller) handleRolloutFailure(ctx context.Context, st *reconcileState, kind failureKind, startedAt metav1.Time, msg string) reconcileOutcome {
+	if out, ok := c.attemptRollback(ctx, st, kind, startedAt, msg); ok {
+		return out
+	}
+	// Rollback not selected or couldn't be applied (store/deploy error, logged): report
+	// Failed so the failed render is surfaced.
+	out, _ := st.fail(conditionReasonRolloutFailed, msg, corev1alpha1.ReleaseRenderAttemptStageSyncing, nil)
+	out.rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateFailed, RenderRef: st.attempt.RenderRef, StartedAt: startedAt, Message: msg,
+	}
+	return out
+}
+
+// applyRollback restores the last-healthy render: it fetches that render from the
+// store, applies it, prunes what the failed render added, and records the inventory
+// (stamped with the last-healthy renderRef, so the observer assesses the RUNNING
+// render). It then reports the render as applied — Applied stays true — with
+// rollout=RolledBack keyed by the FAILED render, so terminal stickiness and recovery
+// (spec change / /sync --force) work. status.lastAttempted/lastSuccessful record the
+// last-healthy render (what actually runs). Returns ok=false (logged) if any step
+// fails, so the caller can fall back to Failed. Used both for the initial rollback and
+// to re-assert it on later reconciles (reassertRollback); rolloutMsg is the final
+// message (no further wrapping).
+func (c *Controller) applyRollback(ctx context.Context, st *reconcileState, startedAt metav1.Time, rolloutMsg string) (reconcileOutcome, bool) {
+	rel := st.rel
+	failedRef := st.attempt.RenderRef
+	lhRef := rel.Status.LastHealthy.RenderRef
+
+	data, err := c.renderStore.GetRender(ctx, rel.Namespace, rel.Name, lhRef)
+	if err != nil {
+		klog.ErrorS(err, "rollback: reading last-healthy render", "release", rel.Name, "renderRef", lhRef)
+		return reconcileOutcome{}, false
+	}
+	objs, err := render.ParseManifest(data)
+	if err != nil {
+		klog.ErrorS(err, "rollback: parsing last-healthy render", "release", rel.Name, "renderRef", lhRef)
+		return reconcileOutcome{}, false
+	}
+	applied, err := c.deployer.Deploy(ctx, st.cluster, objs)
+	if err != nil {
+		klog.ErrorS(err, "rollback: applying last-healthy render", "release", rel.Name, "renderRef", lhRef)
+		return reconcileOutcome{}, false
+	}
+	for k := range applied {
+		applied[k].RenderRef = lhRef
+	}
+	if err := c.prune(ctx, st.cluster, rel.Namespace, rel.Name, applied, rel.Spec.SyncPolicy.Prune); err != nil {
+		klog.ErrorS(err, "rollback: pruning after last-healthy apply", "release", rel.Name)
+		return reconcileOutcome{}, false
+	}
+	if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, applied); err != nil {
+		klog.ErrorS(err, "rollback: recording inventory", "release", rel.Name)
+		return reconcileOutcome{}, false
+	}
+	klog.InfoS("holding release on last-healthy render", "release", rel.Name, "failed", failedRef, "running", lhRef)
+	// Record the last-healthy render as what is applied/attempted; the rollout keeps
+	// the FAILED render as its key.
+	st.attempt.RenderRef = lhRef
+	st.attempt.Phase = corev1alpha1.ReleaseRenderAttemptPhaseSucceeded
+	st.attempt.SyncedAt = &st.now
+	st.attempt.SyncedResources = int64(len(applied))
+	return reconcileOutcome{
+		ready:   true,
+		applied: true,
+		reason:  conditionReasonRolledBack,
+		message: rolloutMsg,
+		attempt: st.attempt,
+		rollout: &corev1alpha1.RolloutStatus{
+			State: corev1alpha1.RolloutStateRolledBack, RenderRef: failedRef, StartedAt: startedAt, Message: rolloutMsg,
+		},
+	}, true
+}
+
+// rolloutCondition builds the RolloutSucceeded condition mirroring rollout.state.
+func rolloutCondition(rollout *corev1alpha1.RolloutStatus, generation int64, now metav1.Time) *metav1.Condition {
+	if rollout == nil {
+		return nil
+	}
+	cond := &metav1.Condition{
+		Type: conditionRolloutSucceeded, ObservedGeneration: generation,
+		LastTransitionTime: now, Reason: string(rollout.State), Message: rollout.Message,
+	}
+	switch rollout.State {
+	case corev1alpha1.RolloutStateSucceeded:
+		cond.Status = metav1.ConditionTrue
+	case corev1alpha1.RolloutStateFailed, corev1alpha1.RolloutStateRolledBack:
+		cond.Status = metav1.ConditionFalse
+	default: // Progressing
+		cond.Status = metav1.ConditionUnknown
+	}
+	return cond
+}
+
 func pinStatus(rel *corev1alpha1.Release) *corev1alpha1.ReleasePinStatus {
 	if rel.Pin == nil {
 		return nil // unpinned
@@ -1378,7 +1856,8 @@ func (c *Controller) resolvedRetentionStatus(ctx context.Context, rel *corev1alp
 // history log to keepHistory entries and reclaim unreferenced blobs. Best-effort
 // (logged, never fails a reconcile). protectedRefs shields renders not in the
 // pruned log that must survive: the just-applied render, the prior current/attempted
-// pointers (covering the persist→commit window), and any active rollback pin.
+// pointers (covering the persist→commit window), any active rollback pin, and the
+// last-healthy render (a RolledBack rollout's running target).
 func (c *Controller) runGC(ctx context.Context, rel *corev1alpha1.Release, currentRef string) {
 	if c.renderStore == nil {
 		return
@@ -1396,6 +1875,11 @@ func (c *Controller) runGC(ctx context.Context, rel *corev1alpha1.Release, curre
 	}
 	if p := rel.Pin; p != nil {
 		protected = append(protected, p.RenderRef)
+	}
+	// The rollback target must survive GC, or a RolledBack rollout couldn't re-assert
+	// the render it is running.
+	if lh := rel.Status.LastHealthy; lh != nil {
+		protected = append(protected, lh.RenderRef)
 	}
 	if err := c.renderStore.GC(ctx, rel.Namespace, rel.Name, keep, protected...); err != nil {
 		klog.ErrorS(err, "render store GC", "release", rel.Name)

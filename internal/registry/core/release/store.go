@@ -331,16 +331,24 @@ func (r *SyncREST) ConnectMethods() []string { return []string{http.MethodPost} 
 // NewConnectOptions declares no options for /sync.
 func (r *SyncREST) NewConnectOptions() (runtime.Object, bool, string) { return nil, false, "" }
 
-// Connect stamps the reconcile-request annotation on the Release.
+// Connect stamps the reconcile-request annotation on the Release. With ?force=true
+// it additionally stamps the force-request annotation: the controller then bypasses
+// the pre-apply dry-run and clears a held Failed/RolledBack rollout, re-driving the
+// render.
 func (r *SyncREST) Connect(ctx context.Context, name string, _ runtime.Object, responder rest.Responder) (http.Handler, error) {
-	return http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+	return http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
 		obj, err := r.store.Get(ctx, name, &metav1.GetOptions{})
 		if err != nil {
 			responder.Error(err)
 			return
 		}
 		rel := obj.(*core.Release).DeepCopy()
-		metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
+		now := metav1.Now().UTC().Format(time.RFC3339Nano)
+		// The normal annotation always wakes the controller (as today).
+		metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, now)
+		if forceParam(req) {
+			metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.SyncForceRequestedAtAnnotation, now)
+		}
 
 		updated, _, err := r.store.Update(ctx, name, rest.DefaultUpdatedObjectInfo(rel),
 			rest.ValidateAllObjectFunc, rest.ValidateAllObjectUpdateFunc, false, &metav1.UpdateOptions{})
@@ -350,6 +358,12 @@ func (r *SyncREST) Connect(ctx context.Context, name string, _ runtime.Object, r
 		}
 		responder.Object(http.StatusOK, updated)
 	}), nil
+}
+
+// forceParam reports whether the request asks for a forced sync (?force=true).
+func forceParam(req *http.Request) bool {
+	v := req.URL.Query().Get("force")
+	return v == "true" || v == "1"
 }
 
 // observerProxyREST implements a read-only Release subresource (GET) that the

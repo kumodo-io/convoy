@@ -88,6 +88,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ClusterSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ClusterStatus"):
 		return &applyconfigurationcorev1alpha1.ClusterStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("LastHealthy"):
+		return &applyconfigurationcorev1alpha1.LastHealthyApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("LifecycleHookJobTemplate"):
 		return &applyconfigurationcorev1alpha1.LifecycleHookJobTemplateApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("LifecycleHookPodTemplate"):
@@ -122,6 +124,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ReleaseContentSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseDeletionPolicy"):
 		return &applyconfigurationcorev1alpha1.ReleaseDeletionPolicyApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseFailurePolicy"):
+		return &applyconfigurationcorev1alpha1.ReleaseFailurePolicyApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositoryRefSpec"):
 		return &applyconfigurationcorev1alpha1.ReleaseGitRepositoryRefSpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ReleaseGitRepositorySpec"):
@@ -184,6 +188,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &applyconfigurationcorev1alpha1.ResourceInventoryItemApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ResourceWaveStatus"):
 		return &applyconfigurationcorev1alpha1.ResourceWaveStatusApplyConfiguration{}
+	case corev1alpha1.SchemeGroupVersion.WithKind("RolloutStatus"):
+		return &applyconfigurationcorev1alpha1.RolloutStatusApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ValuesSourceGitRepositorySpec"):
 		return &applyconfigurationcorev1alpha1.ValuesSourceGitRepositorySpecApplyConfiguration{}
 	case corev1alpha1.SchemeGroupVersion.WithKind("ValuesSourceSpec"):

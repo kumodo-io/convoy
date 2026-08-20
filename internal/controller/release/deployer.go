@@ -44,6 +44,13 @@ type Deployer interface {
 	// namespaces resolved exactly as placed (so the returned set is authoritative
 	// for inventory + pruning).
 	Deploy(ctx context.Context, cluster *corev1alpha1.Cluster, objects []*unstructured.Unstructured) ([]inventory.Ref, error)
+	// DryRun server-side-applies objects with DryRunAll (nothing is persisted), to
+	// pre-flight a render before the real apply. It is LENIENT about not-yet-existing
+	// types: an object whose kind has no REST mapping yet (e.g. a CR whose CRD is
+	// created in an earlier wave) is skipped, not failed — the real, wave-ordered
+	// apply creates it. Only a definite rejection (immutable field, schema
+	// validation on a known type, RBAC/admission) returns an error.
+	DryRun(ctx context.Context, cluster *corev1alpha1.Cluster, objects []*unstructured.Unstructured) error
 	// Prune deletes the given resources (ignoring already-absent ones).
 	Prune(ctx context.Context, cluster *corev1alpha1.Cluster, refs []inventory.Ref) error
 }
@@ -73,6 +80,19 @@ func (d *connectorDeployer) Deploy(ctx context.Context, cluster *corev1alpha1.Cl
 		refs = append(refs, ref)
 	}
 	return refs, nil
+}
+
+func (d *connectorDeployer) DryRun(ctx context.Context, cluster *corev1alpha1.Cluster, objects []*unstructured.Unstructured) error {
+	dyn, mapper, err := d.clients(ctx, cluster)
+	if err != nil {
+		return err
+	}
+	for _, obj := range objects {
+		if err := dryRunApply(ctx, dyn, mapper, obj); err != nil {
+			return fmt.Errorf("dry-run applying %s %q: %w", obj.GetKind(), obj.GetName(), err)
+		}
+	}
+	return nil
 }
 
 func (d *connectorDeployer) Prune(ctx context.Context, cluster *corev1alpha1.Cluster, refs []inventory.Ref) error {
@@ -133,6 +153,29 @@ func apply(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, o
 	}
 	ref.UID = applied.GetUID()
 	return ref, nil
+}
+
+// dryRunApply server-side-applies a single object with DryRunAll. A missing REST
+// mapping (kind not yet known — its CRD is presumably an earlier wave) is skipped:
+// the real apply, wave-ordered, will create it. Any other error is a real rejection.
+func dryRunApply(ctx context.Context, dyn dynamic.Interface, mapper meta.RESTMapper, obj *unstructured.Unstructured) error {
+	ri, _, err := resourceFor(dyn, mapper, obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName())
+	if err != nil {
+		if meta.IsNoMatchError(err) {
+			return nil // kind not registered yet; skip — real apply will create it
+		}
+		return err
+	}
+	data, err := obj.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("marshaling object: %w", err)
+	}
+	_, err = ri.Patch(ctx, obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{
+		FieldManager: fieldManager,
+		Force:        new(true),
+		DryRun:       []string{metav1.DryRunAll},
+	})
+	return err
 }
 
 // prune deletes a single resource, treating an already-absent object as success.

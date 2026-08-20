@@ -29,9 +29,15 @@ import (
 // ReleaseHealthAssessment defines selectors to get the health rules along
 // with assessment deadline anchor.
 type ReleaseHealthAssessmentApplyConfiguration struct {
+	// GlobalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector]
+	// that will be used to collect the cluster-scoped [github.com/kumodo-io/convoy/api/extensions/v1alpha1.GlobalHealthRuleSet]
 	GlobalRuleSetSelector *v1.LabelSelectorApplyConfiguration `json:"globalRuleSetSelector,omitempty"`
-	LocalRuleSetSelector  *v1.LabelSelectorApplyConfiguration `json:"localRuleSetSelector,omitempty"`
-	Deadline              *metav1.Duration                    `json:"deadline,omitempty"`
+	// LocalRuleSetSelector defines the standard kubernetes [k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector]
+	// that will be used to collect the namespaced [github.com/kumodo-io/convoy/api/extensions/v1alpha1.HealthRuleSet],
+	// These rule sets will be looked up in the Release namespace.
+	LocalRuleSetSelector *v1.LabelSelectorApplyConfiguration `json:"localRuleSetSelector,omitempty"`
+	// Deadline is the interval within what the deployed resources must pass collected health rules.
+	Deadline *metav1.Duration `json:"deadline,omitempty"`
 }
 
 // ReleaseHealthAssessmentApplyConfiguration constructs a declarative configuration of the ReleaseHealthAssessment type for use with
