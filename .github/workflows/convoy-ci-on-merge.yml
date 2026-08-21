@@ -17,6 +17,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        target: [apiserver, controller-manager, observer]
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
@@ -29,23 +32,7 @@ jobs:
         with:
           context: .
           push: true
-          target: apiserver
-          tags: ghcr.io/${{ github.repository }}/convoy-apiserver:auto-${{ github.sha }}
-          cache-from: type=gha,scope=apiserver
-          cache-to: type=gha,mode=max,scope=apiserver
-      - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: .
-          push: true
-          target: controller-manager
-          tags: ghcr.io/${{ github.repository }}/convoy-controller-manager:auto-${{ github.sha }}
-          cache-from: type=gha,scope=controller-manager
-          cache-to: type=gha,mode=max,scope=controller-manager
-      - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: .
-          push: true
-          target: observer
-          tags: ghcr.io/${{ github.repository }}/convoy-observer:auto-${{ github.sha }}
-          cache-from: type=gha,scope=observer
-          cache-to: type=gha,mode=max,scope=observer
+          target: ${{ matrix.target }}
+          tags: ghcr.io/${{ github.repository }}/convoy-${{ matrix.target }}:auto-${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
