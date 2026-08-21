@@ -161,7 +161,7 @@ func resolvePointer(root any, pointer string) (any, bool) {
 		return root, true
 	}
 	cur := root
-	for _, tok := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+	for tok := range strings.SplitSeq(strings.TrimPrefix(pointer, "/"), "/") {
 		tok = strings.ReplaceAll(tok, "~1", "/")
 		tok = strings.ReplaceAll(tok, "~0", "~")
 		switch node := cur.(type) {

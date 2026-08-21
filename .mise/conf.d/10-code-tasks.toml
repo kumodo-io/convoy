@@ -1,0 +1,135 @@
+[env]
+LOCAL_BIN = "bin"
+GOLANGCI_LINT_TIMEOUT = "2m"
+MODULE = "github.com/kumodo-io/convoy"
+BOILERPLATE = "hack/boilerplate.go.txt"
+# External apply configurations: appended to the built-in defaults (meta/v1).
+# applyconfiguration-gen errors silently on referenced external types it doesn't know about.
+EXTERNAL_APPLYCONFIGS = "k8s.io/api/core/v1.ConfigMapKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.EnvVar:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretReference:k8s.io/client-go/applyconfigurations/core/v1"
+
+# ---------- Dev routine ----------
+[tasks.tidy]
+description = "Run go mod tidy"
+run = 'go mod tidy'
+
+[tasks.build]
+description = "Build convoy"
+run = 'go build ./...'
+
+[tasks.fmt]
+description = "Run go fmt against code"
+run = 'go fmt $(go list ./... | grep -v "/generated/")'
+
+[tasks.vet]
+description = "Run go vet against code"
+run = 'go vet $(go list ./... | grep -v "/generated/")'
+
+[tasks.fix]
+description = "Run go fix against code"
+run = 'go fix $(go list ./... | grep -v "/generated/")'
+
+[tasks.lint]
+description = "Run linter and quality checks"
+depends = ["fmt", "vet", "fix"]
+run = 'golangci-lint run --timeout={{ env.GOLANGCI_LINT_TIMEOUT }}'
+
+[tasks.test]
+description = "Run tests"
+run = 'go test -race ./...'
+
+[tasks.build-plugin]
+description = "Build convoy kubectl plugin"
+run = 'go build -o {{ env.LOCAL_BIN }}/kubectl-convoy ./cmd/kubectl-convoy'
+
+[tasks.build-binaries]
+description = "Build components' binaries"
+run = [
+    'CGO_ENABLED=0 GOOS=linux GOARCH={{ arch() }} go build -o {{ env.LOCAL_BIN }}/convoy-apiserver ./cmd/convoy-apiserver',
+    'CGO_ENABLED=0 GOOS=linux GOARCH={{ arch() }} go build -o {{ env.LOCAL_BIN }}/convoy-controller-manager ./cmd/convoy-controller-manager',
+    'CGO_ENABLED=0 GOOS=linux GOARCH={{ arch() }} go build -o {{ env.LOCAL_BIN }}/convoy-observer ./cmd/convoy-observer',
+]
+
+[tasks.build-images]
+description = "Build components' dev images"
+run = [
+    'docker build --target apiserver -t {{ env.API_SERVER_IMAGE }} .',
+    'docker build --target controller-manager -t {{ env.CONTROLLER_IMAGE }} .',
+    'docker build --target observer -t {{ env.OBSERVER_IMAGE }} .',
+]
+
+[tasks.codegen]
+description = "Run code generators"
+run = [
+	'''deepcopy-gen \
+		--go-header-file {{ env.BOILERPLATE }} \
+		--output-file zz_generated.deepcopy.go \
+		{{ env.MODULE }}/api/...''',
+
+	'''conversion-gen \
+		--go-header-file {{ env.BOILERPLATE }} \
+		--output-file zz_generated.conversion.go \
+		{{ env.MODULE }}/api/...''',
+
+	'''applyconfiguration-gen \
+		--go-header-file {{ env.BOILERPLATE }} \
+		--external-applyconfigurations "{{ env.EXTERNAL_APPLYCONFIGS }}" \
+		--output-dir api/generated/applyconfiguration \
+		--output-pkg {{ env.MODULE }}/api/generated/applyconfiguration \
+		{{ env.MODULE }}/api/core/v1alpha1 \
+		{{ env.MODULE }}/api/source/v1alpha1 \
+		{{ env.MODULE }}/api/extensions/v1alpha1 \
+		{{ env.MODULE }}/api/auth/v1alpha1''',
+
+	'''client-gen \
+		--go-header-file {{ env.BOILERPLATE }} \
+		--output-dir api/generated/clientset \
+		--output-pkg {{ env.MODULE }}/api/generated/clientset \
+		--clientset-name versioned \
+		--apply-configuration-package {{ env.MODULE }}/api/generated/applyconfiguration \
+		--input-base {{ env.MODULE }}/api \
+		--input core/v1alpha1 \
+		--input source/v1alpha1 \
+		--input extensions/v1alpha1''',
+
+	'''lister-gen \
+		--go-header-file {{ env.BOILERPLATE }} \
+		--output-dir api/generated/listers \
+		--output-pkg {{ env.MODULE }}/api/generated/listers \
+		{{ env.MODULE }}/api/core/v1alpha1 \
+		{{ env.MODULE }}/api/source/v1alpha1 \
+		{{ env.MODULE }}/api/extensions/v1alpha1''',
+
+	'''informer-gen \
+		--go-header-file {{ env.BOILERPLATE }} \
+		--output-dir api/generated/informers \
+		--output-pkg {{ env.MODULE }}/api/generated/informers \
+		--versioned-clientset-package {{ env.MODULE }}/api/generated/clientset/versioned \
+		--listers-package {{ env.MODULE }}/api/generated/listers \
+		{{ env.MODULE }}/api/core/v1alpha1 \
+		{{ env.MODULE }}/api/source/v1alpha1 \
+		{{ env.MODULE }}/api/extensions/v1alpha1''',
+
+	'''openapi-gen \
+		--go-header-file {{ env.BOILERPLATE }} \
+		--output-dir api/generated/openapi \
+		--output-pkg {{ env.MODULE }}/api/generated/openapi \
+		--report-filename hack/openapi-violation-exceptions.list \
+		--output-model-name-file zz_generated.model_name.go \
+		--readonly-pkg k8s.io/apimachinery/pkg/apis/meta/v1 \
+		--readonly-pkg k8s.io/apimachinery/pkg/runtime \
+		--readonly-pkg k8s.io/apimachinery/pkg/version \
+		--readonly-pkg k8s.io/apimachinery/pkg/util/intstr \
+		--readonly-pkg k8s.io/apimachinery/pkg/api/resource \
+		--readonly-pkg k8s.io/api/core/v1 \
+		--readonly-pkg k8s.io/api/batch/v1 \
+		--readonly-pkg k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1 \
+		{{ env.MODULE }}/api/... \
+		k8s.io/apimachinery/pkg/apis/meta/v1 \
+		k8s.io/apimachinery/pkg/runtime \
+		k8s.io/apimachinery/pkg/version \
+		k8s.io/apimachinery/pkg/util/intstr \
+		k8s.io/apimachinery/pkg/api/resource \
+		k8s.io/api/core/v1 \
+		k8s.io/api/batch/v1 \
+		k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1''',
+]

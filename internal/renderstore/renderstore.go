@@ -31,6 +31,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -161,10 +162,8 @@ func (s *RenderStore) HasHistoryRef(ctx context.Context, namespace, name, render
 	if err != nil {
 		return false, err
 	}
-	for _, r := range refs {
-		if r == renderRef {
-			return true, nil
-		}
+	if slices.Contains(refs, renderRef) {
+		return true, nil
 	}
 	return false, nil
 }
@@ -175,8 +174,8 @@ func (s *RenderStore) HasHistoryRef(ctx context.Context, namespace, name, render
 func refFromHistoryKey(key string) string {
 	base := key[strings.LastIndex(key, "/")+1:]
 	base = strings.TrimSuffix(base, ".json")
-	if i := strings.IndexByte(base, '-'); i >= 0 {
-		return base[i+1:]
+	if _, after, ok := strings.Cut(base, "-"); ok {
+		return after
 	}
 	return ""
 }

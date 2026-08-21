@@ -20,5 +20,5 @@ type ExecPluginAuthSpec struct {
 
 	// CredentialsRef is the optional reference to credentials the plugin needs (e.g., AWS IAM role).
 	// Defined by the reference to the Secret and the key of the Secret containing the credentials.
-	CredentialsRef corev1.SecretReference `json:"credentialsRef,omitempty"`
+	CredentialsRef corev1.SecretReference `json:"credentialsRef"`
 }

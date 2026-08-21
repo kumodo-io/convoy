@@ -1,0 +1,98 @@
+[env]
+KIND_CLUSTER = "convoy-dev"
+KIND_CLUSTER_MANAGED = "convoy-managed"
+API_SERVER_IMAGE = "convoy-apiserver:dev"
+CONTROLLER_IMAGE = "convoy-controller-manager:dev"
+OBSERVER_IMAGE = "convoy-observer:dev"
+
+# ---------- Dev environment ----------
+[tasks.kind-convoy-up]
+description = "Run convoy control-plane kind cluster"
+run = 'kind get clusters | grep -qx {{ env.KIND_CLUSTER }} || kind create cluster --config dev/kind/management/kind-config.yaml'
+
+[tasks.kind-convoy-down]
+description = "Destroy convoy control-plane kind cluster"
+run = 'kind delete cluster --name {{ env.KIND_CLUSTER }}'
+
+[tasks.kind-managed-up]
+description = "Run managed kind cluster"
+run = 'kind get clusters | grep -qx {{ env.KIND_CLUSTER_MANAGED }} || kind create cluster --config dev/kind/managed/kind-config.yaml'
+
+[tasks.kind-managed-down]
+description = "Destroy managed kind cluster"
+run = 'kind delete cluster --name {{ env.KIND_CLUSTER_MANAGED }}'
+
+[tasks.kind-managed-kubeconfig]
+description = "Get managed kind cluster's kubeconfig and create Secret out of it in control-plane cluster"
+run = '''
+    kind get kubeconfig --name {{ env.KIND_CLUSTER_MANAGED }} --internal | \
+	  kubectl --context kind-{{ env.KIND_CLUSTER }} create secret generic {{ env.KIND_CLUSTER_MANAGED }}-kubeconfig \
+	  --from-file=kubeconfig=/dev/stdin \
+	  --dry-run=client -o yaml | kubectl --context kind-{{ env.KIND_CLUSTER }} apply -f -
+'''
+
+[tasks.tilt-up]
+description = "Run Tilt environment with convoy in-mem storage"
+interactive = true
+usage = '''
+flag "--storage <storage>" {
+    choices "none" "file" "minio"
+    default "none"
+    help "Storage backend to use"
+}
+'''
+run = [
+    'kubectl config use-context kind-{{ env.KIND_CLUSTER }}',
+    'tilt up{% if usage.storage != "none" %} -- --storage={{usage.storage}}{% endif %}',
+]
+
+[tasks.tilt-down]
+description = "Destroy Tilt environment"
+run = 'tilt down'
+
+# ---------- Combined tasks ----------
+
+[tasks.kind-deploy]
+description = "Manual convoy deployment to kind cluster"
+depends = ["kind-convoy-up", "build-images"]
+run = [
+    'kind load docker-image {{ env.API_SERVER_IMAGE }} --name {{ env.KIND_CLUSTER }}',
+    'kind load docker-image {{ env.CONTROLLER_IMAGE }} --name {{ env.KIND_CLUSTER }}',
+    'kind load docker-image {{ env.OBSERVER_IMAGE }} --name {{ env.KIND_CLUSTER }}',
+    'kubectl apply -k dev/deploy/single-replica',
+    'kubectl -n convoy-system rollout status deploy/convoy-etcd --timeout=120s',
+    'kubectl -n convoy-system rollout status deploy/convoy-apiserver --timeout=120s',
+    '''kubectl wait --for=condition=Available --timeout=120s \
+    apiservice/v1alpha1.core.convoy.kumodo.io \
+    apiservice/v1alpha1.source.convoy.kumodo.io \
+    apiservice/v1alpha1.extensions.convoy.kumodo.io''',
+    # Default health rules are an aggregated CR, so apply them only now that the
+    # extensions API is served.
+    'kubectl apply -f dev/deploy/health-rules.yaml',
+    'kubectl -n convoy-system rollout status deploy/convoy-controller-manager --timeout=120s',
+    'kubectl -n convoy-system rollout status deploy/convoy-observer --timeout=120s',
+]
+
+[tasks.kind-test]
+description = "Smoke-test the served API"
+run = [
+    'kubectl apply -f dev/examples/clusters/cluster-auth-in-cluster.yaml',
+    'kubectl get clusters -A',
+    'kubectl api-resources --api-group=core.convoy.kumodo.io',
+]
+
+[tasks.dev-up]
+description = "Run full environment"
+depends = ["kind-convoy-up", "kind-managed-up", "kind-managed-kubeconfig"]
+interactive = true
+usage = '''
+flag "--storage <storage>" {
+    choices "none" "file" "minio"
+    default "none"
+    help "Storage backend to use"
+}
+'''
+run = [{
+    task = "tilt-up",
+    args = ["--storage", "{{usage.storage}}"]
+}]

@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"text/template"
@@ -162,7 +163,7 @@ func syncWaveHash(ws *corev1alpha1.ReleaseWaveStrategySpec) string {
 	if ws.Timeout != nil {
 		timeout = ws.Timeout.Duration.String()
 	}
-	return hashBytes([]byte(fmt.Sprintf("%d|%s|%s", ws.Wave, ws.Strategy, timeout)))
+	return hashBytes(fmt.Appendf(nil, "%d|%s|%s", ws.Wave, ws.Strategy, timeout))
 }
 
 // applyJSONPatch applies an RFC6902 JSON patch (built from the mutation's Patches)
@@ -328,9 +329,7 @@ func contextValues(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster) (cl
 	// Fresh map (never alias Cluster.Spec.Metadata — adding `name` would mutate it).
 	clusterCtx = map[string]string{}
 	if cluster != nil {
-		for k, v := range cluster.Spec.Metadata {
-			clusterCtx[k] = v
-		}
+		maps.Copy(clusterCtx, cluster.Spec.Metadata)
 		clusterCtx["name"] = cluster.Name
 	}
 	self = map[string]any{
@@ -495,7 +494,7 @@ func celToNative(v ref.Val) (any, error) {
 	case traits.Lister:
 		n := int(val.Size().(types.Int))
 		out := make([]any, 0, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			nv, err := celToNative(val.Get(types.Int(i)))
 			if err != nil {
 				return nil, err

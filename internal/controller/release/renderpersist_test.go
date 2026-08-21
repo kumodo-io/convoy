@@ -119,7 +119,7 @@ func TestSyncHandler_HistoryDedupsAcrossReconciles(t *testing.T) {
 	c.renderStore = renderstore.New(blobstore.NewMemory())
 
 	ctx := context.Background()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if err := c.syncHandler(ctx, "ns/r1"); err != nil {
 			t.Fatalf("syncHandler #%d: %v", i, err)
 		}

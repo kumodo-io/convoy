@@ -17,7 +17,6 @@ limitations under the License.
 package scopedinformers
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -74,8 +73,7 @@ func TestSelector(t *testing.T) {
 // the build receives events — including for objects created after the build.
 func TestFullCacheListsAndReplaysHandler(t *testing.T) {
 	client := fakeclient.NewSimpleClientset(release("app-a", "0"), release("app-b", "1"))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	set := New(client, 0, false)
 
@@ -115,8 +113,7 @@ func TestFullCacheListsAndReplaysHandler(t *testing.T) {
 // selector, so it exercises real shard filtering.
 func TestRebuildScopesAndReplaysHandler(t *testing.T) {
 	client := fakeclient.NewSimpleClientset(release("app-a", "0"), release("app-b", "1"))
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	set := New(client, 0, true)
 

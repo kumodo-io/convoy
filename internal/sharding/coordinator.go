@@ -238,7 +238,7 @@ func (c *Coordinator) renewMemberLease(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	lease.Spec.HolderIdentity = ptr(c.cfg.ReplicaID)
+	lease.Spec.HolderIdentity = new(c.cfg.ReplicaID)
 	lease.Spec.RenewTime = &now
 	_, err = leases.Update(ctx, lease, metav1.UpdateOptions{})
 	return err
@@ -309,10 +309,10 @@ func (c *Coordinator) acquireOrRenew(ctx context.Context, shard int) bool {
 	case holder == c.cfg.ReplicaID:
 		lease.Spec.RenewTime = &now
 	case holder == freeHolder || c.expired(lease.Spec.RenewTime):
-		lease.Spec.HolderIdentity = ptr(c.cfg.ReplicaID)
+		lease.Spec.HolderIdentity = new(c.cfg.ReplicaID)
 		lease.Spec.AcquireTime = &now
 		lease.Spec.RenewTime = &now
-		lease.Spec.LeaseTransitions = ptr(deref(lease.Spec.LeaseTransitions) + 1)
+		lease.Spec.LeaseTransitions = new(deref(lease.Spec.LeaseTransitions) + 1)
 	default:
 		return false // held by a live replica
 	}
@@ -340,7 +340,7 @@ func (c *Coordinator) release(ctx context.Context, shard int) {
 		return // not ours (already taken over); leave it
 	}
 	now := metav1.NewMicroTime(c.now())
-	lease.Spec.HolderIdentity = ptr(freeHolder)
+	lease.Spec.HolderIdentity = new(freeHolder)
 	lease.Spec.RenewTime = &now
 	if _, uerr := leases.Update(ctx, lease, metav1.UpdateOptions{}); uerr != nil && !apierrors.IsConflict(uerr) {
 		klog.ErrorS(uerr, "releasing shard lease", "shard", shard)
@@ -368,8 +368,8 @@ func (c *Coordinator) newLease(name, role, holder string, now metav1.MicroTime) 
 			},
 		},
 		Spec: coordinationv1.LeaseSpec{
-			HolderIdentity:       ptr(holder),
-			LeaseDurationSeconds: ptr(dur),
+			HolderIdentity:       new(holder),
+			LeaseDurationSeconds: new(dur),
 			AcquireTime:          &now,
 			RenewTime:            &now,
 		},
@@ -440,8 +440,6 @@ func sortedKeys(m map[int]bool) []int {
 	sort.Ints(out)
 	return out
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func deref[T any](p *T) T {
 	var zero T

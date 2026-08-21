@@ -32,7 +32,7 @@ const testLeaseNamespace = "convoy-system"
 
 func TestSharder_StableAndInRange(t *testing.T) {
 	s := NewSharder(16)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		ns, name := fmt.Sprintf("ns-%d", i%7), fmt.Sprintf("rel-%d", i)
 		a := s.Shard(ns, name)
 		b := s.Shard(ns, name)
@@ -48,7 +48,7 @@ func TestSharder_StableAndInRange(t *testing.T) {
 func TestSharder_Distribution(t *testing.T) {
 	s := NewSharder(8)
 	counts := make([]int, 8)
-	for i := 0; i < 8000; i++ {
+	for i := range 8000 {
 		counts[s.Shard("prod", fmt.Sprintf("cluster-%d", i))]++
 	}
 	for shard, n := range counts {
@@ -73,7 +73,7 @@ func TestDesiredShards_StripedFairShare(t *testing.T) {
 	const shards, n = 10, 3
 	union := make(map[int]bool)
 	sizes := make([]int, n)
-	for idx := 0; idx < n; idx++ {
+	for idx := range n {
 		d := desiredShards(idx, n, shards)
 		sizes[idx] = len(d)
 		for s := range d {
@@ -129,7 +129,7 @@ func TestCoordinator_SingleReplicaOwnsAll(t *testing.T) {
 
 	c.tick(context.Background())
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if !c.Owns(i) {
 			t.Fatalf("single replica must own shard %d", i)
 		}
@@ -142,7 +142,7 @@ func TestCoordinator_SingleReplicaOwnsAll(t *testing.T) {
 // converge runs alternating ticks until ownership stabilizes (release-then-acquire
 // handoff needs a few rounds).
 func converge(ctx context.Context, coords ...*Coordinator) {
-	for round := 0; round < 6; round++ {
+	for range 6 {
 		for _, c := range coords {
 			c.tick(ctx)
 		}
@@ -158,7 +158,7 @@ func TestCoordinator_TwoReplicasPartitionExactlyOnce(t *testing.T) {
 
 	converge(context.Background(), c1, c2)
 
-	for i := 0; i < shards; i++ {
+	for i := range shards {
 		o1, o2 := c1.Owns(i), c2.Owns(i)
 		if o1 == o2 {
 			t.Fatalf("shard %d owned by both=%v (must be exactly one)", i, o1 && o2)
@@ -185,11 +185,11 @@ func TestCoordinator_FailoverReassignsDeadReplicasShards(t *testing.T) {
 
 	// r2 dies: it stops ticking and its leases go stale.
 	clk.advance(60 * time.Second) // past the 30s lease duration
-	for round := 0; round < 6; round++ {
+	for range 6 {
 		c1.tick(ctx) // only r1 keeps renewing
 	}
 
-	for i := 0; i < shards; i++ {
+	for i := range shards {
 		if !c1.Owns(i) {
 			t.Fatalf("after r2 death, r1 must own shard %d", i)
 		}
@@ -232,7 +232,7 @@ func TestCoordinator_ReclaimsDeadMemberLeases(t *testing.T) {
 
 	// r2 dies (stops ticking). Advance past the GC threshold (LeaseDuration*10).
 	clk.advance(11 * 30 * time.Second)
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		c1.tick(ctx)
 	}
 
@@ -267,7 +267,7 @@ func TestCoordinator_KeepsBrieflyStaleMemberLease(t *testing.T) {
 
 func TestSharder_ShardLabelValue(t *testing.T) {
 	s := NewSharder(16)
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		ns, name := fmt.Sprintf("ns-%d", i%5), fmt.Sprintf("rel-%d", i)
 		want := strconv.Itoa(s.Shard(ns, name))
 		if got := s.ShardLabelValue(ns, name); got != want {

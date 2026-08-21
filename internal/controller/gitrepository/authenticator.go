@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -155,13 +156,7 @@ func knownHostsCallback(content []byte) (xssh.HostKeyCallback, error) {
 		presented := key.Marshal()
 		hostSeen := false
 		for _, e := range entries {
-			matched := false
-			for _, h := range e.hosts {
-				if h == want {
-					matched = true
-					break
-				}
-			}
+			matched := slices.Contains(e.hosts, want)
 			if !matched {
 				continue
 			}

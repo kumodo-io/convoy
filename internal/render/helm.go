@@ -19,6 +19,7 @@ package render
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 	"strings"
@@ -182,9 +183,7 @@ func mergeValueLayers(layers [][]byte) (map[string]any, error) {
 // wins, except where both sides are maps, which merge recursively.
 func mergeMaps(dst, src map[string]any) map[string]any {
 	out := make(map[string]any, len(dst))
-	for k, v := range dst {
-		out[k] = v
-	}
+	maps.Copy(out, dst)
 	for k, v := range src {
 		if srcMap, ok := v.(map[string]any); ok {
 			if dstMap, ok := out[k].(map[string]any); ok {

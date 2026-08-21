@@ -26,9 +26,7 @@ import (
 	"github.com/kumodo-io/convoy/internal/inventory"
 )
 
-func runAfter(v corev1alpha1.LifecycleHookRunAfter) *corev1alpha1.LifecycleHookRunAfter { return &v }
-
-// relWithPostSync builds a release whose postSync hook carries the given runAfter,
+// relWithPostSync builds a release whose postSync hook carries the given LifecycleHookRunAfter,
 // optionally with a health assessment (so releaseHealthy has a bar to clear).
 func relWithPostSync(ra *corev1alpha1.LifecycleHookRunAfter, withHealth bool) *corev1alpha1.Release {
 	hook := podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
@@ -57,7 +55,7 @@ func TestRunAfter_AppliedArmsImmediately(t *testing.T) {
 	// runAfter=Applied (explicit) with an unhealthy resource → still arms (no health wait).
 	fs := &fakeHookStore{resources: []inventory.Ref{degradedRef("api")}}
 	c := newHookController(fr, fs)
-	rel := relWithPostSync(runAfter(corev1alpha1.LifecycleHookRunAfterApplied), true)
+	rel := relWithPostSync(new(corev1alpha1.LifecycleHookRunAfterApplied), true)
 	if res := runPostSync(t, c, rel); res.state != hookPhaseHold {
 		t.Fatalf("runAfter=Applied: state = %v, want hold (armed)", res.state)
 	}
@@ -84,7 +82,7 @@ func TestRunAfter_HealthyHoldsUntilHealthy(t *testing.T) {
 	// A resource still progressing → the whole release is not healthy → hold, no arm.
 	fs := &fakeHookStore{resources: []inventory.Ref{healthyRef("svc"), degradedRef("api")}}
 	c := newHookController(fr, fs)
-	rel := relWithPostSync(runAfter(corev1alpha1.LifecycleHookRunAfterHealthy), true)
+	rel := relWithPostSync(new(corev1alpha1.LifecycleHookRunAfterHealthy), true)
 	if res := runPostSync(t, c, rel); res.state != hookPhaseHold {
 		t.Fatalf("runAfter=Healthy (unhealthy): state = %v, want hold", res.state)
 	}
@@ -105,7 +103,7 @@ func TestRunAfter_HealthyArmsWhenAllHealthy(t *testing.T) {
 	// Every resource across the release is healthy AND assessed for the current render → arm.
 	fs := &fakeHookStore{resources: []inventory.Ref{healthyAt("svc", hookRenderRef), healthyAt("api", hookRenderRef)}}
 	c := newHookController(fr, fs)
-	rel := relWithPostSync(runAfter(corev1alpha1.LifecycleHookRunAfterHealthy), true)
+	rel := relWithPostSync(new(corev1alpha1.LifecycleHookRunAfterHealthy), true)
 	if res := runPostSync(t, c, rel); res.state != hookPhaseHold {
 		t.Fatalf("runAfter=Healthy (healthy): state = %v, want hold (armed)", res.state)
 	}
@@ -121,7 +119,7 @@ func TestRunAfter_HealthyHoldsOnStaleRender(t *testing.T) {
 	// stale-render health must not satisfy runAfter:Healthy.
 	fs := &fakeHookStore{resources: []inventory.Ref{healthyAt("svc", "sha256:oldrender"), healthyAt("api", "sha256:oldrender")}}
 	c := newHookController(fr, fs)
-	rel := relWithPostSync(runAfter(corev1alpha1.LifecycleHookRunAfterHealthy), true)
+	rel := relWithPostSync(new(corev1alpha1.LifecycleHookRunAfterHealthy), true)
 	if res := runPostSync(t, c, rel); res.state != hookPhaseHold {
 		t.Fatalf("stale-render health: state = %v, want hold", res.state)
 	}
@@ -135,7 +133,7 @@ func TestRunAfter_HealthyNoAssessmentIsTriviallyHealthy(t *testing.T) {
 	// No health assessment → no bar → runAfter:Healthy behaves like Applied (arms now).
 	fs := &fakeHookStore{}
 	c := newHookController(fr, fs)
-	rel := relWithPostSync(runAfter(corev1alpha1.LifecycleHookRunAfterHealthy), false)
+	rel := relWithPostSync(new(corev1alpha1.LifecycleHookRunAfterHealthy), false)
 	if res := runPostSync(t, c, rel); res.state != hookPhaseHold {
 		t.Fatalf("runAfter=Healthy (no assessment): state = %v, want hold (armed)", res.state)
 	}

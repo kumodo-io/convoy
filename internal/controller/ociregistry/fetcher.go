@@ -222,8 +222,8 @@ func ociRef(base, name, version string) string {
 func registryPingURL(base string) string {
 	b := strings.TrimPrefix(base, "oci://")
 	host := b
-	if i := strings.IndexByte(b, '/'); i >= 0 {
-		host = b[:i]
+	if before, _, ok := strings.Cut(b, "/"); ok {
+		host = before
 	}
 	return "https://" + host + "/v2/"
 }
@@ -259,11 +259,11 @@ func expandChartArchive(data []byte) (map[string][]byte, error) {
 			continue
 		}
 		name := strings.TrimPrefix(hdr.Name, "./")
-		i := strings.IndexByte(name, '/')
-		if i < 0 {
+		_, after, ok := strings.Cut(name, "/")
+		if !ok {
 			continue // file outside a chart dir; skip
 		}
-		rel := name[i+1:]
+		rel := after
 		if rel == "" {
 			continue
 		}

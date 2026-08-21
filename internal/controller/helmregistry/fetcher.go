@@ -289,11 +289,11 @@ func expandChartArchive(data []byte) (map[string][]byte, error) {
 			continue
 		}
 		name := strings.TrimPrefix(hdr.Name, "./")
-		i := strings.IndexByte(name, '/')
-		if i < 0 {
+		_, after, ok := strings.Cut(name, "/")
+		if !ok {
 			continue // file outside a chart dir; skip
 		}
-		rel := name[i+1:]
+		rel := after
 		if rel == "" {
 			continue
 		}
