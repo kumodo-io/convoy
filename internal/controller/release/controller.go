@@ -1542,6 +1542,19 @@ func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcil
 		}
 	}
 
+	// A FRESH rollout for this render (render changed, or first deploy). When health is
+	// assessed, don't trust the verdict on this first reconcile — it may be carried over
+	// from the PREVIOUS render (e.g. the new spec render equals the already-healthy
+	// rollback target, so the observer still reports it Healthy), which would flash a
+	// premature Succeeded/Failed before this render's rollout is actually confirmed.
+	// Start Progressing; a later reconcile (once this render is the active rollout, so
+	// sameRenderAsPrior) applies the observer's re-confirmed verdict. With no health
+	// assessment the verdict is an inert Healthy that needs no confirmation, so it may
+	// settle immediately via the switch below.
+	if !sameRenderAsPrior && rel.Spec.HealthAssessment != nil {
+		return &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateProgressing, RenderRef: renderRef, StartedAt: startedAt}
+	}
+
 	switch verdict {
 	case renderVerdictHealthy:
 		return succeededRollout(renderRef, startedAt)

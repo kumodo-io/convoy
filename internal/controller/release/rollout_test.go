@@ -437,6 +437,48 @@ func TestRollout_RolledBackHoldsWhenLastHealthyUnloadable(t *testing.T) {
 	}
 }
 
+// TestRollout_RenderChangeToHealthyStartsProgressing is the regression for the
+// transient-Succeeded bug: editing the spec to a render whose resources are ALREADY
+// healthy (e.g. it equals the running rollback target) must start a fresh rollout at
+// Progressing and only Succeed once the observer re-confirms THIS rollout — not flash
+// Succeeded instantly off the carried-over verdict.
+func TestRollout_RenderChangeToHealthyStartsProgressing(t *testing.T) {
+	renderRef := probeRenderRef(t)
+	rel := manifestsRelease()
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{} // health configured
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure)
+	// Prior rollout is RolledBack for a DIFFERENT (old) render; the new render's verdict
+	// is already Healthy (carried over from being the running rollback target).
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateRolledBack, RenderRef: "sha256:oldfailed", StartedAt: pastStart,
+	}
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: renderRef}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	setVerdict(c, renderVerdictHealthy) // already Healthy for the new render
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateProgressing {
+		t.Fatalf("fresh rollout to an already-healthy render = %v, want Progressing (must be re-confirmed, not instant Succeeded)", got.Status.Rollout)
+	}
+
+	// Next reconcile: the render is now the active rollout (sameRenderAsPrior) and the
+	// verdict is Healthy → Succeeded. So it does not get stuck Progressing.
+	rel2 := got.DeepCopy()
+	rel2.Spec = rel.Spec
+	c2, client2 := newTestController(t, rel2, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	setVerdict(c2, renderVerdictHealthy)
+	if err := c2.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler #2: %v", err)
+	}
+	got2 := statusUpdate(client2.Actions())
+	if got2.Status.Rollout.State != corev1alpha1.RolloutStateSucceeded {
+		t.Errorf("second reconcile = %s, want Succeeded (confirmed)", got2.Status.Rollout.State)
+	}
+}
+
 // TestRollout_OnReleaseFailureIgnoresWaveFailure: a wave failure under OnReleaseFailure
 // does NOT roll back — it stays Failed.
 func TestRollout_OnReleaseFailureIgnoresWaveFailure(t *testing.T) {
