@@ -33,6 +33,12 @@ import (
 // identity. prior detects the transition that completes a wave; anchors are the
 // progress-deadline clocks (Progressing vs. Degraded) — read from the persisted
 // object so an in-flight clock survives an observer restart instead of resetting.
+//
+// The anchor drives only the observer's Healthy-CONDITION label (Progressing vs.
+// Degraded) and the /health view; it is deliberately NOT render-reset. The rollout gate
+// no longer depends on it — the release controller owns the rollout deadline (measured
+// from status.rollout.startedAt), so each render gets a fresh deadline by construction
+// with no cross-writer race. See docs/architecture/06-progressive-rollout.md.
 func priorAndAnchors(inv *corev1alpha1.ReleaseInventory) (map[string]corev1alpha1.ResourceState, map[string]time.Time) {
 	prior := make(map[string]corev1alpha1.ResourceState, len(inv.Inventory))
 	anchors := make(map[string]time.Time, len(inv.Inventory))

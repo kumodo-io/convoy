@@ -222,6 +222,41 @@ func TestHealthChanged(t *testing.T) {
 	}
 }
 
+func TestRenderChanged(t *testing.T) {
+	healthy := corev1alpha1.ResourceStateHealthy
+	dep := corev1alpha1.ResourceInventoryItem{Group: groupApps, Kind: kindDeployment, Namespace: "ns", Name: nameAPI}
+	withRender := func(renderRef string, s *corev1alpha1.ResourceState, assessed string) corev1alpha1.ResourceInventoryItem {
+		d := dep
+		d.RenderRef, d.State, d.AssessedRenderRef = renderRef, s, assessed
+		return d
+	}
+	inv := func(items ...corev1alpha1.ResourceInventoryItem) *corev1alpha1.ReleaseInventory {
+		return &corev1alpha1.ReleaseInventory{Inventory: items}
+	}
+
+	tests := []struct {
+		name     string
+		old, new *corev1alpha1.ReleaseInventory
+		want     bool
+	}{
+		{caseIdentical, inv(withRender("r1", &healthy, "r1")), inv(withRender("r1", &healthy, "r1")), false},
+		{"renderRef changed", inv(withRender("r1", &healthy, "r1")), inv(withRender("r2", &healthy, "r1")), true},
+		{
+			"observer-only field (state/assessed) ignored", inv(withRender("r1", &healthy, "r1")),
+			inv(withRender("r1", nil, "r2")), false,
+		},
+		{"resource added", inv(withRender("r1", &healthy, "r1")), inv(withRender("r1", &healthy, "r1"),
+			corev1alpha1.ResourceInventoryItem{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: nameCfg, RenderRef: "r1"}), true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := RenderChanged(tc.old, tc.new); got != tc.want {
+				t.Errorf("RenderChanged = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestHooksArmChanged(t *testing.T) {
 	created := metav1.NewTime(time.Date(2026, 7, 30, 10, 0, 0, 0, time.UTC))
 	later := metav1.NewTime(created.Add(time.Minute))

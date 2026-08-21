@@ -220,6 +220,35 @@ func HealthChanged(oldInv, newInv *corev1alpha1.ReleaseInventory) bool {
 	return false
 }
 
+// RenderChanged reports whether the controller applied a different render to any
+// inventoried resource between two ReleaseInventory revisions — some item's
+// controller-owned RenderRef changed (or membership changed). It is the render analog
+// of HealthChanged (which watches the observer-owned State/AssessedRenderRef): it lets
+// the observer's health and drift loops re-evaluate the moment a new render is applied,
+// rather than on the poll interval — so a render change that keeps the same resource
+// identities (e.g. a Deployment image bump) still wakes them, and Healthy/InSync stop
+// reflecting the superseded render. Ignores the observer's own health fields, so its
+// writes don't self-wake.
+func RenderChanged(oldInv, newInv *corev1alpha1.ReleaseInventory) bool {
+	index := func(inv *corev1alpha1.ReleaseInventory) map[string]string {
+		m := make(map[string]string, len(inv.Inventory))
+		for i := range inv.Inventory {
+			m[itemIdentityID(inv.Inventory[i])] = inv.Inventory[i].RenderRef
+		}
+		return m
+	}
+	old, cur := index(oldInv), index(newInv)
+	if len(old) != len(cur) {
+		return true
+	}
+	for id, ref := range cur {
+		if old[id] != ref {
+			return true
+		}
+	}
+	return false
+}
+
 func MembershipChanged(oldInv, newInv *corev1alpha1.ReleaseInventory) bool {
 	if len(oldInv.Inventory) != len(newInv.Inventory) {
 		return true

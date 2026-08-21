@@ -2,7 +2,7 @@
 
 > **Status: implemented, with a gate redesign in progress.** Convoy applies a Release's render and reports health; `spec.failurePolicy` makes it (1) **dry-run** a render before applying it, so a change that can never apply (immutable-field edit, schema error, RBAC) is caught up front; (2) wait for the render to become healthy; and (3) on failure, optionally **roll back once** to the last-healthy render. It builds on the observer's health assessment ([01](01-health-assessment.md)), the durable render store + rollback ([03](03-persistent-storage.md)), the sync-wave gate, and the `/sync` request mechanism.
 >
-> **The gate is being reworked** (see [The rollout gate](#the-rollout-gate)) from a controller wall-clock deadline to the **observer's health verdict**, after a live bug: an apiserver outage stopped the observer writing health, the render stayed unassessed, and the controller's blind deadline **rolled back a healthy workload**. The fix: fail a rollout only on *positive evidence* (the observer's `Degraded` verdict), never on the *absence* of a healthy signal.
+> **The rollout is a single-transition-per-reconcile state machine** ([The rollout gate](#the-rollout-gate)). Each reconcile reads the *persisted* rollout state, advances it by **at most one** transition, applies the render that state implies, and stamps — so every state (`Progressing`/`Succeeded`/`Failed`/`RolledBack`) is observable in `/get` and no run collapses several transitions into one. Failure is decided on *positive evidence* (a resource not passing) measured against a **controller-owned deadline** from `status.rollout.startedAt` — not the observer's per-resource clock — so every render (including a rollback-forward to a good image) gets a fresh deadline by construction, with no cross-writer race and no false rollback during an outage (no verdict → keep waiting).
 
 ## The two failure classes
 
@@ -30,21 +30,24 @@ spec:
   - `OnReleaseFailure` — roll back only when the **whole-release** health verdict is `Degraded` (the terminal/only wave went unhealthy).
   - `OnWaveFailure` — roll back on **any** wave failure: an intermediate wave failing its `waveStrategy.timeout`, *or* the release verdict going `Degraded`. Fail-fast; `OnWaveFailure ⊇ OnReleaseFailure`.
 
-There is **no `deadline` field.** "How long to wait for healthy" is already governed by **`spec.healthAssessment.deadline`** — the observer's progress clock, which is what turns a stuck resource into a `Degraded` verdict (see below). A second controller-side deadline is redundant and, as a blind wall-clock, was the source of the false-rollback bug.
+There is **no `failurePolicy.deadline` field.** "How long to wait for healthy" is `spec.healthAssessment.deadline` — but the **controller** applies it, measured from `status.rollout.startedAt` (when this rollout entered `Progressing`), not the observer's per-resource clock. Owning the clock in the controller is deliberate: `startedAt` is stamped fresh whenever a render becomes the active rollout, so every render — including a rollback-forward to a good image — gets its own deadline by construction, with no cross-writer race between the controller's applied render and the observer's per-resource anchor.
 
-Because the `Degraded` verdict is the *only* thing that fails a rollout, and a resource escalates to `Degraded` only once `healthAssessment.deadline` elapses, **`rollback` other than `Never` requires `spec.healthAssessment.deadline`** — validation rejects the Release otherwise. Without it a failing rollout would wait forever and the policy could never act, so an enabled-looking policy that can never fire is treated as a configuration error rather than silently ignored. (`rollback: Never` needs no health — there is nothing to fail.)
+Because a health failure is the only thing that fails a rollout, and it only fails once `healthAssessment.deadline` elapses, **`rollback` other than `Never` requires `spec.healthAssessment.deadline`** — validation rejects the Release otherwise. Without it a failing rollout would wait forever and the policy could never act. (`rollback: Never` needs no health — there is nothing to fail.)
 
-## The health verdict (why no deadline)
+## The health verdict
 
-The observer already produces the two verdicts a rollout needs, per resource, on the `ReleaseInventory`:
+The controller derives a per-render **verdict** (`Healthy` / `Failed` / `Pending`) from the per-resource health the observer records on the `ReleaseInventory`:
 
-- **`State`** ∈ `Healthy` / `Progressing` / `Degraded` / `Unknown`. A resource that has been unhealthy longer than `spec.healthAssessment.deadline` becomes **`Degraded`** — the observer's definitive "this failed to converge" verdict.
-- **`AssessedRenderRef`** — the render that verdict is *about*. Health is current for render `R` only when `AssessedRenderRef == R`; otherwise the verdict is stale (left over from a previous render) and must be ignored.
+- **`State`** ∈ `Healthy` / `Progressing` / `Degraded` / `Unknown` — the observer's *instantaneous* per-resource assessment. The controller reads `Healthy` as "passing" and `Progressing`/`Degraded` as "not passing" (`Unknown` = can't assess). The observer's own `Progressing→Degraded` deadline is now only for the `Healthy` *condition* display, not the rollout.
+- **`AssessedRenderRef`** — the render that assessment is *about*. Health counts for render `R` only when `AssessedRenderRef == R`; otherwise it is stale (a previous render) and ignored.
 
-The rollout gate reads exactly these two fields. It never uses a wall-clock, so it can only act on *positive evidence*:
+The verdict, measured from the rollout's `startedAt`:
 
-- during an apiserver/observer outage the observer stops writing → `State` stays `Progressing`/stale-for-`R` → the gate **waits** (no false rollback);
-- when the observer confirms `Degraded` for `R` → the gate fails; when it confirms `Healthy` for `R` → the gate succeeds.
+- **`Healthy`** — every resource assessed for `R` is passing.
+- **`Failed`** — some resource assessed for `R` is definitively not passing (`Progressing`/`Degraded`, not `Unknown`) **and** `now - startedAt > healthAssessment.deadline`.
+- **`Pending`** — otherwise: still converging, within the deadline, or a resource is `Unknown`/unassessed.
+
+So it acts only on *positive evidence within the render's own deadline*: during an apiserver/observer outage there is no fresh passing/failing signal → the verdict stays `Pending` → the gate **waits** (no false rollback), and resolves once the observer recovers.
 
 `(State, AssessedRenderRef)` carries everything the decision needs — no assessment-timestamp field is required. (A "last assessed at" stamp would only serve observability, not the decision, and is out of scope.)
 
@@ -62,7 +65,7 @@ status:
 ```
 
 - **`lastHealthy`** — a pointer with a required `renderRef`: **nil ⇒ no rollback target** (nothing has ever gone healthy); non-nil ⇒ its `renderRef` is stored in the render store. Updated the moment a render is confirmed healthy (all resources `Healthy` for that render), **independent of `failurePolicy`** — a rollback target accrues even before the policy is enabled.
-- **`rollout`** — the state machine for the render being rolled out, keyed by `renderRef`. **`Progressing` is the only *active* state**; the three others are terminal *for that render* (they don't re-open until a spec change or `/sync --force`). `rollout.state` is the *convergence outcome of a rollout* — deliberately **not** a live health mirror.
+- **`rollout`** — the state machine for the render being rolled out, keyed by `renderRef`. **`Progressing` is the only *active* state**; the three others are terminal *for that render* (they don't re-open until a spec change or `/sync --force`). A spec change opens the *new* render's rollout **immediately** — as soon as that render becomes the active one, even before its apply completes and even if the apply holds mid-wave — so the state never lingers on the superseded render's terminal outcome. `rollout.state` is the *convergence outcome of a rollout* — deliberately **not** a live health mirror.
 
 ### Rollout states
 
@@ -96,19 +99,25 @@ A release-level `RolloutSucceeded` **condition** mirrors `rollout.state` for `ku
 4. **Apply waves** in order. Intermediate waves gate on the preceding wave's health per `waveStrategy` (existing). An intermediate wave that exceeds `waveStrategy.timeout` → a **wave failure**.
 5. **Record history** (first-deploy of a distinct render) once the terminal wave applies, and open/advance the **rollout gate**.
 
-## The rollout gate
+## The rollout gate (single transition per reconcile)
 
-When the **terminal** wave has applied, the render is fully on the cluster and the rollout is `Progressing`. On each reconcile (woken by the observer's RI health writes — see below — plus the poll interval), the controller reads the verdict for render `R` from the `ReleaseInventory` and:
+The rollout is an explicit state machine advanced **one transition per reconcile**. Each reconcile: render → read the *persisted* `status.rollout` → compute the single next state + which render to apply → apply it → stamp. It never chains transitions in a single run, so `/get` observes every state, and each decision is made against persisted state (never in-memory reasoning that raced). The transition table, from persisted state + the verdict for `R` (measured from the rollout's own `startedAt`):
 
-- every resource `Healthy` **and** `AssessedRenderRef == R` → `rollout.state = Succeeded`, `lastHealthy.renderRef = R`;
-- any resource `Degraded` **and** `AssessedRenderRef == R` → **release failure** → run the rollback policy (→ `Failed` or `RolledBack`);
-- otherwise (`Progressing` / `Unknown`, or the verdict is still for the previous render) → stay `Progressing`, **wait**.
+| persisted | condition | next | apply |
+|-----------|-----------|------|-------|
+| none / `forced` / render changed | — | `Progressing{R}` (fresh `startedAt`) | source `R` |
+| `Progressing{R}` | verdict `Healthy` | `Succeeded{R}` | source `R` |
+| `Progressing{R}` | verdict `Failed`, policy rolls back | `RolledBack{R}` | last-healthy |
+| `Progressing{R}` | verdict `Failed`, no rollback | `Failed{R}` | source `R` |
+| `Progressing{R}` | verdict `Pending` | `Progressing{R}` | source `R` (wait) |
+| `Succeeded{R}` | — | `Succeeded{R}` | source `R` (sticky) |
+| `Failed{R}` | verdict `Healthy` | `Succeeded{R}` (self-heal) | source `R` |
+| `Failed{R}` | otherwise | `Failed{R}` | source `R` (one-shot) |
+| `RolledBack{R}` | — | `RolledBack{R}` | last-healthy (hold) |
 
-An **intermediate wave failure** (step 4) is the other failure entry — surfaced during apply, before the terminal wave. It runs the same rollback policy (rolled back only under `OnWaveFailure`).
+A spec change / first deploy always yields `Progressing` (never a verdict-driven terminal in the *same* reconcile), so a verdict carried over from a superseded render can never flash a premature `Succeeded`/`Failed` — the verdict is only applied on a later reconcile once `R` is the active rollout. The one apply-time exception is an **intermediate wave timeout** (only observable while applying): it overrides the pre-apply decision, rolling back under `OnWaveFailure` else `Failed`.
 
-**Prompt confirmation.** The observer writes health to the RI; the controller must *see* it promptly, so the controller **wakes on RI health changes** (`inventory.HealthChanged` → enqueue the Release), symmetric to how the observer is poked by RI membership changes. Without this the controller would only re-read health on its poll interval, delaying a Succeeded/Failed verdict by up to a whole poll — long enough, under load, to matter.
-
-Because the gate keys off the verdict and never a wall-clock, `Progressing` persists safely through an outage: no verdict → keep waiting → resolve (`Succeeded` or `Degraded`) once the observer recovers.
+**Prompt confirmation.** The observer writes health to the RI; the controller **wakes on RI health changes** (`inventory.HealthChanged`) so it advances within a watch latency rather than a full poll. `RolledBack` holds by re-applying last-healthy each reconcile (`Applied` stays true); if last-healthy can't be loaded (a transient store error) the controller **holds** — it never falls through to re-apply the failed render.
 
 ## Rollback (one-shot)
 
