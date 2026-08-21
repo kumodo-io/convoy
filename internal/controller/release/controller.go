@@ -1472,8 +1472,13 @@ func (c *Controller) reassertRollback(ctx context.Context, st *reconcileState) (
 // under a failurePolicy; without one it returns nil. Keyed by renderRef:
 //   - forced (/sync?force): a fresh rollout (Succeeded if already healthy, else
 //     Progressing) — a re-drive resets a held terminal state.
-//   - a render that didn't apply this reconcile (a hold, a pre-apply failure): carry
-//     the prior forward.
+//   - a hold/pre-apply failure on the SAME render as the prior rollout: carry the prior
+//     forward (a transient hold must not disturb an in-flight rollout). But when the
+//     render has CHANGED since the prior rollout (a spec edit after a terminal rollout),
+//     the prior state is about a superseded render — the new render's rollout is
+//     reflected immediately, even mid-hold, so the state never lingers on the old
+//     (e.g. RolledBack) render until the apply happens to complete. With no prior
+//     rollout a hold still starts nothing (rollout stays nil until the render applies).
 //   - a terminal render: Succeeded stays Succeeded (even if it later degrades);
 //     RolledBack stays (it is maintained by reassertRollback, not here); Failed
 //     advances to Succeeded if it self-heals, else stays Failed (its one-shot
@@ -1482,7 +1487,8 @@ func (c *Controller) reassertRollback(ctx context.Context, st *reconcileState) (
 //     rollback, if the policy selected it, was applied in releaseGate — reaching here
 //     means it wasn't, so the failed render stays applied); else → Progressing.
 //
-// startedAt is set when the render first applies and preserved across reconciles.
+// startedAt is set when the render first becomes the active rollout and preserved
+// across reconciles.
 func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcileOutcome, forced bool, verdict renderVerdict) *corev1alpha1.RolloutStatus {
 	fp := rel.Spec.FailurePolicy
 	if fp == nil {
@@ -1496,17 +1502,20 @@ func (c *Controller) evaluateRollout(rel *corev1alpha1.Release, outcome reconcil
 	if forced {
 		return c.freshRollout(renderRef, verdict == renderVerdictHealthy)
 	}
-	if !outcome.applied {
+	sameRenderAsPrior := prior != nil && prior.RenderRef == renderRef
+	// A hold carries the prior forward only while still on its render; a render change
+	// (spec edit) supersedes the prior terminal state and is reflected now (below).
+	if !outcome.applied && (prior == nil || sameRenderAsPrior) {
 		return prior
 	}
 
 	startedAt := c.now()
-	if prior != nil && prior.RenderRef == renderRef && !prior.StartedAt.IsZero() {
+	if sameRenderAsPrior && !prior.StartedAt.IsZero() {
 		startedAt = prior.StartedAt
 	}
 
 	// A render whose rollout is already terminal for this render.
-	if prior != nil && prior.RenderRef == renderRef {
+	if sameRenderAsPrior {
 		switch prior.State {
 		case corev1alpha1.RolloutStateSucceeded, corev1alpha1.RolloutStateRolledBack:
 			return prior

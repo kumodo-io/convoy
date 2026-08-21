@@ -361,6 +361,48 @@ func TestRollout_RolledBackKeepsLastHealthyApplied(t *testing.T) {
 	}
 }
 
+// TestRollout_RenderChangeFlushesRolledBackEvenWhenHolding is the regression for the
+// bug where editing the Release (a new render) while RolledBack left the rollout stuck
+// at RolledBack until the new render's apply happened to complete (~pod Ready), because
+// evaluateRollout carried the prior terminal state forward on any hold. A render change
+// must flip the rollout to Progressing immediately — even while the new render's apply
+// is still holding — since the prior RolledBack is about a superseded render.
+func TestRollout_RenderChangeFlushesRolledBackEvenWhenHolding(t *testing.T) {
+	rel := manifestsRelease()
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure)
+	// Prior rollout is RolledBack for a DIFFERENT (old, superseded) render than the one
+	// this spec now renders.
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateRolledBack, RenderRef: "sha256:oldfailed", StartedAt: pastStart,
+		Message: "old rollback",
+	}
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
+	// Deployer errors so the new render's apply holds (outcome.applied stays false) —
+	// the rollout must still flip to Progressing for the new render.
+	deployer := &fakeDeployer{err: errors.New("apply held")}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	seedLastHealthy(t, c, lhCMName)
+	setVerdict(c, renderVerdictPending)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Logf("syncHandler returned (expected on a held apply): %v", err)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil || got.Status.Rollout == nil {
+		t.Fatalf("no rollout status written")
+	}
+	if got.Status.Rollout.State != corev1alpha1.RolloutStateProgressing {
+		t.Errorf("state = %s, want Progressing (a render change must flush the stale RolledBack even mid-hold)", got.Status.Rollout.State)
+	}
+	// The new render is the failed source render (not last-healthy): reassertRollback
+	// must NOT re-apply last-healthy, since the render changed.
+	for _, o := range deployer.got {
+		if o.GetName() == lhCMName {
+			t.Error("re-applied last-healthy after a render change; the rollout should have moved to the new render")
+		}
+	}
+}
+
 // TestRollout_OnReleaseFailureIgnoresWaveFailure: a wave failure under OnReleaseFailure
 // does NOT roll back — it stays Failed.
 func TestRollout_OnReleaseFailureIgnoresWaveFailure(t *testing.T) {

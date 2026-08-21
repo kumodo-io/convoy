@@ -62,7 +62,7 @@ status:
 ```
 
 - **`lastHealthy`** — a pointer with a required `renderRef`: **nil ⇒ no rollback target** (nothing has ever gone healthy); non-nil ⇒ its `renderRef` is stored in the render store. Updated the moment a render is confirmed healthy (all resources `Healthy` for that render), **independent of `failurePolicy`** — a rollback target accrues even before the policy is enabled.
-- **`rollout`** — the state machine for the render being rolled out, keyed by `renderRef`. **`Progressing` is the only *active* state**; the three others are terminal *for that render* (they don't re-open until a spec change or `/sync --force`). `rollout.state` is the *convergence outcome of a rollout* — deliberately **not** a live health mirror.
+- **`rollout`** — the state machine for the render being rolled out, keyed by `renderRef`. **`Progressing` is the only *active* state**; the three others are terminal *for that render* (they don't re-open until a spec change or `/sync --force`). A spec change opens the *new* render's rollout **immediately** — as soon as that render becomes the active one, even before its apply completes and even if the apply holds mid-wave — so the state never lingers on the superseded render's terminal outcome. `rollout.state` is the *convergence outcome of a rollout* — deliberately **not** a live health mirror.
 
 ### Rollout states
 
