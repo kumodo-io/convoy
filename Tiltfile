@@ -20,7 +20,7 @@ allow_k8s_contexts('kind-convoy-dev')
 # observer) matching the kind node arch on source changes.
 local_resource(
     'convoy-compile',
-    cmd='make build-linux',
+    cmd='mise build-binaries',
     deps=['cmd', 'internal', 'api', 'go.mod', 'go.sum'],
     ignore=['**/*_test.go'],
 )
@@ -112,9 +112,9 @@ k8s_resource(
 # out-of-band (not via k8s_yaml) after waiting for the APIService to be Available.
 local_resource(
     'convoy-health-rules',
-    cmd='bin/kubectl --context kind-convoy-dev wait --for=condition=Available --timeout=120s ' +
+    cmd='kubectl --context kind-convoy-dev wait --for=condition=Available --timeout=120s ' +
         'apiservice/v1alpha1.extensions.convoy.kumodo.io && ' +
-        'bin/kubectl --context kind-convoy-dev apply -f dev/deploy/health-rules.yaml',
+        'kubectl --context kind-convoy-dev apply -f dev/deploy/health-rules.yaml',
     deps=['dev/deploy/health-rules.yaml'],
     resource_deps=['convoy-apiserver'],
     labels=['convoy'],
