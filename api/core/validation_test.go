@@ -298,13 +298,11 @@ func TestValidateReleaseLifecycle_UnknownEnums(t *testing.T) {
 	}
 }
 
-func runAfterPtr(v LifecycleHookRunAfter) *LifecycleHookRunAfter { return &v }
-
 func TestValidateReleaseLifecycle_RunAfterPostSyncOK(t *testing.T) {
 	rel := validRelease()
 	for _, ra := range []LifecycleHookRunAfter{LifecycleHookRunAfterApplied, LifecycleHookRunAfterHealthy} {
 		h := jobHook("h")
-		h.RunAfter = runAfterPtr(ra)
+		h.RunAfter = new(ra)
 		rel.Lifecycle = &ReleaseLifecycle{PostSync: []LifecycleHookSpec{h}}
 		if errs := ValidateReleaseLifecycle(rel); len(errs) != 0 {
 			t.Errorf("postSync runAfter=%s rejected: %v", ra, errs)
@@ -315,7 +313,7 @@ func TestValidateReleaseLifecycle_RunAfterPostSyncOK(t *testing.T) {
 func TestValidateReleaseLifecycle_RunAfterForbiddenOffPostSync(t *testing.T) {
 	rel := validRelease()
 	h := jobHook("h")
-	h.RunAfter = runAfterPtr(LifecycleHookRunAfterHealthy)
+	h.RunAfter = new(LifecycleHookRunAfterHealthy)
 	rel.Lifecycle = &ReleaseLifecycle{PreSync: []LifecycleHookSpec{h}}
 	errs := ValidateReleaseLifecycle(rel)
 	found := false
@@ -332,7 +330,7 @@ func TestValidateReleaseLifecycle_RunAfterForbiddenOffPostSync(t *testing.T) {
 func TestValidateReleaseLifecycle_RunAfterUnknownValue(t *testing.T) {
 	rel := validRelease()
 	h := jobHook("h")
-	h.RunAfter = runAfterPtr("Whenever")
+	h.RunAfter = new(LifecycleHookRunAfter("Whenever"))
 	rel.Lifecycle = &ReleaseLifecycle{PostSync: []LifecycleHookSpec{h}}
 	errs := ValidateReleaseLifecycle(rel)
 	found := false

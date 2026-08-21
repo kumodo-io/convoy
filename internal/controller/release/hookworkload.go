@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -168,9 +169,8 @@ func buildHookWorkload(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster,
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	for k, v := range hookOwnershipLabels(rel, phase, hook.Name) {
-		labels[k] = v // ownership wins over user labels
-	}
+	// ownership wins over user labels
+	maps.Copy(labels, hookOwnershipLabels(rel, phase, hook.Name))
 	u.SetLabels(labels)
 	return u, nil
 }

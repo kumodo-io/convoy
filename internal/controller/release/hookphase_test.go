@@ -70,7 +70,7 @@ func (f *fakeHookRunner) DeleteMatching(_ context.Context, _ *corev1alpha1.Clust
 }
 
 // fakeHookStore serves seeded hook items from GetHooks and captures PutHooks; Get
-// serves seeded resource refs (for the releaseHealthy runAfter gate).
+// serves seeded resource refs.
 type fakeHookStore struct {
 	hooks     []corev1alpha1.ReleaseLifecycleHookItem
 	resources []inventory.Ref

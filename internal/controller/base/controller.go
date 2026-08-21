@@ -223,7 +223,7 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 		return fmt.Errorf("%s: failed to wait for informer caches to sync", c.name)
 	}
 
-	for i := 0; i < workers; i++ {
+	for range workers {
 		go wait.UntilWithContext(ctx, c.runWorker, time.Second)
 	}
 
