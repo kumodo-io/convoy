@@ -219,26 +219,46 @@ func (o *Options) Run(ctx context.Context) error {
 	// loop so /preview, /diff, and /health are served from one endpoint.
 	obs.SetHealthResults(healthCtl.HealthResult)
 
-	// Wake the health loop when a Release's ReleaseInventory changes in a way the
-	// observer must react to: a resource was applied/pruned (membership), or a
-	// lifecycle hook was (re-)armed (workload created). The RI is named after its
-	// Release and shares its namespace, so its cache key is the Release key. This is
-	// what lets the observer assess a resource / poll a hook the moment it appears,
-	// rather than on the poll interval. The observer's own writes (health, hook
-	// status) are filtered out so they don't self-trigger.
+	// Wake the observer's loops when a Release's ReleaseInventory changes in a way they
+	// must react to: a resource was applied/pruned (membership), a lifecycle hook was
+	// (re-)armed (workload created), or a NEW render was applied (RenderRef changed).
+	// The RI is named after its Release and shares its namespace, so its cache key is
+	// the Release key. This is what lets the observer assess a resource / poll a hook /
+	// re-evaluate a new render the moment it happens, rather than on the poll interval.
+	// The observer's own writes (health, hook status) are filtered out so they don't
+	// self-trigger.
+	//
+	// A render change wakes BOTH loops: the health loop so Healthy re-assesses against
+	// the new render (it must not read the prior render's verdict), and the drift loop
+	// so InSync re-checks against it — e.g. a staged (waved) rollout whose later waves
+	// aren't applied yet legitimately drifts, and InSync must reflect that rather than
+	// the superseded render's "in sync".
 	if _, err := releaseInventoryInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj any) {
 			if key, ok := releaseInventoryKey(obj); ok {
 				healthCtl.EnqueueAfter(key, 0)
+				obs.EnqueueAfter(key, 0)
 			}
 		},
 		UpdateFunc: func(oldObj, newObj any) {
 			oldInv, ok1 := oldObj.(*corev1alpha1.ReleaseInventory)
 			newInv, ok2 := newObj.(*corev1alpha1.ReleaseInventory)
-			if ok1 && ok2 && (inventory.MembershipChanged(oldInv, newInv) || inventory.HooksArmChanged(oldInv, newInv)) {
-				if key, ok := releaseInventoryKey(newObj); ok {
-					healthCtl.EnqueueAfter(key, 0)
-				}
+			if !ok1 || !ok2 {
+				return
+			}
+			key, ok := releaseInventoryKey(newObj)
+			if !ok {
+				return
+			}
+			renderChanged := inventory.RenderChanged(oldInv, newInv)
+			if inventory.MembershipChanged(oldInv, newInv) || inventory.HooksArmChanged(oldInv, newInv) || renderChanged {
+				healthCtl.EnqueueAfter(key, 0)
+			}
+			// The drift loop is otherwise woken only by Release/spec changes; a render
+			// applied by the controller (RenderRef change) is exactly when InSync must
+			// be re-checked against what is now running.
+			if renderChanged {
+				obs.EnqueueAfter(key, 0)
 			}
 		},
 	}); err != nil {
