@@ -403,6 +403,40 @@ func TestRollout_RenderChangeFlushesRolledBackEvenWhenHolding(t *testing.T) {
 	}
 }
 
+// TestRollout_RolledBackHoldsWhenLastHealthyUnloadable is the regression for the
+// flip-flop bug: while re-asserting a RolledBack rollout, if last-healthy can't be
+// loaded (a transient store error — e.g. a context cancellation under load), the
+// controller must HOLD, NOT fall through and re-apply the FAILED source render (which
+// flipped the workload back to the bad render and churned).
+func TestRollout_RolledBackHoldsWhenLastHealthyUnloadable(t *testing.T) {
+	renderRef := probeRenderRef(t)
+	rel := manifestsRelease()
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure)
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateRolledBack, RenderRef: renderRef, StartedAt: pastStart, Message: "rb",
+	}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	// Store present but the last-healthy render is NOT seeded → GetRender fails.
+	c.renderStore = renderstore.New(blobstore.NewMemory())
+	setVerdict(c, renderVerdictPending)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if deployer.called {
+		t.Error("re-applied a render while last-healthy was unloadable; must hold, not re-apply the failed source render")
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateRolledBack {
+		t.Errorf("rollout = %v, want RolledBack (held)", got.Status.Rollout)
+	}
+	if cond := apimeta.FindStatusCondition(got.Status.Conditions, "Applied"); cond == nil || cond.Status != metav1.ConditionTrue {
+		t.Errorf("Applied = %+v, want True (holding on last-healthy)", cond)
+	}
+}
+
 // TestRollout_OnReleaseFailureIgnoresWaveFailure: a wave failure under OnReleaseFailure
 // does NOT roll back — it stays Failed.
 func TestRollout_OnReleaseFailureIgnoresWaveFailure(t *testing.T) {

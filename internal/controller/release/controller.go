@@ -1446,10 +1446,14 @@ func lastHealthy(rel *corev1alpha1.Release, currentRenderRef string, healthy boo
 // reassertRollback maintains a RolledBack rollout's steady state: while the rollout is
 // RolledBack for the current source render (no spec change) and neither pinned nor
 // forced, it re-applies the LAST-HEALTHY render so the cluster stays on it and Applied
-// stays true — the failed source render must never run. Returns (outcome, true) when
-// it takes over the reconcile. A missing store or last-healthy pointer leaves it to
-// the normal path (which just re-applies the source render). Reads the persisted prior
-// rollout, so the decision precedes any apply of the source render.
+// stays true — the failed source render must never run. Once it recognizes that state
+// it ALWAYS takes over the reconcile (returns done=true): on success it applies
+// last-healthy; if last-healthy can't be loaded/applied this pass (a transient store or
+// deploy error — e.g. a context cancellation under load), it HOLDS the current state
+// rather than falling through to re-apply the failed source render, which would flip the
+// workload back to the bad render and churn. A missing store or last-healthy pointer is
+// the only case left to the normal path. Reads the persisted prior rollout, so the
+// decision precedes any apply of the source render.
 func (c *Controller) reassertRollback(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
 	rel := st.rel
 	if st.force || rel.Pin != nil || rel.Spec.FailurePolicy == nil {
@@ -1464,7 +1468,18 @@ func (c *Controller) reassertRollback(ctx context.Context, st *reconcileState) (
 	}
 	// The rollout's startedAt and message carry forward unchanged (this is the same
 	// RolledBack state, re-asserted — not a new failure).
-	return c.applyRollback(ctx, st, r.StartedAt, r.Message)
+	if out, ok := c.applyRollback(ctx, st, r.StartedAt, r.Message); ok {
+		return out, true
+	}
+	// Couldn't re-apply last-healthy this pass: HOLD (it remains applied from before);
+	// never fall through to re-apply the failed source render. Retried next reconcile.
+	return reconcileOutcome{
+		ready:   true,
+		reason:  conditionReasonRolledBack,
+		message: r.Message,
+		attempt: st.attempt,
+		rollout: r,
+	}, true
 }
 
 // evaluateRollout computes status.rollout after a reconcile that did NOT produce its

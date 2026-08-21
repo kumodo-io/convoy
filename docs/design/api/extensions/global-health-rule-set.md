@@ -23,15 +23,22 @@ spec:
   rules:
     - apiVersion: apps/v1
       resources: [deployments]
-      # Predicate: returns true when the Deployment is fully rolled out.
+      # Predicate: returns true only when the ROLLOUT is complete — the new ReplicaSet
+      # is fully scaled (updatedReplicas == spec), no old/surge replicas remain
+      # (replicas == updatedReplicas), and all the NEW replicas are available. Checking
+      # availableReplicas == spec.replicas alone is NOT enough: during a rolling update's
+      # surge window an OLD available pod satisfies it, so a bad render would read healthy.
       ruleExpression: >-
         has(object.status) && has(object.status.observedGeneration) &&
         object.status.observedGeneration == object.metadata.generation &&
         (object.spec.replicas == 0 ||
-         (has(object.status.availableReplicas) && object.status.availableReplicas == object.spec.replicas))
+         (has(object.status.updatedReplicas) && object.status.updatedReplicas == object.spec.replicas &&
+          has(object.status.replicas) && object.status.replicas == object.status.updatedReplicas &&
+          has(object.status.availableReplicas) && object.status.availableReplicas == object.status.updatedReplicas))
       messageExpression: >-
         (has(object.status.availableReplicas) ? string(object.status.availableReplicas) : '0') +
-        '/' + string(object.spec.replicas) + ' replicas available'
+        '/' + string(object.spec.replicas) + ' available, ' +
+        (has(object.status.updatedReplicas) ? string(object.status.updatedReplicas) : '0') + ' updated'
 
     - apiVersion: cert-manager.io/v1
       resources: [certificates]
