@@ -34,14 +34,11 @@ import (
 // progress-deadline clocks (Progressing vs. Degraded) — read from the persisted
 // object so an in-flight clock survives an observer restart instead of resetting.
 //
-// The clock is carried forward ONLY while the resource is still on the render the
-// clock was started for (RenderRef == AssessedRenderRef). When the controller has
-// applied a NEW render since the last assessment (RenderRef != AssessedRenderRef), the
-// previous render's clock is stale: the new render's rollout must get a FRESH deadline,
-// or a resource that was unhealthy under the old render would be judged instantly
-// Degraded under the new one — making a rollout-forward or a recovery impossible (the
-// new render is rolled back before its pods can even start). Omitting the anchor makes
-// DeriveState re-anchor at now for the new render.
+// The anchor drives only the observer's Healthy-CONDITION label (Progressing vs.
+// Degraded) and the /health view; it is deliberately NOT render-reset. The rollout gate
+// no longer depends on it — the release controller owns the rollout deadline (measured
+// from status.rollout.startedAt), so each render gets a fresh deadline by construction
+// with no cross-writer race. See docs/architecture/06-progressive-rollout.md.
 func priorAndAnchors(inv *corev1alpha1.ReleaseInventory) (map[string]corev1alpha1.ResourceState, map[string]time.Time) {
 	prior := make(map[string]corev1alpha1.ResourceState, len(inv.Inventory))
 	anchors := make(map[string]time.Time, len(inv.Inventory))
@@ -51,8 +48,7 @@ func priorAndAnchors(inv *corev1alpha1.ReleaseInventory) (map[string]corev1alpha
 		if it.State != nil {
 			prior[id] = *it.State
 		}
-		sameRender := it.RenderRef == it.AssessedRenderRef
-		if it.FirstUnhealthy != nil && !it.FirstUnhealthy.IsZero() && sameRender {
+		if it.FirstUnhealthy != nil && !it.FirstUnhealthy.IsZero() {
 			anchors[id] = it.FirstUnhealthy.Time
 		}
 	}

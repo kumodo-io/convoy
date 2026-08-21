@@ -142,35 +142,6 @@ func TestPriorAndAnchors(t *testing.T) {
 	}
 }
 
-// TestPriorAndAnchors_ResetsOnRenderChange: the progress-deadline clock is carried
-// forward only while the resource is still on the render the clock was started for. A
-// render change (RenderRef != AssessedRenderRef) drops the stale anchor so the new
-// render's rollout gets a fresh deadline — otherwise a resource unhealthy under the old
-// render would be judged instantly Degraded under the new one, blocking recovery.
-func TestPriorAndAnchors_ResetsOnRenderChange(t *testing.T) {
-	first := metav1.NewTime(time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC))
-	degraded := corev1alpha1.ResourceStateDegraded
-	dep := func(renderRef, assessedRef string) corev1alpha1.ResourceInventoryItem {
-		return corev1alpha1.ResourceInventoryItem{
-			Group: groupApps, Kind: deploymentKind, Namespace: "ns", Name: depName,
-			State: &degraded, FirstUnhealthy: &first, RenderRef: renderRef, AssessedRenderRef: assessedRef,
-		}
-	}
-	id := "apps|Deployment|ns|api"
-
-	// Same render → clock carried forward (survives restart within a render).
-	_, anchors := priorAndAnchors(&corev1alpha1.ReleaseInventory{Inventory: []corev1alpha1.ResourceInventoryItem{dep("r1", "r1")}})
-	if got, ok := anchors[id]; !ok || !got.Equal(first.Time) {
-		t.Errorf("same render: anchor = %v ok=%v, want carried (%v)", got, ok, first.Time)
-	}
-
-	// New render applied since last assessment → stale clock dropped (fresh deadline).
-	_, anchors = priorAndAnchors(&corev1alpha1.ReleaseInventory{Inventory: []corev1alpha1.ResourceInventoryItem{dep("r2", "r1")}})
-	if _, ok := anchors[id]; ok {
-		t.Errorf("render change: anchor carried, want dropped so the new render re-anchors")
-	}
-}
-
 // TestResultFromInventory builds the /health payload from persisted entries.
 func TestResultFromInventory(t *testing.T) {
 	degraded := corev1alpha1.ResourceStateDegraded

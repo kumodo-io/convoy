@@ -49,16 +49,16 @@ func withFailurePolicy(rel *corev1alpha1.Release, rollback corev1alpha1.Rollback
 	rel.Spec.FailurePolicy = &corev1alpha1.ReleaseFailurePolicy{Rollback: rollback}
 }
 
-// setVerdict overrides the controller's render-verdict seam so the rollout
-// state-machine tests can drive Healthy/Degraded/Pending without depending on the
-// in-memory inventory double (which doesn't model the apiStore's SSA co-ownership of
-// the observer-written health fields).
+// setVerdict overrides the controller's verdict seam so the rollout state-machine tests
+// can drive Healthy/Failed/Pending directly, without depending on the in-memory inventory
+// double (which doesn't model the apiStore's SSA co-ownership) or on the controller-owned
+// deadline (the seam ignores startedAt).
 func setVerdict(c *Controller, v renderVerdict) {
-	c.healthFn = func(context.Context, *corev1alpha1.Release, string) renderVerdict { return v }
+	c.verdictFn = func(context.Context, *corev1alpha1.Release, string, metav1.Time) renderVerdict { return v }
 }
 
 // setHealth is the common bool shorthand: true → Healthy, false → Pending (not-yet).
-// Degraded (a definitive failure) is set explicitly via setVerdict.
+// Failed (a definitive, deadline-elapsed failure) is set explicitly via setVerdict.
 func setHealth(c *Controller, healthy bool) {
 	if healthy {
 		setVerdict(c, renderVerdictHealthy)
@@ -97,45 +97,50 @@ func seedLastHealthy(t *testing.T, c *Controller, lhName string) {
 	}
 }
 
-// TestRenderStatus_GatesOnAssessedRenderRef is the regression test for the bug where a
-// fresh render was reported healthy against the previous render's stale assessment.
-// The verdict must require the observer to have assessed THIS render (AssessedRenderRef
-// == renderRef), and a Degraded resource must surface a Degraded verdict.
-func TestRenderStatus_GatesOnAssessedRenderRef(t *testing.T) {
+// TestVerdict_GatesOnAssessedRenderRefAndDeadline covers the verdict function: it must
+// require the observer to have assessed THIS render (AssessedRenderRef == renderRef),
+// and Failed is gated on the CONTROLLER-owned deadline measured from startedAt.
+func TestVerdict_GatesOnAssessedRenderRefAndDeadline(t *testing.T) {
 	ctx := context.Background()
 	rel := manifestsRelease()
-	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{} // health-gated
+	rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{Deadline: &metav1.Duration{Duration: time.Minute}}
 	c, _ := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	now := c.now() // fixed 2026-06-25 12:00:00
+	withinDeadline := metav1.NewTime(now.Add(-30 * time.Second))
+	pastDeadline := metav1.NewTime(now.Add(-2 * time.Minute))
 
 	healthy := corev1alpha1.ResourceStateHealthy
 	newRef, oldRef := "sha256:new", "sha256:old"
-
 	seed := func(state *corev1alpha1.ResourceState, assessedRef string) {
 		_ = c.inventory.Put(ctx, "ns", "r1", []inventory.Ref{
 			{Version: "v1", Kind: configMapKind, Name: "cm", State: state, AssessedRenderRef: assessedRef},
 		})
 	}
 
-	// Healthy, but the assessment is for the OLD render → no verdict yet for the new one.
+	// Healthy but assessed for the OLD render → no verdict yet for the new one.
 	seed(&healthy, oldRef)
-	if got := c.renderStatus(ctx, rel, newRef); got != renderVerdictPending {
+	if got := c.verdict(ctx, rel, newRef, pastDeadline); got != renderVerdictPending {
 		t.Errorf("stale assessment: verdict = %v, want Pending", got)
 	}
-	// Healthy AND assessed for the new render → Healthy.
+	// Healthy AND assessed for the new render → Healthy (deadline-independent).
 	seed(&healthy, newRef)
-	if got := c.renderStatus(ctx, rel, newRef); got != renderVerdictHealthy {
+	if got := c.verdict(ctx, rel, newRef, pastDeadline); got != renderVerdictHealthy {
 		t.Errorf("verdict = %v, want Healthy", got)
 	}
-	// Degraded for the new render → Degraded (fail-fast, positive evidence).
+	// Not passing (Degraded) for the new render, WITHIN the deadline → Pending (wait).
 	degraded := corev1alpha1.ResourceStateDegraded
 	seed(&degraded, newRef)
-	if got := c.renderStatus(ctx, rel, newRef); got != renderVerdictDegraded {
-		t.Errorf("verdict = %v, want Degraded", got)
+	if got := c.verdict(ctx, rel, newRef, withinDeadline); got != renderVerdictPending {
+		t.Errorf("within deadline: verdict = %v, want Pending", got)
 	}
-	// No health assessment configured → nothing to wait for → Healthy (inert).
+	// Not passing PAST the deadline (measured from startedAt) → Failed.
+	if got := c.verdict(ctx, rel, newRef, pastDeadline); got != renderVerdictFailed {
+		t.Errorf("past deadline: verdict = %v, want Failed", got)
+	}
+	// No health assessment → Healthy (inert).
 	relNoHealth := manifestsRelease()
-	if got := c.renderStatus(ctx, relNoHealth, newRef); got != renderVerdictHealthy {
-		t.Errorf("no healthAssessment: verdict = %v, want Healthy (inert-by-passing)", got)
+	if got := c.verdict(ctx, relNoHealth, newRef, pastDeadline); got != renderVerdictHealthy {
+		t.Errorf("no healthAssessment: verdict = %v, want Healthy (inert)", got)
 	}
 }
 
@@ -195,7 +200,7 @@ func TestRollout_FailsOnDegradedVerdict(t *testing.T) {
 		State: corev1alpha1.RolloutStateProgressing, RenderRef: renderRef, StartedAt: pastStart,
 	}
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
-	setVerdict(c, renderVerdictDegraded)
+	setVerdict(c, renderVerdictFailed)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -256,11 +261,10 @@ func TestRollout_NoPolicyNoRolloutStatus(t *testing.T) {
 	}
 }
 
-// TestRollout_NoHealthConfiguredSucceedsImmediately: with no health assessment the
-// verdict is Healthy-by-passing, so the gate passes at once. (Validation would reject
-// this config — rollback!=Never needs healthAssessment.deadline — but the controller's
-// gate logic is inert-by-passing regardless, which this exercises directly.)
-func TestRollout_NoHealthConfiguredSucceedsImmediately(t *testing.T) {
+// TestRollout_NoHealthConfiguredProgressingThenSucceeds: a fresh rollout always passes
+// through Progressing once (uniform, observable), then the inert Healthy verdict (no
+// health assessment) settles it to Succeeded on the next reconcile.
+func TestRollout_NoHealthConfiguredProgressingThenSucceeds(t *testing.T) {
 	rel := manifestsRelease()
 	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure)
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
@@ -268,16 +272,28 @@ func TestRollout_NoHealthConfiguredSucceedsImmediately(t *testing.T) {
 		t.Fatalf("syncHandler: %v", err)
 	}
 	got := statusUpdate(client.Actions())
-	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateSucceeded {
-		t.Errorf("state = %v, want Succeeded (no health rules → inert-by-passing)", got.Status.Rollout)
+	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateProgressing {
+		t.Fatalf("first reconcile state = %v, want Progressing (fresh rollout starts Progressing)", got.Status.Rollout)
+	}
+
+	// Next reconcile: same render, inert Healthy verdict → Succeeded.
+	rel2 := got.DeepCopy()
+	rel2.Spec = rel.Spec
+	c2, client2 := newTestController(t, rel2, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+	if err := c2.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler #2: %v", err)
+	}
+	got2 := statusUpdate(client2.Actions())
+	if got2.Status.Rollout.State != corev1alpha1.RolloutStateSucceeded {
+		t.Errorf("second reconcile state = %s, want Succeeded (no health → inert Healthy)", got2.Status.Rollout.State)
 	}
 }
 
 // rolloutWithLastHealthy builds a controller whose render store holds a seeded
 // last-healthy render (a ConfigMap named lhName), with the Release's status.lastHealthy
 // pointing at it and a Progressing rollout for the current render. The verdict seam is
-// pre-set to Degraded (a definitive failure). It returns the controller, client,
-// deployer, and the current (failed) render ref.
+// pre-set to Failed (a definitive, deadline-elapsed failure). It returns the controller,
+// client, deployer, and the current (failed) render ref.
 func rolloutWithLastHealthy(t *testing.T, rollback corev1alpha1.RollbackPolicy, lhName string) (*Controller, *fakeclient.Clientset, *fakeDeployer, string) {
 	t.Helper()
 	renderRef := probeRenderRef(t)
@@ -290,7 +306,7 @@ func rolloutWithLastHealthy(t *testing.T, rollback corev1alpha1.RollbackPolicy, 
 	}
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
-	setVerdict(c, renderVerdictDegraded) // definitive failure
+	setVerdict(c, renderVerdictFailed) // definitive failure
 	seedLastHealthy(t, c, lhName)
 	return c, client, deployer, renderRef
 }
