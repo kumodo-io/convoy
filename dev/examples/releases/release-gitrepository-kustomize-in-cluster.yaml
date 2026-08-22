@@ -1,0 +1,27 @@
+apiVersion: core.convoy.kumodo.io/v1alpha1
+kind: Release
+metadata:
+  name: podinfo-kustomize-in-cluster
+  namespace: default
+spec:
+  clusterRef:
+    name: dev-local
+  source:
+    type: gitRepository
+    gitRepository:
+      name: podinfo
+      namespace: default
+      ref:
+        branch: master
+  content:
+    type: kustomize
+    kustomize:
+      path: kustomize
+      targetNamespace: podinfo-kustomize
+  syncPolicy:
+    automatic: true
+    prune:
+      orphaned: false
+      includeCRDs: false
+      includeNamespaces: false
+    interval: 1m
