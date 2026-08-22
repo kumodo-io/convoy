@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/kumodo-io/convoy/compare/v0.8.0...v0.8.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* preserve persisted rollout ([#65](https://github.com/kumodo-io/convoy/issues/65)) ([fb25d5f](https://github.com/kumodo-io/convoy/commit/fb25d5f56ea6b6ad429095d9d26d8f15998b3846))
+
 ## [0.8.0](https://github.com/kumodo-io/convoy/compare/v0.7.0...v0.8.0) (2026-08-21)
 
 
