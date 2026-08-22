@@ -76,7 +76,7 @@ Deliverable without new infrastructure.
 
 - **Health assessment** (`Healthy` condition) — the observer's second loop: evaluate built-in rules + `KindHealthRule` / `ResourceHealthRule` → `Healthy` condition (owned by the observer) + Release-level aggregation into `status.health` (rule *types* exist; nothing evaluates them yet). Independent of drift — a Release can be `InSync: True`, `Healthy: False`.
 - **Private source auth** — Git `token` / `basic` / `sshKey`; a sane subset of `basic` / `token` / `oidc` / `cloudIdentity` for Helm/OCI registries
-- **Content types** — `kustomize`, `jsonnet` (`cue` later); `helm` `resolve` dependency mode
+- **Content types** — `jsonnet` (`cue` later); `helm` `resolve` dependency mode. (`kustomize` ✅ done — in-process build over the fetched artifact, `targetNamespace` honored via kustomize's native namespace transformer.)
 - **Event-driven drift** — target-cluster watches to re-check on observed change (today drift is periodic on the sync interval)
 - **Sync waves** — `waitForApplied` → `waitForHealthy[WithTimeout]`; hook-annotation translation (depends on health assessment)
 - **`/lifecycle`** — hooks across `PreRender`…`PostDelete`, `Job`/`Pod`, CEL `when` conditions

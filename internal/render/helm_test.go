@@ -70,7 +70,7 @@ func TestRenderHelm_HonorsReleaseNameAndNamespace(t *testing.T) {
 	spec := &corev1alpha1.ReleaseContentHelmSpec{
 		Path:             dummyChartPath,
 		ReleaseName:      "myapp",
-		ReleaseNamespace: "prod",
+		ReleaseNamespace: nsProd,
 	}
 	objs, err := renderHelm(spec, demoChart(), nil)
 	if err != nil {

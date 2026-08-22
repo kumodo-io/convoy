@@ -26,6 +26,7 @@ import (
 const (
 	dummyFile     = "app.yaml"
 	configMapKind = "ConfigMap"
+	nsProd        = "prod" // shared target-namespace fixture (helm + kustomize tests)
 )
 
 // fakeCoordinator stands in for the fetch coordinator: it returns a canned

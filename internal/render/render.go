@@ -51,6 +51,11 @@ func Render(content corev1alpha1.ReleaseContentSpec, art artifact.Artifact, valu
 			return nil, errors.Join(ErrUnsupported, fmt.Errorf("helm content block is missing"))
 		}
 		return renderHelm(content.Helm, art, valueLayers)
+	case corev1alpha1.ReleaseContentTypeKustomize:
+		if content.Kustomize == nil {
+			return nil, errors.Join(ErrUnsupported, fmt.Errorf("kustomize content block is missing"))
+		}
+		return renderKustomize(content.Kustomize, art)
 	default:
 		return nil, errors.Join(ErrUnsupported, fmt.Errorf("content type %q is not supported yet", content.Type))
 	}

@@ -573,7 +573,7 @@ spec:
 
 ### kustomize
 
-_Accepted by the API but not yet rendered (planned)._ Build a Kustomize overlay at `path`.
+Build a Kustomize overlay at `path` (in-process, over the fetched artifact — no shelling to the `kustomize` binary). `path` defaults to the repo root. `targetNamespace`, when set, is applied through Kustomize's native namespace transformer, so it namespaces the built resources and correctly skips cluster-scoped kinds (and overrides any `namespace:` the overlay set itself).
 
 ```yaml
 spec:
@@ -581,6 +581,7 @@ spec:
     type: kustomize
     kustomize:
       path: overlays/prod
+      targetNamespace: prod   # optional
 ```
 
 ### manifests
