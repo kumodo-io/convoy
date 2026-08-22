@@ -251,8 +251,18 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 		newStatus.LastHandledForceSyncAt = forceAt
 	}
 	// The rollout state was decided by the state machine in reconcile (planRollout, or
-	// the wave gate) — one transition per reconcile. Stamp it as-is.
-	newStatus.Rollout = outcome.rollout
+	// the wave gate). Stamp it — but PRESERVE the prior rollout when this reconcile
+	// bailed out before the state machine ran (e.g. a transient source/render/cluster
+	// failure returns an outcome with no rollout). Overwriting with nil there would WIPE
+	// a RolledBack/Succeeded state, and the next reconcile — seeing no prior — would open
+	// a fresh Progressing and re-apply the (failed) source render. computeStatus already
+	// deep-copied the prior rollout into newStatus, so "keep prior" is a no-op; only an
+	// absent failurePolicy clears it (rollout is untracked without one).
+	if outcome.rollout != nil {
+		newStatus.Rollout = outcome.rollout
+	} else if rel.Spec.FailurePolicy == nil {
+		newStatus.Rollout = nil
+	}
 	if cond := rolloutCondition(newStatus.Rollout, rel.Generation, c.now()); cond != nil {
 		apimeta.SetStatusCondition(&newStatus.Conditions, *cond)
 	}
@@ -1493,6 +1503,11 @@ type rolloutPlan struct {
 // never flash a premature Succeeded/Failed — the verdict is only applied on a later
 // reconcile once R is the active rollout. Each transition is one step and is stamped,
 // so /get and /list observe every state.
+//
+// This is the single source of truth for every HEALTH-driven transition. The ONE other
+// place a rollout transition is decided is waveHealthGate (an intermediate-wave timeout,
+// which is only observable while applying, so it can't be decided here pre-apply) — if
+// you change transition logic, check there too. See docs/architecture/06-progressive-rollout.md.
 func (c *Controller) planRollout(ctx context.Context, st *reconcileState) rolloutPlan {
 	rel := st.rel
 	R := st.attempt.RenderRef

@@ -495,6 +495,34 @@ func TestRollout_RenderChangeToHealthyStartsProgressing(t *testing.T) {
 	}
 }
 
+// TestRollout_TransientSourceFailureKeepsRolledBack is the regression for the
+// wake-from-sleep bug: a transient source failure (e.g. git fetch failed) bails out of
+// reconcile BEFORE the rollout state machine runs, so the outcome carries no rollout.
+// syncHandler must PRESERVE the persisted RolledBack state, not wipe it to nil — a wipe
+// makes the next reconcile see no prior rollout, open a fresh Progressing, and re-apply
+// the failed source render (spontaneous RolledBack→Progressing→RolledBack).
+func TestRollout_TransientSourceFailureKeepsRolledBack(t *testing.T) {
+	rel := manifestsRelease()
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure)
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateRolledBack, RenderRef: "sha256:failed", StartedAt: pastStart, Message: "rb",
+	}
+	// Coordinator errors → stageRender fails before planRollout runs.
+	coord := &fakeCoordinator{err: errors.New("git fetch failed")}
+	c, client := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
+
+	// A transient source failure requeues (non-nil error); the status write still happens.
+	_ = c.syncHandler(context.Background(), "ns/r1")
+	got := statusUpdate(client.Actions())
+	if got == nil || got.Status.Rollout == nil {
+		t.Fatalf("rollout was WIPED by a transient source failure; want RolledBack preserved")
+	}
+	if got.Status.Rollout.State != corev1alpha1.RolloutStateRolledBack || got.Status.Rollout.RenderRef != "sha256:failed" {
+		t.Errorf("rollout = %+v, want RolledBack{sha256:failed} preserved", got.Status.Rollout)
+	}
+}
+
 // TestRollout_OnReleaseFailureIgnoresWaveFailure: a wave failure under OnReleaseFailure
 // does NOT roll back — it stays Failed.
 func TestRollout_OnReleaseFailureIgnoresWaveFailure(t *testing.T) {
