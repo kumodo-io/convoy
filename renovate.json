@@ -1,0 +1,57 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "mise": {
+    "managerFilePatterns": [
+      "/(^|/)\\.mise/conf\\.d/[^/]+\\.toml$/",
+      "/(^|/)mise\\.toml$/"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Keep Go version in sync across mise, go.mod and Dockerfile",
+      "matchDepNames": [
+        "go",
+        "golang"
+      ],
+      "matchManagers": [
+        "mise",
+        "gomod",
+        "dockerfile"
+      ],
+      "groupName": "go toolchain"
+    },
+    {
+      "description": "Renovate skips the go directive in go.mod unless the range strategy is bump",
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchDepNames": [
+        "go"
+      ],
+      "matchDepTypes": [
+        "golang"
+      ],
+      "rangeStrategy": "bump"
+    },
+    {
+      "description": "Look up the module path, the go: alias points at a cmd subpackage the Go proxy does not serve",
+      "matchManagers": [
+        "mise"
+      ]
+    },
+    {
+      "description": "Update all GitHub Actions across all workflows in one PR",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github actions"
+    }
+  ]
+}
