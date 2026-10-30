@@ -1,0 +1,83 @@
+name: Convoy CI - Format, Lint, Test
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".golangci.yml"
+      - "mise.toml"
+      - ".mise/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+      - run: mise run format
+
+  lint:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+      - run: mise run lint
+
+  test:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+      - run: mise run test
+
+  dev-image:
+    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    needs: [format, lint, test]
+    uses: ./.github/workflows/image-build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: dev-${{ github.sha }}
+
+  auto-image:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/image-build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: auto-${{ github.sha }}
+
+  release-image:
+    if: github.ref_type == 'tag'
+    uses: ./.github/workflows/image-build.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      tag: ${{ github.ref_name }}
