@@ -31,6 +31,7 @@ jobs:
           go-version-file: 'go.mod'
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
       - run: mise run format
+      - run: git diff --exit-code  
 
   lint:
     runs-on: ubuntu-latest
@@ -41,7 +42,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
-      - run: go mod download  
+      - run: go mod download
       - env:
           GOLANGCI_LINT_TIMEOUT: 10m
         run: mise run lint
