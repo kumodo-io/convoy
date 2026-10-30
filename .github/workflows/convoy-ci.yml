@@ -26,22 +26,31 @@ jobs:
     if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: 'go.mod'
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        env:
+          MISE_ENABLE_TOOLS: go
       - run: mise run format
-      - run: git diff --exit-code  
+      - run: git diff --exit-code
+
+  verify-codegen:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        env:
+          MISE_ENABLE_TOOLS: go,deepcopy-gen,conversion-gen,applyconfiguration-gen,client-gen,lister-gen,informer-gen,openapi-gen
+      - run: mise run codegen
+      - run: git diff --exit-code
 
   lint:
     runs-on: ubuntu-latest
     if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: 'go.mod'
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        env:
+          MISE_ENABLE_TOOLS: go,golangci-lint
       - run: go mod download
       - env:
           GOLANGCI_LINT_TIMEOUT: 10m
@@ -52,15 +61,14 @@ jobs:
     if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: 'go.mod'
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        env:
+          MISE_ENABLE_TOOLS: go
       - run: mise run test
 
   dev-image:
     if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
-    needs: [format, lint, test]
+    needs: [format, lint, verify-codegen, test]
     uses: ./.github/workflows/image-build.yml
     permissions:
       contents: read
