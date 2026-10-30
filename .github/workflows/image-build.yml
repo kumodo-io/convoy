@@ -1,8 +1,11 @@
-name: Convoy Release CI
+name: Convoy - Image Build
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_call:
+    inputs:
+      tag:
+        description: Image tag
+        type: string
+        required: true
 
 jobs:
   image:
@@ -14,7 +17,7 @@ jobs:
       matrix:
         target: [apiserver, controller-manager, observer]
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
@@ -26,6 +29,6 @@ jobs:
           context: .
           push: true
           target: ${{ matrix.target }}
-          tags: ghcr.io/${{ github.repository }}/convoy-${{ matrix.target }}:${{ github.ref_name }}
+          tags: ghcr.io/${{ github.repository }}/convoy-${{ matrix.target }}:${{ inputs.tag }}
           cache-from: type=gha,scope=${{ matrix.target }}
           cache-to: type=gha,mode=max,scope=${{ matrix.target }}

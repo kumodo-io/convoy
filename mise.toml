@@ -4,4 +4,4 @@
 # .mise/conf.d/10-code-tasks.toml
 # .mise/conf.d/20-dev-tasks.toml
 [settings]
-lockfile = true
+lockfile = false

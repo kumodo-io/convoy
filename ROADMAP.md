@@ -60,6 +60,9 @@ This document reflects **what is implemented today** and the **planned work**, g
 **CLI**
 - `kubectl-convoy` plugin: `release pin` / `unpin` / `sync` / `preview` / `diff` (noun-first, room for `cluster …`)
 
+**Scale & HA**
+- **Sharding by target cluster** — per-shard leases assign each cluster's Releases to one replica; the same mechanism serves both HA (run N≥2 → a dead replica's shards are re-leased by the survivors) and horizontal scale (N=k partitions the load). No separate leader election / active-standby. Controller-manager and observer shard independently. Enqueue filters trim each replica's queue to its owned shards; the reconcile gate re-checks ownership.
+
 **Internal**
 - Applied-resource inventory (in-memory; fails safe — can only under-prune, never over-delete)
 - `releaseByCluster` informer index for cluster→release fan-out
@@ -100,7 +103,7 @@ Blocked on a durable persistence backend. Storage gates *time travel*, not self-
   - `agentless` → act as a dedicated convoy identity on the remote (not the ambient handed-over kubeconfig)
   - `agent` (pull) → the agent's in-cluster SA natively *is* that identity (one process deploys + observes; no impersonation) — the cleanest realization; push-mode impersonation approximates it
   - Note: SSA **dry-run authorizes as a real apply** (the footgun); that acting identity must be granted the union of kinds its Releases render (unavoidable for any SSA-based deploy+dry-run; document in target-cluster onboarding). Impersonation buys no-standing-broad-credential + auth/identity decoupling + auditability, not extra capability.
-- **Operability** — controller/observer metrics; leader election / HA (relates to future work-sharding for horizontal scale)
+- **Operability** — controller/observer metrics. (HA and horizontal scale are already provided by **sharding** — see Implemented; no separate leader election is needed: run N≥2 replicas and each shard's lease handles failover.)
 
 ## Fleet-wide orchestration & mutations
 
