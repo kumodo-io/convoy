@@ -1,6 +1,6 @@
 # ---------- Dev env tools ----------
 [tools]
-go = "1.26.2"
+go = "1.27.3"
 golangci-lint = "2.12.2"
 tilt = "0.37.3"
 kustomize = "5.8.1"

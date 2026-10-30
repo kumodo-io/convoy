@@ -1,6 +1,6 @@
 module github.com/kumodo-io/convoy
 
-go 1.26.2
+go 1.27.3
 
 require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
