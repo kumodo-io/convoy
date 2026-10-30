@@ -34,14 +34,24 @@ jobs:
 
   format:
     runs-on: ubuntu-latest
-    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    if: github.ref_type == 'branch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         env:
           MISE_ENABLE_TOOLS: go
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ github.job }}-${{ hashFiles('go.sum', 'go.mod') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}-
       - run: go mod download
       - run: mise run format
+        env:
+          MISE_JOBS: 1
       - run: git diff --exit-code
 
   verify-codegen:
@@ -57,12 +67,21 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
-    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    if: github.ref_type == 'branch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         env:
           MISE_ENABLE_TOOLS: go,golangci-lint
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ github.job }}-${{ hashFiles('go.sum', 'go.mod', '.mise/conf.d/00-tools.toml') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}-
       - run: go mod download
       - env:
           GOLANGCI_LINT_TIMEOUT: 10m
@@ -70,17 +89,25 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
+    if: github.ref_type == 'branch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
         env:
           MISE_ENABLE_TOOLS: go
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ github.job }}-${{ hashFiles('go.sum', 'go.mod') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}-
       - run: mise run test
 
   dev-image:
     if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
-    needs: [format, lint, verify-codegen, test]
+    needs: [format, lint, verify-codegen, test, tidy]
     uses: ./.github/workflows/image-build.yml
     permissions:
       contents: read
@@ -90,6 +117,7 @@ jobs:
 
   auto-image:
     if: github.ref == 'refs/heads/main'
+    needs: [format, lint, test]
     uses: ./.github/workflows/image-build.yml
     permissions:
       contents: read

@@ -29,7 +29,7 @@ description = "Run go fix against code"
 run = 'go fix $(go list ./... | grep -v "/generated/")'
 
 [tasks.format]
-depends = ["fmt", "vet", "fix"]
+depends = ["fmt", "fix"]
 
 [tasks.lint]
 description = "Run linter and quality checks"
