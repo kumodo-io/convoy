@@ -1,6 +1,6 @@
 [env]
 LOCAL_BIN = "bin"
-GOLANGCI_LINT_TIMEOUT = "2m"
+GOLANGCI_LINT_TIMEOUT = {default = "2m"}
 MODULE = "github.com/kumodo-io/convoy"
 BOILERPLATE = "hack/boilerplate.go.txt"
 # External apply configurations: appended to the built-in defaults (meta/v1).
