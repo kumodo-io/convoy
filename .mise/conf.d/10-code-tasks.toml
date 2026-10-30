@@ -28,9 +28,11 @@ run = 'go vet $(go list ./... | grep -v "/generated/")'
 description = "Run go fix against code"
 run = 'go fix $(go list ./... | grep -v "/generated/")'
 
+[tasks.format]
+depends = ["fmt", "vet", "fix"]
+
 [tasks.lint]
 description = "Run linter and quality checks"
-depends = ["fmt", "vet", "fix"]
 run = 'golangci-lint run --timeout={{ env.GOLANGCI_LINT_TIMEOUT }}'
 
 [tasks.test]
