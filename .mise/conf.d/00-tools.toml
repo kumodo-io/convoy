@@ -2,7 +2,7 @@
 [tools]
 go = "1.27.3"
 golangci-lint = "2.15.0"
-tilt = "0.37.3"
+tilt = "0.37.8"
 kustomize = "5.8.1"
 kind = "0.32.0"
 kubectl = "1.35.2"
