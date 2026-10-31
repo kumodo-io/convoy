@@ -41,17 +41,23 @@
       "rangeStrategy": "bump"
     },
     {
-      "description": "Look up the module path, the go: alias points at a cmd subpackage the Go proxy does not serve",
+      "description": "Update all mise dev tools in one PR; Go is excluded because it moves with go.mod and Dockerfile",
       "matchManagers": [
         "mise"
-      ]
+      ],
+      "matchDepNames": [
+        "!go"
+      ],
+      "groupName": "mise tools",
+      "separateMajorMinor": false
     },
     {
       "description": "Update all GitHub Actions across all workflows in one PR",
       "matchManagers": [
         "github-actions"
       ],
-      "groupName": "github actions"
+      "groupName": "github actions",
+      "separateMajorMinor": false
     }
   ]
 }
