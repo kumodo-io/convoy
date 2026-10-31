@@ -120,7 +120,7 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	optsGetter := c.GenericConfig.RESTOptionsGetter
 
 	// core API group
-	coreGroup := genericapiserver.NewDefaultAPIGroupInfo(core.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	coreGroup := newAPIGroupInfo(core.GroupName)
 
 	clusterREST, clusterStatusREST, err := clusterstorage.NewREST(Scheme, optsGetter, c.ExtraConfig.Shards)
 	if err != nil {
@@ -143,7 +143,7 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	coreGroup.VersionedResourcesStorageMap["v1alpha1"] = coreStorage
 
 	// source API group
-	sourceGroup := genericapiserver.NewDefaultAPIGroupInfo(source.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	sourceGroup := newAPIGroupInfo(source.GroupName)
 
 	gitREST, gitStatusREST, err := gitrepositorystorage.NewREST(Scheme, optsGetter, c.ExtraConfig.Shards)
 	if err != nil {
@@ -167,7 +167,7 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	}
 
 	// extensions API group
-	extensionsGroup := genericapiserver.NewDefaultAPIGroupInfo(extensions.GroupName, Scheme, metav1.ParameterCodec, Codecs)
+	extensionsGroup := newAPIGroupInfo(extensions.GroupName)
 
 	globalHealthRuleSetREST, err := globalhealthrulesetstorage.NewREST(Scheme, optsGetter)
 	if err != nil {
