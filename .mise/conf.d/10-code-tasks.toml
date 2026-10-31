@@ -3,6 +3,8 @@ LOCAL_BIN = "bin"
 GOLANGCI_LINT_TIMEOUT = {default = "2m"}
 MODULE = "github.com/kumodo-io/convoy"
 BOILERPLATE = "hack/boilerplate.go.txt"
+# Hand-written API packages only: parsing generated clients as input makes gengo warn on informer type aliases.
+API_PACKAGES = "{{ env.MODULE }}/api/core {{ env.MODULE }}/api/core/v1alpha1 {{ env.MODULE }}/api/auth {{ env.MODULE }}/api/auth/v1alpha1 {{ env.MODULE }}/api/source {{ env.MODULE }}/api/source/v1alpha1 {{ env.MODULE }}/api/extensions {{ env.MODULE }}/api/extensions/v1alpha1"
 # External apply configurations: appended to the built-in defaults (meta/v1).
 # applyconfiguration-gen errors silently on referenced external types it doesn't know about.
 EXTERNAL_APPLYCONFIGS = "k8s.io/api/core/v1.ConfigMapKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretKeySelector:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.EnvVar:k8s.io/client-go/applyconfigurations/core/v1,k8s.io/api/core/v1.SecretReference:k8s.io/client-go/applyconfigurations/core/v1"
@@ -65,12 +67,12 @@ run = [
 	'''deepcopy-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-file zz_generated.deepcopy.go \
-		{{ env.MODULE }}/api/...''',
+		{{ env.API_PACKAGES }}''',
 
 	'''conversion-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-file zz_generated.conversion.go \
-		{{ env.MODULE }}/api/...''',
+		{{ env.API_PACKAGES }}''',
 
 	'''applyconfiguration-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
@@ -125,7 +127,7 @@ run = [
 		--readonly-pkg k8s.io/api/core/v1 \
 		--readonly-pkg k8s.io/api/batch/v1 \
 		--readonly-pkg k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1 \
-		{{ env.MODULE }}/api/... \
+		{{ env.API_PACKAGES }} \
 		k8s.io/apimachinery/pkg/apis/meta/v1 \
 		k8s.io/apimachinery/pkg/runtime \
 		k8s.io/apimachinery/pkg/version \
