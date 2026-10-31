@@ -1,0 +1,50 @@
+name: Sanity Checks - Mod Tidy and Codegen
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "api/**/*.go"
+      - "go.mod"
+      - "go.sum"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-tidy:
+    name: Run 'go mod tidy' and check diff
+    if: ${{ github.ref != 'refs/heads/main' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        env:
+          MISE_ENABLE_TOOLS: go
+      - shell: sh
+        run: mise run tidy
+      - shell: sh
+        run: git diff --exit-code
+
+  verify-codegen:
+    name: Run code-generators and check diff
+    if: ${{ github.ref != 'refs/heads/main' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        env:
+          MISE_ENABLE_TOOLS: go
+      - shell: sh
+        run: mise run codegen
+      - shell: sh
+        run: git diff --exit-code
