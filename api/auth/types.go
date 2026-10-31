@@ -115,11 +115,6 @@ type OIDCAuthPrivateKeyJWTSpec struct {
 	PrivateKeyRef corev1.SecretKeySelector
 }
 
-type OIDCTLSSpec struct {
-	CAPublicCertRef    corev1.ConfigMapKeySelector
-	InsecureSkipVerify bool
-}
-
 // ---------- CloudIdentity types ----------
 
 type CloudProvider string
