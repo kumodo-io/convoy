@@ -359,13 +359,11 @@ func (c *Coordinator) releaseAll() {
 func (c *Coordinator) newLease(name, role, holder string, now metav1.MicroTime) *coordinationv1.Lease {
 	dur := int32(c.cfg.LeaseDuration / time.Second)
 	return &coordinationv1.Lease{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: c.cfg.Namespace,
-			Labels: map[string]string{
-				labelComponent: c.cfg.Component,
-				labelRole:      role,
-			},
+		Name:      name,
+		Namespace: c.cfg.Namespace,
+		Labels: map[string]string{
+			labelComponent: c.cfg.Component,
+			labelRole:      role,
 		},
 		Spec: coordinationv1.LeaseSpec{
 			HolderIdentity:       new(holder),

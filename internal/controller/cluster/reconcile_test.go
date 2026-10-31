@@ -30,8 +30,8 @@ import (
 
 func testCluster(generation int64, status corev1alpha1.ClusterStatus) *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns", Generation: generation},
-		Status:     status,
+		Name: "c1", Namespace: "ns", Generation: generation,
+		Status: status,
 	}
 }
 

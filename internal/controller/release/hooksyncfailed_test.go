@@ -20,8 +20,6 @@ import (
 	"context"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
@@ -57,8 +55,8 @@ func TestIsSyncingFailure(t *testing.T) {
 
 func relWithSyncFailed(hooks ...corev1alpha1.LifecycleHookSpec) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: hookRelUID},
-		Lifecycle:  &corev1alpha1.ReleaseLifecycle{SyncFailed: hooks},
+		Name: appName, Namespace: "ns", UID: hookRelUID,
+		Lifecycle: &corev1alpha1.ReleaseLifecycle{SyncFailed: hooks},
 	}
 }
 

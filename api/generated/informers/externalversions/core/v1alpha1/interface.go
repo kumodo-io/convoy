@@ -25,11 +25,11 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// Clusters returns a ClusterInformer.
-	Clusters() ClusterInformer
+	Clusters() TypedClusterInformer
 	// Releases returns a ReleaseInformer.
-	Releases() ReleaseInformer
+	Releases() TypedReleaseInformer
 	// ReleaseInventories returns a ReleaseInventoryInformer.
-	ReleaseInventories() ReleaseInventoryInformer
+	ReleaseInventories() TypedReleaseInventoryInformer
 }
 
 type version struct {
@@ -43,17 +43,17 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// Clusters returns a ClusterInformer.
-func (v *version) Clusters() ClusterInformer {
+// Clusters returns a TypedClusterInformer.
+func (v *version) Clusters() TypedClusterInformer {
 	return &clusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// Releases returns a ReleaseInformer.
-func (v *version) Releases() ReleaseInformer {
+// Releases returns a TypedReleaseInformer.
+func (v *version) Releases() TypedReleaseInformer {
 	return &releaseInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ReleaseInventories returns a ReleaseInventoryInformer.
-func (v *version) ReleaseInventories() ReleaseInventoryInformer {
+// ReleaseInventories returns a TypedReleaseInventoryInformer.
+func (v *version) ReleaseInventories() TypedReleaseInventoryInformer {
 	return &releaseInventoryInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

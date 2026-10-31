@@ -27,7 +27,7 @@ import (
 // HealthRuleSetApplyConfiguration represents a declarative configuration of the HealthRuleSet type for use
 // with apply.
 type HealthRuleSetApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                             *HealthRuleSetSpecApplyConfiguration `json:"spec,omitempty"`
 }

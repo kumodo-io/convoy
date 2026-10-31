@@ -27,7 +27,7 @@ import (
 // ReleaseApplyConfiguration represents a declarative configuration of the Release type for use
 // with apply.
 type ReleaseApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                             *ReleaseSpecApplyConfiguration      `json:"spec,omitempty"`
 	Status                           *ReleaseStatusApplyConfiguration    `json:"status,omitempty"`

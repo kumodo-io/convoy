@@ -34,11 +34,39 @@ import (
 )
 
 // OCIRegistryInformer provides access to a shared informer and lister for
-// OCIRegistries.
+// OCIRegistries. Prefer using the type-safe variant (see [TypedOCIRegistryInformer]).
 type OCIRegistryInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() sourcev1alpha1.OCIRegistryLister
 }
+
+// TypedOCIRegistryInformer provides access to a shared informer and lister for
+// OCIRegistries, including the type-safe TypedInformer variant.
+// It is a superset of OCIRegistryInformer.
+type TypedOCIRegistryInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() OCIRegistryIndexInformer
+	Lister() sourcev1alpha1.OCIRegistryLister
+}
+
+// OCIRegistryIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type OCIRegistryIndexInformer cache.TypedSharedIndexInformer[*apisourcev1alpha1.OCIRegistry]
+
+// OCIRegistryHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for OCIRegistry.
+type OCIRegistryHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisourcev1alpha1.OCIRegistry]
+
+// OCIRegistryDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for OCIRegistry.
+type OCIRegistryDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisourcev1alpha1.OCIRegistry]
+
+// OCIRegistryFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for OCIRegistry.
+type OCIRegistryFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisourcev1alpha1.OCIRegistry]
+
+// OCIRegistryIndexers is a specialization of [cache.TypedIndexers] for OCIRegistry.
+type OCIRegistryIndexers = cache.TypedIndexers[*apisourcev1alpha1.OCIRegistry]
+
+// DeletedOCIRegistry is a specialization of [cache.DeletedObject] for OCIRegistry.
+type DeletedOCIRegistry = cache.DeletedObject[*apisourcev1alpha1.OCIRegistry]
 
 type oCIRegistryInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -49,25 +77,49 @@ type oCIRegistryInformer struct {
 // NewOCIRegistryInformer constructs a new informer for OCIRegistry type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedOCIRegistryInformer]).
 func NewOCIRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewOCIRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedOCIRegistryInformer constructs a new informer for OCIRegistry type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedOCIRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers OCIRegistryIndexers) OCIRegistryIndexInformer {
+	return NewTypedOCIRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredOCIRegistryInformer constructs a new informer for OCIRegistry type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredOCIRegistryInformer]).
 func NewFilteredOCIRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewOCIRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedOCIRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredOCIRegistryInformer constructs a new informer for OCIRegistry type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredOCIRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers OCIRegistryIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) OCIRegistryIndexInformer {
+	return NewTypedOCIRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewOCIRegistryInformerWithOptions constructs a new informer for OCIRegistry type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedOCIRegistryInformerWithOptions]).
 func NewOCIRegistryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedOCIRegistryInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedOCIRegistryInformerWithOptions constructs a new informer for OCIRegistry type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedOCIRegistryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) OCIRegistryIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "source.convoy.kumodo.io", Version: "v1alpha1", Resource: "ociregistrys"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.OCIRegistry](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -100,17 +152,57 @@ func NewOCIRegistryInformerWithOptions(client versioned.Interface, namespace str
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *oCIRegistryInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewOCIRegistryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedOCIRegistryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *oCIRegistryInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisourcev1alpha1.OCIRegistry{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *oCIRegistryInformer) TypedInformer() OCIRegistryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.OCIRegistry](f.factory.InformerFor(&apisourcev1alpha1.OCIRegistry{}, f.defaultInformer))
 }
 
 func (f *oCIRegistryInformer) Lister() sourcev1alpha1.OCIRegistryLister {
 	return sourcev1alpha1.NewOCIRegistryLister(f.Informer().GetIndexer())
+}
+
+// ToTypedOCIRegistryInformer converts an untyped informer into a TypedOCIRegistryInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *OCIRegistry. If that is not the case, calling type-safe methods of the returned
+// TypedOCIRegistryInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedOCIRegistryInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedOCIRegistryInformer(informer OCIRegistryInformer) TypedOCIRegistryInformer {
+	if informer, ok := informer.(TypedOCIRegistryInformer); ok {
+		return informer
+	}
+	return &oCIRegistryTypedInformerAdapter{informer}
+}
+
+type oCIRegistryTypedInformerAdapter struct {
+	OCIRegistryInformer
+}
+
+func (a *oCIRegistryTypedInformerAdapter) TypedInformer() OCIRegistryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.OCIRegistry](a.Informer())
+}
+
+// ToOCIRegistryIndexInformer converts an untyped informer into a OCIRegistryIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *OCIRegistry. If that is not the case, calling type-safe methods of the returned
+// OCIRegistryIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a OCIRegistryIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToOCIRegistryIndexInformer(informer cache.SharedIndexInformer) OCIRegistryIndexInformer {
+	if informer, ok := informer.(OCIRegistryIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.OCIRegistry](informer)
 }

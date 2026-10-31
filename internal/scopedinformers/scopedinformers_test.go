@@ -35,7 +35,7 @@ const testNamespace = "default"
 
 func release(name, shard string) *corev1alpha1.Release {
 	r := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace},
+		Name: name, Namespace: testNamespace,
 	}
 	if shard != "" {
 		r.Labels = map[string]string{sharding.ShardLabel: shard}
@@ -77,9 +77,9 @@ func TestFullCacheListsAndReplaysHandler(t *testing.T) {
 
 	set := New(client, 0, false)
 
-	var adds int64
+	var adds atomic.Int64
 	if _, err := set.Releases().Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(any) { atomic.AddInt64(&adds, 1) },
+		AddFunc: func(any) { adds.Add(1) },
 	}); err != nil {
 		t.Fatalf("AddEventHandler: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestFullCacheListsAndReplaysHandler(t *testing.T) {
 	if len(rels) != 2 {
 		t.Fatalf("lister returned %d releases, want 2", len(rels))
 	}
-	waitFor(t, func() bool { return atomic.LoadInt64(&adds) == 2 }, "handler to see 2 initial adds")
+	waitFor(t, func() bool { return adds.Load() == 2 }, "handler to see 2 initial adds")
 
 	// An object created after the build must reach the same (replayed) handler and
 	// the lister.
@@ -103,7 +103,7 @@ func TestFullCacheListsAndReplaysHandler(t *testing.T) {
 		Create(ctx, release("app-c", "0"), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	waitFor(t, func() bool { return atomic.LoadInt64(&adds) == 3 }, "handler to see the post-build add")
+	waitFor(t, func() bool { return adds.Load() == 3 }, "handler to see the post-build add")
 }
 
 // TestRebuildScopesAndReplaysHandler is the core guarantee: switching the owned

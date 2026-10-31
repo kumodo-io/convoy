@@ -34,11 +34,39 @@ import (
 )
 
 // HelmRegistryInformer provides access to a shared informer and lister for
-// HelmRegistries.
+// HelmRegistries. Prefer using the type-safe variant (see [TypedHelmRegistryInformer]).
 type HelmRegistryInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() sourcev1alpha1.HelmRegistryLister
 }
+
+// TypedHelmRegistryInformer provides access to a shared informer and lister for
+// HelmRegistries, including the type-safe TypedInformer variant.
+// It is a superset of HelmRegistryInformer.
+type TypedHelmRegistryInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() HelmRegistryIndexInformer
+	Lister() sourcev1alpha1.HelmRegistryLister
+}
+
+// HelmRegistryIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type HelmRegistryIndexInformer cache.TypedSharedIndexInformer[*apisourcev1alpha1.HelmRegistry]
+
+// HelmRegistryHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for HelmRegistry.
+type HelmRegistryHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisourcev1alpha1.HelmRegistry]
+
+// HelmRegistryDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for HelmRegistry.
+type HelmRegistryDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisourcev1alpha1.HelmRegistry]
+
+// HelmRegistryFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for HelmRegistry.
+type HelmRegistryFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisourcev1alpha1.HelmRegistry]
+
+// HelmRegistryIndexers is a specialization of [cache.TypedIndexers] for HelmRegistry.
+type HelmRegistryIndexers = cache.TypedIndexers[*apisourcev1alpha1.HelmRegistry]
+
+// DeletedHelmRegistry is a specialization of [cache.DeletedObject] for HelmRegistry.
+type DeletedHelmRegistry = cache.DeletedObject[*apisourcev1alpha1.HelmRegistry]
 
 type helmRegistryInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -49,25 +77,49 @@ type helmRegistryInformer struct {
 // NewHelmRegistryInformer constructs a new informer for HelmRegistry type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedHelmRegistryInformer]).
 func NewHelmRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewHelmRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedHelmRegistryInformer constructs a new informer for HelmRegistry type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedHelmRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers HelmRegistryIndexers) HelmRegistryIndexInformer {
+	return NewTypedHelmRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredHelmRegistryInformer constructs a new informer for HelmRegistry type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredHelmRegistryInformer]).
 func NewFilteredHelmRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewHelmRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedHelmRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredHelmRegistryInformer constructs a new informer for HelmRegistry type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredHelmRegistryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers HelmRegistryIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) HelmRegistryIndexInformer {
+	return NewTypedHelmRegistryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewHelmRegistryInformerWithOptions constructs a new informer for HelmRegistry type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedHelmRegistryInformerWithOptions]).
 func NewHelmRegistryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedHelmRegistryInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedHelmRegistryInformerWithOptions constructs a new informer for HelmRegistry type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedHelmRegistryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) HelmRegistryIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "source.convoy.kumodo.io", Version: "v1alpha1", Resource: "helmregistrys"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.HelmRegistry](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -100,17 +152,57 @@ func NewHelmRegistryInformerWithOptions(client versioned.Interface, namespace st
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *helmRegistryInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewHelmRegistryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedHelmRegistryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *helmRegistryInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisourcev1alpha1.HelmRegistry{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *helmRegistryInformer) TypedInformer() HelmRegistryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.HelmRegistry](f.factory.InformerFor(&apisourcev1alpha1.HelmRegistry{}, f.defaultInformer))
 }
 
 func (f *helmRegistryInformer) Lister() sourcev1alpha1.HelmRegistryLister {
 	return sourcev1alpha1.NewHelmRegistryLister(f.Informer().GetIndexer())
+}
+
+// ToTypedHelmRegistryInformer converts an untyped informer into a TypedHelmRegistryInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *HelmRegistry. If that is not the case, calling type-safe methods of the returned
+// TypedHelmRegistryInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedHelmRegistryInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedHelmRegistryInformer(informer HelmRegistryInformer) TypedHelmRegistryInformer {
+	if informer, ok := informer.(TypedHelmRegistryInformer); ok {
+		return informer
+	}
+	return &helmRegistryTypedInformerAdapter{informer}
+}
+
+type helmRegistryTypedInformerAdapter struct {
+	HelmRegistryInformer
+}
+
+func (a *helmRegistryTypedInformerAdapter) TypedInformer() HelmRegistryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.HelmRegistry](a.Informer())
+}
+
+// ToHelmRegistryIndexInformer converts an untyped informer into a HelmRegistryIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *HelmRegistry. If that is not the case, calling type-safe methods of the returned
+// HelmRegistryIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a HelmRegistryIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToHelmRegistryIndexInformer(informer cache.SharedIndexInformer) HelmRegistryIndexInformer {
+	if informer, ok := informer.(HelmRegistryIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.HelmRegistry](informer)
 }

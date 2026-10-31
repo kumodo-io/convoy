@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -78,7 +77,7 @@ users:
 
 func kubeconfigCluster() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: dummyNamespace},
+		Name: "c1", Namespace: dummyNamespace,
 		Spec: corev1alpha1.ClusterSpec{
 			ConnectionMode: corev1alpha1.ClusterConnectionModeAgentless,
 			Agentless: &corev1alpha1.ClusterAgentlessModeSpec{
@@ -141,7 +140,7 @@ func TestKubeconfigAuthenticator_Errors(t *testing.T) {
 			name:     "kubeconfig block missing",
 			resolver: fakeSecretResolver{},
 			cluster: &corev1alpha1.Cluster{
-				ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: dummyNamespace},
+				Name: "c1", Namespace: dummyNamespace,
 				Spec: corev1alpha1.ClusterSpec{
 					ConnectionMode: corev1alpha1.ClusterConnectionModeAgentless,
 					Agentless: &corev1alpha1.ClusterAgentlessModeSpec{

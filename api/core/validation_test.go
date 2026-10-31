@@ -36,7 +36,7 @@ const (
 // manifests content — the baseline the same-namespace tests then mutate.
 func validRelease() *Release {
 	return &Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: dummyReleaseNamespace},
+		Name: "app", Namespace: dummyReleaseNamespace,
 		Spec: ReleaseSpec{
 			Source: ReleaseSourceSpec{
 				Type:          ReleaseSourceTypeGitRepository,

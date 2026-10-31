@@ -20,8 +20,6 @@ import (
 	"context"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/inventory"
 )
@@ -32,8 +30,8 @@ func relWithPostSync(ra *corev1alpha1.LifecycleHookRunAfter, withHealth bool) *c
 	hook := podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
 	hook.RunAfter = ra
 	rel := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: hookRelUID},
-		Lifecycle:  &corev1alpha1.ReleaseLifecycle{PostSync: []corev1alpha1.LifecycleHookSpec{hook}},
+		Name: appName, Namespace: "ns", UID: hookRelUID,
+		Lifecycle: &corev1alpha1.ReleaseLifecycle{PostSync: []corev1alpha1.LifecycleHookSpec{hook}},
 	}
 	if withHealth {
 		rel.Spec.HealthAssessment = &corev1alpha1.ReleaseHealthAssessment{}
@@ -145,10 +143,10 @@ func TestRunAfter_HealthyNoAssessmentIsTriviallyHealthy(t *testing.T) {
 func TestReleaseHealthy(t *testing.T) {
 	ctx := context.Background()
 	const render = "sha256:cur"
-	relNoHA := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns"}}
+	relNoHA := &corev1alpha1.Release{Name: appName, Namespace: "ns"}
 	relHA := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns"},
-		Spec:       corev1alpha1.ReleaseSpec{HealthAssessment: &corev1alpha1.ReleaseHealthAssessment{}},
+		Name: appName, Namespace: "ns",
+		Spec: corev1alpha1.ReleaseSpec{HealthAssessment: &corev1alpha1.ReleaseHealthAssessment{}},
 	}
 
 	// No assessment → trivially healthy regardless of inventory.

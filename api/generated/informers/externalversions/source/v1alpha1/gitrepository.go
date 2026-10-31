@@ -34,11 +34,39 @@ import (
 )
 
 // GitRepositoryInformer provides access to a shared informer and lister for
-// GitRepositories.
+// GitRepositories. Prefer using the type-safe variant (see [TypedGitRepositoryInformer]).
 type GitRepositoryInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() sourcev1alpha1.GitRepositoryLister
 }
+
+// TypedGitRepositoryInformer provides access to a shared informer and lister for
+// GitRepositories, including the type-safe TypedInformer variant.
+// It is a superset of GitRepositoryInformer.
+type TypedGitRepositoryInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() GitRepositoryIndexInformer
+	Lister() sourcev1alpha1.GitRepositoryLister
+}
+
+// GitRepositoryIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type GitRepositoryIndexInformer cache.TypedSharedIndexInformer[*apisourcev1alpha1.GitRepository]
+
+// GitRepositoryHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for GitRepository.
+type GitRepositoryHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisourcev1alpha1.GitRepository]
+
+// GitRepositoryDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for GitRepository.
+type GitRepositoryDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisourcev1alpha1.GitRepository]
+
+// GitRepositoryFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for GitRepository.
+type GitRepositoryFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisourcev1alpha1.GitRepository]
+
+// GitRepositoryIndexers is a specialization of [cache.TypedIndexers] for GitRepository.
+type GitRepositoryIndexers = cache.TypedIndexers[*apisourcev1alpha1.GitRepository]
+
+// DeletedGitRepository is a specialization of [cache.DeletedObject] for GitRepository.
+type DeletedGitRepository = cache.DeletedObject[*apisourcev1alpha1.GitRepository]
 
 type gitRepositoryInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -49,25 +77,49 @@ type gitRepositoryInformer struct {
 // NewGitRepositoryInformer constructs a new informer for GitRepository type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedGitRepositoryInformer]).
 func NewGitRepositoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewGitRepositoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedGitRepositoryInformer constructs a new informer for GitRepository type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedGitRepositoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers GitRepositoryIndexers) GitRepositoryIndexInformer {
+	return NewTypedGitRepositoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredGitRepositoryInformer constructs a new informer for GitRepository type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredGitRepositoryInformer]).
 func NewFilteredGitRepositoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewGitRepositoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedGitRepositoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredGitRepositoryInformer constructs a new informer for GitRepository type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredGitRepositoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers GitRepositoryIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) GitRepositoryIndexInformer {
+	return NewTypedGitRepositoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewGitRepositoryInformerWithOptions constructs a new informer for GitRepository type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedGitRepositoryInformerWithOptions]).
 func NewGitRepositoryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedGitRepositoryInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedGitRepositoryInformerWithOptions constructs a new informer for GitRepository type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedGitRepositoryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) GitRepositoryIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "source.convoy.kumodo.io", Version: "v1alpha1", Resource: "gitrepositorys"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.GitRepository](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -100,17 +152,57 @@ func NewGitRepositoryInformerWithOptions(client versioned.Interface, namespace s
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *gitRepositoryInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewGitRepositoryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedGitRepositoryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *gitRepositoryInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisourcev1alpha1.GitRepository{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *gitRepositoryInformer) TypedInformer() GitRepositoryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.GitRepository](f.factory.InformerFor(&apisourcev1alpha1.GitRepository{}, f.defaultInformer))
 }
 
 func (f *gitRepositoryInformer) Lister() sourcev1alpha1.GitRepositoryLister {
 	return sourcev1alpha1.NewGitRepositoryLister(f.Informer().GetIndexer())
+}
+
+// ToTypedGitRepositoryInformer converts an untyped informer into a TypedGitRepositoryInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *GitRepository. If that is not the case, calling type-safe methods of the returned
+// TypedGitRepositoryInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedGitRepositoryInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedGitRepositoryInformer(informer GitRepositoryInformer) TypedGitRepositoryInformer {
+	if informer, ok := informer.(TypedGitRepositoryInformer); ok {
+		return informer
+	}
+	return &gitRepositoryTypedInformerAdapter{informer}
+}
+
+type gitRepositoryTypedInformerAdapter struct {
+	GitRepositoryInformer
+}
+
+func (a *gitRepositoryTypedInformerAdapter) TypedInformer() GitRepositoryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.GitRepository](a.Informer())
+}
+
+// ToGitRepositoryIndexInformer converts an untyped informer into a GitRepositoryIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *GitRepository. If that is not the case, calling type-safe methods of the returned
+// GitRepositoryIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a GitRepositoryIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToGitRepositoryIndexInformer(informer cache.SharedIndexInformer) GitRepositoryIndexInformer {
+	if informer, ok := informer.(GitRepositoryIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisourcev1alpha1.GitRepository](informer)
 }

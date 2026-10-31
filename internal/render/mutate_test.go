@@ -82,8 +82,8 @@ func deploymentTarget() corev1alpha1.ReleaseMutationTarget {
 
 func testCluster() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: clusterName},
-		Spec:       corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": clusterMetaRegion}},
+		Name: clusterName,
+		Spec: corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": clusterMetaRegion}},
 	}
 }
 
@@ -93,7 +93,7 @@ func apply(objs []*unstructured.Unstructured, muts []corev1alpha1.ReleaseMutatio
 	return ApplyMutations(context.Background(), MutationInput{
 		Objects:   objs,
 		Mutations: muts,
-		Release:   &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: releaseName, Namespace: "ns"}},
+		Release:   &corev1alpha1.Release{Name: releaseName, Namespace: "ns"},
 		Cluster:   cluster,
 	})
 }
@@ -326,7 +326,7 @@ func TestApplyMutations_StrategicMergeFromGitRepository(t *testing.T) {
 	out, _, err := ApplyMutations(context.Background(), MutationInput{
 		Objects:     objs,
 		Mutations:   []corev1alpha1.ReleaseMutation{m},
-		Release:     &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: releaseName, Namespace: "ns"}},
+		Release:     &corev1alpha1.Release{Name: releaseName, Namespace: "ns"},
 		Coordinator: coord,
 	})
 	if err != nil {
@@ -356,7 +356,7 @@ func TestApplyMutations_FromNameTemplated(t *testing.T) {
 	out, _, err := ApplyMutations(context.Background(), MutationInput{
 		Objects:   objs,
 		Mutations: []corev1alpha1.ReleaseMutation{m},
-		Release:   &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: releaseName, Namespace: "ns"}},
+		Release:   &corev1alpha1.Release{Name: releaseName, Namespace: "ns"},
 		Cluster:   testCluster(),
 		Resolver:  resolver,
 	})

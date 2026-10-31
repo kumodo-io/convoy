@@ -52,11 +52,9 @@ func (f fakeFetcher) Verify(context.Context, *sourcev1alpha1.OCIRegistry) error 
 
 func noneReg() *sourcev1alpha1.OCIRegistry {
 	return &sourcev1alpha1.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       dummyName,
-			Namespace:  dummyNamespace,
-			Generation: 1,
-		},
+		Name:       dummyName,
+		Namespace:  dummyNamespace,
+		Generation: 1,
 		Spec: sourcev1alpha1.OCIRegistrySpec{
 			URL:  dummyURL,
 			Auth: sourcev1alpha1.OCIRegistryAuthSpec{Type: sourcev1alpha1.OCIRegistryAuthTypeNone},

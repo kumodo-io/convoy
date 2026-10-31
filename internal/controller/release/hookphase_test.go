@@ -136,12 +136,12 @@ func newHookController(runner HookRunner, store inventory.Store) *Controller {
 
 func relWithPreSync(hooks ...corev1alpha1.LifecycleHookSpec) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: hookRelUID},
-		Lifecycle:  &corev1alpha1.ReleaseLifecycle{PreSync: hooks},
+		Name: appName, Namespace: "ns", UID: hookRelUID,
+		Lifecycle: &corev1alpha1.ReleaseLifecycle{PreSync: hooks},
 	}
 }
 
-var hookCluster = &corev1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "target"}}
+var hookCluster = &corev1alpha1.Cluster{Name: "target"}
 
 func runPreSync(t *testing.T, c *Controller, rel *corev1alpha1.Release) hookPhaseResult {
 	t.Helper()
@@ -154,7 +154,7 @@ func runPreSync(t *testing.T, c *Controller, rel *corev1alpha1.Release) hookPhas
 
 func TestRunHookPhase_NoHooksAdvances(t *testing.T) {
 	c := newHookController(&fakeHookRunner{}, &fakeHookStore{})
-	rel := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns"}}
+	rel := &corev1alpha1.Release{Name: appName, Namespace: "ns"}
 	if res := runPreSync(t, c, rel); res.state != hookPhaseAdvance {
 		t.Errorf("no hooks: state = %v, want advance", res.state)
 	}

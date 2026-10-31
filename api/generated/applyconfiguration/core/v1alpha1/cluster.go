@@ -27,7 +27,7 @@ import (
 // ClusterApplyConfiguration represents a declarative configuration of the Cluster type for use
 // with apply.
 type ClusterApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                             *ClusterSpecApplyConfiguration   `json:"spec,omitempty"`
 	Status                           *ClusterStatusApplyConfiguration `json:"status,omitempty"`

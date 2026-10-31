@@ -19,7 +19,6 @@ package globalhealthruleset_test
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	genericregistrytest "k8s.io/apiserver/pkg/registry/generic/testing"
@@ -46,9 +45,7 @@ func newStorage(t *testing.T) (*genericregistry.Store, *etcd3testing.EtcdTestSer
 // validNewGlobalHealthRuleSet returns a cluster-scoped rule (no namespace).
 func validNewGlobalHealthRuleSet() *extensions.GlobalHealthRuleSet {
 	return &extensions.GlobalHealthRuleSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "certificate-health",
-		},
+		Name: "certificate-health",
 		Spec: extensions.GlobalHealthRuleSetSpec{
 			Rules: []extensions.RuleSpec{
 				{

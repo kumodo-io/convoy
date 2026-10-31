@@ -53,10 +53,8 @@ func newStorage(t *testing.T) (*genericregistry.Store, *helmregistrystorage.Stat
 
 func validNewHelmRegistry(namespace string) *source.HelmRegistry {
 	return &source.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyHelmRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyHelmRegistryName,
+		Namespace: namespace,
 		Spec: source.HelmRegistrySpec{
 			URL: dummyHelmRegistryURL,
 			Auth: source.HelmRegistryAuthSpec{
@@ -68,10 +66,8 @@ func validNewHelmRegistry(namespace string) *source.HelmRegistry {
 
 func invalidNewHelmRegistryNoURL(namespace string) *source.HelmRegistry {
 	return &source.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyHelmRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyHelmRegistryName,
+		Namespace: namespace,
 		Spec: source.HelmRegistrySpec{
 			Auth: source.HelmRegistryAuthSpec{
 				Type: source.HelmRegistryAuthTypeNone,
@@ -82,10 +78,8 @@ func invalidNewHelmRegistryNoURL(namespace string) *source.HelmRegistry {
 
 func invalidNewHelmRegistryNoAuth(namespace string) *source.HelmRegistry {
 	return &source.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyHelmRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyHelmRegistryName,
+		Namespace: namespace,
 		Spec: source.HelmRegistrySpec{
 			URL: dummyHelmRegistryURL,
 		},
@@ -94,10 +88,8 @@ func invalidNewHelmRegistryNoAuth(namespace string) *source.HelmRegistry {
 
 func invalidNewHelmRegistryUnknownAuthType(namespace string) *source.HelmRegistry {
 	return &source.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyHelmRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyHelmRegistryName,
+		Namespace: namespace,
 		Spec: source.HelmRegistrySpec{
 			URL: dummyHelmRegistryURL,
 			Auth: source.HelmRegistryAuthSpec{
@@ -109,10 +101,8 @@ func invalidNewHelmRegistryUnknownAuthType(namespace string) *source.HelmRegistr
 
 func invalidNewHelmRegistryMultipleAuthConfigs(namespace string) *source.HelmRegistry {
 	return &source.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyHelmRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyHelmRegistryName,
+		Namespace: namespace,
 		Spec: source.HelmRegistrySpec{
 			URL: dummyHelmRegistryURL,
 			Auth: source.HelmRegistryAuthSpec{
@@ -126,10 +116,8 @@ func invalidNewHelmRegistryMultipleAuthConfigs(namespace string) *source.HelmReg
 
 func invalidNewHelmRegistryMismatchAuthConfig(namespace string) *source.HelmRegistry {
 	return &source.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyHelmRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyHelmRegistryName,
+		Namespace: namespace,
 		Spec: source.HelmRegistrySpec{
 			URL: dummyHelmRegistryURL,
 			Auth: source.HelmRegistryAuthSpec{

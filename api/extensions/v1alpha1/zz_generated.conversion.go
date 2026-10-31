@@ -158,7 +158,7 @@ func Convert_extensions_GlobalHealthRuleSetList_To_v1alpha1_GlobalHealthRuleSetL
 }
 
 func autoConvert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetSpec(in *GlobalHealthRuleSetSpec, out *extensions.GlobalHealthRuleSetSpec, s conversion.Scope) error {
-	out.Rules = *(*[]extensions.RuleSpec)(unsafe.Pointer(&in.Rules))
+	*out = *(*extensions.GlobalHealthRuleSetSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -168,7 +168,7 @@ func Convert_v1alpha1_GlobalHealthRuleSetSpec_To_extensions_GlobalHealthRuleSetS
 }
 
 func autoConvert_extensions_GlobalHealthRuleSetSpec_To_v1alpha1_GlobalHealthRuleSetSpec(in *extensions.GlobalHealthRuleSetSpec, out *GlobalHealthRuleSetSpec, s conversion.Scope) error {
-	out.Rules = *(*[]RuleSpec)(unsafe.Pointer(&in.Rules))
+	*out = *(*GlobalHealthRuleSetSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -226,7 +226,7 @@ func Convert_extensions_HealthRuleSetList_To_v1alpha1_HealthRuleSetList(in *exte
 }
 
 func autoConvert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec(in *HealthRuleSetSpec, out *extensions.HealthRuleSetSpec, s conversion.Scope) error {
-	out.Rules = *(*[]extensions.RuleSpec)(unsafe.Pointer(&in.Rules))
+	*out = *(*extensions.HealthRuleSetSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -236,7 +236,7 @@ func Convert_v1alpha1_HealthRuleSetSpec_To_extensions_HealthRuleSetSpec(in *Heal
 }
 
 func autoConvert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec(in *extensions.HealthRuleSetSpec, out *HealthRuleSetSpec, s conversion.Scope) error {
-	out.Rules = *(*[]RuleSpec)(unsafe.Pointer(&in.Rules))
+	*out = *(*HealthRuleSetSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -246,10 +246,7 @@ func Convert_extensions_HealthRuleSetSpec_To_v1alpha1_HealthRuleSetSpec(in *exte
 }
 
 func autoConvert_v1alpha1_RuleSpec_To_extensions_RuleSpec(in *RuleSpec, out *extensions.RuleSpec, s conversion.Scope) error {
-	out.ApiVersion = in.ApiVersion
-	out.Resources = *(*[]string)(unsafe.Pointer(&in.Resources))
-	out.RuleExpression = in.RuleExpression
-	out.MessageExpression = in.MessageExpression
+	*out = *(*extensions.RuleSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -259,10 +256,7 @@ func Convert_v1alpha1_RuleSpec_To_extensions_RuleSpec(in *RuleSpec, out *extensi
 }
 
 func autoConvert_extensions_RuleSpec_To_v1alpha1_RuleSpec(in *extensions.RuleSpec, out *RuleSpec, s conversion.Scope) error {
-	out.ApiVersion = in.ApiVersion
-	out.Resources = *(*[]string)(unsafe.Pointer(&in.Resources))
-	out.RuleExpression = in.RuleExpression
-	out.MessageExpression = in.MessageExpression
+	*out = *(*RuleSpec)(unsafe.Pointer(in))
 	return nil
 }
 

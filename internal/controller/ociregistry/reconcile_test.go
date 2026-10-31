@@ -29,8 +29,8 @@ import (
 
 func regWithStatus(generation int64, status sourcev1alpha1.OCIRegistryStatus) *sourcev1alpha1.OCIRegistry {
 	return &sourcev1alpha1.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{Name: "o1", Namespace: "ns", Generation: generation},
-		Status:     status,
+		Name: "o1", Namespace: "ns", Generation: generation,
+		Status: status,
 	}
 }
 

@@ -48,7 +48,7 @@ func (f fakeProber) Probe(context.Context, *corev1alpha1.Cluster) (ProbeResult, 
 
 func clusterWithInClusterConnectionMode() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns", Generation: 1},
+		Name: "c1", Namespace: "ns", Generation: 1,
 		Spec: corev1alpha1.ClusterSpec{
 			ConnectionMode: corev1alpha1.ClusterConnectionModeInCluster,
 		},

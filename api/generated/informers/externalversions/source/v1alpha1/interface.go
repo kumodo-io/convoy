@@ -25,11 +25,11 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// GitRepositories returns a GitRepositoryInformer.
-	GitRepositories() GitRepositoryInformer
+	GitRepositories() TypedGitRepositoryInformer
 	// HelmRegistries returns a HelmRegistryInformer.
-	HelmRegistries() HelmRegistryInformer
+	HelmRegistries() TypedHelmRegistryInformer
 	// OCIRegistries returns a OCIRegistryInformer.
-	OCIRegistries() OCIRegistryInformer
+	OCIRegistries() TypedOCIRegistryInformer
 }
 
 type version struct {
@@ -43,17 +43,17 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// GitRepositories returns a GitRepositoryInformer.
-func (v *version) GitRepositories() GitRepositoryInformer {
+// GitRepositories returns a TypedGitRepositoryInformer.
+func (v *version) GitRepositories() TypedGitRepositoryInformer {
 	return &gitRepositoryInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// HelmRegistries returns a HelmRegistryInformer.
-func (v *version) HelmRegistries() HelmRegistryInformer {
+// HelmRegistries returns a TypedHelmRegistryInformer.
+func (v *version) HelmRegistries() TypedHelmRegistryInformer {
 	return &helmRegistryInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// OCIRegistries returns a OCIRegistryInformer.
-func (v *version) OCIRegistries() OCIRegistryInformer {
+// OCIRegistries returns a TypedOCIRegistryInformer.
+func (v *version) OCIRegistries() TypedOCIRegistryInformer {
 	return &oCIRegistryInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

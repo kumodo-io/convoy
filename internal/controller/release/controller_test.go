@@ -125,7 +125,7 @@ func readyCoordinator() *fakeCoordinator {
 
 func manifestsRelease() *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns", Generation: 1},
+		Name: "r1", Namespace: "ns", Generation: 1,
 		Spec: corev1alpha1.ReleaseSpec{
 			Source: corev1alpha1.ReleaseSourceSpec{
 				Type: corev1alpha1.ReleaseSourceTypeGitRepository,
@@ -145,8 +145,8 @@ func manifestsRelease() *corev1alpha1.Release {
 
 func reachableCluster() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: dummyCluster, Namespace: "ns"},
-		Status:     corev1alpha1.ClusterStatus{Reachable: true},
+		Name: dummyCluster, Namespace: "ns",
+		Status: corev1alpha1.ClusterStatus{Reachable: true},
 	}
 }
 

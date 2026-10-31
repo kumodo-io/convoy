@@ -34,11 +34,39 @@ import (
 )
 
 // GlobalHealthRuleSetInformer provides access to a shared informer and lister for
-// GlobalHealthRuleSets.
+// GlobalHealthRuleSets. Prefer using the type-safe variant (see [TypedGlobalHealthRuleSetInformer]).
 type GlobalHealthRuleSetInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() extensionsv1alpha1.GlobalHealthRuleSetLister
 }
+
+// TypedGlobalHealthRuleSetInformer provides access to a shared informer and lister for
+// GlobalHealthRuleSets, including the type-safe TypedInformer variant.
+// It is a superset of GlobalHealthRuleSetInformer.
+type TypedGlobalHealthRuleSetInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() GlobalHealthRuleSetIndexInformer
+	Lister() extensionsv1alpha1.GlobalHealthRuleSetLister
+}
+
+// GlobalHealthRuleSetIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type GlobalHealthRuleSetIndexInformer cache.TypedSharedIndexInformer[*apiextensionsv1alpha1.GlobalHealthRuleSet]
+
+// GlobalHealthRuleSetHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for GlobalHealthRuleSet.
+type GlobalHealthRuleSetHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiextensionsv1alpha1.GlobalHealthRuleSet]
+
+// GlobalHealthRuleSetDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for GlobalHealthRuleSet.
+type GlobalHealthRuleSetDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiextensionsv1alpha1.GlobalHealthRuleSet]
+
+// GlobalHealthRuleSetFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for GlobalHealthRuleSet.
+type GlobalHealthRuleSetFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiextensionsv1alpha1.GlobalHealthRuleSet]
+
+// GlobalHealthRuleSetIndexers is a specialization of [cache.TypedIndexers] for GlobalHealthRuleSet.
+type GlobalHealthRuleSetIndexers = cache.TypedIndexers[*apiextensionsv1alpha1.GlobalHealthRuleSet]
+
+// DeletedGlobalHealthRuleSet is a specialization of [cache.DeletedObject] for GlobalHealthRuleSet.
+type DeletedGlobalHealthRuleSet = cache.DeletedObject[*apiextensionsv1alpha1.GlobalHealthRuleSet]
 
 type globalHealthRuleSetInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -48,25 +76,49 @@ type globalHealthRuleSetInformer struct {
 // NewGlobalHealthRuleSetInformer constructs a new informer for GlobalHealthRuleSet type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedGlobalHealthRuleSetInformer]).
 func NewGlobalHealthRuleSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewGlobalHealthRuleSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedGlobalHealthRuleSetInformer constructs a new informer for GlobalHealthRuleSet type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedGlobalHealthRuleSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers GlobalHealthRuleSetIndexers) GlobalHealthRuleSetIndexInformer {
+	return NewTypedGlobalHealthRuleSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredGlobalHealthRuleSetInformer constructs a new informer for GlobalHealthRuleSet type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredGlobalHealthRuleSetInformer]).
 func NewFilteredGlobalHealthRuleSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewGlobalHealthRuleSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedGlobalHealthRuleSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredGlobalHealthRuleSetInformer constructs a new informer for GlobalHealthRuleSet type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredGlobalHealthRuleSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers GlobalHealthRuleSetIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) GlobalHealthRuleSetIndexInformer {
+	return NewTypedGlobalHealthRuleSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewGlobalHealthRuleSetInformerWithOptions constructs a new informer for GlobalHealthRuleSet type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedGlobalHealthRuleSetInformerWithOptions]).
 func NewGlobalHealthRuleSetInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedGlobalHealthRuleSetInformerWithOptions(client, options)
+}
+
+// NewTypedGlobalHealthRuleSetInformerWithOptions constructs a new informer for GlobalHealthRuleSet type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedGlobalHealthRuleSetInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) GlobalHealthRuleSetIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "extensions.convoy.kumodo.io", Version: "v1alpha1", Resource: "globalhealthrulesets"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiextensionsv1alpha1.GlobalHealthRuleSet](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -99,17 +151,57 @@ func NewGlobalHealthRuleSetInformerWithOptions(client versioned.Interface, optio
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *globalHealthRuleSetInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewGlobalHealthRuleSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedGlobalHealthRuleSetInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *globalHealthRuleSetInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiextensionsv1alpha1.GlobalHealthRuleSet{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *globalHealthRuleSetInformer) TypedInformer() GlobalHealthRuleSetIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiextensionsv1alpha1.GlobalHealthRuleSet](f.factory.InformerFor(&apiextensionsv1alpha1.GlobalHealthRuleSet{}, f.defaultInformer))
 }
 
 func (f *globalHealthRuleSetInformer) Lister() extensionsv1alpha1.GlobalHealthRuleSetLister {
 	return extensionsv1alpha1.NewGlobalHealthRuleSetLister(f.Informer().GetIndexer())
+}
+
+// ToTypedGlobalHealthRuleSetInformer converts an untyped informer into a TypedGlobalHealthRuleSetInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *GlobalHealthRuleSet. If that is not the case, calling type-safe methods of the returned
+// TypedGlobalHealthRuleSetInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedGlobalHealthRuleSetInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedGlobalHealthRuleSetInformer(informer GlobalHealthRuleSetInformer) TypedGlobalHealthRuleSetInformer {
+	if informer, ok := informer.(TypedGlobalHealthRuleSetInformer); ok {
+		return informer
+	}
+	return &globalHealthRuleSetTypedInformerAdapter{informer}
+}
+
+type globalHealthRuleSetTypedInformerAdapter struct {
+	GlobalHealthRuleSetInformer
+}
+
+func (a *globalHealthRuleSetTypedInformerAdapter) TypedInformer() GlobalHealthRuleSetIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiextensionsv1alpha1.GlobalHealthRuleSet](a.Informer())
+}
+
+// ToGlobalHealthRuleSetIndexInformer converts an untyped informer into a GlobalHealthRuleSetIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *GlobalHealthRuleSet. If that is not the case, calling type-safe methods of the returned
+// GlobalHealthRuleSetIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a GlobalHealthRuleSetIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToGlobalHealthRuleSetIndexInformer(informer cache.SharedIndexInformer) GlobalHealthRuleSetIndexInformer {
+	if informer, ok := informer.(GlobalHealthRuleSetIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiextensionsv1alpha1.GlobalHealthRuleSet](informer)
 }

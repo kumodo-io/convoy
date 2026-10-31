@@ -71,10 +71,10 @@ func deploymentEntry(name string, state corev1alpha1.ResourceState, message stri
 // controller's — untouched.
 func TestWriteInventoryHealth(t *testing.T) {
 	ctx := context.Background()
-	rel := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"}}
+	rel := &corev1alpha1.Release{Name: "r1", Namespace: "ns"}
 	// Seed an existing inventory (the fake Apply does not create-on-apply).
 	c, client := inventoryHealthController(t, &corev1alpha1.ReleaseInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
+		Name: "r1", Namespace: "ns",
 	})
 
 	first := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
@@ -120,7 +120,7 @@ func TestPriorAndAnchors(t *testing.T) {
 	first := metav1.NewTime(time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC))
 	degraded := corev1alpha1.ResourceStateDegraded
 	inv := &corev1alpha1.ReleaseInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
+		Name: "r1", Namespace: "ns",
 		Inventory: []corev1alpha1.ResourceInventoryItem{
 			{Group: groupApps, Kind: deploymentKind, Namespace: "ns", Name: depName, State: &degraded, FirstUnhealthy: &first},
 			{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: "cfg"}, // no state, no anchor

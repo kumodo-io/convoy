@@ -19,14 +19,12 @@ package controllermanager
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
 func TestReleaseClusterIndexKeys(t *testing.T) {
 	rel := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "team"},
+		Namespace: "team",
 		Spec: corev1alpha1.ReleaseSpec{
 			ClusterRef: corev1alpha1.ReleaseClusterRefSpec{Name: "prod", Namespace: "infra"},
 		},

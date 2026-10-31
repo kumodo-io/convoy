@@ -27,7 +27,7 @@ import (
 // GitRepositoryApplyConfiguration represents a declarative configuration of the GitRepository type for use
 // with apply.
 type GitRepositoryApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                             *GitRepositorySpecApplyConfiguration         `json:"spec,omitempty"`
 	Webhook                          []GitRepositoryWebhookSpecApplyConfiguration `json:"webhook,omitempty"`

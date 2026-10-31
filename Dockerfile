@@ -5,7 +5,7 @@
 # prebuilt binary, `make`, or Go toolchain on the host required. Used by CI and
 # `make kind-deploy`.
 
-FROM golang:1.26-bookworm AS base
+FROM golang:1.27-bookworm AS base
 WORKDIR /src
 
 # Download modules in a separate layer so source edits don't re-fetch deps.

@@ -53,10 +53,8 @@ func newStorage(t *testing.T) (*genericregistry.Store, *releasestorage.StatusRES
 
 func validNewRelease(namespace string) *core.Release {
 	return &core.Release{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: namespace,
-		},
+		Name:      "foo",
+		Namespace: namespace,
 		Spec: core.ReleaseSpec{
 			Source: core.ReleaseSourceSpec{
 				Type: core.ReleaseSourceTypeGitRepository,

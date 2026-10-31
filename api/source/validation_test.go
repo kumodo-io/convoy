@@ -21,20 +21,19 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 )
 
 func secretKeyRef(key string) corev1.SecretKeySelector {
-	return corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "s"}, Key: key}
+	return corev1.SecretKeySelector{Name: "s", Key: key}
 }
 
 func gitRepo(auth GitRepositoryAuthSpec) *GitRepository {
 	return &GitRepository{
-		ObjectMeta: metav1.ObjectMeta{Name: "repo", Namespace: "ns"},
-		Spec:       GitRepositorySpec{URL: "https://example.com/x.git", Auth: auth},
+		Name: "repo", Namespace: "ns",
+		Spec: GitRepositorySpec{URL: "https://example.com/x.git", Auth: auth},
 	}
 }
 

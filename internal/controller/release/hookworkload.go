@@ -127,14 +127,14 @@ func buildHookWorkload(rel *corev1alpha1.Release, cluster *corev1alpha1.Cluster,
 	case hook.JobTemplate != nil:
 		meta = hook.JobTemplate.Metadata
 		typed = &batchv1.Job{
-			TypeMeta:   metav1.TypeMeta{APIVersion: "batch/v1", Kind: kindJob},
+			APIVersion: "batch/v1", Kind: kindJob,
 			ObjectMeta: partialObjectMeta(meta),
 			Spec:       hook.JobTemplate.Spec,
 		}
 	case hook.PodTemplate != nil:
 		meta = hook.PodTemplate.Metadata
 		typed = &corev1.Pod{
-			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: kindPod},
+			APIVersion: "v1", Kind: kindPod,
 			ObjectMeta: partialObjectMeta(meta),
 			Spec:       hook.PodTemplate.Spec,
 		}

@@ -19,8 +19,6 @@ package observer
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
@@ -28,7 +26,7 @@ const clusterProd = "prod"
 
 func relWithCluster(clusterNs string) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "team", Name: "rel"},
+		Namespace: "team", Name: "rel",
 		Spec: corev1alpha1.ReleaseSpec{
 			ClusterRef: corev1alpha1.ReleaseClusterRefSpec{Namespace: clusterNs, Name: clusterProd},
 		},

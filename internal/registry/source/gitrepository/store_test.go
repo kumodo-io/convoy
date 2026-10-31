@@ -53,10 +53,8 @@ func newStorage(t *testing.T) (*genericregistry.Store, *gitrepositorystorage.Sta
 
 func validNewGitRepository(namespace string) *source.GitRepository {
 	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
+		Name:      dummyGitRepositoryName,
+		Namespace: namespace,
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
 			Auth: source.GitRepositoryAuthSpec{
@@ -68,10 +66,8 @@ func validNewGitRepository(namespace string) *source.GitRepository {
 
 func invalidNewGitRepositroyNoURL(namespace string) *source.GitRepository {
 	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
+		Name:      dummyGitRepositoryName,
+		Namespace: namespace,
 		Spec: source.GitRepositorySpec{
 			Auth: source.GitRepositoryAuthSpec{
 				Type: source.GitRepositoryAuthTypeNone,
@@ -82,10 +78,8 @@ func invalidNewGitRepositroyNoURL(namespace string) *source.GitRepository {
 
 func invalidNewGitRepositroyNoAuth(namespace string) *source.GitRepository {
 	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
+		Name:      dummyGitRepositoryName,
+		Namespace: namespace,
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
 		},
@@ -94,10 +88,8 @@ func invalidNewGitRepositroyNoAuth(namespace string) *source.GitRepository {
 
 func invalidNewGitRepositroyUnknownAuthType(namespace string) *source.GitRepository {
 	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
+		Name:      dummyGitRepositoryName,
+		Namespace: namespace,
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
 			Auth: source.GitRepositoryAuthSpec{
@@ -109,10 +101,8 @@ func invalidNewGitRepositroyUnknownAuthType(namespace string) *source.GitReposit
 
 func invalidNewGitRepositoryMultipleAuthConfigs(namespace string) *source.GitRepository {
 	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
+		Name:      dummyGitRepositoryName,
+		Namespace: namespace,
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
 			Auth: source.GitRepositoryAuthSpec{
@@ -126,10 +116,8 @@ func invalidNewGitRepositoryMultipleAuthConfigs(namespace string) *source.GitRep
 
 func invalidNewGitRepositoryMismatchAuthConfig(namespace string) *source.GitRepository {
 	return &source.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyGitRepositoryName,
-			Namespace: namespace,
-		},
+		Name:      dummyGitRepositoryName,
+		Namespace: namespace,
 		Spec: source.GitRepositorySpec{
 			URL: dummyGitRepositoryURL,
 			Auth: source.GitRepositoryAuthSpec{

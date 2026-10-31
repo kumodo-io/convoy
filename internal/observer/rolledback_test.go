@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -56,7 +55,7 @@ func TestRolledBackRender(t *testing.T) {
 
 	rolledBack := func() *corev1alpha1.Release {
 		return &corev1alpha1.Release{
-			ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
+			Name: "r1", Namespace: "ns",
 			Status: corev1alpha1.ReleaseStatus{
 				LastHealthy: &corev1alpha1.LastHealthy{RenderRef: "sha256:lasthealthy"},
 				Rollout: &corev1alpha1.RolloutStatus{

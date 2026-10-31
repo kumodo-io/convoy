@@ -25,7 +25,6 @@ import (
 	unsafe "unsafe"
 
 	auth "github.com/kumodo-io/convoy/api/auth"
-	v1 "k8s.io/api/core/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -181,8 +180,7 @@ func RegisterConversions(s *runtime.Scheme) error {
 }
 
 func autoConvert_v1alpha1_BasicAuthSpec_To_auth_BasicAuthSpec(in *BasicAuthSpec, out *auth.BasicAuthSpec, s conversion.Scope) error {
-	out.Username = in.Username
-	out.PasswordRef = in.PasswordRef
+	*out = *(*auth.BasicAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -192,8 +190,7 @@ func Convert_v1alpha1_BasicAuthSpec_To_auth_BasicAuthSpec(in *BasicAuthSpec, out
 }
 
 func autoConvert_auth_BasicAuthSpec_To_v1alpha1_BasicAuthSpec(in *auth.BasicAuthSpec, out *BasicAuthSpec, s conversion.Scope) error {
-	out.Username = in.Username
-	out.PasswordRef = in.PasswordRef
+	*out = *(*BasicAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -203,8 +200,7 @@ func Convert_auth_BasicAuthSpec_To_v1alpha1_BasicAuthSpec(in *auth.BasicAuthSpec
 }
 
 func autoConvert_v1alpha1_ClientCertAuthSpec_To_auth_ClientCertAuthSpec(in *ClientCertAuthSpec, out *auth.ClientCertAuthSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
+	*out = *(*auth.ClientCertAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -214,8 +210,7 @@ func Convert_v1alpha1_ClientCertAuthSpec_To_auth_ClientCertAuthSpec(in *ClientCe
 }
 
 func autoConvert_auth_ClientCertAuthSpec_To_v1alpha1_ClientCertAuthSpec(in *auth.ClientCertAuthSpec, out *ClientCertAuthSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
+	*out = *(*ClientCertAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -225,7 +220,7 @@ func Convert_auth_ClientCertAuthSpec_To_v1alpha1_ClientCertAuthSpec(in *auth.Cli
 }
 
 func autoConvert_v1alpha1_CloudIdentitySpec_To_auth_CloudIdentitySpec(in *CloudIdentitySpec, out *auth.CloudIdentitySpec, s conversion.Scope) error {
-	out.Provider = auth.CloudProvider(in.Provider)
+	*out = *(*auth.CloudIdentitySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -235,7 +230,7 @@ func Convert_v1alpha1_CloudIdentitySpec_To_auth_CloudIdentitySpec(in *CloudIdent
 }
 
 func autoConvert_auth_CloudIdentitySpec_To_v1alpha1_CloudIdentitySpec(in *auth.CloudIdentitySpec, out *CloudIdentitySpec, s conversion.Scope) error {
-	out.Provider = CloudProvider(in.Provider)
+	*out = *(*CloudIdentitySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -245,10 +240,7 @@ func Convert_auth_CloudIdentitySpec_To_v1alpha1_CloudIdentitySpec(in *auth.Cloud
 }
 
 func autoConvert_v1alpha1_ExecPluginAuthSpec_To_auth_ExecPluginAuthSpec(in *ExecPluginAuthSpec, out *auth.ExecPluginAuthSpec, s conversion.Scope) error {
-	out.Command = in.Command
-	out.Args = *(*[]string)(unsafe.Pointer(&in.Args))
-	out.Env = *(*[]v1.EnvVar)(unsafe.Pointer(&in.Env))
-	out.CredentialsRef = in.CredentialsRef
+	*out = *(*auth.ExecPluginAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -258,10 +250,7 @@ func Convert_v1alpha1_ExecPluginAuthSpec_To_auth_ExecPluginAuthSpec(in *ExecPlug
 }
 
 func autoConvert_auth_ExecPluginAuthSpec_To_v1alpha1_ExecPluginAuthSpec(in *auth.ExecPluginAuthSpec, out *ExecPluginAuthSpec, s conversion.Scope) error {
-	out.Command = in.Command
-	out.Args = *(*[]string)(unsafe.Pointer(&in.Args))
-	out.Env = *(*[]v1.EnvVar)(unsafe.Pointer(&in.Env))
-	out.CredentialsRef = in.CredentialsRef
+	*out = *(*ExecPluginAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -271,9 +260,7 @@ func Convert_auth_ExecPluginAuthSpec_To_v1alpha1_ExecPluginAuthSpec(in *auth.Exe
 }
 
 func autoConvert_v1alpha1_GithubAppAuthSpec_To_auth_GithubAppAuthSpec(in *GithubAppAuthSpec, out *auth.GithubAppAuthSpec, s conversion.Scope) error {
-	out.AppID = in.AppID
-	out.InstallationID = in.InstallationID
-	out.PrivateKeyRef = in.PrivateKeyRef
+	*out = *(*auth.GithubAppAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -283,9 +270,7 @@ func Convert_v1alpha1_GithubAppAuthSpec_To_auth_GithubAppAuthSpec(in *GithubAppA
 }
 
 func autoConvert_auth_GithubAppAuthSpec_To_v1alpha1_GithubAppAuthSpec(in *auth.GithubAppAuthSpec, out *GithubAppAuthSpec, s conversion.Scope) error {
-	out.AppID = in.AppID
-	out.InstallationID = in.InstallationID
-	out.PrivateKeyRef = in.PrivateKeyRef
+	*out = *(*GithubAppAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -295,7 +280,7 @@ func Convert_auth_GithubAppAuthSpec_To_v1alpha1_GithubAppAuthSpec(in *auth.Githu
 }
 
 func autoConvert_v1alpha1_KubeconfigAuthSpec_To_auth_KubeconfigAuthSpec(in *KubeconfigAuthSpec, out *auth.KubeconfigAuthSpec, s conversion.Scope) error {
-	out.SecretRef = in.SecretRef
+	*out = *(*auth.KubeconfigAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -305,7 +290,7 @@ func Convert_v1alpha1_KubeconfigAuthSpec_To_auth_KubeconfigAuthSpec(in *Kubeconf
 }
 
 func autoConvert_auth_KubeconfigAuthSpec_To_v1alpha1_KubeconfigAuthSpec(in *auth.KubeconfigAuthSpec, out *KubeconfigAuthSpec, s conversion.Scope) error {
-	out.SecretRef = in.SecretRef
+	*out = *(*KubeconfigAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -315,14 +300,7 @@ func Convert_auth_KubeconfigAuthSpec_To_v1alpha1_KubeconfigAuthSpec(in *auth.Kub
 }
 
 func autoConvert_v1alpha1_OIDAuthSpec_To_auth_OIDAuthSpec(in *OIDAuthSpec, out *auth.OIDAuthSpec, s conversion.Scope) error {
-	out.IssuerURL = in.IssuerURL
-	out.ClientID = in.ClientID
-	if err := Convert_v1alpha1_OIDCClientAuthSpec_To_auth_OIDCClientAuthSpec(&in.ClientAuth, &out.ClientAuth, s); err != nil {
-		return err
-	}
-	out.Scopes = *(*[]string)(unsafe.Pointer(&in.Scopes))
-	out.Audience = in.Audience
-	out.TLS = (*auth.TLSSpec)(unsafe.Pointer(in.TLS))
+	*out = *(*auth.OIDAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -332,14 +310,7 @@ func Convert_v1alpha1_OIDAuthSpec_To_auth_OIDAuthSpec(in *OIDAuthSpec, out *auth
 }
 
 func autoConvert_auth_OIDAuthSpec_To_v1alpha1_OIDAuthSpec(in *auth.OIDAuthSpec, out *OIDAuthSpec, s conversion.Scope) error {
-	out.IssuerURL = in.IssuerURL
-	out.ClientID = in.ClientID
-	if err := Convert_auth_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(&in.ClientAuth, &out.ClientAuth, s); err != nil {
-		return err
-	}
-	out.Scopes = *(*[]string)(unsafe.Pointer(&in.Scopes))
-	out.Audience = in.Audience
-	out.TLS = (*TLSSpec)(unsafe.Pointer(in.TLS))
+	*out = *(*OIDAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -349,7 +320,7 @@ func Convert_auth_OIDAuthSpec_To_v1alpha1_OIDAuthSpec(in *auth.OIDAuthSpec, out 
 }
 
 func autoConvert_v1alpha1_OIDCAuthClientSecretSpec_To_auth_OIDCAuthClientSecretSpec(in *OIDCAuthClientSecretSpec, out *auth.OIDCAuthClientSecretSpec, s conversion.Scope) error {
-	out.ClientSecretRef = in.ClientSecretRef
+	*out = *(*auth.OIDCAuthClientSecretSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -359,7 +330,7 @@ func Convert_v1alpha1_OIDCAuthClientSecretSpec_To_auth_OIDCAuthClientSecretSpec(
 }
 
 func autoConvert_auth_OIDCAuthClientSecretSpec_To_v1alpha1_OIDCAuthClientSecretSpec(in *auth.OIDCAuthClientSecretSpec, out *OIDCAuthClientSecretSpec, s conversion.Scope) error {
-	out.ClientSecretRef = in.ClientSecretRef
+	*out = *(*OIDCAuthClientSecretSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -369,7 +340,7 @@ func Convert_auth_OIDCAuthClientSecretSpec_To_v1alpha1_OIDCAuthClientSecretSpec(
 }
 
 func autoConvert_v1alpha1_OIDCAuthPrivateKeyJWTSpec_To_auth_OIDCAuthPrivateKeyJWTSpec(in *OIDCAuthPrivateKeyJWTSpec, out *auth.OIDCAuthPrivateKeyJWTSpec, s conversion.Scope) error {
-	out.PrivateKeyRef = in.PrivateKeyRef
+	*out = *(*auth.OIDCAuthPrivateKeyJWTSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -379,7 +350,7 @@ func Convert_v1alpha1_OIDCAuthPrivateKeyJWTSpec_To_auth_OIDCAuthPrivateKeyJWTSpe
 }
 
 func autoConvert_auth_OIDCAuthPrivateKeyJWTSpec_To_v1alpha1_OIDCAuthPrivateKeyJWTSpec(in *auth.OIDCAuthPrivateKeyJWTSpec, out *OIDCAuthPrivateKeyJWTSpec, s conversion.Scope) error {
-	out.PrivateKeyRef = in.PrivateKeyRef
+	*out = *(*OIDCAuthPrivateKeyJWTSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -389,8 +360,7 @@ func Convert_auth_OIDCAuthPrivateKeyJWTSpec_To_v1alpha1_OIDCAuthPrivateKeyJWTSpe
 }
 
 func autoConvert_v1alpha1_OIDCAuthTLSClientAuthSpec_To_auth_OIDCAuthTLSClientAuthSpec(in *OIDCAuthTLSClientAuthSpec, out *auth.OIDCAuthTLSClientAuthSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
+	*out = *(*auth.OIDCAuthTLSClientAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -400,8 +370,7 @@ func Convert_v1alpha1_OIDCAuthTLSClientAuthSpec_To_auth_OIDCAuthTLSClientAuthSpe
 }
 
 func autoConvert_auth_OIDCAuthTLSClientAuthSpec_To_v1alpha1_OIDCAuthTLSClientAuthSpec(in *auth.OIDCAuthTLSClientAuthSpec, out *OIDCAuthTLSClientAuthSpec, s conversion.Scope) error {
-	out.CertRef = in.CertRef
-	out.KeyRef = in.KeyRef
+	*out = *(*OIDCAuthTLSClientAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -411,10 +380,7 @@ func Convert_auth_OIDCAuthTLSClientAuthSpec_To_v1alpha1_OIDCAuthTLSClientAuthSpe
 }
 
 func autoConvert_v1alpha1_OIDCClientAuthSpec_To_auth_OIDCClientAuthSpec(in *OIDCClientAuthSpec, out *auth.OIDCClientAuthSpec, s conversion.Scope) error {
-	out.Type = auth.OIDCAuthType(in.Type)
-	out.ClientSecret = (*auth.OIDCAuthClientSecretSpec)(unsafe.Pointer(in.ClientSecret))
-	out.TLSClientAuth = (*auth.OIDCAuthTLSClientAuthSpec)(unsafe.Pointer(in.TLSClientAuth))
-	out.PrivateKeyJWT = (*auth.OIDCAuthPrivateKeyJWTSpec)(unsafe.Pointer(in.PrivateKeyJWT))
+	*out = *(*auth.OIDCClientAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -424,10 +390,7 @@ func Convert_v1alpha1_OIDCClientAuthSpec_To_auth_OIDCClientAuthSpec(in *OIDCClie
 }
 
 func autoConvert_auth_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(in *auth.OIDCClientAuthSpec, out *OIDCClientAuthSpec, s conversion.Scope) error {
-	out.Type = OIDCAuthType(in.Type)
-	out.ClientSecret = (*OIDCAuthClientSecretSpec)(unsafe.Pointer(in.ClientSecret))
-	out.TLSClientAuth = (*OIDCAuthTLSClientAuthSpec)(unsafe.Pointer(in.TLSClientAuth))
-	out.PrivateKeyJWT = (*OIDCAuthPrivateKeyJWTSpec)(unsafe.Pointer(in.PrivateKeyJWT))
+	*out = *(*OIDCClientAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -437,8 +400,7 @@ func Convert_auth_OIDCClientAuthSpec_To_v1alpha1_OIDCClientAuthSpec(in *auth.OID
 }
 
 func autoConvert_v1alpha1_SSHKeyAuthSpec_To_auth_SSHKeyAuthSpec(in *SSHKeyAuthSpec, out *auth.SSHKeyAuthSpec, s conversion.Scope) error {
-	out.SSHKeyRef = in.SSHKeyRef
-	out.KnownHostsRef = in.KnownHostsRef
+	*out = *(*auth.SSHKeyAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -448,8 +410,7 @@ func Convert_v1alpha1_SSHKeyAuthSpec_To_auth_SSHKeyAuthSpec(in *SSHKeyAuthSpec, 
 }
 
 func autoConvert_auth_SSHKeyAuthSpec_To_v1alpha1_SSHKeyAuthSpec(in *auth.SSHKeyAuthSpec, out *SSHKeyAuthSpec, s conversion.Scope) error {
-	out.SSHKeyRef = in.SSHKeyRef
-	out.KnownHostsRef = in.KnownHostsRef
+	*out = *(*SSHKeyAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -459,8 +420,7 @@ func Convert_auth_SSHKeyAuthSpec_To_v1alpha1_SSHKeyAuthSpec(in *auth.SSHKeyAuthS
 }
 
 func autoConvert_v1alpha1_TLSSpec_To_auth_TLSSpec(in *TLSSpec, out *auth.TLSSpec, s conversion.Scope) error {
-	out.CAPublicCertRef = in.CAPublicCertRef
-	out.InsecureSkipVerify = in.InsecureSkipVerify
+	*out = *(*auth.TLSSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -470,8 +430,7 @@ func Convert_v1alpha1_TLSSpec_To_auth_TLSSpec(in *TLSSpec, out *auth.TLSSpec, s 
 }
 
 func autoConvert_auth_TLSSpec_To_v1alpha1_TLSSpec(in *auth.TLSSpec, out *TLSSpec, s conversion.Scope) error {
-	out.CAPublicCertRef = in.CAPublicCertRef
-	out.InsecureSkipVerify = in.InsecureSkipVerify
+	*out = *(*TLSSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -481,7 +440,7 @@ func Convert_auth_TLSSpec_To_v1alpha1_TLSSpec(in *auth.TLSSpec, out *TLSSpec, s 
 }
 
 func autoConvert_v1alpha1_TokenAuthSpec_To_auth_TokenAuthSpec(in *TokenAuthSpec, out *auth.TokenAuthSpec, s conversion.Scope) error {
-	out.TokenRef = in.TokenRef
+	*out = *(*auth.TokenAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -491,7 +450,7 @@ func Convert_v1alpha1_TokenAuthSpec_To_auth_TokenAuthSpec(in *TokenAuthSpec, out
 }
 
 func autoConvert_auth_TokenAuthSpec_To_v1alpha1_TokenAuthSpec(in *auth.TokenAuthSpec, out *TokenAuthSpec, s conversion.Scope) error {
-	out.TokenRef = in.TokenRef
+	*out = *(*TokenAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 

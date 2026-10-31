@@ -107,10 +107,10 @@ func (Strategy) WarningsOnCreate(_ context.Context, _ runtime.Object) []string {
 func (Strategy) Canonicalize(_ runtime.Object) {}
 
 // AllowCreateOnUpdate disallows create-on-update.
-func (Strategy) AllowCreateOnUpdate() bool { return false }
+func (Strategy) AllowCreateOnUpdate(context.Context) bool { return false }
 
 // AllowUnconditionalUpdate disallows unconditional update.
-func (Strategy) AllowUnconditionalUpdate() bool { return false }
+func (Strategy) AllowUnconditionalUpdate(context.Context) bool { return false }
 
 // ValidateUpdate validates a Release spec/metadata update.
 func (Strategy) ValidateUpdate(_ context.Context, obj, old runtime.Object) field.ErrorList {

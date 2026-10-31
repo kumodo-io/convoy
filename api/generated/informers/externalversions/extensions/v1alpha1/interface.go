@@ -25,9 +25,9 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// GlobalHealthRuleSets returns a GlobalHealthRuleSetInformer.
-	GlobalHealthRuleSets() GlobalHealthRuleSetInformer
+	GlobalHealthRuleSets() TypedGlobalHealthRuleSetInformer
 	// HealthRuleSets returns a HealthRuleSetInformer.
-	HealthRuleSets() HealthRuleSetInformer
+	HealthRuleSets() TypedHealthRuleSetInformer
 }
 
 type version struct {
@@ -41,12 +41,12 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// GlobalHealthRuleSets returns a GlobalHealthRuleSetInformer.
-func (v *version) GlobalHealthRuleSets() GlobalHealthRuleSetInformer {
+// GlobalHealthRuleSets returns a TypedGlobalHealthRuleSetInformer.
+func (v *version) GlobalHealthRuleSets() TypedGlobalHealthRuleSetInformer {
 	return &globalHealthRuleSetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// HealthRuleSets returns a HealthRuleSetInformer.
-func (v *version) HealthRuleSets() HealthRuleSetInformer {
+// HealthRuleSets returns a TypedHealthRuleSetInformer.
+func (v *version) HealthRuleSets() TypedHealthRuleSetInformer {
 	return &healthRuleSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

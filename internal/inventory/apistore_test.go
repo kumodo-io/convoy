@@ -53,8 +53,8 @@ func TestAPIStore_CopiesShardLabelFromRelease(t *testing.T) {
 	const ns, name = "ns", "app"
 	// Seed an empty RI (the fake Apply updates rather than create-on-applies) and
 	// the owning Release carrying its apiserver-stamped shard label.
-	ri := &corev1alpha1.ReleaseInventory{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name}}
-	rel := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name, Labels: map[string]string{sharding.ShardLabel: "7"}}}
+	ri := &corev1alpha1.ReleaseInventory{Namespace: ns, Name: name}
+	rel := &corev1alpha1.Release{Namespace: ns, Name: name, Labels: map[string]string{sharding.ShardLabel: "7"}}
 	client := fakeclient.NewSimpleClientset(ri)
 	factory := informers.NewSharedInformerFactory(client, 0)
 	riInformer := factory.Core().V1alpha1().ReleaseInventories()
@@ -87,7 +87,7 @@ func TestAPIStore_SurvivesRestart(t *testing.T) {
 	ctx := context.Background()
 	wave := 1
 	existing := &corev1alpha1.ReleaseInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
+		Name: "r1", Namespace: "ns",
 		Inventory: []corev1alpha1.ResourceInventoryItem{
 			{Group: groupApps, Version: "v1", Kind: kindDeployment, Namespace: "ns", Name: nameAPI, Wave: &wave},
 			{Version: "v1", Kind: kindConfigMap, Namespace: "ns", Name: nameCfg},
@@ -113,7 +113,7 @@ func TestAPIStore_PutAndDelete(t *testing.T) {
 	// create-on-apply the way the real apiserver does (our strategy allows it), so
 	// this exercises the update path over an existing object.
 	store, client := newAPIStore(t, &corev1alpha1.ReleaseInventory{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
+		Name: "r1", Namespace: "ns",
 	})
 
 	refs := []Ref{{Group: groupApps, Version: "v1", Kind: kindDeployment, Namespace: "ns", Name: nameAPI, Wave: 2}}

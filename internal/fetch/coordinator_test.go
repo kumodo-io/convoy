@@ -21,7 +21,6 @@ import (
 	"errors"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -63,7 +62,7 @@ func listerWith(repos ...*sourcev1alpha1.GitRepository) sourcelisters.GitReposit
 
 func repo() *sourcev1alpha1.GitRepository {
 	return &sourcev1alpha1.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: repoNamespace},
+		Name: repoName, Namespace: repoNamespace,
 		Spec: sourcev1alpha1.GitRepositorySpec{
 			URL:  repoURL,
 			Auth: sourcev1alpha1.GitRepositoryAuthSpec{Type: sourcev1alpha1.GitRepositoryAuthTypeNone},
@@ -238,7 +237,7 @@ func helmListerWith(regs ...*sourcev1alpha1.HelmRegistry) sourcelisters.HelmRegi
 
 func helmReg() *sourcev1alpha1.HelmRegistry {
 	return &sourcev1alpha1.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{Name: helmRegName, Namespace: repoNamespace},
+		Name: helmRegName, Namespace: repoNamespace,
 		Spec: sourcev1alpha1.HelmRegistrySpec{
 			URL:  helmRegURL,
 			Auth: sourcev1alpha1.HelmRegistryAuthSpec{Type: sourcev1alpha1.HelmRegistryAuthTypeNone},
@@ -341,7 +340,7 @@ func ociListerWith(regs ...*sourcev1alpha1.OCIRegistry) sourcelisters.OCIRegistr
 
 func ociReg() *sourcev1alpha1.OCIRegistry {
 	return &sourcev1alpha1.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{Name: ociRegName, Namespace: repoNamespace},
+		Name: ociRegName, Namespace: repoNamespace,
 		Spec: sourcev1alpha1.OCIRegistrySpec{
 			URL:  ociRegURL,
 			Auth: sourcev1alpha1.OCIRegistryAuthSpec{Type: sourcev1alpha1.OCIRegistryAuthTypeNone},

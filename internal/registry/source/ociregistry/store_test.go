@@ -53,10 +53,8 @@ func newStorage(t *testing.T) (*genericregistry.Store, *ociregistrystorage.Statu
 
 func validNewOCIRegistry(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			URL:                dummyOCIRegistryURL,
 			DefaultContentType: source.ContentTypeHelm,
@@ -69,10 +67,8 @@ func validNewOCIRegistry(namespace string) *source.OCIRegistry {
 
 func invalidNewOCIRegistryNoURL(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			Auth: source.OCIRegistryAuthSpec{
 				Type: source.OCIRegistryAuthTypeNone,
@@ -83,10 +79,8 @@ func invalidNewOCIRegistryNoURL(namespace string) *source.OCIRegistry {
 
 func invalidNewOCIRegistryNoAuth(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			URL: dummyOCIRegistryURL,
 		},
@@ -95,10 +89,8 @@ func invalidNewOCIRegistryNoAuth(namespace string) *source.OCIRegistry {
 
 func invalidNewOCIRegistryUnknownAuthType(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			URL: dummyOCIRegistryURL,
 			Auth: source.OCIRegistryAuthSpec{
@@ -110,10 +102,8 @@ func invalidNewOCIRegistryUnknownAuthType(namespace string) *source.OCIRegistry 
 
 func invalidNewOCIRegistryMultipleAuthConfigs(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			URL: dummyOCIRegistryURL,
 			Auth: source.OCIRegistryAuthSpec{
@@ -127,10 +117,8 @@ func invalidNewOCIRegistryMultipleAuthConfigs(namespace string) *source.OCIRegis
 
 func invalidNewOCIRegistryMismatchAuthConfig(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			URL: dummyOCIRegistryURL,
 			Auth: source.OCIRegistryAuthSpec{
@@ -143,10 +131,8 @@ func invalidNewOCIRegistryMismatchAuthConfig(namespace string) *source.OCIRegist
 
 func invalidNewOCIRegistryNoDefaultContentType(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			URL: dummyOCIRegistryURL,
 			Auth: source.OCIRegistryAuthSpec{
@@ -158,10 +144,8 @@ func invalidNewOCIRegistryNoDefaultContentType(namespace string) *source.OCIRegi
 
 func invalidNewOCIRegistryUnknownDefaultContentType(namespace string) *source.OCIRegistry {
 	return &source.OCIRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyOCIRegistryName,
-			Namespace: namespace,
-		},
+		Name:      dummyOCIRegistryName,
+		Namespace: namespace,
 		Spec: source.OCIRegistrySpec{
 			URL:                dummyOCIRegistryURL,
 			DefaultContentType: "unknown",

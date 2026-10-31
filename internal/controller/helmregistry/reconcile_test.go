@@ -29,8 +29,8 @@ import (
 
 func helmReg(generation int64, status sourcev1alpha1.HelmRegistryStatus) *sourcev1alpha1.HelmRegistry {
 	return &sourcev1alpha1.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{Name: "h1", Namespace: "ns", Generation: generation},
-		Status:     status,
+		Name: "h1", Namespace: "ns", Generation: generation,
+		Status: status,
 	}
 }
 

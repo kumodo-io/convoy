@@ -27,7 +27,7 @@ import (
 // HelmRegistryApplyConfiguration represents a declarative configuration of the HelmRegistry type for use
 // with apply.
 type HelmRegistryApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                             *HelmRegistrySpecApplyConfiguration         `json:"spec,omitempty"`
 	Webhook                          []HelmRegistryWebhookSpecApplyConfiguration `json:"webhook,omitempty"`

@@ -60,7 +60,7 @@ func TestProcessNextItem_RetriesOnError(t *testing.T) {
 func TestShouldEnqueueOnUpdate(t *testing.T) {
 	const reconcileAnnotation = "convoy.kumodo.io/sync-requested-at"
 	obj := func(gen int64, rv string, annotations map[string]string) *metav1.PartialObjectMetadata {
-		return &metav1.PartialObjectMetadata{ObjectMeta: metav1.ObjectMeta{Generation: gen, ResourceVersion: rv, Annotations: annotations}}
+		return &metav1.PartialObjectMetadata{Generation: gen, ResourceVersion: rv, Annotations: annotations}
 	}
 	stamp := map[string]string{reconcileAnnotation: "2026-07-06T00:00:00Z"}
 	cases := []struct {
@@ -99,7 +99,7 @@ func TestEnqueueAfter_NonPositiveEnqueuesImmediately(t *testing.T) {
 }
 
 func partialMeta(name string) *metav1.PartialObjectMetadata {
-	return &metav1.PartialObjectMetadata{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: name}}
+	return &metav1.PartialObjectMetadata{Namespace: "ns", Name: name}
 }
 
 func TestFilteredEnqueue_DropsUnownedKeepsOwned(t *testing.T) {

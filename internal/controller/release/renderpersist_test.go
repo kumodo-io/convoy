@@ -444,6 +444,7 @@ func TestSyncHandler_LastHealthySetWhenRenderHealthy(t *testing.T) {
 type failingBlobStore struct{}
 
 func (failingBlobStore) Put(context.Context, string, []byte) error { return errors.New("store down") }
+
 func (failingBlobStore) Get(context.Context, string) ([]byte, error) {
 	return nil, blobstore.ErrNotFound
 }

@@ -19,19 +19,17 @@ package render
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
 func hookTestRelease() *corev1alpha1.Release {
-	return &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "team-a"}}
+	return &corev1alpha1.Release{Name: appName, Namespace: "team-a"}
 }
 
 func hookTestCluster() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "prod-eu"},
-		Spec:       corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": "eu-west-1", "tier": "production"}},
+		Name: "prod-eu",
+		Spec: corev1alpha1.ClusterSpec{Metadata: map[string]string{"region": "eu-west-1", "tier": "production"}},
 	}
 }
 
