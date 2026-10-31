@@ -15,6 +15,7 @@ concurrency:
 jobs:
   actionlint:
     name: Run actions linter
+    if: ${{ !startsWith(github.ref, 'refs/heads/release-please--') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
