@@ -17,7 +17,7 @@ concurrency:
 jobs:
   verify-tidy:
     name: Run 'go mod tidy' and check diff
-    if: ${{ github.ref != 'refs/heads/main' }}
+    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
@@ -34,7 +34,7 @@ jobs:
 
   verify-codegen:
     name: Run code-generators and check diff
-    if: ${{ github.ref != 'refs/heads/main' }}
+    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:

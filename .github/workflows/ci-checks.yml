@@ -21,7 +21,7 @@ jobs:
   format:
     name: Run 'go vet' and 'go fix' and check diff
     runs-on: ubuntu-26.04
-    if: ${{ github.ref != 'refs/heads/main' }}
+    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -50,7 +50,7 @@ jobs:
   lint:
     name: Run linters and code quality checks
     runs-on: ubuntu-26.04
-    if: ${{ github.ref != 'refs/heads/main' }}
+    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -78,7 +78,7 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-26.04
-    if: ${{ github.ref != 'refs/heads/main' }}
+    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     timeout-minutes: 15
     permissions:
       contents: read
