@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.9.0](https://github.com/kumodo-io/convoy/compare/v0.8.1...v0.9.0) (2026-10-31)
+
+
+### Features
+
+* kustomize content type ([#67](https://github.com/kumodo-io/convoy/issues/67)) ([521a7c7](https://github.com/kumodo-io/convoy/commit/521a7c7ed774c979a7af8892bc0f66e61782e952))
+
+
+### Bug Fixes
+
+* **apiserver:** stop advertising protobuf for convoy API groups ([#91](https://github.com/kumodo-io/convoy/issues/91)) ([3c560c9](https://github.com/kumodo-io/convoy/commit/3c560c9115efa253de5772f1d10c287ec2fab76f))
+* **deps:** update module github.com/go-git/go-git/v5 to v5.19.3 ([#77](https://github.com/kumodo-io/convoy/issues/77)) ([6f41a82](https://github.com/kumodo-io/convoy/commit/6f41a8232ef609efb5ec7d1a032c1d330af68798))
+* **deps:** update module github.com/google/cel-go to v0.30.0 ([#85](https://github.com/kumodo-io/convoy/issues/85)) ([ae02194](https://github.com/kumodo-io/convoy/commit/ae021949ecbb3ae620b6f54a1fb07869ea463e01))
+
+
+### Miscellaneous
+
+* codegen inputs and cleanup ([#76](https://github.com/kumodo-io/convoy/issues/76)) ([08f8274](https://github.com/kumodo-io/convoy/commit/08f8274b02b51388b3479324545f853ec2872c58))
+* delete renovate ([eedd072](https://github.com/kumodo-io/convoy/commit/eedd072e2e0c2f01530ffe6ee047d1a254e24701))
+* **deps:** update github actions ([#82](https://github.com/kumodo-io/convoy/issues/82)) ([158fdda](https://github.com/kumodo-io/convoy/commit/158fdda7356aa157822500f1f1ea06daa4c58416))
+* **deps:** update go toolchain ([#73](https://github.com/kumodo-io/convoy/issues/73)) ([0603116](https://github.com/kumodo-io/convoy/commit/0603116e22a6adabe7e6f21a9382b37196303d31))
+* **deps:** update mise tools ([#84](https://github.com/kumodo-io/convoy/issues/84)) ([35a2350](https://github.com/kumodo-io/convoy/commit/35a23509e5a003f904565442e0ee670629f9d052))
+* update renovate config ([#83](https://github.com/kumodo-io/convoy/issues/83)) ([1f335a7](https://github.com/kumodo-io/convoy/commit/1f335a73473ffaac6a555c24219eaf7ac294f834))
+* update tooling and workflows ([#69](https://github.com/kumodo-io/convoy/issues/69)) ([b7b7c42](https://github.com/kumodo-io/convoy/commit/b7b7c42504caf915ee751ed9e9419f272ee64ad8))
+
 ## [0.8.1](https://github.com/kumodo-io/convoy/compare/v0.8.0...v0.8.1) (2026-08-22)
 
 
