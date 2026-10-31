@@ -27,6 +27,7 @@ import (
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1alpha3 "k8s.io/api/scheduling/v1alpha3"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	resource "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,464 +40,511 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":             schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":        schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec":         schema_convoy_api_auth_v1alpha1_CloudIdentitySpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec":      schema_convoy_api_auth_v1alpha1_DockerConfigAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":        schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":         schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec":        schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec":               schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec":  schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec": schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec": schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec":        schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec":            schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec":                   schema_convoy_api_auth_v1alpha1_TLSSpec(ref),
-		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":             schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
-		v1alpha1.Cluster{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_Cluster(ref),
-		v1alpha1.ClusterAgentModeSpec{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ClusterAgentModeSpec(ref),
-		v1alpha1.ClusterAgentStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
-		v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
-		v1alpha1.ClusterAuthSpec{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
-		v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
-		v1alpha1.ClusterConnectionParametersSpec{}.OpenAPIModelName():             schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
-		v1alpha1.ClusterDeletionPolicy{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ClusterDeletionPolicy(ref),
-		v1alpha1.ClusterList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterList(ref),
-		v1alpha1.ClusterSpec{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
-		v1alpha1.ClusterStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
-		v1alpha1.LastHealthy{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_LastHealthy(ref),
-		v1alpha1.LifecycleHookJobTemplate{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_LifecycleHookJobTemplate(ref),
-		v1alpha1.LifecycleHookPodTemplate{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_LifecycleHookPodTemplate(ref),
-		v1alpha1.LifecycleHookSpec{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref),
-		v1alpha1.LifecycleHookStatus{}.OpenAPIModelName():                         schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref),
-		v1alpha1.LifecycleStatus{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_LifecycleStatus(ref),
-		v1alpha1.PartialMetadata{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_PartialMetadata(ref),
-		v1alpha1.PruneSpec{}.OpenAPIModelName():                                   schema_convoy_api_core_v1alpha1_PruneSpec(ref),
-		v1alpha1.Release{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_Release(ref),
-		v1alpha1.ReleaseAttemptedRenderFailureStatus{}.OpenAPIModelName():         schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
-		v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref),
-		v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseClusterRefSpec(ref),
-		v1alpha1.ReleaseContentHelmSpec{}.OpenAPIModelName():                      schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref),
-		v1alpha1.ReleaseContentJsonnetSpec{}.OpenAPIModelName():                   schema_convoy_api_core_v1alpha1_ReleaseContentJsonnetSpec(ref),
-		v1alpha1.ReleaseContentKustomizeSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref),
-		v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
-		v1alpha1.ReleaseContentSpec{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
-		v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicy(ref),
-		v1alpha1.ReleaseFailurePolicy{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseFailurePolicy(ref),
-		v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref),
-		v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref),
-		v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseHealthAssessment(ref),
-		v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
-		v1alpha1.ReleaseHelmRegistryChartSpec{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleaseHelmRegistryChartSpec(ref),
-		v1alpha1.ReleaseHelmRegistrySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseHelmRegistrySpec(ref),
-		v1alpha1.ReleaseInventory{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseInventory(ref),
-		v1alpha1.ReleaseInventoryList{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseInventoryList(ref),
-		v1alpha1.ReleaseLifecycle{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
-		v1alpha1.ReleaseLifecycleHookItem{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseLifecycleHookItem(ref),
-		v1alpha1.ReleaseList{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ReleaseList(ref),
-		v1alpha1.ReleaseMutation{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
-		v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
-		v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref),
-		v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseMutationTarget(ref),
-		v1alpha1.ReleaseOCIRegistryArtifactSpec{}.OpenAPIModelName():              schema_convoy_api_core_v1alpha1_ReleaseOCIRegistryArtifactSpec(ref),
-		v1alpha1.ReleaseOCIRegistrySpec{}.OpenAPIModelName():                      schema_convoy_api_core_v1alpha1_ReleaseOCIRegistrySpec(ref),
-		v1alpha1.ReleasePin{}.OpenAPIModelName():                                  schema_convoy_api_core_v1alpha1_ReleasePin(ref),
-		v1alpha1.ReleasePinRenderInputsStatus{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref),
-		v1alpha1.ReleasePinStatus{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref),
-		v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName():                  schema_convoy_api_core_v1alpha1_ReleaseRetentionPolicySpec(ref),
-		v1alpha1.ReleaseRetryBackoffSpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseRetryBackoffSpec(ref),
-		v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_ReleaseSourceSpec(ref),
-		v1alpha1.ReleaseSpec{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
-		v1alpha1.ReleaseStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
-		v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref),
-		v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref),
-		v1alpha1.ResolvedCluster{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ResolvedCluster(ref),
-		v1alpha1.ResolvedMutation{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ResolvedMutation(ref),
-		v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref),
-		v1alpha1.ResolvedSource{}.OpenAPIModelName():                              schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
-		v1alpha1.ResourceInventoryItem{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ResourceInventoryItem(ref),
-		v1alpha1.ResourceWaveStatus{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
-		v1alpha1.RolloutStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_RolloutStatus(ref),
-		v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName():               schema_convoy_api_core_v1alpha1_ValuesSourceGitRepositorySpec(ref),
-		v1alpha1.ValuesSourceSpec{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref),
-		extensionsv1alpha1.GlobalHealthRuleSet{}.OpenAPIModelName():               schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSet(ref),
-		extensionsv1alpha1.GlobalHealthRuleSetList{}.OpenAPIModelName():           schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetList(ref),
-		extensionsv1alpha1.GlobalHealthRuleSetSpec{}.OpenAPIModelName():           schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetSpec(ref),
-		extensionsv1alpha1.HealthRuleSet{}.OpenAPIModelName():                     schema_convoy_api_extensions_v1alpha1_HealthRuleSet(ref),
-		extensionsv1alpha1.HealthRuleSetList{}.OpenAPIModelName():                 schema_convoy_api_extensions_v1alpha1_HealthRuleSetList(ref),
-		extensionsv1alpha1.HealthRuleSetSpec{}.OpenAPIModelName():                 schema_convoy_api_extensions_v1alpha1_HealthRuleSetSpec(ref),
-		extensionsv1alpha1.RuleSpec{}.OpenAPIModelName():                          schema_convoy_api_extensions_v1alpha1_RuleSpec(ref),
-		sourcev1alpha1.GitRepository{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_GitRepository(ref),
-		sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName():                 schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
-		sourcev1alpha1.GitRepositoryList{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
-		sourcev1alpha1.GitRepositorySpec{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
-		sourcev1alpha1.GitRepositoryStatus{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
-		sourcev1alpha1.GitRepositoryWebhookFilterSpec{}.OpenAPIModelName():        schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
-		sourcev1alpha1.GitRepositoryWebhookSpec{}.OpenAPIModelName():              schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
-		sourcev1alpha1.HelmRegistry{}.OpenAPIModelName():                          schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
-		sourcev1alpha1.HelmRegistryAuthSpec{}.OpenAPIModelName():                  schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
-		sourcev1alpha1.HelmRegistryList{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
-		sourcev1alpha1.HelmRegistrySpec{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
-		sourcev1alpha1.HelmRegistryStatus{}.OpenAPIModelName():                    schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
-		sourcev1alpha1.HelmRegistryWebhookFilterSpec{}.OpenAPIModelName():         schema_convoy_api_source_v1alpha1_HelmRegistryWebhookFilterSpec(ref),
-		sourcev1alpha1.HelmRegistryWebhookSpec{}.OpenAPIModelName():               schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref),
-		sourcev1alpha1.LastRejectionStatus{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_LastRejectionStatus(ref),
-		sourcev1alpha1.OCIRegistry{}.OpenAPIModelName():                           schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
-		sourcev1alpha1.OCIRegistryAuthSpec{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref),
-		sourcev1alpha1.OCIRegistryList{}.OpenAPIModelName():                       schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
-		sourcev1alpha1.OCIRegistrySpec{}.OpenAPIModelName():                       schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
-		sourcev1alpha1.OCIRegistryStatus{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
-		sourcev1alpha1.OCIRegistryWebhookFilterSpec{}.OpenAPIModelName():          schema_convoy_api_source_v1alpha1_OCIRegistryWebhookFilterSpec(ref),
-		sourcev1alpha1.OCIRegistryWebhookSpec{}.OpenAPIModelName():                schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref),
-		sourcev1alpha1.WebhookStatus{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_WebhookStatus(ref),
-		v1.CronJob{}.OpenAPIModelName():                                           schema_k8sio_api_batch_v1_CronJob(ref),
-		v1.CronJobList{}.OpenAPIModelName():                                       schema_k8sio_api_batch_v1_CronJobList(ref),
-		v1.CronJobSpec{}.OpenAPIModelName():                                       schema_k8sio_api_batch_v1_CronJobSpec(ref),
-		v1.CronJobStatus{}.OpenAPIModelName():                                     schema_k8sio_api_batch_v1_CronJobStatus(ref),
-		v1.Job{}.OpenAPIModelName():                                               schema_k8sio_api_batch_v1_Job(ref),
-		v1.JobCondition{}.OpenAPIModelName():                                      schema_k8sio_api_batch_v1_JobCondition(ref),
-		v1.JobList{}.OpenAPIModelName():                                           schema_k8sio_api_batch_v1_JobList(ref),
-		v1.JobSchedulingConfiguration{}.OpenAPIModelName():                        schema_k8sio_api_batch_v1_JobSchedulingConfiguration(ref),
-		v1.JobSpec{}.OpenAPIModelName():                                           schema_k8sio_api_batch_v1_JobSpec(ref),
-		v1.JobStatus{}.OpenAPIModelName():                                         schema_k8sio_api_batch_v1_JobStatus(ref),
-		v1.JobTemplateSpec{}.OpenAPIModelName():                                   schema_k8sio_api_batch_v1_JobTemplateSpec(ref),
-		v1.PodFailurePolicy{}.OpenAPIModelName():                                  schema_k8sio_api_batch_v1_PodFailurePolicy(ref),
-		v1.PodFailurePolicyOnExitCodesRequirement{}.OpenAPIModelName():            schema_k8sio_api_batch_v1_PodFailurePolicyOnExitCodesRequirement(ref),
-		v1.PodFailurePolicyOnPodConditionsPattern{}.OpenAPIModelName():            schema_k8sio_api_batch_v1_PodFailurePolicyOnPodConditionsPattern(ref),
-		v1.PodFailurePolicyRule{}.OpenAPIModelName():                              schema_k8sio_api_batch_v1_PodFailurePolicyRule(ref),
-		v1.SuccessPolicy{}.OpenAPIModelName():                                     schema_k8sio_api_batch_v1_SuccessPolicy(ref),
-		v1.SuccessPolicyRule{}.OpenAPIModelName():                                 schema_k8sio_api_batch_v1_SuccessPolicyRule(ref),
-		v1.UncountedTerminatedPods{}.OpenAPIModelName():                           schema_k8sio_api_batch_v1_UncountedTerminatedPods(ref),
-		corev1.AWSElasticBlockStoreVolumeSource{}.OpenAPIModelName():              schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
-		corev1.Affinity{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_Affinity(ref),
-		corev1.AppArmorProfile{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_AppArmorProfile(ref),
-		corev1.AttachedVolume{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_AttachedVolume(ref),
-		corev1.AvoidPods{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_AvoidPods(ref),
-		corev1.AzureDiskVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_AzureDiskVolumeSource(ref),
-		corev1.AzureFilePersistentVolumeSource{}.OpenAPIModelName():               schema_k8sio_api_core_v1_AzureFilePersistentVolumeSource(ref),
-		corev1.AzureFileVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_AzureFileVolumeSource(ref),
-		corev1.Binding{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_Binding(ref),
-		corev1.CSIPersistentVolumeSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_CSIPersistentVolumeSource(ref),
-		corev1.CSIVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_CSIVolumeSource(ref),
-		corev1.Capabilities{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_Capabilities(ref),
-		corev1.CephFSPersistentVolumeSource{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_CephFSPersistentVolumeSource(ref),
-		corev1.CephFSVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_CephFSVolumeSource(ref),
-		corev1.CinderPersistentVolumeSource{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_CinderPersistentVolumeSource(ref),
-		corev1.CinderVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_CinderVolumeSource(ref),
-		corev1.ClientIPConfig{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ClientIPConfig(ref),
-		corev1.ClusterTrustBundleProjection{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_ClusterTrustBundleProjection(ref),
-		corev1.ComponentCondition{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ComponentCondition(ref),
-		corev1.ComponentStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ComponentStatus(ref),
-		corev1.ComponentStatusList{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ComponentStatusList(ref),
-		corev1.ConfigMap{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ConfigMap(ref),
-		corev1.ConfigMapEnvSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ConfigMapEnvSource(ref),
-		corev1.ConfigMapKeySelector{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_ConfigMapKeySelector(ref),
-		corev1.ConfigMapList{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ConfigMapList(ref),
-		corev1.ConfigMapNodeConfigSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_ConfigMapNodeConfigSource(ref),
-		corev1.ConfigMapProjection{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ConfigMapProjection(ref),
-		corev1.ConfigMapVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ConfigMapVolumeSource(ref),
-		corev1.Container{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Container(ref),
-		corev1.ContainerExtendedResourceRequest{}.OpenAPIModelName():              schema_k8sio_api_core_v1_ContainerExtendedResourceRequest(ref),
-		corev1.ContainerImage{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ContainerImage(ref),
-		corev1.ContainerPort{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ContainerPort(ref),
-		corev1.ContainerResizePolicy{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerResizePolicy(ref),
-		corev1.ContainerRestartRule{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_ContainerRestartRule(ref),
-		corev1.ContainerRestartRuleOnExitCodes{}.OpenAPIModelName():               schema_k8sio_api_core_v1_ContainerRestartRuleOnExitCodes(ref),
-		corev1.ContainerState{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ContainerState(ref),
-		corev1.ContainerStateRunning{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerStateRunning(ref),
-		corev1.ContainerStateTerminated{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_ContainerStateTerminated(ref),
-		corev1.ContainerStateWaiting{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerStateWaiting(ref),
-		corev1.ContainerStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ContainerStatus(ref),
-		corev1.ContainerUser{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ContainerUser(ref),
-		corev1.DaemonEndpoint{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_DaemonEndpoint(ref),
-		corev1.DownwardAPIProjection{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_DownwardAPIProjection(ref),
-		corev1.DownwardAPIVolumeFile{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_DownwardAPIVolumeFile(ref),
-		corev1.DownwardAPIVolumeSource{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_DownwardAPIVolumeSource(ref),
-		corev1.EmptyDirVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_EmptyDirVolumeSource(ref),
-		corev1.EndpointAddress{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_EndpointAddress(ref),
-		corev1.EndpointPort{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_EndpointPort(ref),
-		corev1.EndpointSubset{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_EndpointSubset(ref),
-		corev1.Endpoints{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Endpoints(ref),
-		corev1.EndpointsList{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_EndpointsList(ref),
-		corev1.EnvFromSource{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_EnvFromSource(ref),
-		corev1.EnvVar{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_EnvVar(ref),
-		corev1.EnvVarSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_EnvVarSource(ref),
-		corev1.EphemeralContainer{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_EphemeralContainer(ref),
-		corev1.EphemeralContainerCommon{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_EphemeralContainerCommon(ref),
-		corev1.EphemeralVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_EphemeralVolumeSource(ref),
-		corev1.Event{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_Event(ref),
-		corev1.EventList{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_EventList(ref),
-		corev1.EventSeries{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_EventSeries(ref),
-		corev1.EventSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_EventSource(ref),
-		corev1.EvictionResponder{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_EvictionResponder(ref),
-		corev1.ExecAction{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ExecAction(ref),
-		corev1.FCVolumeSource{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_FCVolumeSource(ref),
-		corev1.FileKeySelector{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_FileKeySelector(ref),
-		corev1.FlexPersistentVolumeSource{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_FlexPersistentVolumeSource(ref),
-		corev1.FlexVolumeSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_FlexVolumeSource(ref),
-		corev1.FlockerVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_FlockerVolumeSource(ref),
-		corev1.GCEPersistentDiskVolumeSource{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_GCEPersistentDiskVolumeSource(ref),
-		corev1.GRPCAction{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_GRPCAction(ref),
-		corev1.GitRepoVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_GitRepoVolumeSource(ref),
-		corev1.GlusterfsPersistentVolumeSource{}.OpenAPIModelName():               schema_k8sio_api_core_v1_GlusterfsPersistentVolumeSource(ref),
-		corev1.GlusterfsVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_GlusterfsVolumeSource(ref),
-		corev1.HTTPGetAction{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_HTTPGetAction(ref),
-		corev1.HTTPHeader{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_HTTPHeader(ref),
-		corev1.HostAlias{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_HostAlias(ref),
-		corev1.HostIP{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_HostIP(ref),
-		corev1.HostPathVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_HostPathVolumeSource(ref),
-		corev1.ISCSIPersistentVolumeSource{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_ISCSIPersistentVolumeSource(ref),
-		corev1.ISCSIVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ISCSIVolumeSource(ref),
-		corev1.ImageVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ImageVolumeSource(ref),
-		corev1.ImageVolumeStatus{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ImageVolumeStatus(ref),
-		corev1.KeyToPath{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_KeyToPath(ref),
-		corev1.Lifecycle{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Lifecycle(ref),
-		corev1.LifecycleHandler{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_LifecycleHandler(ref),
-		corev1.LimitRange{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_LimitRange(ref),
-		corev1.LimitRangeItem{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_LimitRangeItem(ref),
-		corev1.LimitRangeList{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_LimitRangeList(ref),
-		corev1.LimitRangeSpec{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_LimitRangeSpec(ref),
-		corev1.LinuxContainerUser{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_LinuxContainerUser(ref),
-		corev1.List{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_List(ref),
-		corev1.LoadBalancerIngress{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_LoadBalancerIngress(ref),
-		corev1.LoadBalancerStatus{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_LoadBalancerStatus(ref),
-		corev1.LocalObjectReference{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_LocalObjectReference(ref),
-		corev1.LocalVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_LocalVolumeSource(ref),
-		corev1.ModifyVolumeStatus{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ModifyVolumeStatus(ref),
-		corev1.NFSVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_NFSVolumeSource(ref),
-		corev1.Namespace{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Namespace(ref),
-		corev1.NamespaceCondition{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_NamespaceCondition(ref),
-		corev1.NamespaceList{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NamespaceList(ref),
-		corev1.NamespaceSpec{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NamespaceSpec(ref),
-		corev1.NamespaceStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_NamespaceStatus(ref),
-		corev1.Node{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_Node(ref),
-		corev1.NodeAddress{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_NodeAddress(ref),
-		corev1.NodeAffinity{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NodeAffinity(ref),
-		corev1.NodeAllocatableMappedResources{}.OpenAPIModelName():                schema_k8sio_api_core_v1_NodeAllocatableMappedResources(ref),
-		corev1.NodeAllocatableOverheadResources{}.OpenAPIModelName():              schema_k8sio_api_core_v1_NodeAllocatableOverheadResources(ref),
-		corev1.NodeAllocatableResourceClaimStatus{}.OpenAPIModelName():            schema_k8sio_api_core_v1_NodeAllocatableResourceClaimStatus(ref),
-		corev1.NodeCondition{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NodeCondition(ref),
-		corev1.NodeConfigSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeConfigSource(ref),
-		corev1.NodeConfigStatus{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeConfigStatus(ref),
-		corev1.NodeDaemonEndpoints{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_NodeDaemonEndpoints(ref),
-		corev1.NodeFeatures{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NodeFeatures(ref),
-		corev1.NodeList{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_NodeList(ref),
-		corev1.NodePodPreemptionPolicy{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_NodePodPreemptionPolicy(ref),
-		corev1.NodeProxyOptions{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeProxyOptions(ref),
-		corev1.NodeRuntimeHandler{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_NodeRuntimeHandler(ref),
-		corev1.NodeRuntimeHandlerFeatures{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_NodeRuntimeHandlerFeatures(ref),
-		corev1.NodeSelector{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NodeSelector(ref),
-		corev1.NodeSelectorRequirement{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_NodeSelectorRequirement(ref),
-		corev1.NodeSelectorTerm{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeSelectorTerm(ref),
-		corev1.NodeSpec{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_NodeSpec(ref),
-		corev1.NodeStatus{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_NodeStatus(ref),
-		corev1.NodeSwapStatus{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_NodeSwapStatus(ref),
-		corev1.NodeSystemInfo{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_NodeSystemInfo(ref),
-		corev1.ObjectFieldSelector{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ObjectFieldSelector(ref),
-		corev1.ObjectReference{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ObjectReference(ref),
-		corev1.PersistentVolume{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PersistentVolume(ref),
-		corev1.PersistentVolumeClaim{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_PersistentVolumeClaim(ref),
-		corev1.PersistentVolumeClaimCondition{}.OpenAPIModelName():                schema_k8sio_api_core_v1_PersistentVolumeClaimCondition(ref),
-		corev1.PersistentVolumeClaimList{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_PersistentVolumeClaimList(ref),
-		corev1.PersistentVolumeClaimSpec{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_PersistentVolumeClaimSpec(ref),
-		corev1.PersistentVolumeClaimStatus{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_PersistentVolumeClaimStatus(ref),
-		corev1.PersistentVolumeClaimTemplate{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_PersistentVolumeClaimTemplate(ref),
-		corev1.PersistentVolumeClaimVolumeSource{}.OpenAPIModelName():             schema_k8sio_api_core_v1_PersistentVolumeClaimVolumeSource(ref),
-		corev1.PersistentVolumeList{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PersistentVolumeList(ref),
-		corev1.PersistentVolumeSource{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PersistentVolumeSource(ref),
-		corev1.PersistentVolumeSpec{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PersistentVolumeSpec(ref),
-		corev1.PersistentVolumeStatus{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PersistentVolumeStatus(ref),
-		corev1.PhotonPersistentDiskVolumeSource{}.OpenAPIModelName():              schema_k8sio_api_core_v1_PhotonPersistentDiskVolumeSource(ref),
-		corev1.Pod{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_Pod(ref),
-		corev1.PodAffinity{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_PodAffinity(ref),
-		corev1.PodAffinityTerm{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodAffinityTerm(ref),
-		corev1.PodAntiAffinity{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodAntiAffinity(ref),
-		corev1.PodAttachOptions{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PodAttachOptions(ref),
-		corev1.PodCertificateProjection{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_PodCertificateProjection(ref),
-		corev1.PodCondition{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodCondition(ref),
-		corev1.PodDNSConfig{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodDNSConfig(ref),
-		corev1.PodDNSConfigOption{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PodDNSConfigOption(ref),
-		corev1.PodExecOptions{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_PodExecOptions(ref),
-		corev1.PodExtendedResourceClaimStatus{}.OpenAPIModelName():                schema_k8sio_api_core_v1_PodExtendedResourceClaimStatus(ref),
-		corev1.PodIP{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodIP(ref),
-		corev1.PodList{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_PodList(ref),
-		corev1.PodLogOptions{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_PodLogOptions(ref),
-		corev1.PodOS{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_PodOS(ref),
-		corev1.PodPortForwardOptions{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_PodPortForwardOptions(ref),
-		corev1.PodProxyOptions{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodProxyOptions(ref),
-		corev1.PodReadinessGate{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PodReadinessGate(ref),
-		corev1.PodResourceClaim{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_PodResourceClaim(ref),
-		corev1.PodResourceClaimStatus{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PodResourceClaimStatus(ref),
-		corev1.PodSchedulingGate{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_PodSchedulingGate(ref),
-		corev1.PodSchedulingGroup{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PodSchedulingGroup(ref),
-		corev1.PodSecurityContext{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PodSecurityContext(ref),
-		corev1.PodSignature{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodSignature(ref),
-		corev1.PodSpec{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_PodSpec(ref),
-		corev1.PodStatus{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_PodStatus(ref),
-		corev1.PodTemplate{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_PodTemplate(ref),
-		corev1.PodTemplateList{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodTemplateList(ref),
-		corev1.PodTemplateSpec{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodTemplateSpec(ref),
-		corev1.PodVolumeHealth{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodVolumeHealth(ref),
-		corev1.PortStatus{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_PortStatus(ref),
-		corev1.PortworxVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PortworxVolumeSource(ref),
-		corev1.PreferAvoidPodsEntry{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PreferAvoidPodsEntry(ref),
-		corev1.PreferredSchedulingTerm{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_PreferredSchedulingTerm(ref),
-		corev1.Probe{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_Probe(ref),
-		corev1.ProbeHandler{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_ProbeHandler(ref),
-		corev1.ProjectedVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ProjectedVolumeSource(ref),
-		corev1.QuobyteVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_QuobyteVolumeSource(ref),
-		corev1.RBDPersistentVolumeSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_RBDPersistentVolumeSource(ref),
-		corev1.RBDVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_RBDVolumeSource(ref),
-		corev1.RangeAllocation{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_RangeAllocation(ref),
-		corev1.ReplicationController{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ReplicationController(ref),
-		corev1.ReplicationControllerCondition{}.OpenAPIModelName():                schema_k8sio_api_core_v1_ReplicationControllerCondition(ref),
-		corev1.ReplicationControllerList{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_ReplicationControllerList(ref),
-		corev1.ReplicationControllerSpec{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_ReplicationControllerSpec(ref),
-		corev1.ReplicationControllerStatus{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_ReplicationControllerStatus(ref),
-		corev1.ResourceClaim{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ResourceClaim(ref),
-		corev1.ResourceFieldSelector{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ResourceFieldSelector(ref),
-		corev1.ResourceHealth{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ResourceHealth(ref),
-		corev1.ResourceQuota{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ResourceQuota(ref),
-		corev1.ResourceQuotaList{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ResourceQuotaList(ref),
-		corev1.ResourceQuotaSpec{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ResourceQuotaSpec(ref),
-		corev1.ResourceQuotaStatus{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ResourceQuotaStatus(ref),
-		corev1.ResourceRequirements{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_ResourceRequirements(ref),
-		corev1.ResourceStatus{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ResourceStatus(ref),
-		corev1.SELinuxOptions{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_SELinuxOptions(ref),
-		corev1.ScaleIOPersistentVolumeSource{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_ScaleIOPersistentVolumeSource(ref),
-		corev1.ScaleIOVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ScaleIOVolumeSource(ref),
-		corev1.ScopeSelector{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ScopeSelector(ref),
-		corev1.ScopedResourceSelectorRequirement{}.OpenAPIModelName():             schema_k8sio_api_core_v1_ScopedResourceSelectorRequirement(ref),
-		corev1.SeccompProfile{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_SeccompProfile(ref),
-		corev1.Secret{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Secret(ref),
-		corev1.SecretEnvSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_SecretEnvSource(ref),
-		corev1.SecretKeySelector{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_SecretKeySelector(ref),
-		corev1.SecretList{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_SecretList(ref),
-		corev1.SecretProjection{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_SecretProjection(ref),
-		corev1.SecretReference{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_SecretReference(ref),
-		corev1.SecretVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_SecretVolumeSource(ref),
-		corev1.SecurityContext{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_SecurityContext(ref),
-		corev1.SerializedReference{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_SerializedReference(ref),
-		corev1.Service{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_Service(ref),
-		corev1.ServiceAccount{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ServiceAccount(ref),
-		corev1.ServiceAccountList{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ServiceAccountList(ref),
-		corev1.ServiceAccountTokenProjection{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_ServiceAccountTokenProjection(ref),
-		corev1.ServiceList{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ServiceList(ref),
-		corev1.ServicePort{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ServicePort(ref),
-		corev1.ServiceProxyOptions{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_ServiceProxyOptions(ref),
-		corev1.ServiceSpec{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ServiceSpec(ref),
-		corev1.ServiceStatus{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_ServiceStatus(ref),
-		corev1.SessionAffinityConfig{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_SessionAffinityConfig(ref),
-		corev1.SleepAction{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_SleepAction(ref),
-		corev1.StorageOSPersistentVolumeSource{}.OpenAPIModelName():               schema_k8sio_api_core_v1_StorageOSPersistentVolumeSource(ref),
-		corev1.StorageOSVolumeSource{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_StorageOSVolumeSource(ref),
-		corev1.Sysctl{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Sysctl(ref),
-		corev1.TCPSocketAction{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_TCPSocketAction(ref),
-		corev1.Taint{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_Taint(ref),
-		corev1.Toleration{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_Toleration(ref),
-		corev1.TopologySelectorLabelRequirement{}.OpenAPIModelName():              schema_k8sio_api_core_v1_TopologySelectorLabelRequirement(ref),
-		corev1.TopologySelectorTerm{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_TopologySelectorTerm(ref),
-		corev1.TopologySpreadConstraint{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_TopologySpreadConstraint(ref),
-		corev1.TypedLocalObjectReference{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_TypedLocalObjectReference(ref),
-		corev1.TypedObjectReference{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_TypedObjectReference(ref),
-		corev1.Volume{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Volume(ref),
-		corev1.VolumeDevice{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_VolumeDevice(ref),
-		corev1.VolumeHealthCondition{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_VolumeHealthCondition(ref),
-		corev1.VolumeHealthStatus{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_VolumeHealthStatus(ref),
-		corev1.VolumeMount{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_VolumeMount(ref),
-		corev1.VolumeMountStatus{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_VolumeMountStatus(ref),
-		corev1.VolumeNodeAffinity{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_VolumeNodeAffinity(ref),
-		corev1.VolumeProjection{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_VolumeProjection(ref),
-		corev1.VolumeResourceRequirements{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_VolumeResourceRequirements(ref),
-		corev1.VolumeSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_VolumeSource(ref),
-		corev1.VolumeStatus{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_VolumeStatus(ref),
-		corev1.VsphereVirtualDiskVolumeSource{}.OpenAPIModelName():                schema_k8sio_api_core_v1_VsphereVirtualDiskVolumeSource(ref),
-		corev1.WeightedPodAffinityTerm{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_WeightedPodAffinityTerm(ref),
-		corev1.WindowsSecurityContextOptions{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_WindowsSecurityContextOptions(ref),
-		apiextensionsv1.ConversionRequest{}.OpenAPIModelName():                    schema_pkg_apis_apiextensions_v1_ConversionRequest(ref),
-		apiextensionsv1.ConversionResponse{}.OpenAPIModelName():                   schema_pkg_apis_apiextensions_v1_ConversionResponse(ref),
-		apiextensionsv1.ConversionReview{}.OpenAPIModelName():                     schema_pkg_apis_apiextensions_v1_ConversionReview(ref),
-		apiextensionsv1.CustomResourceColumnDefinition{}.OpenAPIModelName():       schema_pkg_apis_apiextensions_v1_CustomResourceColumnDefinition(ref),
-		apiextensionsv1.CustomResourceConversion{}.OpenAPIModelName():             schema_pkg_apis_apiextensions_v1_CustomResourceConversion(ref),
-		apiextensionsv1.CustomResourceDefinition{}.OpenAPIModelName():             schema_pkg_apis_apiextensions_v1_CustomResourceDefinition(ref),
-		apiextensionsv1.CustomResourceDefinitionCondition{}.OpenAPIModelName():    schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionCondition(ref),
-		apiextensionsv1.CustomResourceDefinitionList{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionList(ref),
-		apiextensionsv1.CustomResourceDefinitionNames{}.OpenAPIModelName():        schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionNames(ref),
-		apiextensionsv1.CustomResourceDefinitionSpec{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionSpec(ref),
-		apiextensionsv1.CustomResourceDefinitionStatus{}.OpenAPIModelName():       schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionStatus(ref),
-		apiextensionsv1.CustomResourceDefinitionVersion{}.OpenAPIModelName():      schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionVersion(ref),
-		apiextensionsv1.CustomResourceSubresourceScale{}.OpenAPIModelName():       schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceScale(ref),
-		apiextensionsv1.CustomResourceSubresourceStatus{}.OpenAPIModelName():      schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceStatus(ref),
-		apiextensionsv1.CustomResourceSubresources{}.OpenAPIModelName():           schema_pkg_apis_apiextensions_v1_CustomResourceSubresources(ref),
-		apiextensionsv1.CustomResourceValidation{}.OpenAPIModelName():             schema_pkg_apis_apiextensions_v1_CustomResourceValidation(ref),
-		apiextensionsv1.ExternalDocumentation{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_ExternalDocumentation(ref),
-		apiextensionsv1.JSON{}.OpenAPIModelName():                                 schema_pkg_apis_apiextensions_v1_JSON(ref),
-		apiextensionsv1.JSONSchemaProps{}.OpenAPIModelName():                      schema_pkg_apis_apiextensions_v1_JSONSchemaProps(ref),
-		apiextensionsv1.JSONSchemaPropsOrArray{}.OpenAPIModelName():               schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrArray(ref),
-		apiextensionsv1.JSONSchemaPropsOrBool{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrBool(ref),
-		apiextensionsv1.JSONSchemaPropsOrStringArray{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrStringArray(ref),
-		apiextensionsv1.SelectableField{}.OpenAPIModelName():                      schema_pkg_apis_apiextensions_v1_SelectableField(ref),
-		apiextensionsv1.ServiceReference{}.OpenAPIModelName():                     schema_pkg_apis_apiextensions_v1_ServiceReference(ref),
-		apiextensionsv1.ValidationRule{}.OpenAPIModelName():                       schema_pkg_apis_apiextensions_v1_ValidationRule(ref),
-		apiextensionsv1.WebhookClientConfig{}.OpenAPIModelName():                  schema_pkg_apis_apiextensions_v1_WebhookClientConfig(ref),
-		apiextensionsv1.WebhookConversion{}.OpenAPIModelName():                    schema_pkg_apis_apiextensions_v1_WebhookConversion(ref),
-		resource.Quantity{}.OpenAPIModelName():                                    schema_apimachinery_pkg_api_resource_Quantity(ref),
-		metav1.APIGroup{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_APIGroup(ref),
-		metav1.APIGroupList{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_APIGroupList(ref),
-		metav1.APIResource{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_APIResource(ref),
-		metav1.APIResourceList{}.OpenAPIModelName():                               schema_pkg_apis_meta_v1_APIResourceList(ref),
-		metav1.APIVersions{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_APIVersions(ref),
-		metav1.ApplyOptions{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_ApplyOptions(ref),
-		metav1.Condition{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_Condition(ref),
-		metav1.CreateOptions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_CreateOptions(ref),
-		metav1.DeleteOptions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_DeleteOptions(ref),
-		metav1.Duration{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_Duration(ref),
-		metav1.FieldSelectorRequirement{}.OpenAPIModelName():                      schema_pkg_apis_meta_v1_FieldSelectorRequirement(ref),
-		metav1.FieldsV1{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_FieldsV1(ref),
-		metav1.GetOptions{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_GetOptions(ref),
-		metav1.GroupKind{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_GroupKind(ref),
-		metav1.GroupResource{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_GroupResource(ref),
-		metav1.GroupVersion{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_GroupVersion(ref),
-		metav1.GroupVersionForDiscovery{}.OpenAPIModelName():                      schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
-		metav1.GroupVersionKind{}.OpenAPIModelName():                              schema_pkg_apis_meta_v1_GroupVersionKind(ref),
-		metav1.GroupVersionResource{}.OpenAPIModelName():                          schema_pkg_apis_meta_v1_GroupVersionResource(ref),
-		metav1.InternalEvent{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_InternalEvent(ref),
-		metav1.LabelSelector{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_LabelSelector(ref),
-		metav1.LabelSelectorRequirement{}.OpenAPIModelName():                      schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
-		metav1.List{}.OpenAPIModelName():                                          schema_pkg_apis_meta_v1_List(ref),
-		metav1.ListMeta{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_ListMeta(ref),
-		metav1.ListOptions{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_ListOptions(ref),
-		metav1.ManagedFieldsEntry{}.OpenAPIModelName():                            schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
-		metav1.MicroTime{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_MicroTime(ref),
-		metav1.ObjectMeta{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_ObjectMeta(ref),
-		metav1.OwnerReference{}.OpenAPIModelName():                                schema_pkg_apis_meta_v1_OwnerReference(ref),
-		metav1.PartialObjectMetadata{}.OpenAPIModelName():                         schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
-		metav1.PartialObjectMetadataList{}.OpenAPIModelName():                     schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
-		metav1.Patch{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_Patch(ref),
-		metav1.PatchOptions{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_PatchOptions(ref),
-		metav1.Preconditions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_Preconditions(ref),
-		metav1.RootPaths{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_RootPaths(ref),
-		metav1.ServerAddressByClientCIDR{}.OpenAPIModelName():                     schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
-		metav1.ShardInfo{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_ShardInfo(ref),
-		metav1.Status{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_Status(ref),
-		metav1.StatusCause{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_StatusCause(ref),
-		metav1.StatusDetails{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_StatusDetails(ref),
-		metav1.Table{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_Table(ref),
-		metav1.TableColumnDefinition{}.OpenAPIModelName():                         schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
-		metav1.TableOptions{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_TableOptions(ref),
-		metav1.TableRow{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_TableRow(ref),
-		metav1.TableRowCondition{}.OpenAPIModelName():                             schema_pkg_apis_meta_v1_TableRowCondition(ref),
-		metav1.Time{}.OpenAPIModelName():                                          schema_pkg_apis_meta_v1_Time(ref),
-		metav1.Timestamp{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_Timestamp(ref),
-		metav1.TypeMeta{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_TypeMeta(ref),
-		metav1.UpdateOptions{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_UpdateOptions(ref),
-		metav1.WatchEvent{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_WatchEvent(ref),
-		runtime.RawExtension{}.OpenAPIModelName():                                 schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
-		runtime.TypeMeta{}.OpenAPIModelName():                                     schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
-		runtime.Unknown{}.OpenAPIModelName():                                      schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
-		intstr.IntOrString{}.OpenAPIModelName():                                   schema_apimachinery_pkg_util_intstr_IntOrString(ref),
-		version.Info{}.OpenAPIModelName():                                         schema_k8sio_apimachinery_pkg_version_Info(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.BasicAuthSpec":                schema_convoy_api_auth_v1alpha1_BasicAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ClientCertAuthSpec":           schema_convoy_api_auth_v1alpha1_ClientCertAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.CloudIdentitySpec":            schema_convoy_api_auth_v1alpha1_CloudIdentitySpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.DockerConfigAuthSpec":         schema_convoy_api_auth_v1alpha1_DockerConfigAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.ExecPluginAuthSpec":           schema_convoy_api_auth_v1alpha1_ExecPluginAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.GithubAppAuthSpec":            schema_convoy_api_auth_v1alpha1_GithubAppAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.KubeconfigAuthSpec":           schema_convoy_api_auth_v1alpha1_KubeconfigAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDAuthSpec":                  schema_convoy_api_auth_v1alpha1_OIDAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthClientSecretSpec":     schema_convoy_api_auth_v1alpha1_OIDCAuthClientSecretSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthPrivateKeyJWTSpec":    schema_convoy_api_auth_v1alpha1_OIDCAuthPrivateKeyJWTSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCAuthTLSClientAuthSpec":    schema_convoy_api_auth_v1alpha1_OIDCAuthTLSClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.OIDCClientAuthSpec":           schema_convoy_api_auth_v1alpha1_OIDCClientAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.SSHKeyAuthSpec":               schema_convoy_api_auth_v1alpha1_SSHKeyAuthSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TLSSpec":                      schema_convoy_api_auth_v1alpha1_TLSSpec(ref),
+		"github.com/kumodo-io/convoy/api/auth/v1alpha1.TokenAuthSpec":                schema_convoy_api_auth_v1alpha1_TokenAuthSpec(ref),
+		v1alpha1.Cluster{}.OpenAPIModelName():                                        schema_convoy_api_core_v1alpha1_Cluster(ref),
+		v1alpha1.ClusterAgentModeSpec{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_ClusterAgentModeSpec(ref),
+		v1alpha1.ClusterAgentStatus{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ClusterAgentStatus(ref),
+		v1alpha1.ClusterAgentlessModeSpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ClusterAgentlessModeSpec(ref),
+		v1alpha1.ClusterAuthSpec{}.OpenAPIModelName():                                schema_convoy_api_core_v1alpha1_ClusterAuthSpec(ref),
+		v1alpha1.ClusterCapabilitiesSpec{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ClusterCapabilitiesSpec(ref),
+		v1alpha1.ClusterConnectionParametersSpec{}.OpenAPIModelName():                schema_convoy_api_core_v1alpha1_ClusterConnectionParametersSpec(ref),
+		v1alpha1.ClusterDeletionPolicy{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ClusterDeletionPolicy(ref),
+		v1alpha1.ClusterList{}.OpenAPIModelName():                                    schema_convoy_api_core_v1alpha1_ClusterList(ref),
+		v1alpha1.ClusterSpec{}.OpenAPIModelName():                                    schema_convoy_api_core_v1alpha1_ClusterSpec(ref),
+		v1alpha1.ClusterStatus{}.OpenAPIModelName():                                  schema_convoy_api_core_v1alpha1_ClusterStatus(ref),
+		v1alpha1.LastHealthy{}.OpenAPIModelName():                                    schema_convoy_api_core_v1alpha1_LastHealthy(ref),
+		v1alpha1.LifecycleHookJobTemplate{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_LifecycleHookJobTemplate(ref),
+		v1alpha1.LifecycleHookPodTemplate{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_LifecycleHookPodTemplate(ref),
+		v1alpha1.LifecycleHookSpec{}.OpenAPIModelName():                              schema_convoy_api_core_v1alpha1_LifecycleHookSpec(ref),
+		v1alpha1.LifecycleHookStatus{}.OpenAPIModelName():                            schema_convoy_api_core_v1alpha1_LifecycleHookStatus(ref),
+		v1alpha1.LifecycleStatus{}.OpenAPIModelName():                                schema_convoy_api_core_v1alpha1_LifecycleStatus(ref),
+		v1alpha1.PartialMetadata{}.OpenAPIModelName():                                schema_convoy_api_core_v1alpha1_PartialMetadata(ref),
+		v1alpha1.PruneSpec{}.OpenAPIModelName():                                      schema_convoy_api_core_v1alpha1_PruneSpec(ref),
+		v1alpha1.Release{}.OpenAPIModelName():                                        schema_convoy_api_core_v1alpha1_Release(ref),
+		v1alpha1.ReleaseAttemptedRenderFailureStatus{}.OpenAPIModelName():            schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderFailureStatus(ref),
+		v1alpha1.ReleaseAttemptedRenderStatus{}.OpenAPIModelName():                   schema_convoy_api_core_v1alpha1_ReleaseAttemptedRenderStatus(ref),
+		v1alpha1.ReleaseClusterRefSpec{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseClusterRefSpec(ref),
+		v1alpha1.ReleaseContentHelmSpec{}.OpenAPIModelName():                         schema_convoy_api_core_v1alpha1_ReleaseContentHelmSpec(ref),
+		v1alpha1.ReleaseContentJsonnetSpec{}.OpenAPIModelName():                      schema_convoy_api_core_v1alpha1_ReleaseContentJsonnetSpec(ref),
+		v1alpha1.ReleaseContentKustomizeSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseContentKustomizeSpec(ref),
+		v1alpha1.ReleaseContentManifestsSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseContentManifestsSpec(ref),
+		v1alpha1.ReleaseContentSpec{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ReleaseContentSpec(ref),
+		v1alpha1.ReleaseDeletionPolicy{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseDeletionPolicy(ref),
+		v1alpha1.ReleaseFailurePolicy{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_ReleaseFailurePolicy(ref),
+		v1alpha1.ReleaseGitRepositoryRefSpec{}.OpenAPIModelName():                    schema_convoy_api_core_v1alpha1_ReleaseGitRepositoryRefSpec(ref),
+		v1alpha1.ReleaseGitRepositorySpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseGitRepositorySpec(ref),
+		v1alpha1.ReleaseHealthAssessment{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHealthAssessment(ref),
+		v1alpha1.ReleaseHealthSummary{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_ReleaseHealthSummary(ref),
+		v1alpha1.ReleaseHelmRegistryChartSpec{}.OpenAPIModelName():                   schema_convoy_api_core_v1alpha1_ReleaseHelmRegistryChartSpec(ref),
+		v1alpha1.ReleaseHelmRegistrySpec{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseHelmRegistrySpec(ref),
+		v1alpha1.ReleaseInventory{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ReleaseInventory(ref),
+		v1alpha1.ReleaseInventoryList{}.OpenAPIModelName():                           schema_convoy_api_core_v1alpha1_ReleaseInventoryList(ref),
+		v1alpha1.ReleaseLifecycle{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ReleaseLifecycle(ref),
+		v1alpha1.ReleaseLifecycleHookItem{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseLifecycleHookItem(ref),
+		v1alpha1.ReleaseList{}.OpenAPIModelName():                                    schema_convoy_api_core_v1alpha1_ReleaseList(ref),
+		v1alpha1.ReleaseMutation{}.OpenAPIModelName():                                schema_convoy_api_core_v1alpha1_ReleaseMutation(ref),
+		v1alpha1.ReleaseMutationFromSpec{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseMutationFromSpec(ref),
+		v1alpha1.ReleaseMutationPatchSpec{}.OpenAPIModelName():                       schema_convoy_api_core_v1alpha1_ReleaseMutationPatchSpec(ref),
+		v1alpha1.ReleaseMutationTarget{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseMutationTarget(ref),
+		v1alpha1.ReleaseOCIRegistryArtifactSpec{}.OpenAPIModelName():                 schema_convoy_api_core_v1alpha1_ReleaseOCIRegistryArtifactSpec(ref),
+		v1alpha1.ReleaseOCIRegistrySpec{}.OpenAPIModelName():                         schema_convoy_api_core_v1alpha1_ReleaseOCIRegistrySpec(ref),
+		v1alpha1.ReleasePin{}.OpenAPIModelName():                                     schema_convoy_api_core_v1alpha1_ReleasePin(ref),
+		v1alpha1.ReleasePinRenderInputsStatus{}.OpenAPIModelName():                   schema_convoy_api_core_v1alpha1_ReleasePinRenderInputsStatus(ref),
+		v1alpha1.ReleasePinStatus{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ReleasePinStatus(ref),
+		v1alpha1.ReleaseRetentionPolicySpec{}.OpenAPIModelName():                     schema_convoy_api_core_v1alpha1_ReleaseRetentionPolicySpec(ref),
+		v1alpha1.ReleaseRetryBackoffSpec{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseRetryBackoffSpec(ref),
+		v1alpha1.ReleaseSourceSpec{}.OpenAPIModelName():                              schema_convoy_api_core_v1alpha1_ReleaseSourceSpec(ref),
+		v1alpha1.ReleaseSpec{}.OpenAPIModelName():                                    schema_convoy_api_core_v1alpha1_ReleaseSpec(ref),
+		v1alpha1.ReleaseStatus{}.OpenAPIModelName():                                  schema_convoy_api_core_v1alpha1_ReleaseStatus(ref),
+		v1alpha1.ReleaseSyncPolicySpec{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ReleaseSyncPolicySpec(ref),
+		v1alpha1.ReleaseWaveStrategySpec{}.OpenAPIModelName():                        schema_convoy_api_core_v1alpha1_ReleaseWaveStrategySpec(ref),
+		v1alpha1.ResolvedCluster{}.OpenAPIModelName():                                schema_convoy_api_core_v1alpha1_ResolvedCluster(ref),
+		v1alpha1.ResolvedMutation{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ResolvedMutation(ref),
+		v1alpha1.ResolvedRetentionPolicyStatus{}.OpenAPIModelName():                  schema_convoy_api_core_v1alpha1_ResolvedRetentionPolicyStatus(ref),
+		v1alpha1.ResolvedSource{}.OpenAPIModelName():                                 schema_convoy_api_core_v1alpha1_ResolvedSource(ref),
+		v1alpha1.ResourceInventoryItem{}.OpenAPIModelName():                          schema_convoy_api_core_v1alpha1_ResourceInventoryItem(ref),
+		v1alpha1.ResourceWaveStatus{}.OpenAPIModelName():                             schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref),
+		v1alpha1.RolloutStatus{}.OpenAPIModelName():                                  schema_convoy_api_core_v1alpha1_RolloutStatus(ref),
+		v1alpha1.ValuesSourceGitRepositorySpec{}.OpenAPIModelName():                  schema_convoy_api_core_v1alpha1_ValuesSourceGitRepositorySpec(ref),
+		v1alpha1.ValuesSourceSpec{}.OpenAPIModelName():                               schema_convoy_api_core_v1alpha1_ValuesSourceSpec(ref),
+		extensionsv1alpha1.GlobalHealthRuleSet{}.OpenAPIModelName():                  schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSet(ref),
+		extensionsv1alpha1.GlobalHealthRuleSetList{}.OpenAPIModelName():              schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetList(ref),
+		extensionsv1alpha1.GlobalHealthRuleSetSpec{}.OpenAPIModelName():              schema_convoy_api_extensions_v1alpha1_GlobalHealthRuleSetSpec(ref),
+		extensionsv1alpha1.HealthRuleSet{}.OpenAPIModelName():                        schema_convoy_api_extensions_v1alpha1_HealthRuleSet(ref),
+		extensionsv1alpha1.HealthRuleSetList{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_HealthRuleSetList(ref),
+		extensionsv1alpha1.HealthRuleSetSpec{}.OpenAPIModelName():                    schema_convoy_api_extensions_v1alpha1_HealthRuleSetSpec(ref),
+		extensionsv1alpha1.RuleSpec{}.OpenAPIModelName():                             schema_convoy_api_extensions_v1alpha1_RuleSpec(ref),
+		sourcev1alpha1.GitRepository{}.OpenAPIModelName():                            schema_convoy_api_source_v1alpha1_GitRepository(ref),
+		sourcev1alpha1.GitRepositoryAuthSpec{}.OpenAPIModelName():                    schema_convoy_api_source_v1alpha1_GitRepositoryAuthSpec(ref),
+		sourcev1alpha1.GitRepositoryList{}.OpenAPIModelName():                        schema_convoy_api_source_v1alpha1_GitRepositoryList(ref),
+		sourcev1alpha1.GitRepositorySpec{}.OpenAPIModelName():                        schema_convoy_api_source_v1alpha1_GitRepositorySpec(ref),
+		sourcev1alpha1.GitRepositoryStatus{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_GitRepositoryStatus(ref),
+		sourcev1alpha1.GitRepositoryWebhookFilterSpec{}.OpenAPIModelName():           schema_convoy_api_source_v1alpha1_GitRepositoryWebhookFilterSpec(ref),
+		sourcev1alpha1.GitRepositoryWebhookSpec{}.OpenAPIModelName():                 schema_convoy_api_source_v1alpha1_GitRepositoryWebhookSpec(ref),
+		sourcev1alpha1.HelmRegistry{}.OpenAPIModelName():                             schema_convoy_api_source_v1alpha1_HelmRegistry(ref),
+		sourcev1alpha1.HelmRegistryAuthSpec{}.OpenAPIModelName():                     schema_convoy_api_source_v1alpha1_HelmRegistryAuthSpec(ref),
+		sourcev1alpha1.HelmRegistryList{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_HelmRegistryList(ref),
+		sourcev1alpha1.HelmRegistrySpec{}.OpenAPIModelName():                         schema_convoy_api_source_v1alpha1_HelmRegistrySpec(ref),
+		sourcev1alpha1.HelmRegistryStatus{}.OpenAPIModelName():                       schema_convoy_api_source_v1alpha1_HelmRegistryStatus(ref),
+		sourcev1alpha1.HelmRegistryWebhookFilterSpec{}.OpenAPIModelName():            schema_convoy_api_source_v1alpha1_HelmRegistryWebhookFilterSpec(ref),
+		sourcev1alpha1.HelmRegistryWebhookSpec{}.OpenAPIModelName():                  schema_convoy_api_source_v1alpha1_HelmRegistryWebhookSpec(ref),
+		sourcev1alpha1.LastRejectionStatus{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_LastRejectionStatus(ref),
+		sourcev1alpha1.OCIRegistry{}.OpenAPIModelName():                              schema_convoy_api_source_v1alpha1_OCIRegistry(ref),
+		sourcev1alpha1.OCIRegistryAuthSpec{}.OpenAPIModelName():                      schema_convoy_api_source_v1alpha1_OCIRegistryAuthSpec(ref),
+		sourcev1alpha1.OCIRegistryList{}.OpenAPIModelName():                          schema_convoy_api_source_v1alpha1_OCIRegistryList(ref),
+		sourcev1alpha1.OCIRegistrySpec{}.OpenAPIModelName():                          schema_convoy_api_source_v1alpha1_OCIRegistrySpec(ref),
+		sourcev1alpha1.OCIRegistryStatus{}.OpenAPIModelName():                        schema_convoy_api_source_v1alpha1_OCIRegistryStatus(ref),
+		sourcev1alpha1.OCIRegistryWebhookFilterSpec{}.OpenAPIModelName():             schema_convoy_api_source_v1alpha1_OCIRegistryWebhookFilterSpec(ref),
+		sourcev1alpha1.OCIRegistryWebhookSpec{}.OpenAPIModelName():                   schema_convoy_api_source_v1alpha1_OCIRegistryWebhookSpec(ref),
+		sourcev1alpha1.WebhookStatus{}.OpenAPIModelName():                            schema_convoy_api_source_v1alpha1_WebhookStatus(ref),
+		v1.CronJob{}.OpenAPIModelName():                                              schema_k8sio_api_batch_v1_CronJob(ref),
+		v1.CronJobList{}.OpenAPIModelName():                                          schema_k8sio_api_batch_v1_CronJobList(ref),
+		v1.CronJobSpec{}.OpenAPIModelName():                                          schema_k8sio_api_batch_v1_CronJobSpec(ref),
+		v1.CronJobStatus{}.OpenAPIModelName():                                        schema_k8sio_api_batch_v1_CronJobStatus(ref),
+		v1.Job{}.OpenAPIModelName():                                                  schema_k8sio_api_batch_v1_Job(ref),
+		v1.JobCondition{}.OpenAPIModelName():                                         schema_k8sio_api_batch_v1_JobCondition(ref),
+		v1.JobList{}.OpenAPIModelName():                                              schema_k8sio_api_batch_v1_JobList(ref),
+		v1.JobSchedulingConfiguration{}.OpenAPIModelName():                           schema_k8sio_api_batch_v1_JobSchedulingConfiguration(ref),
+		v1.JobSpec{}.OpenAPIModelName():                                              schema_k8sio_api_batch_v1_JobSpec(ref),
+		v1.JobStatus{}.OpenAPIModelName():                                            schema_k8sio_api_batch_v1_JobStatus(ref),
+		v1.JobTemplateSpec{}.OpenAPIModelName():                                      schema_k8sio_api_batch_v1_JobTemplateSpec(ref),
+		v1.PodFailurePolicy{}.OpenAPIModelName():                                     schema_k8sio_api_batch_v1_PodFailurePolicy(ref),
+		v1.PodFailurePolicyOnExitCodesRequirement{}.OpenAPIModelName():               schema_k8sio_api_batch_v1_PodFailurePolicyOnExitCodesRequirement(ref),
+		v1.PodFailurePolicyOnPodConditionsPattern{}.OpenAPIModelName():               schema_k8sio_api_batch_v1_PodFailurePolicyOnPodConditionsPattern(ref),
+		v1.PodFailurePolicyRule{}.OpenAPIModelName():                                 schema_k8sio_api_batch_v1_PodFailurePolicyRule(ref),
+		v1.SuccessPolicy{}.OpenAPIModelName():                                        schema_k8sio_api_batch_v1_SuccessPolicy(ref),
+		v1.SuccessPolicyRule{}.OpenAPIModelName():                                    schema_k8sio_api_batch_v1_SuccessPolicyRule(ref),
+		v1.UncountedTerminatedPods{}.OpenAPIModelName():                              schema_k8sio_api_batch_v1_UncountedTerminatedPods(ref),
+		corev1.AWSElasticBlockStoreVolumeSource{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
+		corev1.Affinity{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_Affinity(ref),
+		corev1.AppArmorProfile{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_AppArmorProfile(ref),
+		corev1.AttachedVolume{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_AttachedVolume(ref),
+		corev1.AvoidPods{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_AvoidPods(ref),
+		corev1.AzureDiskVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_AzureDiskVolumeSource(ref),
+		corev1.AzureFilePersistentVolumeSource{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_AzureFilePersistentVolumeSource(ref),
+		corev1.AzureFileVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_AzureFileVolumeSource(ref),
+		corev1.Binding{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_Binding(ref),
+		corev1.CSIPersistentVolumeSource{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_CSIPersistentVolumeSource(ref),
+		corev1.CSIVolumeSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_CSIVolumeSource(ref),
+		corev1.Capabilities{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_Capabilities(ref),
+		corev1.CephFSPersistentVolumeSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_CephFSPersistentVolumeSource(ref),
+		corev1.CephFSVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_CephFSVolumeSource(ref),
+		corev1.CinderPersistentVolumeSource{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_CinderPersistentVolumeSource(ref),
+		corev1.CinderVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_CinderVolumeSource(ref),
+		corev1.ClientIPConfig{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ClientIPConfig(ref),
+		corev1.ClusterTrustBundleProjection{}.OpenAPIModelName():                     schema_k8sio_api_core_v1_ClusterTrustBundleProjection(ref),
+		corev1.ComponentCondition{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ComponentCondition(ref),
+		corev1.ComponentStatus{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_ComponentStatus(ref),
+		corev1.ComponentStatusList{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_ComponentStatusList(ref),
+		corev1.ConfigMap{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_ConfigMap(ref),
+		corev1.ConfigMapEnvSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ConfigMapEnvSource(ref),
+		corev1.ConfigMapKeySelector{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ConfigMapKeySelector(ref),
+		corev1.ConfigMapList{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ConfigMapList(ref),
+		corev1.ConfigMapNodeConfigSource{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_ConfigMapNodeConfigSource(ref),
+		corev1.ConfigMapProjection{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_ConfigMapProjection(ref),
+		corev1.ConfigMapVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ConfigMapVolumeSource(ref),
+		corev1.Container{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Container(ref),
+		corev1.ContainerExtendedResourceRequest{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_ContainerExtendedResourceRequest(ref),
+		corev1.ContainerImage{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ContainerImage(ref),
+		corev1.ContainerPort{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ContainerPort(ref),
+		corev1.ContainerResizePolicy{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ContainerResizePolicy(ref),
+		corev1.ContainerRestartRule{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ContainerRestartRule(ref),
+		corev1.ContainerRestartRuleOnExitCodes{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_ContainerRestartRuleOnExitCodes(ref),
+		corev1.ContainerState{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ContainerState(ref),
+		corev1.ContainerStateRunning{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ContainerStateRunning(ref),
+		corev1.ContainerStateTerminated{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_ContainerStateTerminated(ref),
+		corev1.ContainerStateWaiting{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ContainerStateWaiting(ref),
+		corev1.ContainerStatus{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_ContainerStatus(ref),
+		corev1.ContainerUser{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ContainerUser(ref),
+		corev1.DaemonEndpoint{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_DaemonEndpoint(ref),
+		corev1.DownwardAPIProjection{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_DownwardAPIProjection(ref),
+		corev1.DownwardAPIVolumeFile{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_DownwardAPIVolumeFile(ref),
+		corev1.DownwardAPIVolumeSource{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_DownwardAPIVolumeSource(ref),
+		corev1.EmptyDirVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_EmptyDirVolumeSource(ref),
+		corev1.EndpointAddress{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_EndpointAddress(ref),
+		corev1.EndpointPort{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_EndpointPort(ref),
+		corev1.EndpointSubset{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_EndpointSubset(ref),
+		corev1.Endpoints{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Endpoints(ref),
+		corev1.EndpointsList{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_EndpointsList(ref),
+		corev1.EnvFromSource{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_EnvFromSource(ref),
+		corev1.EnvVar{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_EnvVar(ref),
+		corev1.EnvVarSource{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_EnvVarSource(ref),
+		corev1.EphemeralContainer{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_EphemeralContainer(ref),
+		corev1.EphemeralContainerCommon{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_EphemeralContainerCommon(ref),
+		corev1.EphemeralVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_EphemeralVolumeSource(ref),
+		corev1.Event{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_Event(ref),
+		corev1.EventList{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_EventList(ref),
+		corev1.EventSeries{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_EventSeries(ref),
+		corev1.EventSource{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_EventSource(ref),
+		corev1.EvictionResponder{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_EvictionResponder(ref),
+		corev1.ExecAction{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_ExecAction(ref),
+		corev1.FCVolumeSource{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_FCVolumeSource(ref),
+		corev1.FileKeySelector{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_FileKeySelector(ref),
+		corev1.FlexPersistentVolumeSource{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_FlexPersistentVolumeSource(ref),
+		corev1.FlexVolumeSource{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_FlexVolumeSource(ref),
+		corev1.FlockerVolumeSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_FlockerVolumeSource(ref),
+		corev1.GCEPersistentDiskVolumeSource{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_GCEPersistentDiskVolumeSource(ref),
+		corev1.GRPCAction{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_GRPCAction(ref),
+		corev1.GitRepoVolumeSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_GitRepoVolumeSource(ref),
+		corev1.GlusterfsPersistentVolumeSource{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_GlusterfsPersistentVolumeSource(ref),
+		corev1.GlusterfsVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_GlusterfsVolumeSource(ref),
+		corev1.HTTPGetAction{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_HTTPGetAction(ref),
+		corev1.HTTPHeader{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_HTTPHeader(ref),
+		corev1.HostAlias{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_HostAlias(ref),
+		corev1.HostIP{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_HostIP(ref),
+		corev1.HostPathVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_HostPathVolumeSource(ref),
+		corev1.ISCSIPersistentVolumeSource{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_ISCSIPersistentVolumeSource(ref),
+		corev1.ISCSIVolumeSource{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ISCSIVolumeSource(ref),
+		corev1.ImageVolumeSource{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ImageVolumeSource(ref),
+		corev1.ImageVolumeStatus{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ImageVolumeStatus(ref),
+		corev1.KeyToPath{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_KeyToPath(ref),
+		corev1.Lifecycle{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Lifecycle(ref),
+		corev1.LifecycleHandler{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_LifecycleHandler(ref),
+		corev1.LimitRange{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_LimitRange(ref),
+		corev1.LimitRangeItem{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_LimitRangeItem(ref),
+		corev1.LimitRangeList{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_LimitRangeList(ref),
+		corev1.LimitRangeSpec{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_LimitRangeSpec(ref),
+		corev1.LinuxContainerUser{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_LinuxContainerUser(ref),
+		corev1.List{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_List(ref),
+		corev1.LoadBalancerIngress{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_LoadBalancerIngress(ref),
+		corev1.LoadBalancerStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_LoadBalancerStatus(ref),
+		corev1.LocalObjectReference{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_LocalObjectReference(ref),
+		corev1.LocalVolumeSource{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_LocalVolumeSource(ref),
+		corev1.ModifyVolumeStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ModifyVolumeStatus(ref),
+		corev1.NFSVolumeSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NFSVolumeSource(ref),
+		corev1.Namespace{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_Namespace(ref),
+		corev1.NamespaceCondition{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_NamespaceCondition(ref),
+		corev1.NamespaceList{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_NamespaceList(ref),
+		corev1.NamespaceSpec{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_NamespaceSpec(ref),
+		corev1.NamespaceStatus{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_NamespaceStatus(ref),
+		corev1.Node{}.OpenAPIModelName():                                             schema_k8sio_api_core_v1_Node(ref),
+		corev1.NodeAddress{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_NodeAddress(ref),
+		corev1.NodeAffinity{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_NodeAffinity(ref),
+		corev1.NodeAllocatableMappedResources{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_NodeAllocatableMappedResources(ref),
+		corev1.NodeAllocatableOverheadResources{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_NodeAllocatableOverheadResources(ref),
+		corev1.NodeAllocatableResourceClaimStatus{}.OpenAPIModelName():               schema_k8sio_api_core_v1_NodeAllocatableResourceClaimStatus(ref),
+		corev1.NodeCondition{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_NodeCondition(ref),
+		corev1.NodeConfigSource{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NodeConfigSource(ref),
+		corev1.NodeConfigStatus{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NodeConfigStatus(ref),
+		corev1.NodeDaemonEndpoints{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_NodeDaemonEndpoints(ref),
+		corev1.NodeFeatures{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_NodeFeatures(ref),
+		corev1.NodeList{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_NodeList(ref),
+		corev1.NodePodPreemptionPolicy{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_NodePodPreemptionPolicy(ref),
+		corev1.NodeProxyOptions{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NodeProxyOptions(ref),
+		corev1.NodeRuntimeHandler{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_NodeRuntimeHandler(ref),
+		corev1.NodeRuntimeHandlerFeatures{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_NodeRuntimeHandlerFeatures(ref),
+		corev1.NodeSelector{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_NodeSelector(ref),
+		corev1.NodeSelectorRequirement{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_NodeSelectorRequirement(ref),
+		corev1.NodeSelectorTerm{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_NodeSelectorTerm(ref),
+		corev1.NodeSpec{}.OpenAPIModelName():                                         schema_k8sio_api_core_v1_NodeSpec(ref),
+		corev1.NodeStatus{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_NodeStatus(ref),
+		corev1.NodeSwapStatus{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_NodeSwapStatus(ref),
+		corev1.NodeSystemInfo{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_NodeSystemInfo(ref),
+		corev1.ObjectFieldSelector{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_ObjectFieldSelector(ref),
+		corev1.ObjectReference{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_ObjectReference(ref),
+		corev1.PersistentVolume{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_PersistentVolume(ref),
+		corev1.PersistentVolumeClaim{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PersistentVolumeClaim(ref),
+		corev1.PersistentVolumeClaimCondition{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_PersistentVolumeClaimCondition(ref),
+		corev1.PersistentVolumeClaimList{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PersistentVolumeClaimList(ref),
+		corev1.PersistentVolumeClaimSpec{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_PersistentVolumeClaimSpec(ref),
+		corev1.PersistentVolumeClaimStatus{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_PersistentVolumeClaimStatus(ref),
+		corev1.PersistentVolumeClaimTemplate{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_PersistentVolumeClaimTemplate(ref),
+		corev1.PersistentVolumeClaimVolumeSource{}.OpenAPIModelName():                schema_k8sio_api_core_v1_PersistentVolumeClaimVolumeSource(ref),
+		corev1.PersistentVolumeList{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_PersistentVolumeList(ref),
+		corev1.PersistentVolumeSource{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_PersistentVolumeSource(ref),
+		corev1.PersistentVolumeSpec{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_PersistentVolumeSpec(ref),
+		corev1.PersistentVolumeStatus{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_PersistentVolumeStatus(ref),
+		corev1.PhotonPersistentDiskVolumeSource{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_PhotonPersistentDiskVolumeSource(ref),
+		corev1.Pod{}.OpenAPIModelName():                                              schema_k8sio_api_core_v1_Pod(ref),
+		corev1.PodAffinity{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_PodAffinity(ref),
+		corev1.PodAffinityTerm{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodAffinityTerm(ref),
+		corev1.PodAntiAffinity{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodAntiAffinity(ref),
+		corev1.PodAttachOptions{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_PodAttachOptions(ref),
+		corev1.PodCertificateProjection{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_PodCertificateProjection(ref),
+		corev1.PodCondition{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_PodCondition(ref),
+		corev1.PodDNSConfig{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_PodDNSConfig(ref),
+		corev1.PodDNSConfigOption{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodDNSConfigOption(ref),
+		corev1.PodExecOptions{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_PodExecOptions(ref),
+		corev1.PodExtendedResourceClaimStatus{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_PodExtendedResourceClaimStatus(ref),
+		corev1.PodIP{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_PodIP(ref),
+		corev1.PodList{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_PodList(ref),
+		corev1.PodLogOptions{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_PodLogOptions(ref),
+		corev1.PodOS{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_PodOS(ref),
+		corev1.PodPortForwardOptions{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_PodPortForwardOptions(ref),
+		corev1.PodProxyOptions{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodProxyOptions(ref),
+		corev1.PodReadinessGate{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_PodReadinessGate(ref),
+		corev1.PodResourceClaim{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_PodResourceClaim(ref),
+		corev1.PodResourceClaimStatus{}.OpenAPIModelName():                           schema_k8sio_api_core_v1_PodResourceClaimStatus(ref),
+		corev1.PodSchedulingGate{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_PodSchedulingGate(ref),
+		corev1.PodSchedulingGroup{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodSchedulingGroup(ref),
+		corev1.PodSecurityContext{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_PodSecurityContext(ref),
+		corev1.PodSignature{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_PodSignature(ref),
+		corev1.PodSpec{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_PodSpec(ref),
+		corev1.PodStatus{}.OpenAPIModelName():                                        schema_k8sio_api_core_v1_PodStatus(ref),
+		corev1.PodTemplate{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_PodTemplate(ref),
+		corev1.PodTemplateList{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodTemplateList(ref),
+		corev1.PodTemplateSpec{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodTemplateSpec(ref),
+		corev1.PodVolumeHealth{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_PodVolumeHealth(ref),
+		corev1.PortStatus{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_PortStatus(ref),
+		corev1.PortworxVolumeSource{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_PortworxVolumeSource(ref),
+		corev1.PreferAvoidPodsEntry{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_PreferAvoidPodsEntry(ref),
+		corev1.PreferredSchedulingTerm{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_PreferredSchedulingTerm(ref),
+		corev1.Probe{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_Probe(ref),
+		corev1.ProbeHandler{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_ProbeHandler(ref),
+		corev1.ProjectedVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ProjectedVolumeSource(ref),
+		corev1.QuobyteVolumeSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_QuobyteVolumeSource(ref),
+		corev1.RBDPersistentVolumeSource{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_RBDPersistentVolumeSource(ref),
+		corev1.RBDVolumeSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_RBDVolumeSource(ref),
+		corev1.RangeAllocation{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_RangeAllocation(ref),
+		corev1.ReplicationController{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ReplicationController(ref),
+		corev1.ReplicationControllerCondition{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_ReplicationControllerCondition(ref),
+		corev1.ReplicationControllerList{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_ReplicationControllerList(ref),
+		corev1.ReplicationControllerSpec{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_ReplicationControllerSpec(ref),
+		corev1.ReplicationControllerStatus{}.OpenAPIModelName():                      schema_k8sio_api_core_v1_ReplicationControllerStatus(ref),
+		corev1.ResourceClaim{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ResourceClaim(ref),
+		corev1.ResourceFieldSelector{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_ResourceFieldSelector(ref),
+		corev1.ResourceHealth{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ResourceHealth(ref),
+		corev1.ResourceQuota{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ResourceQuota(ref),
+		corev1.ResourceQuotaList{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ResourceQuotaList(ref),
+		corev1.ResourceQuotaSpec{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_ResourceQuotaSpec(ref),
+		corev1.ResourceQuotaStatus{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_ResourceQuotaStatus(ref),
+		corev1.ResourceRequirements{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_ResourceRequirements(ref),
+		corev1.ResourceStatus{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ResourceStatus(ref),
+		corev1.SELinuxOptions{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_SELinuxOptions(ref),
+		corev1.ScaleIOPersistentVolumeSource{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_ScaleIOPersistentVolumeSource(ref),
+		corev1.ScaleIOVolumeSource{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_ScaleIOVolumeSource(ref),
+		corev1.ScopeSelector{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ScopeSelector(ref),
+		corev1.ScopedResourceSelectorRequirement{}.OpenAPIModelName():                schema_k8sio_api_core_v1_ScopedResourceSelectorRequirement(ref),
+		corev1.SeccompProfile{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_SeccompProfile(ref),
+		corev1.Secret{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_Secret(ref),
+		corev1.SecretEnvSource{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_SecretEnvSource(ref),
+		corev1.SecretKeySelector{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_SecretKeySelector(ref),
+		corev1.SecretList{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_SecretList(ref),
+		corev1.SecretProjection{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_SecretProjection(ref),
+		corev1.SecretReference{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_SecretReference(ref),
+		corev1.SecretVolumeSource{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_SecretVolumeSource(ref),
+		corev1.SecurityContext{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_SecurityContext(ref),
+		corev1.SerializedReference{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_SerializedReference(ref),
+		corev1.Service{}.OpenAPIModelName():                                          schema_k8sio_api_core_v1_Service(ref),
+		corev1.ServiceAccount{}.OpenAPIModelName():                                   schema_k8sio_api_core_v1_ServiceAccount(ref),
+		corev1.ServiceAccountList{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_ServiceAccountList(ref),
+		corev1.ServiceAccountTokenProjection{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_ServiceAccountTokenProjection(ref),
+		corev1.ServiceList{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_ServiceList(ref),
+		corev1.ServicePort{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_ServicePort(ref),
+		corev1.ServiceProxyOptions{}.OpenAPIModelName():                              schema_k8sio_api_core_v1_ServiceProxyOptions(ref),
+		corev1.ServiceSpec{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_ServiceSpec(ref),
+		corev1.ServiceStatus{}.OpenAPIModelName():                                    schema_k8sio_api_core_v1_ServiceStatus(ref),
+		corev1.SessionAffinityConfig{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_SessionAffinityConfig(ref),
+		corev1.SleepAction{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_SleepAction(ref),
+		corev1.StorageOSPersistentVolumeSource{}.OpenAPIModelName():                  schema_k8sio_api_core_v1_StorageOSPersistentVolumeSource(ref),
+		corev1.StorageOSVolumeSource{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_StorageOSVolumeSource(ref),
+		corev1.Sysctl{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_Sysctl(ref),
+		corev1.TCPSocketAction{}.OpenAPIModelName():                                  schema_k8sio_api_core_v1_TCPSocketAction(ref),
+		corev1.Taint{}.OpenAPIModelName():                                            schema_k8sio_api_core_v1_Taint(ref),
+		corev1.Toleration{}.OpenAPIModelName():                                       schema_k8sio_api_core_v1_Toleration(ref),
+		corev1.TopologySelectorLabelRequirement{}.OpenAPIModelName():                 schema_k8sio_api_core_v1_TopologySelectorLabelRequirement(ref),
+		corev1.TopologySelectorTerm{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_TopologySelectorTerm(ref),
+		corev1.TopologySpreadConstraint{}.OpenAPIModelName():                         schema_k8sio_api_core_v1_TopologySpreadConstraint(ref),
+		corev1.TypedLocalObjectReference{}.OpenAPIModelName():                        schema_k8sio_api_core_v1_TypedLocalObjectReference(ref),
+		corev1.TypedObjectReference{}.OpenAPIModelName():                             schema_k8sio_api_core_v1_TypedObjectReference(ref),
+		corev1.Volume{}.OpenAPIModelName():                                           schema_k8sio_api_core_v1_Volume(ref),
+		corev1.VolumeDevice{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_VolumeDevice(ref),
+		corev1.VolumeHealthCondition{}.OpenAPIModelName():                            schema_k8sio_api_core_v1_VolumeHealthCondition(ref),
+		corev1.VolumeHealthStatus{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_VolumeHealthStatus(ref),
+		corev1.VolumeMount{}.OpenAPIModelName():                                      schema_k8sio_api_core_v1_VolumeMount(ref),
+		corev1.VolumeMountStatus{}.OpenAPIModelName():                                schema_k8sio_api_core_v1_VolumeMountStatus(ref),
+		corev1.VolumeNodeAffinity{}.OpenAPIModelName():                               schema_k8sio_api_core_v1_VolumeNodeAffinity(ref),
+		corev1.VolumeProjection{}.OpenAPIModelName():                                 schema_k8sio_api_core_v1_VolumeProjection(ref),
+		corev1.VolumeResourceRequirements{}.OpenAPIModelName():                       schema_k8sio_api_core_v1_VolumeResourceRequirements(ref),
+		corev1.VolumeSource{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_VolumeSource(ref),
+		corev1.VolumeStatus{}.OpenAPIModelName():                                     schema_k8sio_api_core_v1_VolumeStatus(ref),
+		corev1.VsphereVirtualDiskVolumeSource{}.OpenAPIModelName():                   schema_k8sio_api_core_v1_VsphereVirtualDiskVolumeSource(ref),
+		corev1.WeightedPodAffinityTerm{}.OpenAPIModelName():                          schema_k8sio_api_core_v1_WeightedPodAffinityTerm(ref),
+		corev1.WindowsSecurityContextOptions{}.OpenAPIModelName():                    schema_k8sio_api_core_v1_WindowsSecurityContextOptions(ref),
+		v1alpha3.AllCompositeDisruptionMode{}.OpenAPIModelName():                     schema_k8sio_api_scheduling_v1alpha3_AllCompositeDisruptionMode(ref),
+		v1alpha3.AllDisruptionMode{}.OpenAPIModelName():                              schema_k8sio_api_scheduling_v1alpha3_AllDisruptionMode(ref),
+		v1alpha3.BasicSchedulingPolicy{}.OpenAPIModelName():                          schema_k8sio_api_scheduling_v1alpha3_BasicSchedulingPolicy(ref),
+		v1alpha3.CompositeBasicSchedulingPolicy{}.OpenAPIModelName():                 schema_k8sio_api_scheduling_v1alpha3_CompositeBasicSchedulingPolicy(ref),
+		v1alpha3.CompositeDisruptionMode{}.OpenAPIModelName():                        schema_k8sio_api_scheduling_v1alpha3_CompositeDisruptionMode(ref),
+		v1alpha3.CompositeGangSchedulingPolicy{}.OpenAPIModelName():                  schema_k8sio_api_scheduling_v1alpha3_CompositeGangSchedulingPolicy(ref),
+		v1alpha3.CompositePodGroup{}.OpenAPIModelName():                              schema_k8sio_api_scheduling_v1alpha3_CompositePodGroup(ref),
+		v1alpha3.CompositePodGroupList{}.OpenAPIModelName():                          schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupList(ref),
+		v1alpha3.CompositePodGroupSchedulingConstraints{}.OpenAPIModelName():         schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupSchedulingConstraints(ref),
+		v1alpha3.CompositePodGroupSchedulingPolicy{}.OpenAPIModelName():              schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupSchedulingPolicy(ref),
+		v1alpha3.CompositePodGroupSpec{}.OpenAPIModelName():                          schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupSpec(ref),
+		v1alpha3.CompositePodGroupStatus{}.OpenAPIModelName():                        schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupStatus(ref),
+		v1alpha3.CompositePodGroupTemplate{}.OpenAPIModelName():                      schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupTemplate(ref),
+		v1alpha3.DisruptionMode{}.OpenAPIModelName():                                 schema_k8sio_api_scheduling_v1alpha3_DisruptionMode(ref),
+		v1alpha3.GangSchedulingPolicy{}.OpenAPIModelName():                           schema_k8sio_api_scheduling_v1alpha3_GangSchedulingPolicy(ref),
+		v1alpha3.PodGroup{}.OpenAPIModelName():                                       schema_k8sio_api_scheduling_v1alpha3_PodGroup(ref),
+		v1alpha3.PodGroupList{}.OpenAPIModelName():                                   schema_k8sio_api_scheduling_v1alpha3_PodGroupList(ref),
+		v1alpha3.PodGroupResourceClaim{}.OpenAPIModelName():                          schema_k8sio_api_scheduling_v1alpha3_PodGroupResourceClaim(ref),
+		v1alpha3.PodGroupResourceClaimStatus{}.OpenAPIModelName():                    schema_k8sio_api_scheduling_v1alpha3_PodGroupResourceClaimStatus(ref),
+		v1alpha3.PodGroupSchedulingConstraints{}.OpenAPIModelName():                  schema_k8sio_api_scheduling_v1alpha3_PodGroupSchedulingConstraints(ref),
+		v1alpha3.PodGroupSchedulingPolicy{}.OpenAPIModelName():                       schema_k8sio_api_scheduling_v1alpha3_PodGroupSchedulingPolicy(ref),
+		v1alpha3.PodGroupSpec{}.OpenAPIModelName():                                   schema_k8sio_api_scheduling_v1alpha3_PodGroupSpec(ref),
+		v1alpha3.PodGroupStatus{}.OpenAPIModelName():                                 schema_k8sio_api_scheduling_v1alpha3_PodGroupStatus(ref),
+		v1alpha3.PodGroupTemplate{}.OpenAPIModelName():                               schema_k8sio_api_scheduling_v1alpha3_PodGroupTemplate(ref),
+		v1alpha3.SingleCompositeDisruptionMode{}.OpenAPIModelName():                  schema_k8sio_api_scheduling_v1alpha3_SingleCompositeDisruptionMode(ref),
+		v1alpha3.SingleDisruptionMode{}.OpenAPIModelName():                           schema_k8sio_api_scheduling_v1alpha3_SingleDisruptionMode(ref),
+		v1alpha3.TopologyConstraint{}.OpenAPIModelName():                             schema_k8sio_api_scheduling_v1alpha3_TopologyConstraint(ref),
+		v1alpha3.TypedLocalObjectReference{}.OpenAPIModelName():                      schema_k8sio_api_scheduling_v1alpha3_TypedLocalObjectReference(ref),
+		v1alpha3.Workload{}.OpenAPIModelName():                                       schema_k8sio_api_scheduling_v1alpha3_Workload(ref),
+		v1alpha3.WorkloadCompositePodGroupAllDisruptionMode{}.OpenAPIModelName():     schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupAllDisruptionMode(ref),
+		v1alpha3.WorkloadCompositePodGroupBasicSchedulingPolicy{}.OpenAPIModelName(): schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupBasicSchedulingPolicy(ref),
+		v1alpha3.WorkloadCompositePodGroupDisruptionMode{}.OpenAPIModelName():        schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupDisruptionMode(ref),
+		v1alpha3.WorkloadCompositePodGroupGangSchedulingPolicy{}.OpenAPIModelName():  schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupGangSchedulingPolicy(ref),
+		v1alpha3.WorkloadCompositePodGroupSchedulingConstraints{}.OpenAPIModelName(): schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupSchedulingConstraints(ref),
+		v1alpha3.WorkloadCompositePodGroupSchedulingPolicy{}.OpenAPIModelName():      schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupSchedulingPolicy(ref),
+		v1alpha3.WorkloadCompositePodGroupSingleDisruptionMode{}.OpenAPIModelName():  schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupSingleDisruptionMode(ref),
+		v1alpha3.WorkloadList{}.OpenAPIModelName():                                   schema_k8sio_api_scheduling_v1alpha3_WorkloadList(ref),
+		v1alpha3.WorkloadPodGroupAllDisruptionMode{}.OpenAPIModelName():              schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupAllDisruptionMode(ref),
+		v1alpha3.WorkloadPodGroupBasicSchedulingPolicy{}.OpenAPIModelName():          schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupBasicSchedulingPolicy(ref),
+		v1alpha3.WorkloadPodGroupDisruptionMode{}.OpenAPIModelName():                 schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupDisruptionMode(ref),
+		v1alpha3.WorkloadPodGroupGangSchedulingPolicy{}.OpenAPIModelName():           schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupGangSchedulingPolicy(ref),
+		v1alpha3.WorkloadPodGroupResourceClaim{}.OpenAPIModelName():                  schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupResourceClaim(ref),
+		v1alpha3.WorkloadPodGroupSchedulingConstraints{}.OpenAPIModelName():          schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupSchedulingConstraints(ref),
+		v1alpha3.WorkloadPodGroupSchedulingPolicy{}.OpenAPIModelName():               schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupSchedulingPolicy(ref),
+		v1alpha3.WorkloadPodGroupSingleDisruptionMode{}.OpenAPIModelName():           schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupSingleDisruptionMode(ref),
+		v1alpha3.WorkloadReference{}.OpenAPIModelName():                              schema_k8sio_api_scheduling_v1alpha3_WorkloadReference(ref),
+		v1alpha3.WorkloadSpec{}.OpenAPIModelName():                                   schema_k8sio_api_scheduling_v1alpha3_WorkloadSpec(ref),
+		apiextensionsv1.ConversionRequest{}.OpenAPIModelName():                       schema_pkg_apis_apiextensions_v1_ConversionRequest(ref),
+		apiextensionsv1.ConversionResponse{}.OpenAPIModelName():                      schema_pkg_apis_apiextensions_v1_ConversionResponse(ref),
+		apiextensionsv1.ConversionReview{}.OpenAPIModelName():                        schema_pkg_apis_apiextensions_v1_ConversionReview(ref),
+		apiextensionsv1.CustomResourceColumnDefinition{}.OpenAPIModelName():          schema_pkg_apis_apiextensions_v1_CustomResourceColumnDefinition(ref),
+		apiextensionsv1.CustomResourceConversion{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_CustomResourceConversion(ref),
+		apiextensionsv1.CustomResourceDefinition{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_CustomResourceDefinition(ref),
+		apiextensionsv1.CustomResourceDefinitionCondition{}.OpenAPIModelName():       schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionCondition(ref),
+		apiextensionsv1.CustomResourceDefinitionList{}.OpenAPIModelName():            schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionList(ref),
+		apiextensionsv1.CustomResourceDefinitionNames{}.OpenAPIModelName():           schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionNames(ref),
+		apiextensionsv1.CustomResourceDefinitionSpec{}.OpenAPIModelName():            schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionSpec(ref),
+		apiextensionsv1.CustomResourceDefinitionStatus{}.OpenAPIModelName():          schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionStatus(ref),
+		apiextensionsv1.CustomResourceDefinitionVersion{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_CustomResourceDefinitionVersion(ref),
+		apiextensionsv1.CustomResourceSubresourceScale{}.OpenAPIModelName():          schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceScale(ref),
+		apiextensionsv1.CustomResourceSubresourceStatus{}.OpenAPIModelName():         schema_pkg_apis_apiextensions_v1_CustomResourceSubresourceStatus(ref),
+		apiextensionsv1.CustomResourceSubresources{}.OpenAPIModelName():              schema_pkg_apis_apiextensions_v1_CustomResourceSubresources(ref),
+		apiextensionsv1.CustomResourceValidation{}.OpenAPIModelName():                schema_pkg_apis_apiextensions_v1_CustomResourceValidation(ref),
+		apiextensionsv1.ExternalDocumentation{}.OpenAPIModelName():                   schema_pkg_apis_apiextensions_v1_ExternalDocumentation(ref),
+		apiextensionsv1.JSON{}.OpenAPIModelName():                                    schema_pkg_apis_apiextensions_v1_JSON(ref),
+		apiextensionsv1.JSONSchemaProps{}.OpenAPIModelName():                         schema_pkg_apis_apiextensions_v1_JSONSchemaProps(ref),
+		apiextensionsv1.JSONSchemaPropsOrArray{}.OpenAPIModelName():                  schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrArray(ref),
+		apiextensionsv1.JSONSchemaPropsOrBool{}.OpenAPIModelName():                   schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrBool(ref),
+		apiextensionsv1.JSONSchemaPropsOrStringArray{}.OpenAPIModelName():            schema_pkg_apis_apiextensions_v1_JSONSchemaPropsOrStringArray(ref),
+		apiextensionsv1.SelectableField{}.OpenAPIModelName():                         schema_pkg_apis_apiextensions_v1_SelectableField(ref),
+		apiextensionsv1.ServiceReference{}.OpenAPIModelName():                        schema_pkg_apis_apiextensions_v1_ServiceReference(ref),
+		apiextensionsv1.ValidationRule{}.OpenAPIModelName():                          schema_pkg_apis_apiextensions_v1_ValidationRule(ref),
+		apiextensionsv1.WebhookClientConfig{}.OpenAPIModelName():                     schema_pkg_apis_apiextensions_v1_WebhookClientConfig(ref),
+		apiextensionsv1.WebhookConversion{}.OpenAPIModelName():                       schema_pkg_apis_apiextensions_v1_WebhookConversion(ref),
+		resource.Quantity{}.OpenAPIModelName():                                       schema_apimachinery_pkg_api_resource_Quantity(ref),
+		metav1.APIGroup{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_APIGroup(ref),
+		metav1.APIGroupList{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_APIGroupList(ref),
+		metav1.APIResource{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_APIResource(ref),
+		metav1.APIResourceList{}.OpenAPIModelName():                                  schema_pkg_apis_meta_v1_APIResourceList(ref),
+		metav1.APIVersions{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_APIVersions(ref),
+		metav1.ApplyOptions{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_ApplyOptions(ref),
+		metav1.Condition{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_Condition(ref),
+		metav1.CreateOptions{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_CreateOptions(ref),
+		metav1.DeleteOptions{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_DeleteOptions(ref),
+		metav1.Duration{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_Duration(ref),
+		metav1.FieldSelectorRequirement{}.OpenAPIModelName():                         schema_pkg_apis_meta_v1_FieldSelectorRequirement(ref),
+		metav1.FieldsV1{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_FieldsV1(ref),
+		metav1.GetOptions{}.OpenAPIModelName():                                       schema_pkg_apis_meta_v1_GetOptions(ref),
+		metav1.GroupKind{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_GroupKind(ref),
+		metav1.GroupResource{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_GroupResource(ref),
+		metav1.GroupVersion{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_GroupVersion(ref),
+		metav1.GroupVersionForDiscovery{}.OpenAPIModelName():                         schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
+		metav1.GroupVersionKind{}.OpenAPIModelName():                                 schema_pkg_apis_meta_v1_GroupVersionKind(ref),
+		metav1.GroupVersionResource{}.OpenAPIModelName():                             schema_pkg_apis_meta_v1_GroupVersionResource(ref),
+		metav1.InternalEvent{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_InternalEvent(ref),
+		metav1.LabelSelector{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_LabelSelector(ref),
+		metav1.LabelSelectorRequirement{}.OpenAPIModelName():                         schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
+		metav1.List{}.OpenAPIModelName():                                             schema_pkg_apis_meta_v1_List(ref),
+		metav1.ListMeta{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_ListMeta(ref),
+		metav1.ListOptions{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_ListOptions(ref),
+		metav1.ManagedFieldsEntry{}.OpenAPIModelName():                               schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
+		metav1.MicroTime{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_MicroTime(ref),
+		metav1.ObjectMeta{}.OpenAPIModelName():                                       schema_pkg_apis_meta_v1_ObjectMeta(ref),
+		metav1.OwnerReference{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_OwnerReference(ref),
+		metav1.PartialObjectMetadata{}.OpenAPIModelName():                            schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
+		metav1.PartialObjectMetadataList{}.OpenAPIModelName():                        schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
+		metav1.Patch{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_Patch(ref),
+		metav1.PatchOptions{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_PatchOptions(ref),
+		metav1.Preconditions{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_Preconditions(ref),
+		metav1.RootPaths{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_RootPaths(ref),
+		metav1.ServerAddressByClientCIDR{}.OpenAPIModelName():                        schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
+		metav1.ShardInfo{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_ShardInfo(ref),
+		metav1.Status{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_Status(ref),
+		metav1.StatusCause{}.OpenAPIModelName():                                      schema_pkg_apis_meta_v1_StatusCause(ref),
+		metav1.StatusDetails{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_StatusDetails(ref),
+		metav1.Table{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_Table(ref),
+		metav1.TableColumnDefinition{}.OpenAPIModelName():                            schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
+		metav1.TableOptions{}.OpenAPIModelName():                                     schema_pkg_apis_meta_v1_TableOptions(ref),
+		metav1.TableRow{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_TableRow(ref),
+		metav1.TableRowCondition{}.OpenAPIModelName():                                schema_pkg_apis_meta_v1_TableRowCondition(ref),
+		metav1.Time{}.OpenAPIModelName():                                             schema_pkg_apis_meta_v1_Time(ref),
+		metav1.Timestamp{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_Timestamp(ref),
+		metav1.TypeMeta{}.OpenAPIModelName():                                         schema_pkg_apis_meta_v1_TypeMeta(ref),
+		metav1.UpdateOptions{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_UpdateOptions(ref),
+		metav1.WatchEvent{}.OpenAPIModelName():                                       schema_pkg_apis_meta_v1_WatchEvent(ref),
+		runtime.RawExtension{}.OpenAPIModelName():                                    schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
+		runtime.TypeMeta{}.OpenAPIModelName():                                        schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
+		runtime.Unknown{}.OpenAPIModelName():                                         schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
+		intstr.IntOrString{}.OpenAPIModelName():                                      schema_apimachinery_pkg_util_intstr_IntOrString(ref),
+		version.Info{}.OpenAPIModelName():                                            schema_k8sio_apimachinery_pkg_version_Info(ref),
 	}
 }
 
@@ -6650,19 +6698,19 @@ func schema_k8sio_api_batch_v1_JobSchedulingConfiguration(ref common.ReferenceCa
 					"schedulingPolicy": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SchedulingPolicy defines the scheduling policy for this Job. Exactly one of Basic or Gang must be set. This field is immutable after creation: the policy may not be added or removed. The policy variant (basic/gang) is frozen by hand-written validation; only schedulingPolicy.gang.minCount may be changed.",
-							Ref:         ref("k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupSchedulingPolicy"),
+							Ref:         ref(v1alpha3.WorkloadPodGroupSchedulingPolicy{}.OpenAPIModelName()),
 						},
 					},
 					"schedulingConstraints": {
 						SchemaProps: spec.SchemaProps{
 							Description: "SchedulingConstraints defines scheduling constraints (e.g. topology) for the Job's pods. This field is immutable after creation.",
-							Ref:         ref("k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupSchedulingConstraints"),
+							Ref:         ref(v1alpha3.WorkloadPodGroupSchedulingConstraints{}.OpenAPIModelName()),
 						},
 					},
 					"disruptionMode": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DisruptionMode defines the mode in which the Job's pods can be disrupted. One of Single, All. This field is immutable after creation: it may not be added or removed, and the selected mode may not be changed.",
-							Ref:         ref("k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupDisruptionMode"),
+							Ref:         ref(v1alpha3.WorkloadPodGroupDisruptionMode{}.OpenAPIModelName()),
 						},
 					},
 					"resourceClaims": {
@@ -6682,7 +6730,7 @@ func schema_k8sio_api_batch_v1_JobSchedulingConfiguration(ref common.ReferenceCa
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupResourceClaim"),
+										Ref: ref(v1alpha3.WorkloadPodGroupResourceClaim{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -6692,7 +6740,7 @@ func schema_k8sio_api_batch_v1_JobSchedulingConfiguration(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupDisruptionMode", "k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupResourceClaim", "k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupSchedulingConstraints", "k8s.io/api/scheduling/v1alpha3.WorkloadPodGroupSchedulingPolicy"},
+			v1alpha3.WorkloadPodGroupDisruptionMode{}.OpenAPIModelName(), v1alpha3.WorkloadPodGroupResourceClaim{}.OpenAPIModelName(), v1alpha3.WorkloadPodGroupSchedulingConstraints{}.OpenAPIModelName(), v1alpha3.WorkloadPodGroupSchedulingPolicy{}.OpenAPIModelName()},
 	}
 }
 
@@ -21554,6 +21602,1674 @@ func schema_k8sio_api_core_v1_WindowsSecurityContextOptions(ref common.Reference
 				},
 			},
 		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_AllCompositeDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AllCompositeDisruptionMode means that children of a CompositePodGroup can only be disrupted or preempted together.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_AllDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AllDisruptionMode specifies that children can only be disrupted together.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_BasicSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "BasicSchedulingPolicy indicates that standard Kubernetes scheduling behavior should be used.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositeBasicSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositeBasicSchedulingPolicy indicates that the groups belonging to the composite group should be scheduled independently.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositeDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositeDisruptionMode defines how individual entities within a composite pod group can be disrupted. Exactly one mode must be set.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"single": {
+						SchemaProps: spec.SchemaProps{
+							Description: "single specifies that children groups can be disrupted independently from each other.",
+							Ref:         ref(v1alpha3.SingleCompositeDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"all": {
+						SchemaProps: spec.SchemaProps{
+							Description: "all specifies that all children groups can only be disrupted together.",
+							Ref:         ref(v1alpha3.AllCompositeDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"all":    "All",
+								"single": "Single",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.AllCompositeDisruptionMode{}.OpenAPIModelName(), v1alpha3.SingleCompositeDisruptionMode{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositeGangSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositeGangSchedulingPolicy indicates that the groups belonging to the composite group should be scheduled using all-or-nothing semantics.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"minGroupCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "minGroupCount is the minimum number of child groups that must be schedulable or scheduled at the same time for the scheduler to admit the entire group. It must be a positive integer.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"minGroupCount"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositePodGroup(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositePodGroup represents a runtime instance of pod groups grouped together. CompositePodGroups are created by workload controllers (LWS, JobSet, etc...) from Workload.compositePodGroupTemplates. CompositePodGroup API enablement is toggled by the CompositePodGroup feature gate.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "metadata is the standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+							Default:     map[string]interface{}{},
+							Ref:         ref(metav1.ObjectMeta{}.OpenAPIModelName()),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "spec defines the desired state of the CompositePodGroup.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.CompositePodGroupSpec{}.OpenAPIModelName()),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "status represents the current observed state of the CompositePodGroup.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.CompositePodGroupStatus{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.CompositePodGroupSpec{}.OpenAPIModelName(), v1alpha3.CompositePodGroupStatus{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositePodGroupList contains a list of CompositePodGroup resources.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Standard list metadata.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(metav1.ListMeta{}.OpenAPIModelName()),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Items is the list of CompositePodGroups.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.CompositePodGroup{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.CompositePodGroup{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupSchedulingConstraints(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositePodGroupSchedulingConstraints defines scheduling constraints (e.g. topology) for a CompositePodGroup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"topology": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "topology defines the topology constraints for the composite pod group. Currently only a single topology constraint can be specified. This may change in the future.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.TopologyConstraint{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.TopologyConstraint{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositePodGroupSchedulingPolicy defines the scheduling configuration for a CompositePodGroup. Exactly one policy must be set.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"basic": {
+						SchemaProps: spec.SchemaProps{
+							Description: "basic specifies that the groups of this composite group should be scheduled independently. This field is immutable.",
+							Ref:         ref(v1alpha3.CompositeBasicSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"gang": {
+						SchemaProps: spec.SchemaProps{
+							Description: "gang specifies that the groups of this composite group should be scheduled using all-or-nothing semantics.",
+							Ref:         ref(v1alpha3.CompositeGangSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"basic": "Basic",
+								"gang":  "Gang",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.CompositeBasicSchedulingPolicy{}.OpenAPIModelName(), v1alpha3.CompositeGangSchedulingPolicy{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositePodGroupSpec defines the desired state of CompositePodGroup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"parentCompositePodGroupName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "parentCompositePodGroupName contains the name of the parent composite pod group within the same namespace as this composite pod group. It must be a DNS name. If it's nil, then this composite pod group is a root of a workload's hierarchy. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"workloadRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "workloadRef references an optional CompositePodGroup template within the Workload object that was used to create the CompositePodGroup. This field is required. This field is immutable.",
+							Ref:         ref(v1alpha3.WorkloadReference{}.OpenAPIModelName()),
+						},
+					},
+					"schedulingPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingPolicy defines the scheduling policy for this instance of the CompositePodGroup. Controllers are expected to fill this field by copying it from a CompositePodGroupTemplate. This field is immutable.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.CompositePodGroupSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"schedulingConstraints": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingConstraints defines optional scheduling constraints (e.g. topology) for this CompositePodGroup. Controllers are expected to fill this field by copying it from a CompositePodGroupTemplate. This field is immutable.",
+							Ref:         ref(v1alpha3.CompositePodGroupSchedulingConstraints{}.OpenAPIModelName()),
+						},
+					},
+					"disruptionMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "disruptionMode defines the mode in which a given CompositePodGroup can be disrupted. Controllers are expected to fill this field by copying it from a CompositePodGroupTemplate. One of Single, All. Defaults to Single if unset. This field is immutable.",
+							Default:     map[string]interface{}{"single": map[string]interface{}{}},
+							Ref:         ref(v1alpha3.CompositeDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priorityClassName defines the priority that should be considered when scheduling this CompositePodGroup. Controllers are expected to fill this field by copying it from a CompositePodGroupTemplate. If left unspecified, it is validated and resolved similarly to the PriorityClassName field in Pods (i.e. if no priority class is specified, admission control can set this to the global default priority class if it exists. Otherwise, the composite pod group's priority will be zero). This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"priority": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priority is the value of priority of this composite pod group. Various system components use this field to find the priority of the composite pod group. When Priority Admission Controller is enabled, it prevents users from setting this field. The admission controller populates this field from PriorityClassName. The higher the value, the higher the priority. This field is immutable.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"preemptionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "preemptionPolicy is the Policy for preempting pods/podgroups with lower priority. One of Never, PreemptLowerPriority. Defaults to PreemptLowerPriority if unset. When Priority Admission Controller is enabled, it populates this field from PriorityClassName, and defaults to PreemptLowerPriority if value is unset in PriorityClass. This field is immutable. This field is available only when the PodGroupPreemptionPolicy feature gate is enabled.\n\n\nPossible enum values:\n - `\"Never\"` means that pod never preempts other pods with lower priority.\n - `\"PreemptLowerPriority\"` means that pod can preempt other pods with lower priority.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Never", "PreemptLowerPriority"},
+						},
+					},
+				},
+				Required: []string{"workloadRef", "schedulingPolicy"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.CompositeDisruptionMode{}.OpenAPIModelName(), v1alpha3.CompositePodGroupSchedulingConstraints{}.OpenAPIModelName(), v1alpha3.CompositePodGroupSchedulingPolicy{}.OpenAPIModelName(), v1alpha3.WorkloadReference{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositePodGroupStatus represents information about the status of a composite pod group.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"type",
+								},
+								"x-kubernetes-list-type":       "map",
+								"x-kubernetes-patch-merge-key": "type",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "conditions represent the latest observations of the CompositePodGroup's state.\n\nKnown condition types: - \"CompositePodGroupInitiallyScheduled\": Indicates whether the overall scheduling requirement\n  for the subtree under this CompositePodGroup has been satisfied. Once this condition\n  transitions to True, it serves as a terminal state and will never revert to False,\n  even if pods are subsequently deleted and group constraints are no longer met.\n- \"DisruptionTarget\": Indicates whether the CompositePodGroup is about to be terminated\n  due to disruption such as preemption.\n\nKnown reasons for the CompositePodGroupInitiallyScheduled condition: - \"Unschedulable\": The CompositePodGroup's subtree could not be placed due to resource constraints,\n  affinity/anti-affinity, or topological constraints.\n- \"SchedulerError\": The CompositePodGroup cannot be scheduled due to some internal error\n  that occurred during scheduling.\n- \"Invalid\": Set to True when kube-scheduler detects an invalid group layout during\n  runtime validation. The `message` field details the specific layout violation (such as\n  a detected cycle, exceeding the maximum depth of 4, or referencing multiple distinct Workloads).\n\nKnown reasons for the DisruptionTarget condition: - \"PreemptionByScheduler\": The CompositePodGroup was targeted by the scheduler's preemption loop\n  to free up capacity for higher-priority preemptors.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(metav1.Condition{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			metav1.Condition{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_CompositePodGroupTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CompositePodGroupTemplate represents a template for a CompositePodGroup with a scheduling policy.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "name is a unique identifier for the CompositePodGroupTemplate within the Workload. It must be a DNS label. This field is required.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"schedulingPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingPolicy defines the scheduling policy for this template.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.CompositePodGroupSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"schedulingConstraints": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingConstraints defines optional scheduling constraints (e.g. topology) for this CompositePodGroupTemplate. This field is immutable.",
+							Ref:         ref(v1alpha3.CompositePodGroupSchedulingConstraints{}.OpenAPIModelName()),
+						},
+					},
+					"disruptionMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "disruptionMode defines the mode in which a given CompositePodGroup can be disrupted. One of Single, All. This field is immutable.",
+							Ref:         ref(v1alpha3.CompositeDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priorityClassName indicates the priority that should be considered when scheduling a composite pod group created from this template. If no priority class is specified, admission control can set this to the global default priority class if it exists. Otherwise, composite pod groups created from this template will have the priority set to zero. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"priority": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priority is the value of priority of composite pod groups created from this template. Various system components use this field to find the priority of the composite pod group. When Priority Admission Controller is enabled, it prevents users from setting this field. The admission controller populates this field from PriorityClassName. The higher the value, the higher the priority. This field is immutable.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"preemptionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "preemptionPolicy is the Policy for preempting pods/podgroups with lower priority. One of Never, PreemptLowerPriority. This field is immutable. This field is available only when the PodGroupPreemptionPolicy feature gate is enabled.\n\n\nPossible enum values:\n - `\"Never\"` means that pod never preempts other pods with lower priority.\n - `\"PreemptLowerPriority\"` means that pod can preempt other pods with lower priority.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Never", "PreemptLowerPriority"},
+						},
+					},
+					"podGroupTemplates": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "podGroupTemplates is the list of templates for children PodGroups. The maximum number of templates is 8. At least one entry in CompositePodGroupTemplates or PodGroupTemplates must be set.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.PodGroupTemplate{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+					"compositePodGroupTemplates": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "compositePodGroupTemplates is the list of templates for children CompositePodGroups. The maximum number of templates is 8. At least one entry in CompositePodGroupTemplates or PodGroupTemplates must be set.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.CompositePodGroupTemplate{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"name", "schedulingPolicy"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.CompositeDisruptionMode{}.OpenAPIModelName(), v1alpha3.CompositePodGroupSchedulingConstraints{}.OpenAPIModelName(), v1alpha3.CompositePodGroupSchedulingPolicy{}.OpenAPIModelName(), v1alpha3.CompositePodGroupTemplate{}.OpenAPIModelName(), v1alpha3.PodGroupTemplate{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_DisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "DisruptionMode defines how individual entities within a group can be disrupted. Exactly one mode can be set.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"single": {
+						SchemaProps: spec.SchemaProps{
+							Description: "single specifies that children can be disrupted independently from each other.",
+							Ref:         ref(v1alpha3.SingleDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"all": {
+						SchemaProps: spec.SchemaProps{
+							Description: "all specifies that all children can only be disrupted together.",
+							Ref:         ref(v1alpha3.AllDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"all":    "All",
+								"single": "Single",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.AllDisruptionMode{}.OpenAPIModelName(), v1alpha3.SingleDisruptionMode{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_GangSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GangSchedulingPolicy defines the parameters for gang scheduling.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"minCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "minCount is the minimum number of pods that must be schedulable or scheduled at the same time for the scheduler to admit the entire group. It must be a positive integer. This field is mutable to support workload scaling.\n\nNote that the scheduler operates on an eventually consistent model. Updates to minCount may not be immediately reflected in scheduling decisions due to propagation delays. If minCount is updated while a scheduling cycle is in progress for that group, the new value may not take effect until the next cycle. Moreover, minCount is only enforced during scheduling, meaning that modifications to this field do not affect already-scheduled pods, applying only to those evaluated in future cycles.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"minCount"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroup(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroup represents a runtime instance of pods grouped together. PodGroups are created by workload controllers (Job, LWS, JobSet, etc...) from Workload.podGroupTemplates. PodGroup API enablement is toggled by the GenericWorkload feature gate.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "metadata is the standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+							Default:     map[string]interface{}{},
+							Ref:         ref(metav1.ObjectMeta{}.OpenAPIModelName()),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "spec defines the desired state of the PodGroup.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.PodGroupSpec{}.OpenAPIModelName()),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "status represents the current observed state of the PodGroup.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.PodGroupStatus{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.PodGroupSpec{}.OpenAPIModelName(), v1alpha3.PodGroupStatus{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupList contains a list of PodGroup resources.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Standard list metadata.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(metav1.ListMeta{}.OpenAPIModelName()),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Items is the list of PodGroups.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.PodGroup{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.PodGroup{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupResourceClaim(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupResourceClaim references exactly one ResourceClaim, either directly or by naming a ResourceClaimTemplate which is then turned into a ResourceClaim for the PodGroup.\n\nIt adds a name to it that uniquely identifies the ResourceClaim inside the PodGroup. Pods that need access to the ResourceClaim define a matching reference in its own Spec.ResourceClaims. The Pod's claim must match all fields of the PodGroup's claim exactly.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "name uniquely identifies this resource claim inside the PodGroup. This must be a DNS_LABEL.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceClaimName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaimName is the name of a ResourceClaim object in the same namespace as this PodGroup. The ResourceClaim will be reserved for the PodGroup instead of its individual pods.\n\nExactly one of ResourceClaimName and ResourceClaimTemplateName must be set.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceClaimTemplateName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaimTemplateName is the name of a ResourceClaimTemplate object in the same namespace as this PodGroup.\n\nThe template will be used to create a new ResourceClaim, which will be bound to this PodGroup. When this PodGroup is deleted, the ResourceClaim will also be deleted. The PodGroup name and resource name, along with a generated component, will be used to form a unique name for the ResourceClaim, which will be recorded in podgroup.status.resourceClaimStatuses.\n\nThis field is immutable and no changes will be made to the corresponding ResourceClaim by the control plane after creating the ResourceClaim.\n\nExactly one of ResourceClaimName and ResourceClaimTemplateName must be set.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupResourceClaimStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupResourceClaimStatus is stored in the PodGroupStatus for each PodGroupResourceClaim which references a ResourceClaimTemplate. It stores the generated name for the corresponding ResourceClaim.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "name uniquely identifies this resource claim inside the PodGroup. This must match the name of an entry in podgroup.spec.resourceClaims, which implies that the string must be a DNS_LABEL.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceClaimName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaimName is the name of the ResourceClaim that was generated for the PodGroup in the namespace of the PodGroup. If this is unset, then generating a ResourceClaim was not necessary. The podgroup.spec.resourceClaims entry can be ignored in this case.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupSchedulingConstraints(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupSchedulingConstraints defines scheduling constraints (e.g. topology) for a PodGroup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"topology": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "topology defines the topology constraints for the pod group. Currently only a single topology constraint can be specified. This may change in the future.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.TopologyConstraint{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.TopologyConstraint{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupSchedulingPolicy defines the scheduling configuration for a PodGroup. Exactly one policy must be set. The policy is chosen at creation time by setting either the Basic or Gang field. The PodGroup may not change policy after creation. Fields within chosen policy may be updated after creation when their individual fields allow it.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"basic": {
+						SchemaProps: spec.SchemaProps{
+							Description: "basic specifies that the pods in this group should be scheduled using standard Kubernetes scheduling behavior. Setting this field at group creation time opts this group to basic scheduling; this field cannot be changed afterward.",
+							Ref:         ref(v1alpha3.BasicSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"gang": {
+						SchemaProps: spec.SchemaProps{
+							Description: "gang specifies that the pods in this group should be scheduled using all-or-nothing semantics. Setting this field at group creation time opts this group to gang scheduling; this field cannot be set or unset afterward. The minCount field within Gang scheduling policy remains mutable after group creation.",
+							Ref:         ref(v1alpha3.GangSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"basic": "Basic",
+								"gang":  "Gang",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.BasicSchedulingPolicy{}.OpenAPIModelName(), v1alpha3.GangSchedulingPolicy{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupSpec defines the desired state of a PodGroup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"parentCompositePodGroupName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "parentCompositePodGroupName contains the name of the parent composite pod group within the same namespace as this pod group. If it's nil, then this pod group is a root of a workload's hierarchy. This field is used only when the CompositePodGroup feature gate is enabled. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"workloadRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "workloadRef references an optional PodGroup template within the Workload object that was used to create the PodGroup. This field is immutable.",
+							Ref:         ref(v1alpha3.WorkloadReference{}.OpenAPIModelName()),
+						},
+					},
+					"schedulingPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingPolicy defines the scheduling policy for this instance of the PodGroup. Controllers are expected to fill this field by copying it from a PodGroupTemplate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.PodGroupSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"schedulingConstraints": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingConstraints defines optional scheduling constraints (e.g. topology) for this PodGroup. Controllers are expected to fill this field by copying it from a PodGroupTemplate. This field is immutable. This field is only available when the TopologyAwareWorkloadScheduling feature gate is enabled.",
+							Ref:         ref(v1alpha3.PodGroupSchedulingConstraints{}.OpenAPIModelName()),
+						},
+					},
+					"resourceClaims": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type":       "map",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge,retainKeys",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaims defines which ResourceClaims may be shared among Pods in the group. Pods consume the devices allocated to a PodGroup's claim by defining a claim in its own Spec.ResourceClaims that matches the PodGroup's claim exactly. The claim must have the same name and refer to the same ResourceClaim or ResourceClaimTemplate.\n\nThis is a beta-level field and requires that the DRAWorkloadResourceClaims feature gate is enabled.\n\nThis field is immutable.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.PodGroupResourceClaim{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+					"disruptionMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "disruptionMode defines the mode in which a given PodGroup can be disrupted. Controllers are expected to fill this field by copying it from a PodGroupTemplate. One of Single, All. Defaults to Single if unset. This field is immutable.",
+							Default:     map[string]interface{}{"single": map[string]interface{}{}},
+							Ref:         ref(v1alpha3.DisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priorityClassName defines the priority that should be considered when scheduling this pod group. Controllers are expected to fill this field by copying it from a PodGroupTemplate. Otherwise, it is validated and resolved similarly to the PriorityClassName on PodGroupTemplate (i.e. if no priority class is specified, admission control can set this to the global default priority class if it exists. Otherwise, the pod group's priority will be zero). This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"priority": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priority is the value of priority of this pod group. Various system components use this field to find the priority of the pod group. When Priority Admission Controller is enabled, it prevents users from setting this field. The admission controller populates this field from PriorityClassName. The higher the value, the higher the priority. This field is immutable.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"preemptionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "preemptionPolicy is the Policy for preempting pods/podgroups with lower priority. One of Never, PreemptLowerPriority. Defaults to PreemptLowerPriority if unset. When Priority Admission Controller is enabled, it populates this field from PriorityClassName, and defaults to PreemptLowerPriority if value is unset in PriorityClass. This field is immutable. This field is available only when the PodGroupPreemptionPolicy feature gate is enabled.\n\n\nPossible enum values:\n - `\"Never\"` means that pod never preempts other pods with lower priority.\n - `\"PreemptLowerPriority\"` means that pod can preempt other pods with lower priority.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Never", "PreemptLowerPriority"},
+						},
+					},
+				},
+				Required: []string{"schedulingPolicy"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.DisruptionMode{}.OpenAPIModelName(), v1alpha3.PodGroupResourceClaim{}.OpenAPIModelName(), v1alpha3.PodGroupSchedulingConstraints{}.OpenAPIModelName(), v1alpha3.PodGroupSchedulingPolicy{}.OpenAPIModelName(), v1alpha3.WorkloadReference{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupStatus represents information about the status of a pod group.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"conditions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"type",
+								},
+								"x-kubernetes-list-type":       "map",
+								"x-kubernetes-patch-merge-key": "type",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "conditions represent the latest observations of the PodGroup's state.\n\nKnown condition types: - \"PodGroupInitiallyScheduled\": Indicates whether the scheduling requirement has been satisfied. Once this condition transitions to True, it serves as a terminal state and will never revert to False, even if pods are subsequently evicted and group constraints are no longer met. - \"DisruptionTarget\": Indicates whether the PodGroup is about to be terminated\n  due to disruption such as preemption.\n\nKnown reasons for the PodGroupInitiallyScheduled condition: - \"Unschedulable\": The PodGroup cannot be scheduled due to resource constraints,\n  affinity/anti-affinity rules, or insufficient capacity for the gang.\n- \"SchedulerError\": The PodGroup cannot be scheduled due to some internal error\n  that happened during scheduling, for example due to nodeAffinity parsing errors.\n\nKnown reasons for the DisruptionTarget condition: - \"PreemptionByScheduler\": The PodGroup was preempted by the scheduler to make room for\n  higher-priority PodGroups or Pods.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(metav1.Condition{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+					"resourceClaimStatuses": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type":       "map",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge,retainKeys",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaimStatuses is status of resource claims.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.PodGroupResourceClaimStatus{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.PodGroupResourceClaimStatus{}.OpenAPIModelName(), metav1.Condition{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_PodGroupTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PodGroupTemplate represents a template for a set of pods with a scheduling policy.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "name is a unique identifier for the PodGroupTemplate within the Workload. It must be a DNS label. This field is immutable.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"schedulingPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingPolicy defines the scheduling policy for this PodGroupTemplate.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.PodGroupSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"schedulingConstraints": {
+						SchemaProps: spec.SchemaProps{
+							Description: "schedulingConstraints defines optional scheduling constraints (e.g. topology) for this PodGroupTemplate. This field is only available when the TopologyAwareWorkloadScheduling feature gate is enabled. This field is immutable.",
+							Ref:         ref(v1alpha3.PodGroupSchedulingConstraints{}.OpenAPIModelName()),
+						},
+					},
+					"resourceClaims": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type":       "map",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge,retainKeys",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaims defines which ResourceClaims may be shared among Pods in the group. Pods consume the devices allocated to a PodGroup's claim by defining a claim in its own Spec.ResourceClaims that matches the PodGroup's claim exactly. The claim must have the same name and refer to the same ResourceClaim or ResourceClaimTemplate.\n\nThis is a beta-level field and requires that the DRAWorkloadResourceClaims feature gate is enabled.\n\nThis field is immutable.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.PodGroupResourceClaim{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+					"disruptionMode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "disruptionMode defines the mode in which a given PodGroup can be disrupted. One of Single, All. This field is immutable.",
+							Ref:         ref(v1alpha3.DisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"priorityClassName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priorityClassName indicates the priority that should be considered when scheduling a pod group created from this template. This field is immutable.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"priority": {
+						SchemaProps: spec.SchemaProps{
+							Description: "priority is the value of priority of pod groups created from this template. Various system components use this field to find the priority of the pod group. The higher the value, the higher the priority. This field is immutable.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"preemptionPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "preemptionPolicy is the Policy for preempting pods/podgroups with lower priority. One of Never, PreemptLowerPriority. This field is immutable. This field is available only when the PodGroupPreemptionPolicy feature gate is enabled.\n\n\nPossible enum values:\n - `\"Never\"` means that pod never preempts other pods with lower priority.\n - `\"PreemptLowerPriority\"` means that pod can preempt other pods with lower priority.",
+							Type:        []string{"string"},
+							Format:      "",
+							Enum:        []interface{}{"Never", "PreemptLowerPriority"},
+						},
+					},
+				},
+				Required: []string{"name", "schedulingPolicy"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.DisruptionMode{}.OpenAPIModelName(), v1alpha3.PodGroupResourceClaim{}.OpenAPIModelName(), v1alpha3.PodGroupSchedulingConstraints{}.OpenAPIModelName(), v1alpha3.PodGroupSchedulingPolicy{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_SingleCompositeDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "SingleCompositeDisruptionMode means that individual children of a CompositePodGroup can be disrupted or preempted independently.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_SingleDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "SingleDisruptionMode specifies that children can be disrupted independently.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_TopologyConstraint(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TopologyConstraint defines a topology constraint for a PodGroup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "key specifies the key of the node label representing the topology domain. All pods within the PodGroup must be colocated within the same domain instance. Different PodGroups can land on different domain instances even if they derive from the same PodGroupTemplate. Examples: \"topology.kubernetes.io/rack\"",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"key"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_TypedLocalObjectReference(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TypedLocalObjectReference allows to reference typed object inside the same namespace.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"apiGroup": {
+						SchemaProps: spec.SchemaProps{
+							Description: "apiGroup is the group for the resource being referenced. If APIGroup is empty, the specified Kind must be in the core API group. For any other third-party types, setting APIGroup is required. It must be a DNS subdomain.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "kind is the type of resource being referenced. It must be a path segment name.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "name is the name of resource being referenced. It must be a path segment name.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"kind", "name"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_Workload(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Workload allows for expressing scheduling constraints that should be used when managing the lifecycle of workloads from the scheduling perspective, including scheduling, preemption, eviction and other phases. Workload API enablement is toggled by the GenericWorkload feature gate.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "metadata is the standard object metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+							Default:     map[string]interface{}{},
+							Ref:         ref(metav1.ObjectMeta{}.OpenAPIModelName()),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Description: "spec defines the desired behavior of a Workload.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(v1alpha3.WorkloadSpec{}.OpenAPIModelName()),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.WorkloadSpec{}.OpenAPIModelName(), metav1.ObjectMeta{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupAllDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadCompositePodGroupAllDisruptionMode indicates that all child groups must be disrupted together.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupBasicSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadCompositePodGroupBasicSchedulingPolicy indicates that the child groups of a composite group should be scheduled independently.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadCompositePodGroupDisruptionMode defines how the child groups of a composite group can be disrupted. Exactly one mode must be set.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"single": {
+						SchemaProps: spec.SchemaProps{
+							Description: "single specifies that child groups can be disrupted independently from each other.",
+							Ref:         ref(v1alpha3.WorkloadCompositePodGroupSingleDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"all": {
+						SchemaProps: spec.SchemaProps{
+							Description: "all specifies that all child groups must be disrupted together.",
+							Ref:         ref(v1alpha3.WorkloadCompositePodGroupAllDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"all":    "All",
+								"single": "Single",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.WorkloadCompositePodGroupAllDisruptionMode{}.OpenAPIModelName(), v1alpha3.WorkloadCompositePodGroupSingleDisruptionMode{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupGangSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadCompositePodGroupGangSchedulingPolicy defines the parameters for gang scheduling of a composite group's child groups.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"minGroupCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "minGroupCount is the minimum number of child groups that must be schedulable at the same time for the scheduler to admit the entire composite group. This field is optional. If it is not specified, the controller should inject a context-specific sane default (e.g., the number of child groups). If set, it must be a positive integer.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupSchedulingConstraints(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadCompositePodGroupSchedulingConstraints defines composite-level scheduling constraints, such as topology, for a CompositePodGroup (a group of groups) managed by a workload controller.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"topology": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "topology specifies desired topological placements for all child groups within the composite group. If unset, no topology placement is requested.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.TopologyConstraint{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.TopologyConstraint{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadCompositePodGroupSchedulingPolicy defines the scheduling policy for a CompositePodGroup (a group of groups) managed by a workload controller. Exactly one policy must be set.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"basic": {
+						SchemaProps: spec.SchemaProps{
+							Description: "basic specifies that the child groups of this composite group should be scheduled independently.",
+							Ref:         ref(v1alpha3.WorkloadCompositePodGroupBasicSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"gang": {
+						SchemaProps: spec.SchemaProps{
+							Description: "gang specifies that the child groups of this composite group should be scheduled using all-or-nothing semantics.",
+							Ref:         ref(v1alpha3.WorkloadCompositePodGroupGangSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"basic": "Basic",
+								"gang":  "Gang",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.WorkloadCompositePodGroupBasicSchedulingPolicy{}.OpenAPIModelName(), v1alpha3.WorkloadCompositePodGroupGangSchedulingPolicy{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadCompositePodGroupSingleDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadCompositePodGroupSingleDisruptionMode indicates that child groups can be disrupted independently.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadList contains a list of Workload resources.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Standard list metadata.",
+							Default:     map[string]interface{}{},
+							Ref:         ref(metav1.ListMeta{}.OpenAPIModelName()),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Items is the list of Workloads.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.Workload{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.Workload{}.OpenAPIModelName(), metav1.ListMeta{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupAllDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupAllDisruptionMode indicates that all pods in the group must be disrupted together.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupBasicSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupBasicSchedulingPolicy indicates standard Kubernetes scheduling behavior.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupDisruptionMode defines how individual pods within a group can be disrupted. Exactly one mode must be set.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"single": {
+						SchemaProps: spec.SchemaProps{
+							Description: "single specifies that pods can be disrupted independently from each other.",
+							Ref:         ref(v1alpha3.WorkloadPodGroupSingleDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+					"all": {
+						SchemaProps: spec.SchemaProps{
+							Description: "all specifies that all pods in the group must be disrupted together.",
+							Ref:         ref(v1alpha3.WorkloadPodGroupAllDisruptionMode{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"all":    "All",
+								"single": "Single",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.WorkloadPodGroupAllDisruptionMode{}.OpenAPIModelName(), v1alpha3.WorkloadPodGroupSingleDisruptionMode{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupGangSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupGangSchedulingPolicy defines the parameters for gang (all-or-nothing) scheduling.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"minCount": {
+						SchemaProps: spec.SchemaProps{
+							Description: "minCount is the minimum number of pods that must be scheduled at the same time for the scheduler to admit the entire group. This field is optional. If it is not specified, the controller should inject a context-specific sane default (e.g., parallelism for a Job). If set, it must be a positive integer.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupResourceClaim(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupResourceClaim references a dynamic resource claim that is shared across pods in the group.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "name uniquely identifies this resource claim inside the group. This field is required. It must be a DNS_LABEL.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceClaimName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaimName is the name of a ResourceClaim object in the same namespace. This field is optional. If it is not specified, no resource claim is used. If set, it must be a DNS subdomain.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resourceClaimTemplateName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "resourceClaimTemplateName is the name of a ResourceClaimTemplate object in the same namespace. This field is optional. If it is not specified, no resource claim template is used. If set, it must be a DNS subdomain.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupSchedulingConstraints(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupSchedulingConstraints defines leaf-level scheduling constraints, such as topology.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"topology": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "topology specifies desired topological placements for all pods within the pod group. If unset, no topology placement is requested.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.TopologyConstraint{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.TopologyConstraint{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupSchedulingPolicy(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupSchedulingPolicy defines the scheduling policy for a group of pods managed by a workload controller. Exactly one policy must be set.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"basic": {
+						SchemaProps: spec.SchemaProps{
+							Description: "basic specifies that standard, pod-by-pod Kubernetes scheduling behavior should be used.",
+							Ref:         ref(v1alpha3.WorkloadPodGroupBasicSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+					"gang": {
+						SchemaProps: spec.SchemaProps{
+							Description: "gang specifies all-or-nothing scheduling semantics.",
+							Ref:         ref(v1alpha3.WorkloadPodGroupGangSchedulingPolicy{}.OpenAPIModelName()),
+						},
+					},
+				},
+			},
+			VendorExtensible: spec.VendorExtensible{
+				Extensions: spec.Extensions{
+					"x-kubernetes-unions": []interface{}{
+						map[string]interface{}{
+							"fields-to-discriminateBy": map[string]interface{}{
+								"basic": "Basic",
+								"gang":  "Gang",
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.WorkloadPodGroupBasicSchedulingPolicy{}.OpenAPIModelName(), v1alpha3.WorkloadPodGroupGangSchedulingPolicy{}.OpenAPIModelName()},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadPodGroupSingleDisruptionMode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadPodGroupSingleDisruptionMode indicates that individual pods can be disrupted independently.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadReference(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadReference references the Workload object together with the template that was used to create a particular PodGroup.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"workloadName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "workloadName is the name of the Workload object that contains a template that was used when creating a pod group. It must be a DNS name. This field is required.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"templateName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "templateName is the name of a template within the Workload object that was used to create a pod group. It must be a DNS label. This field is required.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"workloadName", "templateName"},
+			},
+		},
+	}
+}
+
+func schema_k8sio_api_scheduling_v1alpha3_WorkloadSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkloadSpec defines the desired state of a Workload.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"controllerRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "controllerRef is an optional reference to the controlling object, such as a Deployment or Job. This field is intended for use by tools like CLIs to provide a link back to the original workload definition. This field is immutable.",
+							Ref:         ref(v1alpha3.TypedLocalObjectReference{}.OpenAPIModelName()),
+						},
+					},
+					"podGroupTemplates": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "podGroupTemplates is the list of templates that make up the Workload. The maximum number of templates is 8. Templates cannot be added or removed after the workload is created. Existing templates may still be updated where their individual fields allow it. Exactly one of CompositePodGroupTemplates and PodGroupTemplates must be set.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.PodGroupTemplate{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+					"compositePodGroupTemplates": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"name",
+								},
+								"x-kubernetes-list-type": "map",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "compositePodGroupTemplates is the list of CompositePodGroup templates that make up the Workload. The maximum number of templates is 8. This field is immutable. Exactly one of CompositePodGroupTemplates and PodGroupTemplates must be set.\n\nThis field is used only when the CompositePodGroup feature gate is enabled.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref(v1alpha3.CompositePodGroupTemplate{}.OpenAPIModelName()),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			v1alpha3.CompositePodGroupTemplate{}.OpenAPIModelName(), v1alpha3.PodGroupTemplate{}.OpenAPIModelName(), v1alpha3.TypedLocalObjectReference{}.OpenAPIModelName()},
 	}
 }
 
