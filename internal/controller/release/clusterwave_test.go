@@ -34,7 +34,7 @@ func predecessor(name string, wave int, applied, healthy metav1.ConditionStatus,
 		conds = append(conds, metav1.Condition{Type: conditionHealthy, Status: healthy, Reason: "x"})
 	}
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns"},
+		Name: name, Namespace: "ns",
 		Spec: corev1alpha1.ReleaseSpec{
 			ClusterRef: corev1alpha1.ReleaseClusterRefSpec{Name: dummyCluster},
 			SyncPolicy: corev1alpha1.ReleaseSyncPolicySpec{

@@ -20,8 +20,6 @@ import (
 	"context"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/kumodo-io/convoy/api/core"
 	"github.com/kumodo-io/convoy/internal/sharding"
 )
@@ -29,8 +27,8 @@ import (
 func TestStrategy_StampsShardFromCluster(t *testing.T) {
 	s := NewStrategy(nil, 8)
 	rel := &core.Release{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "team", Name: "app"},
-		Spec:       core.ReleaseSpec{ClusterRef: core.ReleaseClusterRefSpec{Name: "prod"}},
+		Namespace: "team", Name: "app",
+		Spec: core.ReleaseSpec{ClusterRef: core.ReleaseClusterRefSpec{Name: "prod"}},
 	}
 	s.PrepareForCreate(context.Background(), rel)
 

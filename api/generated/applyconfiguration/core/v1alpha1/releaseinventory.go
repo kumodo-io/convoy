@@ -27,7 +27,7 @@ import (
 // ReleaseInventoryApplyConfiguration represents a declarative configuration of the ReleaseInventory type for use
 // with apply.
 type ReleaseInventoryApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Inventory                        []ResourceInventoryItemApplyConfiguration    `json:"inventory,omitempty"`
 	Hooks                            []ReleaseLifecycleHookItemApplyConfiguration `json:"hooks,omitempty"`

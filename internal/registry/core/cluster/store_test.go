@@ -54,10 +54,8 @@ func newStorage(t *testing.T) (*genericregistry.Store, *clusterstorage.StatusRES
 
 func validNewCluster(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeInCluster,
 		},
@@ -66,10 +64,8 @@ func validNewCluster(namespace string) *core.Cluster {
 
 func invalidNewClusterNoConnectionMode(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: "",
 		},
@@ -78,10 +74,8 @@ func invalidNewClusterNoConnectionMode(namespace string) *core.Cluster {
 
 func invalidNewClusterNoConnectionModeConfig(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeAgentless,
 		},
@@ -90,10 +84,8 @@ func invalidNewClusterNoConnectionModeConfig(namespace string) *core.Cluster {
 
 func invalidNewClusterNoAuthSpec(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeAgentless,
 			Agentless: &core.ClusterAgentlessModeSpec{
@@ -105,10 +97,8 @@ func invalidNewClusterNoAuthSpec(namespace string) *core.Cluster {
 
 func invalidNewClusterNoAuthType(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeAgentless,
 			Agentless: &core.ClusterAgentlessModeSpec{
@@ -121,10 +111,8 @@ func invalidNewClusterNoAuthType(namespace string) *core.Cluster {
 
 func invalidNewClusterUnknownAuthType(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeAgentless,
 			Agentless: &core.ClusterAgentlessModeSpec{
@@ -139,10 +127,8 @@ func invalidNewClusterUnknownAuthType(namespace string) *core.Cluster {
 
 func invalidNewClusterNoAuthConfig(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeAgentless,
 			Agentless: &core.ClusterAgentlessModeSpec{
@@ -157,10 +143,8 @@ func invalidNewClusterNoAuthConfig(namespace string) *core.Cluster {
 
 func invalidNewClusterAuthConfigMismatch(namespace string) *core.Cluster {
 	return &core.Cluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dummyClusterName,
-			Namespace: namespace,
-		},
+		Name:      dummyClusterName,
+		Namespace: namespace,
 		Spec: core.ClusterSpec{
 			ConnectionMode: core.ClusterConnectionModeAgentless,
 			Agentless: &core.ClusterAgentlessModeSpec{

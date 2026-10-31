@@ -19,7 +19,6 @@ package healthruleset_test
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	genericregistrytest "k8s.io/apiserver/pkg/registry/generic/testing"
@@ -45,10 +44,8 @@ func newStorage(t *testing.T) (*genericregistry.Store, *etcd3testing.EtcdTestSer
 
 func validNewHealthRuleSet(namespace string) *extensions.HealthRuleSet {
 	return &extensions.HealthRuleSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "payments-db-health",
-			Namespace: namespace,
-		},
+		Name:      "payments-db-health",
+		Namespace: namespace,
 		Spec: extensions.HealthRuleSetSpec{
 			Rules: []extensions.RuleSpec{
 				{

@@ -35,7 +35,7 @@ import (
 
 func testRelease(automatic bool) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns", Generation: 1},
+		Name: "r1", Namespace: "ns", Generation: 1,
 		Spec: corev1alpha1.ReleaseSpec{
 			SyncPolicy: corev1alpha1.ReleaseSyncPolicySpec{Automatic: automatic},
 		},

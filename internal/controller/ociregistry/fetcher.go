@@ -195,7 +195,7 @@ func defaultPull(ref string, tls *authv1.TLSSpec, cred ociAuth) ([]byte, error) 
 		return nil, errors.Join(ErrFetchFailed, fmt.Errorf("building registry client: %w", err))
 	}
 	if cred.set() {
-		host := strings.SplitN(ref, "/", 2)[0]
+		host, _, _ := strings.Cut(ref, "/")
 		if err := client.Login(host, registry.LoginOptBasicAuth(cred.username, cred.password)); err != nil {
 			return nil, errors.Join(ErrFetchFailed, fmt.Errorf("registry login to %s: %w", host, err))
 		}

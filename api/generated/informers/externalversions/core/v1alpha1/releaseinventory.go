@@ -34,11 +34,39 @@ import (
 )
 
 // ReleaseInventoryInformer provides access to a shared informer and lister for
-// ReleaseInventories.
+// ReleaseInventories. Prefer using the type-safe variant (see [TypedReleaseInventoryInformer]).
 type ReleaseInventoryInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() corev1alpha1.ReleaseInventoryLister
 }
+
+// TypedReleaseInventoryInformer provides access to a shared informer and lister for
+// ReleaseInventories, including the type-safe TypedInformer variant.
+// It is a superset of ReleaseInventoryInformer.
+type TypedReleaseInventoryInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ReleaseInventoryIndexInformer
+	Lister() corev1alpha1.ReleaseInventoryLister
+}
+
+// ReleaseInventoryIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ReleaseInventoryIndexInformer cache.TypedSharedIndexInformer[*apicorev1alpha1.ReleaseInventory]
+
+// ReleaseInventoryHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ReleaseInventory.
+type ReleaseInventoryHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apicorev1alpha1.ReleaseInventory]
+
+// ReleaseInventoryDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ReleaseInventory.
+type ReleaseInventoryDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apicorev1alpha1.ReleaseInventory]
+
+// ReleaseInventoryFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ReleaseInventory.
+type ReleaseInventoryFilteringHandler = cache.TypedFilteringResourceEventHandler[*apicorev1alpha1.ReleaseInventory]
+
+// ReleaseInventoryIndexers is a specialization of [cache.TypedIndexers] for ReleaseInventory.
+type ReleaseInventoryIndexers = cache.TypedIndexers[*apicorev1alpha1.ReleaseInventory]
+
+// DeletedReleaseInventory is a specialization of [cache.DeletedObject] for ReleaseInventory.
+type DeletedReleaseInventory = cache.DeletedObject[*apicorev1alpha1.ReleaseInventory]
 
 type releaseInventoryInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -49,25 +77,49 @@ type releaseInventoryInformer struct {
 // NewReleaseInventoryInformer constructs a new informer for ReleaseInventory type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedReleaseInventoryInformer]).
 func NewReleaseInventoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewReleaseInventoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedReleaseInventoryInformer constructs a new informer for ReleaseInventory type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedReleaseInventoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ReleaseInventoryIndexers) ReleaseInventoryIndexInformer {
+	return NewTypedReleaseInventoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredReleaseInventoryInformer constructs a new informer for ReleaseInventory type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredReleaseInventoryInformer]).
 func NewFilteredReleaseInventoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewReleaseInventoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedReleaseInventoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredReleaseInventoryInformer constructs a new informer for ReleaseInventory type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredReleaseInventoryInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ReleaseInventoryIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ReleaseInventoryIndexInformer {
+	return NewTypedReleaseInventoryInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewReleaseInventoryInformerWithOptions constructs a new informer for ReleaseInventory type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedReleaseInventoryInformerWithOptions]).
 func NewReleaseInventoryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedReleaseInventoryInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedReleaseInventoryInformerWithOptions constructs a new informer for ReleaseInventory type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedReleaseInventoryInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ReleaseInventoryIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "core.convoy.kumodo.io", Version: "v1alpha1", Resource: "releaseinventorys"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apicorev1alpha1.ReleaseInventory](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -100,17 +152,57 @@ func NewReleaseInventoryInformerWithOptions(client versioned.Interface, namespac
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *releaseInventoryInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewReleaseInventoryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedReleaseInventoryInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *releaseInventoryInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apicorev1alpha1.ReleaseInventory{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *releaseInventoryInformer) TypedInformer() ReleaseInventoryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apicorev1alpha1.ReleaseInventory](f.factory.InformerFor(&apicorev1alpha1.ReleaseInventory{}, f.defaultInformer))
 }
 
 func (f *releaseInventoryInformer) Lister() corev1alpha1.ReleaseInventoryLister {
 	return corev1alpha1.NewReleaseInventoryLister(f.Informer().GetIndexer())
+}
+
+// ToTypedReleaseInventoryInformer converts an untyped informer into a TypedReleaseInventoryInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ReleaseInventory. If that is not the case, calling type-safe methods of the returned
+// TypedReleaseInventoryInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedReleaseInventoryInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedReleaseInventoryInformer(informer ReleaseInventoryInformer) TypedReleaseInventoryInformer {
+	if informer, ok := informer.(TypedReleaseInventoryInformer); ok {
+		return informer
+	}
+	return &releaseInventoryTypedInformerAdapter{informer}
+}
+
+type releaseInventoryTypedInformerAdapter struct {
+	ReleaseInventoryInformer
+}
+
+func (a *releaseInventoryTypedInformerAdapter) TypedInformer() ReleaseInventoryIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apicorev1alpha1.ReleaseInventory](a.Informer())
+}
+
+// ToReleaseInventoryIndexInformer converts an untyped informer into a ReleaseInventoryIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ReleaseInventory. If that is not the case, calling type-safe methods of the returned
+// ReleaseInventoryIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ReleaseInventoryIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToReleaseInventoryIndexInformer(informer cache.SharedIndexInformer) ReleaseInventoryIndexInformer {
+	if informer, ok := informer.(ReleaseInventoryIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apicorev1alpha1.ReleaseInventory](informer)
 }

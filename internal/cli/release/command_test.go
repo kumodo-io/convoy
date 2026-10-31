@@ -145,7 +145,7 @@ func (f *fakeClient) SetLifecycle(_ context.Context, _, _ string, lifecycle *cor
 
 func releaseWithRender(renderRef string) *corev1alpha1.Release {
 	rel := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
+		Name: "r1", Namespace: "ns",
 	}
 	if renderRef != "" {
 		rel.Status.LastSuccessful = &corev1alpha1.ReleaseAttemptedRenderStatus{RenderRef: renderRef}

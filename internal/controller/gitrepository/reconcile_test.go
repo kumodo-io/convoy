@@ -29,8 +29,8 @@ import (
 
 func gitRepo(generation int64, status sourcev1alpha1.GitRepositoryStatus) *sourcev1alpha1.GitRepository {
 	return &sourcev1alpha1.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{Name: "g1", Namespace: "ns", Generation: generation},
-		Status:     status,
+		Name: "g1", Namespace: "ns", Generation: generation,
+		Status: status,
 	}
 }
 

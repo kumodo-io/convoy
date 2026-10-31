@@ -20,8 +20,6 @@ import (
 	"strings"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 )
 
@@ -91,8 +89,8 @@ func TestTargetNamespaceOf(t *testing.T) {
 
 func TestBuildHookWorkload_StampsIdentityAndLabels(t *testing.T) {
 	rel := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: appName, Namespace: "ns", UID: "uid-9"},
-		Spec:       corev1alpha1.ReleaseSpec{Content: corev1alpha1.ReleaseContentSpec{Manifests: &corev1alpha1.ReleaseContentManifestsSpec{TargetNamespace: "app-ns"}}},
+		Name: appName, Namespace: "ns", UID: "uid-9",
+		Spec: corev1alpha1.ReleaseSpec{Content: corev1alpha1.ReleaseContentSpec{Manifests: &corev1alpha1.ReleaseContentManifestsSpec{TargetNamespace: "app-ns"}}},
 	}
 	hook := podHookSpec(hookNameMigrate, 0, "", corev1alpha1.LifecycleHookOnFailureActionFail, corev1alpha1.LifecycleHookCleanupNever)
 	hook.PodTemplate.Metadata.Labels = map[string]string{"user": "label", labelManagedBy: "should-be-overridden"}

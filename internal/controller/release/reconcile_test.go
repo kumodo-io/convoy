@@ -28,8 +28,8 @@ import (
 
 func release(generation int64, status corev1alpha1.ReleaseStatus) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns", Generation: generation},
-		Status:     status,
+		Name: "r1", Namespace: "ns", Generation: generation,
+		Status: status,
 	}
 }
 

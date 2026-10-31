@@ -20,15 +20,13 @@ import (
 	"context"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/kumodo-io/convoy/api/core"
 	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
 func TestStrategy_StampsShardFromSelf(t *testing.T) {
 	s := NewStrategy(nil, 8)
-	c := &core.Cluster{ObjectMeta: metav1.ObjectMeta{Namespace: "infra", Name: "prod"}}
+	c := &core.Cluster{Namespace: "infra", Name: "prod"}
 	s.PrepareForCreate(context.Background(), c)
 
 	want := sharding.NewSharder(8).ShardLabelValue("infra", "prod")

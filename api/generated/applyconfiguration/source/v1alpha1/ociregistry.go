@@ -27,7 +27,7 @@ import (
 // OCIRegistryApplyConfiguration represents a declarative configuration of the OCIRegistry type for use
 // with apply.
 type OCIRegistryApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                             *OCIRegistrySpecApplyConfiguration         `json:"spec,omitempty"`
 	Webhook                          []OCIRegistryWebhookSpecApplyConfiguration `json:"webhook,omitempty"`

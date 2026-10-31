@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -46,8 +45,8 @@ func TestPinnedRender(t *testing.T) {
 	c := &Controller{renderStore: rs}
 
 	rel := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
-		Pin:        &corev1alpha1.ReleasePin{RenderRef: "sha256:pinned"},
+		Name: "r1", Namespace: "ns",
+		Pin: &corev1alpha1.ReleasePin{RenderRef: "sha256:pinned"},
 	}
 
 	objs, ok, err := c.pinnedRender(ctx, rel)
@@ -59,14 +58,14 @@ func TestPinnedRender(t *testing.T) {
 	}
 
 	// Not pinned → fall back to source render (ok=false).
-	if _, ok, err := c.pinnedRender(ctx, &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"}}); err != nil || ok {
+	if _, ok, err := c.pinnedRender(ctx, &corev1alpha1.Release{Name: "r1", Namespace: "ns"}); err != nil || ok {
 		t.Errorf("pinnedRender(no pin) = ok=%v err=%v; want ok=false", ok, err)
 	}
 
 	// Pinned to an unstored render → fall back to source render (ok=false).
 	ghost := &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Name: "r1", Namespace: "ns"},
-		Pin:        &corev1alpha1.ReleasePin{RenderRef: "sha256:ghost"},
+		Name: "r1", Namespace: "ns",
+		Pin: &corev1alpha1.ReleasePin{RenderRef: "sha256:ghost"},
 	}
 	if _, ok, err := c.pinnedRender(ctx, ghost); err != nil || ok {
 		t.Errorf("pinnedRender(unstored) = ok=%v err=%v; want ok=false", ok, err)

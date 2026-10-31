@@ -27,7 +27,7 @@ import (
 // GlobalHealthRuleSetApplyConfiguration represents a declarative configuration of the GlobalHealthRuleSet type for use
 // with apply.
 type GlobalHealthRuleSetApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	Spec                             *GlobalHealthRuleSetSpecApplyConfiguration `json:"spec,omitempty"`
 }

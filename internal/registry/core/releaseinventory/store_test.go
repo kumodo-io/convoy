@@ -19,7 +19,6 @@ package releaseinventory_test
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
@@ -46,10 +45,8 @@ func newStorage(t *testing.T) (*genericregistry.Store, *etcd3testing.EtcdTestSer
 
 func validNewReleaseInventory(namespace string) *core.ReleaseInventory {
 	return &core.ReleaseInventory{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "payments",
-			Namespace: namespace,
-		},
+		Name:      "payments",
+		Namespace: namespace,
 		Inventory: []core.ResourceInventoryItem{
 			{
 				Group:     "apps",

@@ -57,11 +57,9 @@ func (f fakeFetcher) Verify(context.Context, *sourcev1alpha1.GitRepository) erro
 
 func noneRepo() *sourcev1alpha1.GitRepository {
 	return &sourcev1alpha1.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       dummyGitRepositoryName,
-			Namespace:  dummyGitRepositoryNamespace,
-			Generation: 1,
-		},
+		Name:       dummyGitRepositoryName,
+		Namespace:  dummyGitRepositoryNamespace,
+		Generation: 1,
 		Spec: sourcev1alpha1.GitRepositorySpec{
 			URL:  dummyGitRepositoryURL,
 			Auth: sourcev1alpha1.GitRepositoryAuthSpec{Type: sourcev1alpha1.GitRepositoryAuthTypeNone},

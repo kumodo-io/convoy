@@ -52,11 +52,9 @@ func (f fakeFetcher) Verify(context.Context, *sourcev1alpha1.HelmRegistry) error
 
 func noneReg() *sourcev1alpha1.HelmRegistry {
 	return &sourcev1alpha1.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:       dummyName,
-			Namespace:  dummyNamespace,
-			Generation: 1,
-		},
+		Name:       dummyName,
+		Namespace:  dummyNamespace,
+		Generation: 1,
 		Spec: sourcev1alpha1.HelmRegistrySpec{
 			URL:  dummyURL,
 			Auth: sourcev1alpha1.HelmRegistryAuthSpec{Type: sourcev1alpha1.HelmRegistryAuthTypeNone},

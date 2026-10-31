@@ -24,14 +24,9 @@ package v1alpha1
 import (
 	unsafe "unsafe"
 
-	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	core "github.com/kumodo-io/convoy/api/core"
-	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	types "k8s.io/apimachinery/pkg/types"
 )
 
 func init() {
@@ -737,6 +732,7 @@ func Convert_core_Cluster_To_v1alpha1_Cluster(in *core.Cluster, out *Cluster, s 
 }
 
 func autoConvert_v1alpha1_ClusterAgentModeSpec_To_core_ClusterAgentModeSpec(in *ClusterAgentModeSpec, out *core.ClusterAgentModeSpec, s conversion.Scope) error {
+	*out = *(*core.ClusterAgentModeSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -746,6 +742,7 @@ func Convert_v1alpha1_ClusterAgentModeSpec_To_core_ClusterAgentModeSpec(in *Clus
 }
 
 func autoConvert_core_ClusterAgentModeSpec_To_v1alpha1_ClusterAgentModeSpec(in *core.ClusterAgentModeSpec, out *ClusterAgentModeSpec, s conversion.Scope) error {
+	*out = *(*ClusterAgentModeSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -755,9 +752,7 @@ func Convert_core_ClusterAgentModeSpec_To_v1alpha1_ClusterAgentModeSpec(in *core
 }
 
 func autoConvert_v1alpha1_ClusterAgentStatus_To_core_ClusterAgentStatus(in *ClusterAgentStatus, out *core.ClusterAgentStatus, s conversion.Scope) error {
-	out.AgentVersion = in.AgentVersion
-	out.RegisteredAt = in.RegisteredAt
-	out.LastHeartbeat = in.LastHeartbeat
+	*out = *(*core.ClusterAgentStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -767,9 +762,7 @@ func Convert_v1alpha1_ClusterAgentStatus_To_core_ClusterAgentStatus(in *ClusterA
 }
 
 func autoConvert_core_ClusterAgentStatus_To_v1alpha1_ClusterAgentStatus(in *core.ClusterAgentStatus, out *ClusterAgentStatus, s conversion.Scope) error {
-	out.AgentVersion = in.AgentVersion
-	out.RegisteredAt = in.RegisteredAt
-	out.LastHeartbeat = in.LastHeartbeat
+	*out = *(*ClusterAgentStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -779,14 +772,7 @@ func Convert_core_ClusterAgentStatus_To_v1alpha1_ClusterAgentStatus(in *core.Clu
 }
 
 func autoConvert_v1alpha1_ClusterAgentlessModeSpec_To_core_ClusterAgentlessModeSpec(in *ClusterAgentlessModeSpec, out *core.ClusterAgentlessModeSpec, s conversion.Scope) error {
-	out.Server = in.Server
-	out.CAPublicCertRef = in.CAPublicCertRef
-	if err := Convert_v1alpha1_ClusterAuthSpec_To_core_ClusterAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ClusterConnectionParametersSpec_To_core_ClusterConnectionParametersSpec(&in.ConnectionParameters, &out.ConnectionParameters, s); err != nil {
-		return err
-	}
+	*out = *(*core.ClusterAgentlessModeSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -796,14 +782,7 @@ func Convert_v1alpha1_ClusterAgentlessModeSpec_To_core_ClusterAgentlessModeSpec(
 }
 
 func autoConvert_core_ClusterAgentlessModeSpec_To_v1alpha1_ClusterAgentlessModeSpec(in *core.ClusterAgentlessModeSpec, out *ClusterAgentlessModeSpec, s conversion.Scope) error {
-	out.Server = in.Server
-	out.CAPublicCertRef = in.CAPublicCertRef
-	if err := Convert_core_ClusterAuthSpec_To_v1alpha1_ClusterAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ClusterConnectionParametersSpec_To_v1alpha1_ClusterConnectionParametersSpec(&in.ConnectionParameters, &out.ConnectionParameters, s); err != nil {
-		return err
-	}
+	*out = *(*ClusterAgentlessModeSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -813,12 +792,7 @@ func Convert_core_ClusterAgentlessModeSpec_To_v1alpha1_ClusterAgentlessModeSpec(
 }
 
 func autoConvert_v1alpha1_ClusterAuthSpec_To_core_ClusterAuthSpec(in *ClusterAuthSpec, out *core.ClusterAuthSpec, s conversion.Scope) error {
-	out.Type = core.ClusterAuthType(in.Type)
-	out.Kubeconfig = (*authv1alpha1.KubeconfigAuthSpec)(unsafe.Pointer(in.Kubeconfig))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.ClientCert = (*authv1alpha1.ClientCertAuthSpec)(unsafe.Pointer(in.ClientCert))
-	out.ExecPlugin = (*authv1alpha1.ExecPluginAuthSpec)(unsafe.Pointer(in.ExecPlugin))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	*out = *(*core.ClusterAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -828,12 +802,7 @@ func Convert_v1alpha1_ClusterAuthSpec_To_core_ClusterAuthSpec(in *ClusterAuthSpe
 }
 
 func autoConvert_core_ClusterAuthSpec_To_v1alpha1_ClusterAuthSpec(in *core.ClusterAuthSpec, out *ClusterAuthSpec, s conversion.Scope) error {
-	out.Type = ClusterAuthType(in.Type)
-	out.Kubeconfig = (*authv1alpha1.KubeconfigAuthSpec)(unsafe.Pointer(in.Kubeconfig))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.ClientCert = (*authv1alpha1.ClientCertAuthSpec)(unsafe.Pointer(in.ClientCert))
-	out.ExecPlugin = (*authv1alpha1.ExecPluginAuthSpec)(unsafe.Pointer(in.ExecPlugin))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
+	*out = *(*ClusterAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -843,8 +812,7 @@ func Convert_core_ClusterAuthSpec_To_v1alpha1_ClusterAuthSpec(in *core.ClusterAu
 }
 
 func autoConvert_v1alpha1_ClusterCapabilitiesSpec_To_core_ClusterCapabilitiesSpec(in *ClusterCapabilitiesSpec, out *core.ClusterCapabilitiesSpec, s conversion.Scope) error {
-	out.ServerSideApply = in.ServerSideApply
-	out.APIVersions = *(*[]string)(unsafe.Pointer(&in.APIVersions))
+	*out = *(*core.ClusterCapabilitiesSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -854,8 +822,7 @@ func Convert_v1alpha1_ClusterCapabilitiesSpec_To_core_ClusterCapabilitiesSpec(in
 }
 
 func autoConvert_core_ClusterCapabilitiesSpec_To_v1alpha1_ClusterCapabilitiesSpec(in *core.ClusterCapabilitiesSpec, out *ClusterCapabilitiesSpec, s conversion.Scope) error {
-	out.ServerSideApply = in.ServerSideApply
-	out.APIVersions = *(*[]string)(unsafe.Pointer(&in.APIVersions))
+	*out = *(*ClusterCapabilitiesSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -865,9 +832,7 @@ func Convert_core_ClusterCapabilitiesSpec_To_v1alpha1_ClusterCapabilitiesSpec(in
 }
 
 func autoConvert_v1alpha1_ClusterConnectionParametersSpec_To_core_ClusterConnectionParametersSpec(in *ClusterConnectionParametersSpec, out *core.ClusterConnectionParametersSpec, s conversion.Scope) error {
-	out.QPS = in.QPS
-	out.Burst = in.Burst
-	out.Timeout = in.Timeout
+	*out = *(*core.ClusterConnectionParametersSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -877,9 +842,7 @@ func Convert_v1alpha1_ClusterConnectionParametersSpec_To_core_ClusterConnectionP
 }
 
 func autoConvert_core_ClusterConnectionParametersSpec_To_v1alpha1_ClusterConnectionParametersSpec(in *core.ClusterConnectionParametersSpec, out *ClusterConnectionParametersSpec, s conversion.Scope) error {
-	out.QPS = in.QPS
-	out.Burst = in.Burst
-	out.Timeout = in.Timeout
+	*out = *(*ClusterConnectionParametersSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -889,7 +852,7 @@ func Convert_core_ClusterConnectionParametersSpec_To_v1alpha1_ClusterConnectionP
 }
 
 func autoConvert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(in *ClusterDeletionPolicy, out *core.ClusterDeletionPolicy, s conversion.Scope) error {
-	out.PruneReleases = in.PruneReleases
+	*out = *(*core.ClusterDeletionPolicy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -899,7 +862,7 @@ func Convert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(in *Cl
 }
 
 func autoConvert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy(in *core.ClusterDeletionPolicy, out *ClusterDeletionPolicy, s conversion.Scope) error {
-	out.PruneReleases = in.PruneReleases
+	*out = *(*ClusterDeletionPolicy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -931,16 +894,7 @@ func Convert_core_ClusterList_To_v1alpha1_ClusterList(in *core.ClusterList, out 
 }
 
 func autoConvert_v1alpha1_ClusterSpec_To_core_ClusterSpec(in *ClusterSpec, out *core.ClusterSpec, s conversion.Scope) error {
-	out.ConnectionMode = core.ClusterConnectionMode(in.ConnectionMode)
-	out.Agent = (*core.ClusterAgentModeSpec)(unsafe.Pointer(in.Agent))
-	out.Agentless = (*core.ClusterAgentlessModeSpec)(unsafe.Pointer(in.Agentless))
-	out.Metadata = *(*map[string]string)(unsafe.Pointer(&in.Metadata))
-	if err := Convert_v1alpha1_ClusterCapabilitiesSpec_To_core_ClusterCapabilitiesSpec(&in.Capabilities, &out.Capabilities, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ClusterDeletionPolicy_To_core_ClusterDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
-		return err
-	}
+	*out = *(*core.ClusterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -950,16 +904,7 @@ func Convert_v1alpha1_ClusterSpec_To_core_ClusterSpec(in *ClusterSpec, out *core
 }
 
 func autoConvert_core_ClusterSpec_To_v1alpha1_ClusterSpec(in *core.ClusterSpec, out *ClusterSpec, s conversion.Scope) error {
-	out.ConnectionMode = ClusterConnectionMode(in.ConnectionMode)
-	out.Agent = (*ClusterAgentModeSpec)(unsafe.Pointer(in.Agent))
-	out.Agentless = (*ClusterAgentlessModeSpec)(unsafe.Pointer(in.Agentless))
-	out.Metadata = *(*map[string]string)(unsafe.Pointer(&in.Metadata))
-	if err := Convert_core_ClusterCapabilitiesSpec_To_v1alpha1_ClusterCapabilitiesSpec(&in.Capabilities, &out.Capabilities, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ClusterDeletionPolicy_To_v1alpha1_ClusterDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
-		return err
-	}
+	*out = *(*ClusterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -969,14 +914,7 @@ func Convert_core_ClusterSpec_To_v1alpha1_ClusterSpec(in *core.ClusterSpec, out 
 }
 
 func autoConvert_v1alpha1_ClusterStatus_To_core_ClusterStatus(in *ClusterStatus, out *core.ClusterStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.Reachable = in.Reachable
-	out.LastSeen = in.LastSeen
-	out.DiscoveredVersion = in.DiscoveredVersion
-	out.DiscoveredAPIVersions = *(*[]string)(unsafe.Pointer(&in.DiscoveredAPIVersions))
-	out.ReleaseCount = in.ReleaseCount
-	out.AgentStatus = (*core.ClusterAgentStatus)(unsafe.Pointer(in.AgentStatus))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*core.ClusterStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -986,14 +924,7 @@ func Convert_v1alpha1_ClusterStatus_To_core_ClusterStatus(in *ClusterStatus, out
 }
 
 func autoConvert_core_ClusterStatus_To_v1alpha1_ClusterStatus(in *core.ClusterStatus, out *ClusterStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.Reachable = in.Reachable
-	out.LastSeen = in.LastSeen
-	out.DiscoveredVersion = in.DiscoveredVersion
-	out.DiscoveredAPIVersions = *(*[]string)(unsafe.Pointer(&in.DiscoveredAPIVersions))
-	out.ReleaseCount = in.ReleaseCount
-	out.AgentStatus = (*ClusterAgentStatus)(unsafe.Pointer(in.AgentStatus))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*ClusterStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1003,7 +934,7 @@ func Convert_core_ClusterStatus_To_v1alpha1_ClusterStatus(in *core.ClusterStatus
 }
 
 func autoConvert_v1alpha1_LastHealthy_To_core_LastHealthy(in *LastHealthy, out *core.LastHealthy, s conversion.Scope) error {
-	out.RenderRef = in.RenderRef
+	*out = *(*core.LastHealthy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1013,7 +944,7 @@ func Convert_v1alpha1_LastHealthy_To_core_LastHealthy(in *LastHealthy, out *core
 }
 
 func autoConvert_core_LastHealthy_To_v1alpha1_LastHealthy(in *core.LastHealthy, out *LastHealthy, s conversion.Scope) error {
-	out.RenderRef = in.RenderRef
+	*out = *(*LastHealthy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1023,10 +954,7 @@ func Convert_core_LastHealthy_To_v1alpha1_LastHealthy(in *core.LastHealthy, out 
 }
 
 func autoConvert_v1alpha1_LifecycleHookJobTemplate_To_core_LifecycleHookJobTemplate(in *LifecycleHookJobTemplate, out *core.LifecycleHookJobTemplate, s conversion.Scope) error {
-	if err := Convert_v1alpha1_PartialMetadata_To_core_PartialMetadata(&in.Metadata, &out.Metadata, s); err != nil {
-		return err
-	}
-	out.Spec = in.Spec
+	*out = *(*core.LifecycleHookJobTemplate)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1036,10 +964,7 @@ func Convert_v1alpha1_LifecycleHookJobTemplate_To_core_LifecycleHookJobTemplate(
 }
 
 func autoConvert_core_LifecycleHookJobTemplate_To_v1alpha1_LifecycleHookJobTemplate(in *core.LifecycleHookJobTemplate, out *LifecycleHookJobTemplate, s conversion.Scope) error {
-	if err := Convert_core_PartialMetadata_To_v1alpha1_PartialMetadata(&in.Metadata, &out.Metadata, s); err != nil {
-		return err
-	}
-	out.Spec = in.Spec
+	*out = *(*LifecycleHookJobTemplate)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1049,10 +974,7 @@ func Convert_core_LifecycleHookJobTemplate_To_v1alpha1_LifecycleHookJobTemplate(
 }
 
 func autoConvert_v1alpha1_LifecycleHookPodTemplate_To_core_LifecycleHookPodTemplate(in *LifecycleHookPodTemplate, out *core.LifecycleHookPodTemplate, s conversion.Scope) error {
-	if err := Convert_v1alpha1_PartialMetadata_To_core_PartialMetadata(&in.Metadata, &out.Metadata, s); err != nil {
-		return err
-	}
-	out.Spec = in.Spec
+	*out = *(*core.LifecycleHookPodTemplate)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1062,10 +984,7 @@ func Convert_v1alpha1_LifecycleHookPodTemplate_To_core_LifecycleHookPodTemplate(
 }
 
 func autoConvert_core_LifecycleHookPodTemplate_To_v1alpha1_LifecycleHookPodTemplate(in *core.LifecycleHookPodTemplate, out *LifecycleHookPodTemplate, s conversion.Scope) error {
-	if err := Convert_core_PartialMetadata_To_v1alpha1_PartialMetadata(&in.Metadata, &out.Metadata, s); err != nil {
-		return err
-	}
-	out.Spec = in.Spec
+	*out = *(*LifecycleHookPodTemplate)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1075,17 +994,7 @@ func Convert_core_LifecycleHookPodTemplate_To_v1alpha1_LifecycleHookPodTemplate(
 }
 
 func autoConvert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in *LifecycleHookSpec, out *core.LifecycleHookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Type = core.LifecycleHookType(in.Type)
-	out.If = in.If
-	out.RunAfter = (*core.LifecycleHookRunAfter)(unsafe.Pointer(in.RunAfter))
-	out.Weight = in.Weight
-	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
-	out.OnFailure = core.LifecycleHookOnFailureAction(in.OnFailure)
-	out.DeleteBeforeCreation = in.DeleteBeforeCreation
-	out.Cleanup = core.LifecycleHookCleanup(in.Cleanup)
-	out.PodTemplate = (*core.LifecycleHookPodTemplate)(unsafe.Pointer(in.PodTemplate))
-	out.JobTemplate = (*core.LifecycleHookJobTemplate)(unsafe.Pointer(in.JobTemplate))
+	*out = *(*core.LifecycleHookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1095,17 +1004,7 @@ func Convert_v1alpha1_LifecycleHookSpec_To_core_LifecycleHookSpec(in *LifecycleH
 }
 
 func autoConvert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(in *core.LifecycleHookSpec, out *LifecycleHookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Type = LifecycleHookType(in.Type)
-	out.If = in.If
-	out.RunAfter = (*LifecycleHookRunAfter)(unsafe.Pointer(in.RunAfter))
-	out.Weight = in.Weight
-	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
-	out.OnFailure = LifecycleHookOnFailureAction(in.OnFailure)
-	out.DeleteBeforeCreation = in.DeleteBeforeCreation
-	out.Cleanup = LifecycleHookCleanup(in.Cleanup)
-	out.PodTemplate = (*LifecycleHookPodTemplate)(unsafe.Pointer(in.PodTemplate))
-	out.JobTemplate = (*LifecycleHookJobTemplate)(unsafe.Pointer(in.JobTemplate))
+	*out = *(*LifecycleHookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1115,20 +1014,7 @@ func Convert_core_LifecycleHookSpec_To_v1alpha1_LifecycleHookSpec(in *core.Lifec
 }
 
 func autoConvert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(in *LifecycleHookStatus, out *core.LifecycleHookStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Source = core.LifecycleHookSource(in.Source)
-	out.Kind = in.Kind
-	out.ApiVersion = in.ApiVersion
-	out.ResourceName = in.ResourceName
-	out.ResourceNamespace = in.ResourceNamespace
-	out.RenderRef = in.RenderRef
-	out.State = core.LifecycleHookState(in.State)
-	out.Weight = in.Weight
-	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
-	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
-	out.CleanedUpAt = (*v1.Time)(unsafe.Pointer(in.CleanedUpAt))
-	out.Message = in.Message
-	out.FollowUpAction = (*core.LifecycleHookOnFailureAction)(unsafe.Pointer(in.FollowUpAction))
+	*out = *(*core.LifecycleHookStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1138,20 +1024,7 @@ func Convert_v1alpha1_LifecycleHookStatus_To_core_LifecycleHookStatus(in *Lifecy
 }
 
 func autoConvert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in *core.LifecycleHookStatus, out *LifecycleHookStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Source = LifecycleHookSource(in.Source)
-	out.Kind = in.Kind
-	out.ApiVersion = in.ApiVersion
-	out.ResourceName = in.ResourceName
-	out.ResourceNamespace = in.ResourceNamespace
-	out.RenderRef = in.RenderRef
-	out.State = LifecycleHookState(in.State)
-	out.Weight = in.Weight
-	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
-	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
-	out.CleanedUpAt = (*v1.Time)(unsafe.Pointer(in.CleanedUpAt))
-	out.Message = in.Message
-	out.FollowUpAction = (*LifecycleHookOnFailureAction)(unsafe.Pointer(in.FollowUpAction))
+	*out = *(*LifecycleHookStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1161,11 +1034,7 @@ func Convert_core_LifecycleHookStatus_To_v1alpha1_LifecycleHookStatus(in *core.L
 }
 
 func autoConvert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(in *LifecycleStatus, out *core.LifecycleStatus, s conversion.Scope) error {
-	out.PreSync = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PreSync))
-	out.SyncFailed = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.SyncFailed))
-	out.PostSync = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PostSync))
-	out.PreDelete = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PreDelete))
-	out.PostDelete = *(*[]core.LifecycleHookStatus)(unsafe.Pointer(&in.PostDelete))
+	*out = *(*core.LifecycleStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1175,11 +1044,7 @@ func Convert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(in *LifecycleStatu
 }
 
 func autoConvert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(in *core.LifecycleStatus, out *LifecycleStatus, s conversion.Scope) error {
-	out.PreSync = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PreSync))
-	out.SyncFailed = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.SyncFailed))
-	out.PostSync = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PostSync))
-	out.PreDelete = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PreDelete))
-	out.PostDelete = *(*[]LifecycleHookStatus)(unsafe.Pointer(&in.PostDelete))
+	*out = *(*LifecycleStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1189,9 +1054,7 @@ func Convert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(in *core.Lifecycle
 }
 
 func autoConvert_v1alpha1_PartialMetadata_To_core_PartialMetadata(in *PartialMetadata, out *core.PartialMetadata, s conversion.Scope) error {
-	out.Namespace = in.Namespace
-	out.Labels = *(*map[string]string)(unsafe.Pointer(&in.Labels))
-	out.Annotations = *(*map[string]string)(unsafe.Pointer(&in.Annotations))
+	*out = *(*core.PartialMetadata)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1201,9 +1064,7 @@ func Convert_v1alpha1_PartialMetadata_To_core_PartialMetadata(in *PartialMetadat
 }
 
 func autoConvert_core_PartialMetadata_To_v1alpha1_PartialMetadata(in *core.PartialMetadata, out *PartialMetadata, s conversion.Scope) error {
-	out.Namespace = in.Namespace
-	out.Labels = *(*map[string]string)(unsafe.Pointer(&in.Labels))
-	out.Annotations = *(*map[string]string)(unsafe.Pointer(&in.Annotations))
+	*out = *(*PartialMetadata)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1213,9 +1074,7 @@ func Convert_core_PartialMetadata_To_v1alpha1_PartialMetadata(in *core.PartialMe
 }
 
 func autoConvert_v1alpha1_PruneSpec_To_core_PruneSpec(in *PruneSpec, out *core.PruneSpec, s conversion.Scope) error {
-	out.Orphaned = in.Orphaned
-	out.IncludeCRDs = in.IncludeCRDs
-	out.IncludeNamespaces = in.IncludeNamespaces
+	*out = *(*core.PruneSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1225,9 +1084,7 @@ func Convert_v1alpha1_PruneSpec_To_core_PruneSpec(in *PruneSpec, out *core.Prune
 }
 
 func autoConvert_core_PruneSpec_To_v1alpha1_PruneSpec(in *core.PruneSpec, out *PruneSpec, s conversion.Scope) error {
-	out.Orphaned = in.Orphaned
-	out.IncludeCRDs = in.IncludeCRDs
-	out.IncludeNamespaces = in.IncludeNamespaces
+	*out = *(*PruneSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1275,12 +1132,7 @@ func Convert_core_Release_To_v1alpha1_Release(in *core.Release, out *Release, s 
 }
 
 func autoConvert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAttemptedRenderFailureStatus(in *ReleaseAttemptedRenderFailureStatus, out *core.ReleaseAttemptedRenderFailureStatus, s conversion.Scope) error {
-	out.Stage = core.ReleaseRenderAttemptStage(in.Stage)
-	out.MutationIndex = in.MutationIndex
-	out.Message = in.Message
-	out.WaveNumber = in.WaveNumber
-	out.HookName = in.HookName
-	out.HookPhase = (*core.LifecycleHookPhase)(unsafe.Pointer(in.HookPhase))
+	*out = *(*core.ReleaseAttemptedRenderFailureStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1290,12 +1142,7 @@ func Convert_v1alpha1_ReleaseAttemptedRenderFailureStatus_To_core_ReleaseAttempt
 }
 
 func autoConvert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAttemptedRenderFailureStatus(in *core.ReleaseAttemptedRenderFailureStatus, out *ReleaseAttemptedRenderFailureStatus, s conversion.Scope) error {
-	out.Stage = ReleaseRenderAttemptStage(in.Stage)
-	out.MutationIndex = in.MutationIndex
-	out.Message = in.Message
-	out.WaveNumber = in.WaveNumber
-	out.HookName = in.HookName
-	out.HookPhase = (*LifecycleHookPhase)(unsafe.Pointer(in.HookPhase))
+	*out = *(*ReleaseAttemptedRenderFailureStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1305,19 +1152,7 @@ func Convert_core_ReleaseAttemptedRenderFailureStatus_To_v1alpha1_ReleaseAttempt
 }
 
 func autoConvert_v1alpha1_ReleaseAttemptedRenderStatus_To_core_ReleaseAttemptedRenderStatus(in *ReleaseAttemptedRenderStatus, out *core.ReleaseAttemptedRenderStatus, s conversion.Scope) error {
-	if err := Convert_v1alpha1_ResolvedSource_To_core_ResolvedSource(&in.ResolvedSource, &out.ResolvedSource, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(&in.ResolvedCluster, &out.ResolvedCluster, s); err != nil {
-		return err
-	}
-	out.ResolvedMutations = *(*[]core.ResolvedMutation)(unsafe.Pointer(&in.ResolvedMutations))
-	out.RenderRef = in.RenderRef
-	out.AttemptedAt = (*v1.Time)(unsafe.Pointer(in.AttemptedAt))
-	out.Phase = core.ReleaseRenderAttemptPhase(in.Phase)
-	out.SyncedAt = (*v1.Time)(unsafe.Pointer(in.SyncedAt))
-	out.SyncedResources = in.SyncedResources
-	out.Failure = (*core.ReleaseAttemptedRenderFailureStatus)(unsafe.Pointer(in.Failure))
+	*out = *(*core.ReleaseAttemptedRenderStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1327,19 +1162,7 @@ func Convert_v1alpha1_ReleaseAttemptedRenderStatus_To_core_ReleaseAttemptedRende
 }
 
 func autoConvert_core_ReleaseAttemptedRenderStatus_To_v1alpha1_ReleaseAttemptedRenderStatus(in *core.ReleaseAttemptedRenderStatus, out *ReleaseAttemptedRenderStatus, s conversion.Scope) error {
-	if err := Convert_core_ResolvedSource_To_v1alpha1_ResolvedSource(&in.ResolvedSource, &out.ResolvedSource, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(&in.ResolvedCluster, &out.ResolvedCluster, s); err != nil {
-		return err
-	}
-	out.ResolvedMutations = *(*[]ResolvedMutation)(unsafe.Pointer(&in.ResolvedMutations))
-	out.RenderRef = in.RenderRef
-	out.AttemptedAt = (*v1.Time)(unsafe.Pointer(in.AttemptedAt))
-	out.Phase = ReleaseRenderAttemptPhase(in.Phase)
-	out.SyncedAt = (*v1.Time)(unsafe.Pointer(in.SyncedAt))
-	out.SyncedResources = in.SyncedResources
-	out.Failure = (*ReleaseAttemptedRenderFailureStatus)(unsafe.Pointer(in.Failure))
+	*out = *(*ReleaseAttemptedRenderStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1349,8 +1172,7 @@ func Convert_core_ReleaseAttemptedRenderStatus_To_v1alpha1_ReleaseAttemptedRende
 }
 
 func autoConvert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(in *ReleaseClusterRefSpec, out *core.ReleaseClusterRefSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
+	*out = *(*core.ReleaseClusterRefSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1360,8 +1182,7 @@ func Convert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(in *Re
 }
 
 func autoConvert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(in *core.ReleaseClusterRefSpec, out *ReleaseClusterRefSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
+	*out = *(*ReleaseClusterRefSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1371,11 +1192,7 @@ func Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(in *co
 }
 
 func autoConvert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *ReleaseContentHelmSpec, out *core.ReleaseContentHelmSpec, s conversion.Scope) error {
-	out.ReleaseName = in.ReleaseName
-	out.ReleaseNamespace = in.ReleaseNamespace
-	out.Path = in.Path
-	out.DependencyMode = core.ReleaseHelmDependencyMode(in.DependencyMode)
-	out.Values = *(*[]core.ValuesSourceSpec)(unsafe.Pointer(&in.Values))
+	*out = *(*core.ReleaseContentHelmSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1385,11 +1202,7 @@ func Convert_v1alpha1_ReleaseContentHelmSpec_To_core_ReleaseContentHelmSpec(in *
 }
 
 func autoConvert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in *core.ReleaseContentHelmSpec, out *ReleaseContentHelmSpec, s conversion.Scope) error {
-	out.ReleaseName = in.ReleaseName
-	out.ReleaseNamespace = in.ReleaseNamespace
-	out.Path = in.Path
-	out.DependencyMode = ReleaseHelmDependencyMode(in.DependencyMode)
-	out.Values = *(*[]ValuesSourceSpec)(unsafe.Pointer(&in.Values))
+	*out = *(*ReleaseContentHelmSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1399,9 +1212,7 @@ func Convert_core_ReleaseContentHelmSpec_To_v1alpha1_ReleaseContentHelmSpec(in *
 }
 
 func autoConvert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpec(in *ReleaseContentJsonnetSpec, out *core.ReleaseContentJsonnetSpec, s conversion.Scope) error {
-	out.TargetNamespace = in.TargetNamespace
-	out.Path = in.Path
-	out.TLA = *(*[]corev1.EnvVar)(unsafe.Pointer(&in.TLA))
+	*out = *(*core.ReleaseContentJsonnetSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1411,9 +1222,7 @@ func Convert_v1alpha1_ReleaseContentJsonnetSpec_To_core_ReleaseContentJsonnetSpe
 }
 
 func autoConvert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpec(in *core.ReleaseContentJsonnetSpec, out *ReleaseContentJsonnetSpec, s conversion.Scope) error {
-	out.TargetNamespace = in.TargetNamespace
-	out.Path = in.Path
-	out.TLA = *(*[]corev1.EnvVar)(unsafe.Pointer(&in.TLA))
+	*out = *(*ReleaseContentJsonnetSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1423,8 +1232,7 @@ func Convert_core_ReleaseContentJsonnetSpec_To_v1alpha1_ReleaseContentJsonnetSpe
 }
 
 func autoConvert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomizeSpec(in *ReleaseContentKustomizeSpec, out *core.ReleaseContentKustomizeSpec, s conversion.Scope) error {
-	out.TargetNamespace = in.TargetNamespace
-	out.Path = in.Path
+	*out = *(*core.ReleaseContentKustomizeSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1434,8 +1242,7 @@ func Convert_v1alpha1_ReleaseContentKustomizeSpec_To_core_ReleaseContentKustomiz
 }
 
 func autoConvert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomizeSpec(in *core.ReleaseContentKustomizeSpec, out *ReleaseContentKustomizeSpec, s conversion.Scope) error {
-	out.TargetNamespace = in.TargetNamespace
-	out.Path = in.Path
+	*out = *(*ReleaseContentKustomizeSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1445,8 +1252,7 @@ func Convert_core_ReleaseContentKustomizeSpec_To_v1alpha1_ReleaseContentKustomiz
 }
 
 func autoConvert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifestsSpec(in *ReleaseContentManifestsSpec, out *core.ReleaseContentManifestsSpec, s conversion.Scope) error {
-	out.TargetNamespace = in.TargetNamespace
-	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	*out = *(*core.ReleaseContentManifestsSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1456,8 +1262,7 @@ func Convert_v1alpha1_ReleaseContentManifestsSpec_To_core_ReleaseContentManifest
 }
 
 func autoConvert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifestsSpec(in *core.ReleaseContentManifestsSpec, out *ReleaseContentManifestsSpec, s conversion.Scope) error {
-	out.TargetNamespace = in.TargetNamespace
-	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	*out = *(*ReleaseContentManifestsSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1467,11 +1272,7 @@ func Convert_core_ReleaseContentManifestsSpec_To_v1alpha1_ReleaseContentManifest
 }
 
 func autoConvert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(in *ReleaseContentSpec, out *core.ReleaseContentSpec, s conversion.Scope) error {
-	out.Type = core.ReleaseContentType(in.Type)
-	out.Helm = (*core.ReleaseContentHelmSpec)(unsafe.Pointer(in.Helm))
-	out.Manifests = (*core.ReleaseContentManifestsSpec)(unsafe.Pointer(in.Manifests))
-	out.Kustomize = (*core.ReleaseContentKustomizeSpec)(unsafe.Pointer(in.Kustomize))
-	out.Jsonnet = (*core.ReleaseContentJsonnetSpec)(unsafe.Pointer(in.Jsonnet))
+	*out = *(*core.ReleaseContentSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1481,11 +1282,7 @@ func Convert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(in *ReleaseC
 }
 
 func autoConvert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(in *core.ReleaseContentSpec, out *ReleaseContentSpec, s conversion.Scope) error {
-	out.Type = ReleaseContentType(in.Type)
-	out.Helm = (*ReleaseContentHelmSpec)(unsafe.Pointer(in.Helm))
-	out.Manifests = (*ReleaseContentManifestsSpec)(unsafe.Pointer(in.Manifests))
-	out.Kustomize = (*ReleaseContentKustomizeSpec)(unsafe.Pointer(in.Kustomize))
-	out.Jsonnet = (*ReleaseContentJsonnetSpec)(unsafe.Pointer(in.Jsonnet))
+	*out = *(*ReleaseContentSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1495,8 +1292,7 @@ func Convert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(in *core.Rel
 }
 
 func autoConvert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(in *ReleaseDeletionPolicy, out *core.ReleaseDeletionPolicy, s conversion.Scope) error {
-	out.KeepWorkloads = in.KeepWorkloads
-	out.BlockOnClusterUnreachable = in.BlockOnClusterUnreachable
+	*out = *(*core.ReleaseDeletionPolicy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1506,8 +1302,7 @@ func Convert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(in *Re
 }
 
 func autoConvert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(in *core.ReleaseDeletionPolicy, out *ReleaseDeletionPolicy, s conversion.Scope) error {
-	out.KeepWorkloads = in.KeepWorkloads
-	out.BlockOnClusterUnreachable = in.BlockOnClusterUnreachable
+	*out = *(*ReleaseDeletionPolicy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1517,7 +1312,7 @@ func Convert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(in *co
 }
 
 func autoConvert_v1alpha1_ReleaseFailurePolicy_To_core_ReleaseFailurePolicy(in *ReleaseFailurePolicy, out *core.ReleaseFailurePolicy, s conversion.Scope) error {
-	out.Rollback = core.RollbackPolicy(in.Rollback)
+	*out = *(*core.ReleaseFailurePolicy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1527,7 +1322,7 @@ func Convert_v1alpha1_ReleaseFailurePolicy_To_core_ReleaseFailurePolicy(in *Rele
 }
 
 func autoConvert_core_ReleaseFailurePolicy_To_v1alpha1_ReleaseFailurePolicy(in *core.ReleaseFailurePolicy, out *ReleaseFailurePolicy, s conversion.Scope) error {
-	out.Rollback = RollbackPolicy(in.Rollback)
+	*out = *(*ReleaseFailurePolicy)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1537,10 +1332,7 @@ func Convert_core_ReleaseFailurePolicy_To_v1alpha1_ReleaseFailurePolicy(in *core
 }
 
 func autoConvert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRefSpec(in *ReleaseGitRepositoryRefSpec, out *core.ReleaseGitRepositoryRefSpec, s conversion.Scope) error {
-	out.Branch = (*string)(unsafe.Pointer(in.Branch))
-	out.Tag = (*string)(unsafe.Pointer(in.Tag))
-	out.Commit = (*string)(unsafe.Pointer(in.Commit))
-	out.Semver = (*string)(unsafe.Pointer(in.Semver))
+	*out = *(*core.ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1550,10 +1342,7 @@ func Convert_v1alpha1_ReleaseGitRepositoryRefSpec_To_core_ReleaseGitRepositoryRe
 }
 
 func autoConvert_core_ReleaseGitRepositoryRefSpec_To_v1alpha1_ReleaseGitRepositoryRefSpec(in *core.ReleaseGitRepositoryRefSpec, out *ReleaseGitRepositoryRefSpec, s conversion.Scope) error {
-	out.Branch = (*string)(unsafe.Pointer(in.Branch))
-	out.Tag = (*string)(unsafe.Pointer(in.Tag))
-	out.Commit = (*string)(unsafe.Pointer(in.Commit))
-	out.Semver = (*string)(unsafe.Pointer(in.Semver))
+	*out = *(*ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1563,9 +1352,7 @@ func Convert_core_ReleaseGitRepositoryRefSpec_To_v1alpha1_ReleaseGitRepositoryRe
 }
 
 func autoConvert_v1alpha1_ReleaseGitRepositorySpec_To_core_ReleaseGitRepositorySpec(in *ReleaseGitRepositorySpec, out *core.ReleaseGitRepositorySpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Ref = (*core.ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
+	*out = *(*core.ReleaseGitRepositorySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1575,9 +1362,7 @@ func Convert_v1alpha1_ReleaseGitRepositorySpec_To_core_ReleaseGitRepositorySpec(
 }
 
 func autoConvert_core_ReleaseGitRepositorySpec_To_v1alpha1_ReleaseGitRepositorySpec(in *core.ReleaseGitRepositorySpec, out *ReleaseGitRepositorySpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Ref = (*ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
+	*out = *(*ReleaseGitRepositorySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1587,9 +1372,7 @@ func Convert_core_ReleaseGitRepositorySpec_To_v1alpha1_ReleaseGitRepositorySpec(
 }
 
 func autoConvert_v1alpha1_ReleaseHealthAssessment_To_core_ReleaseHealthAssessment(in *ReleaseHealthAssessment, out *core.ReleaseHealthAssessment, s conversion.Scope) error {
-	out.GlobalRuleSetSelector = (*v1.LabelSelector)(unsafe.Pointer(in.GlobalRuleSetSelector))
-	out.LocalRuleSetSelector = (*v1.LabelSelector)(unsafe.Pointer(in.LocalRuleSetSelector))
-	out.Deadline = (*v1.Duration)(unsafe.Pointer(in.Deadline))
+	*out = *(*core.ReleaseHealthAssessment)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1599,9 +1382,7 @@ func Convert_v1alpha1_ReleaseHealthAssessment_To_core_ReleaseHealthAssessment(in
 }
 
 func autoConvert_core_ReleaseHealthAssessment_To_v1alpha1_ReleaseHealthAssessment(in *core.ReleaseHealthAssessment, out *ReleaseHealthAssessment, s conversion.Scope) error {
-	out.GlobalRuleSetSelector = (*v1.LabelSelector)(unsafe.Pointer(in.GlobalRuleSetSelector))
-	out.LocalRuleSetSelector = (*v1.LabelSelector)(unsafe.Pointer(in.LocalRuleSetSelector))
-	out.Deadline = (*v1.Duration)(unsafe.Pointer(in.Deadline))
+	*out = *(*ReleaseHealthAssessment)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1611,12 +1392,7 @@ func Convert_core_ReleaseHealthAssessment_To_v1alpha1_ReleaseHealthAssessment(in
 }
 
 func autoConvert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(in *ReleaseHealthSummary, out *core.ReleaseHealthSummary, s conversion.Scope) error {
-	out.Total = in.Total
-	out.Healthy = in.Healthy
-	out.Progressing = in.Progressing
-	out.Degraded = in.Degraded
-	out.Suspended = in.Suspended
-	out.Unknown = in.Unknown
+	*out = *(*core.ReleaseHealthSummary)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1626,12 +1402,7 @@ func Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(in *Rele
 }
 
 func autoConvert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in *core.ReleaseHealthSummary, out *ReleaseHealthSummary, s conversion.Scope) error {
-	out.Total = in.Total
-	out.Healthy = in.Healthy
-	out.Progressing = in.Progressing
-	out.Degraded = in.Degraded
-	out.Suspended = in.Suspended
-	out.Unknown = in.Unknown
+	*out = *(*ReleaseHealthSummary)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1641,8 +1412,7 @@ func Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(in *core
 }
 
 func autoConvert_v1alpha1_ReleaseHelmRegistryChartSpec_To_core_ReleaseHelmRegistryChartSpec(in *ReleaseHelmRegistryChartSpec, out *core.ReleaseHelmRegistryChartSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
+	*out = *(*core.ReleaseHelmRegistryChartSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1652,8 +1422,7 @@ func Convert_v1alpha1_ReleaseHelmRegistryChartSpec_To_core_ReleaseHelmRegistryCh
 }
 
 func autoConvert_core_ReleaseHelmRegistryChartSpec_To_v1alpha1_ReleaseHelmRegistryChartSpec(in *core.ReleaseHelmRegistryChartSpec, out *ReleaseHelmRegistryChartSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
+	*out = *(*ReleaseHelmRegistryChartSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1663,9 +1432,7 @@ func Convert_core_ReleaseHelmRegistryChartSpec_To_v1alpha1_ReleaseHelmRegistryCh
 }
 
 func autoConvert_v1alpha1_ReleaseHelmRegistrySpec_To_core_ReleaseHelmRegistrySpec(in *ReleaseHelmRegistrySpec, out *core.ReleaseHelmRegistrySpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Chart = (*core.ReleaseHelmRegistryChartSpec)(unsafe.Pointer(in.Chart))
+	*out = *(*core.ReleaseHelmRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1675,9 +1442,7 @@ func Convert_v1alpha1_ReleaseHelmRegistrySpec_To_core_ReleaseHelmRegistrySpec(in
 }
 
 func autoConvert_core_ReleaseHelmRegistrySpec_To_v1alpha1_ReleaseHelmRegistrySpec(in *core.ReleaseHelmRegistrySpec, out *ReleaseHelmRegistrySpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Chart = (*ReleaseHelmRegistryChartSpec)(unsafe.Pointer(in.Chart))
+	*out = *(*ReleaseHelmRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1733,11 +1498,7 @@ func Convert_core_ReleaseInventoryList_To_v1alpha1_ReleaseInventoryList(in *core
 }
 
 func autoConvert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in *ReleaseLifecycle, out *core.ReleaseLifecycle, s conversion.Scope) error {
-	out.PreSync = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PreSync))
-	out.SyncFailed = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.SyncFailed))
-	out.PostSync = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PostSync))
-	out.PreDelete = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PreDelete))
-	out.PostDelete = *(*[]core.LifecycleHookSpec)(unsafe.Pointer(&in.PostDelete))
+	*out = *(*core.ReleaseLifecycle)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1747,11 +1508,7 @@ func Convert_v1alpha1_ReleaseLifecycle_To_core_ReleaseLifecycle(in *ReleaseLifec
 }
 
 func autoConvert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(in *core.ReleaseLifecycle, out *ReleaseLifecycle, s conversion.Scope) error {
-	out.PreSync = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PreSync))
-	out.SyncFailed = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.SyncFailed))
-	out.PostSync = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PostSync))
-	out.PreDelete = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PreDelete))
-	out.PostDelete = *(*[]LifecycleHookSpec)(unsafe.Pointer(&in.PostDelete))
+	*out = *(*ReleaseLifecycle)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1761,20 +1518,7 @@ func Convert_core_ReleaseLifecycle_To_v1alpha1_ReleaseLifecycle(in *core.Release
 }
 
 func autoConvert_v1alpha1_ReleaseLifecycleHookItem_To_core_ReleaseLifecycleHookItem(in *ReleaseLifecycleHookItem, out *core.ReleaseLifecycleHookItem, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Phase = core.LifecycleHookPhase(in.Phase)
-	out.RenderRef = in.RenderRef
-	out.Weight = in.Weight
-	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
-	out.Group = in.Group
-	out.Version = in.Version
-	out.Kind = in.Kind
-	out.WorkloadNamespace = in.WorkloadNamespace
-	out.WorkloadName = in.WorkloadName
-	out.CreatedAt = (*v1.Time)(unsafe.Pointer(in.CreatedAt))
-	out.FinishedAt = (*v1.Time)(unsafe.Pointer(in.FinishedAt))
-	out.State = (*core.LifecycleHookState)(unsafe.Pointer(in.State))
-	out.Message = in.Message
+	*out = *(*core.ReleaseLifecycleHookItem)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1784,20 +1528,7 @@ func Convert_v1alpha1_ReleaseLifecycleHookItem_To_core_ReleaseLifecycleHookItem(
 }
 
 func autoConvert_core_ReleaseLifecycleHookItem_To_v1alpha1_ReleaseLifecycleHookItem(in *core.ReleaseLifecycleHookItem, out *ReleaseLifecycleHookItem, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Phase = LifecycleHookPhase(in.Phase)
-	out.RenderRef = in.RenderRef
-	out.Weight = in.Weight
-	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
-	out.Group = in.Group
-	out.Version = in.Version
-	out.Kind = in.Kind
-	out.WorkloadNamespace = in.WorkloadNamespace
-	out.WorkloadName = in.WorkloadName
-	out.CreatedAt = (*v1.Time)(unsafe.Pointer(in.CreatedAt))
-	out.FinishedAt = (*v1.Time)(unsafe.Pointer(in.FinishedAt))
-	out.State = (*LifecycleHookState)(unsafe.Pointer(in.State))
-	out.Message = in.Message
+	*out = *(*ReleaseLifecycleHookItem)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1829,14 +1560,7 @@ func Convert_core_ReleaseList_To_v1alpha1_ReleaseList(in *core.ReleaseList, out 
 }
 
 func autoConvert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation(in *ReleaseMutation, out *core.ReleaseMutation, s conversion.Scope) error {
-	out.Type = core.ReleaseMutationType(in.Type)
-	if err := Convert_v1alpha1_ReleaseMutationTarget_To_core_ReleaseMutationTarget(&in.Target, &out.Target, s); err != nil {
-		return err
-	}
-	out.Inline = *(*[]string)(unsafe.Pointer(&in.Inline))
-	out.From = (*core.ReleaseMutationFromSpec)(unsafe.Pointer(in.From))
-	out.Patches = *(*[]core.ReleaseMutationPatchSpec)(unsafe.Pointer(&in.Patches))
-	out.WaveStrategy = (*core.ReleaseWaveStrategySpec)(unsafe.Pointer(in.WaveStrategy))
+	*out = *(*core.ReleaseMutation)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1846,14 +1570,7 @@ func Convert_v1alpha1_ReleaseMutation_To_core_ReleaseMutation(in *ReleaseMutatio
 }
 
 func autoConvert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation(in *core.ReleaseMutation, out *ReleaseMutation, s conversion.Scope) error {
-	out.Type = ReleaseMutationType(in.Type)
-	if err := Convert_core_ReleaseMutationTarget_To_v1alpha1_ReleaseMutationTarget(&in.Target, &out.Target, s); err != nil {
-		return err
-	}
-	out.Inline = *(*[]string)(unsafe.Pointer(&in.Inline))
-	out.From = (*ReleaseMutationFromSpec)(unsafe.Pointer(in.From))
-	out.Patches = *(*[]ReleaseMutationPatchSpec)(unsafe.Pointer(&in.Patches))
-	out.WaveStrategy = (*ReleaseWaveStrategySpec)(unsafe.Pointer(in.WaveStrategy))
+	*out = *(*ReleaseMutation)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1863,11 +1580,7 @@ func Convert_core_ReleaseMutation_To_v1alpha1_ReleaseMutation(in *core.ReleaseMu
 }
 
 func autoConvert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(in *ReleaseMutationFromSpec, out *core.ReleaseMutationFromSpec, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Path = in.Path
-	out.Ref = (*core.ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
+	*out = *(*core.ReleaseMutationFromSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1877,11 +1590,7 @@ func Convert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(in
 }
 
 func autoConvert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(in *core.ReleaseMutationFromSpec, out *ReleaseMutationFromSpec, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Path = in.Path
-	out.Ref = (*ReleaseGitRepositoryRefSpec)(unsafe.Pointer(in.Ref))
+	*out = *(*ReleaseMutationFromSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1891,10 +1600,7 @@ func Convert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(in
 }
 
 func autoConvert_v1alpha1_ReleaseMutationPatchSpec_To_core_ReleaseMutationPatchSpec(in *ReleaseMutationPatchSpec, out *core.ReleaseMutationPatchSpec, s conversion.Scope) error {
-	out.Op = core.JSONPatchOperation(in.Op)
-	out.Path = in.Path
-	out.From = in.From
-	out.Value = (*apiextensionsv1.JSON)(unsafe.Pointer(in.Value))
+	*out = *(*core.ReleaseMutationPatchSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1904,10 +1610,7 @@ func Convert_v1alpha1_ReleaseMutationPatchSpec_To_core_ReleaseMutationPatchSpec(
 }
 
 func autoConvert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(in *core.ReleaseMutationPatchSpec, out *ReleaseMutationPatchSpec, s conversion.Scope) error {
-	out.Op = JSONPatchOperation(in.Op)
-	out.Path = in.Path
-	out.From = in.From
-	out.Value = (*apiextensionsv1.JSON)(unsafe.Pointer(in.Value))
+	*out = *(*ReleaseMutationPatchSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1917,11 +1620,7 @@ func Convert_core_ReleaseMutationPatchSpec_To_v1alpha1_ReleaseMutationPatchSpec(
 }
 
 func autoConvert_v1alpha1_ReleaseMutationTarget_To_core_ReleaseMutationTarget(in *ReleaseMutationTarget, out *core.ReleaseMutationTarget, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Version = in.Version
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
+	*out = *(*core.ReleaseMutationTarget)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1931,11 +1630,7 @@ func Convert_v1alpha1_ReleaseMutationTarget_To_core_ReleaseMutationTarget(in *Re
 }
 
 func autoConvert_core_ReleaseMutationTarget_To_v1alpha1_ReleaseMutationTarget(in *core.ReleaseMutationTarget, out *ReleaseMutationTarget, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Version = in.Version
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
+	*out = *(*ReleaseMutationTarget)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1945,8 +1640,7 @@ func Convert_core_ReleaseMutationTarget_To_v1alpha1_ReleaseMutationTarget(in *co
 }
 
 func autoConvert_v1alpha1_ReleaseOCIRegistryArtifactSpec_To_core_ReleaseOCIRegistryArtifactSpec(in *ReleaseOCIRegistryArtifactSpec, out *core.ReleaseOCIRegistryArtifactSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
+	*out = *(*core.ReleaseOCIRegistryArtifactSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1956,8 +1650,7 @@ func Convert_v1alpha1_ReleaseOCIRegistryArtifactSpec_To_core_ReleaseOCIRegistryA
 }
 
 func autoConvert_core_ReleaseOCIRegistryArtifactSpec_To_v1alpha1_ReleaseOCIRegistryArtifactSpec(in *core.ReleaseOCIRegistryArtifactSpec, out *ReleaseOCIRegistryArtifactSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Version = in.Version
+	*out = *(*ReleaseOCIRegistryArtifactSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1967,9 +1660,7 @@ func Convert_core_ReleaseOCIRegistryArtifactSpec_To_v1alpha1_ReleaseOCIRegistryA
 }
 
 func autoConvert_v1alpha1_ReleaseOCIRegistrySpec_To_core_ReleaseOCIRegistrySpec(in *ReleaseOCIRegistrySpec, out *core.ReleaseOCIRegistrySpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Artifact = (*core.ReleaseOCIRegistryArtifactSpec)(unsafe.Pointer(in.Artifact))
+	*out = *(*core.ReleaseOCIRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1979,9 +1670,7 @@ func Convert_v1alpha1_ReleaseOCIRegistrySpec_To_core_ReleaseOCIRegistrySpec(in *
 }
 
 func autoConvert_core_ReleaseOCIRegistrySpec_To_v1alpha1_ReleaseOCIRegistrySpec(in *core.ReleaseOCIRegistrySpec, out *ReleaseOCIRegistrySpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.Artifact = (*ReleaseOCIRegistryArtifactSpec)(unsafe.Pointer(in.Artifact))
+	*out = *(*ReleaseOCIRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -1991,10 +1680,7 @@ func Convert_core_ReleaseOCIRegistrySpec_To_v1alpha1_ReleaseOCIRegistrySpec(in *
 }
 
 func autoConvert_v1alpha1_ReleasePin_To_core_ReleasePin(in *ReleasePin, out *core.ReleasePin, s conversion.Scope) error {
-	out.RenderRef = in.RenderRef
-	out.PinnedAt = in.PinnedAt
-	out.PinnedBy = in.PinnedBy
-	out.Reason = in.Reason
+	*out = *(*core.ReleasePin)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2004,10 +1690,7 @@ func Convert_v1alpha1_ReleasePin_To_core_ReleasePin(in *ReleasePin, out *core.Re
 }
 
 func autoConvert_core_ReleasePin_To_v1alpha1_ReleasePin(in *core.ReleasePin, out *ReleasePin, s conversion.Scope) error {
-	out.RenderRef = in.RenderRef
-	out.PinnedAt = in.PinnedAt
-	out.PinnedBy = in.PinnedBy
-	out.Reason = in.Reason
+	*out = *(*ReleasePin)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2017,13 +1700,7 @@ func Convert_core_ReleasePin_To_v1alpha1_ReleasePin(in *core.ReleasePin, out *Re
 }
 
 func autoConvert_v1alpha1_ReleasePinRenderInputsStatus_To_core_ReleasePinRenderInputsStatus(in *ReleasePinRenderInputsStatus, out *core.ReleasePinRenderInputsStatus, s conversion.Scope) error {
-	out.SourceKind = in.SourceKind
-	out.SourceName = in.SourceName
-	out.SourceNamespace = in.SourceNamespace
-	out.SourceRevision = in.SourceRevision
-	out.ContentType = core.ReleaseContentType(in.ContentType)
-	out.ContentPath = in.ContentPath
-	out.MutationsHash = in.MutationsHash
+	*out = *(*core.ReleasePinRenderInputsStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2033,13 +1710,7 @@ func Convert_v1alpha1_ReleasePinRenderInputsStatus_To_core_ReleasePinRenderInput
 }
 
 func autoConvert_core_ReleasePinRenderInputsStatus_To_v1alpha1_ReleasePinRenderInputsStatus(in *core.ReleasePinRenderInputsStatus, out *ReleasePinRenderInputsStatus, s conversion.Scope) error {
-	out.SourceKind = in.SourceKind
-	out.SourceName = in.SourceName
-	out.SourceNamespace = in.SourceNamespace
-	out.SourceRevision = in.SourceRevision
-	out.ContentType = ReleaseContentType(in.ContentType)
-	out.ContentPath = in.ContentPath
-	out.MutationsHash = in.MutationsHash
+	*out = *(*ReleasePinRenderInputsStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2049,8 +1720,7 @@ func Convert_core_ReleasePinRenderInputsStatus_To_v1alpha1_ReleasePinRenderInput
 }
 
 func autoConvert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(in *ReleasePinStatus, out *core.ReleasePinStatus, s conversion.Scope) error {
-	out.Intent = core.ReleasePinIntent(in.Intent)
-	out.RenderInputs = (*core.ReleasePinRenderInputsStatus)(unsafe.Pointer(in.RenderInputs))
+	*out = *(*core.ReleasePinStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2060,8 +1730,7 @@ func Convert_v1alpha1_ReleasePinStatus_To_core_ReleasePinStatus(in *ReleasePinSt
 }
 
 func autoConvert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(in *core.ReleasePinStatus, out *ReleasePinStatus, s conversion.Scope) error {
-	out.Intent = ReleasePinIntent(in.Intent)
-	out.RenderInputs = (*ReleasePinRenderInputsStatus)(unsafe.Pointer(in.RenderInputs))
+	*out = *(*ReleasePinStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2071,7 +1740,7 @@ func Convert_core_ReleasePinStatus_To_v1alpha1_ReleasePinStatus(in *core.Release
 }
 
 func autoConvert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(in *ReleaseRetentionPolicySpec, out *core.ReleaseRetentionPolicySpec, s conversion.Scope) error {
-	out.KeepHistory = (*int)(unsafe.Pointer(in.KeepHistory))
+	*out = *(*core.ReleaseRetentionPolicySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2081,7 +1750,7 @@ func Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicyS
 }
 
 func autoConvert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(in *core.ReleaseRetentionPolicySpec, out *ReleaseRetentionPolicySpec, s conversion.Scope) error {
-	out.KeepHistory = (*int)(unsafe.Pointer(in.KeepHistory))
+	*out = *(*ReleaseRetentionPolicySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2091,9 +1760,7 @@ func Convert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicyS
 }
 
 func autoConvert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(in *ReleaseRetryBackoffSpec, out *core.ReleaseRetryBackoffSpec, s conversion.Scope) error {
-	out.Initial = in.Initial
-	out.Max = in.Max
-	out.Factor = in.Factor
+	*out = *(*core.ReleaseRetryBackoffSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2103,9 +1770,7 @@ func Convert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(in
 }
 
 func autoConvert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(in *core.ReleaseRetryBackoffSpec, out *ReleaseRetryBackoffSpec, s conversion.Scope) error {
-	out.Initial = in.Initial
-	out.Max = in.Max
-	out.Factor = in.Factor
+	*out = *(*ReleaseRetryBackoffSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2115,10 +1780,7 @@ func Convert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(in
 }
 
 func autoConvert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(in *ReleaseSourceSpec, out *core.ReleaseSourceSpec, s conversion.Scope) error {
-	out.Type = core.ReleaseSourceType(in.Type)
-	out.GitRepository = (*core.ReleaseGitRepositorySpec)(unsafe.Pointer(in.GitRepository))
-	out.HelmRegistry = (*core.ReleaseHelmRegistrySpec)(unsafe.Pointer(in.HelmRegistry))
-	out.OCIRegistry = (*core.ReleaseOCIRegistrySpec)(unsafe.Pointer(in.OCIRegistry))
+	*out = *(*core.ReleaseSourceSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2128,10 +1790,7 @@ func Convert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(in *ReleaseSou
 }
 
 func autoConvert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(in *core.ReleaseSourceSpec, out *ReleaseSourceSpec, s conversion.Scope) error {
-	out.Type = ReleaseSourceType(in.Type)
-	out.GitRepository = (*ReleaseGitRepositorySpec)(unsafe.Pointer(in.GitRepository))
-	out.HelmRegistry = (*ReleaseHelmRegistrySpec)(unsafe.Pointer(in.HelmRegistry))
-	out.OCIRegistry = (*ReleaseOCIRegistrySpec)(unsafe.Pointer(in.OCIRegistry))
+	*out = *(*ReleaseSourceSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2141,26 +1800,7 @@ func Convert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(in *core.Relea
 }
 
 func autoConvert_v1alpha1_ReleaseSpec_To_core_ReleaseSpec(in *ReleaseSpec, out *core.ReleaseSpec, s conversion.Scope) error {
-	if err := Convert_v1alpha1_ReleaseSourceSpec_To_core_ReleaseSourceSpec(&in.Source, &out.Source, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleaseContentSpec_To_core_ReleaseContentSpec(&in.Content, &out.Content, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleaseClusterRefSpec_To_core_ReleaseClusterRefSpec(&in.ClusterRef, &out.ClusterRef, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(&in.SyncPolicy, &out.SyncPolicy, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleaseRetentionPolicySpec_To_core_ReleaseRetentionPolicySpec(&in.RetentionPolicy, &out.RetentionPolicy, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleaseDeletionPolicy_To_core_ReleaseDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
-		return err
-	}
-	out.HealthAssessment = (*core.ReleaseHealthAssessment)(unsafe.Pointer(in.HealthAssessment))
-	out.FailurePolicy = (*core.ReleaseFailurePolicy)(unsafe.Pointer(in.FailurePolicy))
+	*out = *(*core.ReleaseSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2170,26 +1810,7 @@ func Convert_v1alpha1_ReleaseSpec_To_core_ReleaseSpec(in *ReleaseSpec, out *core
 }
 
 func autoConvert_core_ReleaseSpec_To_v1alpha1_ReleaseSpec(in *core.ReleaseSpec, out *ReleaseSpec, s conversion.Scope) error {
-	if err := Convert_core_ReleaseSourceSpec_To_v1alpha1_ReleaseSourceSpec(&in.Source, &out.Source, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleaseContentSpec_To_v1alpha1_ReleaseContentSpec(&in.Content, &out.Content, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleaseClusterRefSpec_To_v1alpha1_ReleaseClusterRefSpec(&in.ClusterRef, &out.ClusterRef, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(&in.SyncPolicy, &out.SyncPolicy, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleaseRetentionPolicySpec_To_v1alpha1_ReleaseRetentionPolicySpec(&in.RetentionPolicy, &out.RetentionPolicy, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleaseDeletionPolicy_To_v1alpha1_ReleaseDeletionPolicy(&in.DeletionPolicy, &out.DeletionPolicy, s); err != nil {
-		return err
-	}
-	out.HealthAssessment = (*ReleaseHealthAssessment)(unsafe.Pointer(in.HealthAssessment))
-	out.FailurePolicy = (*ReleaseFailurePolicy)(unsafe.Pointer(in.FailurePolicy))
+	*out = *(*ReleaseSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2199,27 +1820,7 @@ func Convert_core_ReleaseSpec_To_v1alpha1_ReleaseSpec(in *core.ReleaseSpec, out 
 }
 
 func autoConvert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus, out *core.ReleaseStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
-	out.Pin = (*core.ReleasePinStatus)(unsafe.Pointer(in.Pin))
-	if err := Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
-		return err
-	}
-	out.LastSuccessful = (*core.ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastSuccessful))
-	out.LastAttempted = (*core.ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastAttempted))
-	out.LastHealthy = (*core.LastHealthy)(unsafe.Pointer(in.LastHealthy))
-	out.Waves = *(*[]core.ResourceWaveStatus)(unsafe.Pointer(&in.Waves))
-	out.ReconciledAt = (*v1.Time)(unsafe.Pointer(in.ReconciledAt))
-	out.HistoryTruncated = in.HistoryTruncated
-	if err := Convert_v1alpha1_LifecycleStatus_To_core_LifecycleStatus(&in.Lifecycle, &out.Lifecycle, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleaseHealthSummary_To_core_ReleaseHealthSummary(&in.HealthSummary, &out.HealthSummary, s); err != nil {
-		return err
-	}
-	out.LastHandledSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledSyncAt))
-	out.LastHandledForceSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledForceSyncAt))
-	out.Rollout = (*core.RolloutStatus)(unsafe.Pointer(in.Rollout))
+	*out = *(*core.ReleaseStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2229,27 +1830,7 @@ func Convert_v1alpha1_ReleaseStatus_To_core_ReleaseStatus(in *ReleaseStatus, out
 }
 
 func autoConvert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseStatus, out *ReleaseStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
-	out.Pin = (*ReleasePinStatus)(unsafe.Pointer(in.Pin))
-	if err := Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(&in.ResolvedRetentionPolicy, &out.ResolvedRetentionPolicy, s); err != nil {
-		return err
-	}
-	out.LastSuccessful = (*ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastSuccessful))
-	out.LastAttempted = (*ReleaseAttemptedRenderStatus)(unsafe.Pointer(in.LastAttempted))
-	out.LastHealthy = (*LastHealthy)(unsafe.Pointer(in.LastHealthy))
-	out.Waves = *(*[]ResourceWaveStatus)(unsafe.Pointer(&in.Waves))
-	out.ReconciledAt = (*v1.Time)(unsafe.Pointer(in.ReconciledAt))
-	out.HistoryTruncated = in.HistoryTruncated
-	if err := Convert_core_LifecycleStatus_To_v1alpha1_LifecycleStatus(&in.Lifecycle, &out.Lifecycle, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleaseHealthSummary_To_v1alpha1_ReleaseHealthSummary(&in.HealthSummary, &out.HealthSummary, s); err != nil {
-		return err
-	}
-	out.LastHandledSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledSyncAt))
-	out.LastHandledForceSyncAt = (*v1.Time)(unsafe.Pointer(in.LastHandledForceSyncAt))
-	out.Rollout = (*RolloutStatus)(unsafe.Pointer(in.Rollout))
+	*out = *(*ReleaseStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2259,17 +1840,7 @@ func Convert_core_ReleaseStatus_To_v1alpha1_ReleaseStatus(in *core.ReleaseStatus
 }
 
 func autoConvert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(in *ReleaseSyncPolicySpec, out *core.ReleaseSyncPolicySpec, s conversion.Scope) error {
-	out.Automatic = in.Automatic
-	if err := Convert_v1alpha1_PruneSpec_To_core_PruneSpec(&in.Prune, &out.Prune, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	if err := Convert_v1alpha1_ReleaseRetryBackoffSpec_To_core_ReleaseRetryBackoffSpec(&in.RetryBackoff, &out.RetryBackoff, s); err != nil {
-		return err
-	}
-	if err := Convert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(&in.WaveStrategy, &out.WaveStrategy, s); err != nil {
-		return err
-	}
+	*out = *(*core.ReleaseSyncPolicySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2279,17 +1850,7 @@ func Convert_v1alpha1_ReleaseSyncPolicySpec_To_core_ReleaseSyncPolicySpec(in *Re
 }
 
 func autoConvert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(in *core.ReleaseSyncPolicySpec, out *ReleaseSyncPolicySpec, s conversion.Scope) error {
-	out.Automatic = in.Automatic
-	if err := Convert_core_PruneSpec_To_v1alpha1_PruneSpec(&in.Prune, &out.Prune, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	if err := Convert_core_ReleaseRetryBackoffSpec_To_v1alpha1_ReleaseRetryBackoffSpec(&in.RetryBackoff, &out.RetryBackoff, s); err != nil {
-		return err
-	}
-	if err := Convert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(&in.WaveStrategy, &out.WaveStrategy, s); err != nil {
-		return err
-	}
+	*out = *(*ReleaseSyncPolicySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2299,9 +1860,7 @@ func Convert_core_ReleaseSyncPolicySpec_To_v1alpha1_ReleaseSyncPolicySpec(in *co
 }
 
 func autoConvert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(in *ReleaseWaveStrategySpec, out *core.ReleaseWaveStrategySpec, s conversion.Scope) error {
-	out.Strategy = core.ReleaseWaveStrategy(in.Strategy)
-	out.Wave = in.Wave
-	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
+	*out = *(*core.ReleaseWaveStrategySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2311,9 +1870,7 @@ func Convert_v1alpha1_ReleaseWaveStrategySpec_To_core_ReleaseWaveStrategySpec(in
 }
 
 func autoConvert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(in *core.ReleaseWaveStrategySpec, out *ReleaseWaveStrategySpec, s conversion.Scope) error {
-	out.Strategy = ReleaseWaveStrategy(in.Strategy)
-	out.Wave = in.Wave
-	out.Timeout = (*v1.Duration)(unsafe.Pointer(in.Timeout))
+	*out = *(*ReleaseWaveStrategySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2323,12 +1880,7 @@ func Convert_core_ReleaseWaveStrategySpec_To_v1alpha1_ReleaseWaveStrategySpec(in
 }
 
 func autoConvert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(in *ResolvedCluster, out *core.ResolvedCluster, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.UID = in.UID
-	out.ObservedGeneration = in.ObservedGeneration
-	out.Server = in.Server
-	out.MetadataSnapshot = *(*map[string]string)(unsafe.Pointer(&in.MetadataSnapshot))
+	*out = *(*core.ResolvedCluster)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2338,12 +1890,7 @@ func Convert_v1alpha1_ResolvedCluster_To_core_ResolvedCluster(in *ResolvedCluste
 }
 
 func autoConvert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in *core.ResolvedCluster, out *ResolvedCluster, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.UID = in.UID
-	out.ObservedGeneration = in.ObservedGeneration
-	out.Server = in.Server
-	out.MetadataSnapshot = *(*map[string]string)(unsafe.Pointer(&in.MetadataSnapshot))
+	*out = *(*ResolvedCluster)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2353,13 +1900,7 @@ func Convert_core_ResolvedCluster_To_v1alpha1_ResolvedCluster(in *core.ResolvedC
 }
 
 func autoConvert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(in *ResolvedMutation, out *core.ResolvedMutation, s conversion.Scope) error {
-	out.Index = in.Index
-	out.Type = core.ReleaseMutationType(in.Type)
-	if err := Convert_v1alpha1_ReleaseMutationFromSpec_To_core_ReleaseMutationFromSpec(&in.SourceRef, &out.SourceRef, s); err != nil {
-		return err
-	}
-	out.SourceRevision = in.SourceRevision
-	out.ContentHash = in.ContentHash
+	*out = *(*core.ResolvedMutation)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2369,13 +1910,7 @@ func Convert_v1alpha1_ResolvedMutation_To_core_ResolvedMutation(in *ResolvedMuta
 }
 
 func autoConvert_core_ResolvedMutation_To_v1alpha1_ResolvedMutation(in *core.ResolvedMutation, out *ResolvedMutation, s conversion.Scope) error {
-	out.Index = in.Index
-	out.Type = ReleaseMutationType(in.Type)
-	if err := Convert_core_ReleaseMutationFromSpec_To_v1alpha1_ReleaseMutationFromSpec(&in.SourceRef, &out.SourceRef, s); err != nil {
-		return err
-	}
-	out.SourceRevision = in.SourceRevision
-	out.ContentHash = in.ContentHash
+	*out = *(*ResolvedMutation)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2385,8 +1920,7 @@ func Convert_core_ResolvedMutation_To_v1alpha1_ResolvedMutation(in *core.Resolve
 }
 
 func autoConvert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPolicyStatus(in *ResolvedRetentionPolicyStatus, out *core.ResolvedRetentionPolicyStatus, s conversion.Scope) error {
-	out.KeepHistory = in.KeepHistory
-	out.HistoryCount = in.HistoryCount
+	*out = *(*core.ResolvedRetentionPolicyStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2396,8 +1930,7 @@ func Convert_v1alpha1_ResolvedRetentionPolicyStatus_To_core_ResolvedRetentionPol
 }
 
 func autoConvert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPolicyStatus(in *core.ResolvedRetentionPolicyStatus, out *ResolvedRetentionPolicyStatus, s conversion.Scope) error {
-	out.KeepHistory = in.KeepHistory
-	out.HistoryCount = in.HistoryCount
+	*out = *(*ResolvedRetentionPolicyStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2407,16 +1940,7 @@ func Convert_core_ResolvedRetentionPolicyStatus_To_v1alpha1_ResolvedRetentionPol
 }
 
 func autoConvert_v1alpha1_ResolvedSource_To_core_ResolvedSource(in *ResolvedSource, out *core.ResolvedSource, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.UID = in.UID
-	out.ObservedGeneration = in.ObservedGeneration
-	out.URL = in.URL
-	out.Ref = in.Ref
-	out.Revision = in.Revision
-	out.ContentType = core.ReleaseContentType(in.ContentType)
-	out.Path = in.Path
+	*out = *(*core.ResolvedSource)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2426,16 +1950,7 @@ func Convert_v1alpha1_ResolvedSource_To_core_ResolvedSource(in *ResolvedSource, 
 }
 
 func autoConvert_core_ResolvedSource_To_v1alpha1_ResolvedSource(in *core.ResolvedSource, out *ResolvedSource, s conversion.Scope) error {
-	out.Kind = in.Kind
-	out.Name = in.Name
-	out.Namespace = in.Namespace
-	out.UID = in.UID
-	out.ObservedGeneration = in.ObservedGeneration
-	out.URL = in.URL
-	out.Ref = in.Ref
-	out.Revision = in.Revision
-	out.ContentType = ReleaseContentType(in.ContentType)
-	out.Path = in.Path
+	*out = *(*ResolvedSource)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2445,18 +1960,7 @@ func Convert_core_ResolvedSource_To_v1alpha1_ResolvedSource(in *core.ResolvedSou
 }
 
 func autoConvert_v1alpha1_ResourceInventoryItem_To_core_ResourceInventoryItem(in *ResourceInventoryItem, out *core.ResourceInventoryItem, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Version = in.Version
-	out.Kind = in.Kind
-	out.Namespace = in.Namespace
-	out.Name = in.Name
-	out.RenderRef = in.RenderRef
-	out.AssessedRenderRef = in.AssessedRenderRef
-	out.UID = (*types.UID)(unsafe.Pointer(in.UID))
-	out.Wave = (*int)(unsafe.Pointer(in.Wave))
-	out.State = (*core.ResourceState)(unsafe.Pointer(in.State))
-	out.FirstUnhealthy = (*v1.Time)(unsafe.Pointer(in.FirstUnhealthy))
-	out.Message = in.Message
+	*out = *(*core.ResourceInventoryItem)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2466,18 +1970,7 @@ func Convert_v1alpha1_ResourceInventoryItem_To_core_ResourceInventoryItem(in *Re
 }
 
 func autoConvert_core_ResourceInventoryItem_To_v1alpha1_ResourceInventoryItem(in *core.ResourceInventoryItem, out *ResourceInventoryItem, s conversion.Scope) error {
-	out.Group = in.Group
-	out.Version = in.Version
-	out.Kind = in.Kind
-	out.Namespace = in.Namespace
-	out.Name = in.Name
-	out.RenderRef = in.RenderRef
-	out.AssessedRenderRef = in.AssessedRenderRef
-	out.UID = (*types.UID)(unsafe.Pointer(in.UID))
-	out.Wave = (*int)(unsafe.Pointer(in.Wave))
-	out.State = (*ResourceState)(unsafe.Pointer(in.State))
-	out.FirstUnhealthy = (*v1.Time)(unsafe.Pointer(in.FirstUnhealthy))
-	out.Message = in.Message
+	*out = *(*ResourceInventoryItem)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2487,15 +1980,7 @@ func Convert_core_ResourceInventoryItem_To_v1alpha1_ResourceInventoryItem(in *co
 }
 
 func autoConvert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(in *ResourceWaveStatus, out *core.ResourceWaveStatus, s conversion.Scope) error {
-	out.Number = in.Number
-	out.Applied = (*bool)(unsafe.Pointer(in.Applied))
-	out.Healthy = (*bool)(unsafe.Pointer(in.Healthy))
-	out.Resources = in.Resources
-	out.State = core.ResourceWaveState(in.State)
-	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
-	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
-	out.FailedAt = (*v1.Time)(unsafe.Pointer(in.FailedAt))
-	out.Message = in.Message
+	*out = *(*core.ResourceWaveStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2505,15 +1990,7 @@ func Convert_v1alpha1_ResourceWaveStatus_To_core_ResourceWaveStatus(in *Resource
 }
 
 func autoConvert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in *core.ResourceWaveStatus, out *ResourceWaveStatus, s conversion.Scope) error {
-	out.Number = in.Number
-	out.Applied = (*bool)(unsafe.Pointer(in.Applied))
-	out.Healthy = (*bool)(unsafe.Pointer(in.Healthy))
-	out.Resources = in.Resources
-	out.State = ResourceWaveState(in.State)
-	out.StartedAt = (*v1.Time)(unsafe.Pointer(in.StartedAt))
-	out.CompletedAt = (*v1.Time)(unsafe.Pointer(in.CompletedAt))
-	out.FailedAt = (*v1.Time)(unsafe.Pointer(in.FailedAt))
-	out.Message = in.Message
+	*out = *(*ResourceWaveStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2523,10 +2000,7 @@ func Convert_core_ResourceWaveStatus_To_v1alpha1_ResourceWaveStatus(in *core.Res
 }
 
 func autoConvert_v1alpha1_RolloutStatus_To_core_RolloutStatus(in *RolloutStatus, out *core.RolloutStatus, s conversion.Scope) error {
-	out.State = core.RolloutState(in.State)
-	out.RenderRef = in.RenderRef
-	out.StartedAt = in.StartedAt
-	out.Message = in.Message
+	*out = *(*core.RolloutStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2536,10 +2010,7 @@ func Convert_v1alpha1_RolloutStatus_To_core_RolloutStatus(in *RolloutStatus, out
 }
 
 func autoConvert_core_RolloutStatus_To_v1alpha1_RolloutStatus(in *core.RolloutStatus, out *RolloutStatus, s conversion.Scope) error {
-	out.State = RolloutState(in.State)
-	out.RenderRef = in.RenderRef
-	out.StartedAt = in.StartedAt
-	out.Message = in.Message
+	*out = *(*RolloutStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2549,8 +2020,7 @@ func Convert_core_RolloutStatus_To_v1alpha1_RolloutStatus(in *core.RolloutStatus
 }
 
 func autoConvert_v1alpha1_ValuesSourceGitRepositorySpec_To_core_ValuesSourceGitRepositorySpec(in *ValuesSourceGitRepositorySpec, out *core.ValuesSourceGitRepositorySpec, s conversion.Scope) error {
-	out.ReleaseGitRepositorySpec = (*core.ReleaseGitRepositorySpec)(unsafe.Pointer(in.ReleaseGitRepositorySpec))
-	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	*out = *(*core.ValuesSourceGitRepositorySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2560,8 +2030,7 @@ func Convert_v1alpha1_ValuesSourceGitRepositorySpec_To_core_ValuesSourceGitRepos
 }
 
 func autoConvert_core_ValuesSourceGitRepositorySpec_To_v1alpha1_ValuesSourceGitRepositorySpec(in *core.ValuesSourceGitRepositorySpec, out *ValuesSourceGitRepositorySpec, s conversion.Scope) error {
-	out.ReleaseGitRepositorySpec = (*ReleaseGitRepositorySpec)(unsafe.Pointer(in.ReleaseGitRepositorySpec))
-	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	*out = *(*ValuesSourceGitRepositorySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2571,11 +2040,7 @@ func Convert_core_ValuesSourceGitRepositorySpec_To_v1alpha1_ValuesSourceGitRepos
 }
 
 func autoConvert_v1alpha1_ValuesSourceSpec_To_core_ValuesSourceSpec(in *ValuesSourceSpec, out *core.ValuesSourceSpec, s conversion.Scope) error {
-	out.Type = core.ValuesSourceType(in.Type)
-	out.GitRepository = (*core.ValuesSourceGitRepositorySpec)(unsafe.Pointer(in.GitRepository))
-	out.ConfigMap = (*corev1.ConfigMapKeySelector)(unsafe.Pointer(in.ConfigMap))
-	out.Secret = (*corev1.SecretKeySelector)(unsafe.Pointer(in.Secret))
-	out.Inline = (*apiextensionsv1.JSON)(unsafe.Pointer(in.Inline))
+	*out = *(*core.ValuesSourceSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -2585,11 +2050,7 @@ func Convert_v1alpha1_ValuesSourceSpec_To_core_ValuesSourceSpec(in *ValuesSource
 }
 
 func autoConvert_core_ValuesSourceSpec_To_v1alpha1_ValuesSourceSpec(in *core.ValuesSourceSpec, out *ValuesSourceSpec, s conversion.Scope) error {
-	out.Type = ValuesSourceType(in.Type)
-	out.GitRepository = (*ValuesSourceGitRepositorySpec)(unsafe.Pointer(in.GitRepository))
-	out.ConfigMap = (*corev1.ConfigMapKeySelector)(unsafe.Pointer(in.ConfigMap))
-	out.Secret = (*corev1.SecretKeySelector)(unsafe.Pointer(in.Secret))
-	out.Inline = (*apiextensionsv1.JSON)(unsafe.Pointer(in.Inline))
+	*out = *(*ValuesSourceSpec)(unsafe.Pointer(in))
 	return nil
 }
 

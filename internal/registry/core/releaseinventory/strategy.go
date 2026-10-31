@@ -78,10 +78,10 @@ func (Strategy) Canonicalize(_ runtime.Object) {}
 
 // AllowCreateOnUpdate allows create-on-update so the controller/observer can
 // upsert the inventory via a single Apply without a prior create.
-func (Strategy) AllowCreateOnUpdate() bool { return true }
+func (Strategy) AllowCreateOnUpdate(context.Context) bool { return true }
 
 // AllowUnconditionalUpdate allows unconditional update.
-func (Strategy) AllowUnconditionalUpdate() bool { return true }
+func (Strategy) AllowUnconditionalUpdate(context.Context) bool { return true }
 
 // ValidateUpdate validates a ReleaseInventory update (object metadata only).
 func (Strategy) ValidateUpdate(_ context.Context, obj, old runtime.Object) field.ErrorList {

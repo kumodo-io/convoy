@@ -23,7 +23,7 @@ package v1alpha1
 //
 // ValuesSourceGitRepositorySpec defines the Git repository and the location of the values files.
 type ValuesSourceGitRepositorySpecApplyConfiguration struct {
-	ReleaseGitRepositorySpecApplyConfiguration `json:",inline"`
+	ReleaseGitRepositorySpecApplyConfiguration `json:""`
 	// Paths is the list of paths to values files in the git repository.
 	Paths []string `json:"paths,omitempty"`
 }

@@ -23,7 +23,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	authv1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	sourcev1alpha1 "github.com/kumodo-io/convoy/api/source/v1alpha1"
@@ -45,13 +44,13 @@ func (f authFakeResolver) ConfigMap(_ context.Context, _, name string) (*corev1.
 }
 
 func secretKeyRef(name, key string) corev1.SecretKeySelector {
-	return corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: name}, Key: key}
+	return corev1.SecretKeySelector{Name: name, Key: key}
 }
 
 func regWithAuth(a sourcev1alpha1.HelmRegistryAuthSpec) *sourcev1alpha1.HelmRegistry {
 	return &sourcev1alpha1.HelmRegistry{
-		ObjectMeta: metav1.ObjectMeta{Name: "reg", Namespace: "ns"},
-		Spec:       sourcev1alpha1.HelmRegistrySpec{URL: "https://charts.example.com", Auth: a},
+		Name: "reg", Namespace: "ns",
+		Spec: sourcev1alpha1.HelmRegistrySpec{URL: "https://charts.example.com", Auth: a},
 	}
 }
 

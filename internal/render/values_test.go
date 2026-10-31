@@ -68,9 +68,9 @@ func configMapEntry(name string, optional *bool) corev1alpha1.ValuesSourceSpec {
 	return corev1alpha1.ValuesSourceSpec{
 		Type: corev1alpha1.ValuesSourceTypeConfigMap,
 		ConfigMap: &corev1.ConfigMapKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{Name: name},
-			Key:                  valuesKey,
-			Optional:             optional,
+			Name:     name,
+			Key:      valuesKey,
+			Optional: optional,
 		},
 	}
 }
@@ -79,9 +79,9 @@ func secretEntry(name string, optional *bool) corev1alpha1.ValuesSourceSpec {
 	return corev1alpha1.ValuesSourceSpec{
 		Type: corev1alpha1.ValuesSourceTypeSecret,
 		Secret: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{Name: name},
-			Key:                  valuesKey,
-			Optional:             optional,
+			Name:     name,
+			Key:      valuesKey,
+			Optional: optional,
 		},
 	}
 }

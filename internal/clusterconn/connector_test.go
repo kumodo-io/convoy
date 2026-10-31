@@ -21,7 +21,6 @@ import (
 	"errors"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -39,14 +38,14 @@ func (f fakeAuthenticator) RESTConfig(context.Context, *corev1alpha1.Cluster, au
 
 func inClusterCluster() *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns"},
-		Spec:       corev1alpha1.ClusterSpec{ConnectionMode: corev1alpha1.ClusterConnectionModeInCluster},
+		Name: "c1", Namespace: "ns",
+		Spec: corev1alpha1.ClusterSpec{ConnectionMode: corev1alpha1.ClusterConnectionModeInCluster},
 	}
 }
 
 func agentlessCluster(authType corev1alpha1.ClusterAuthType) *corev1alpha1.Cluster {
 	return &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns"},
+		Name: "c1", Namespace: "ns",
 		Spec: corev1alpha1.ClusterSpec{
 			ConnectionMode: corev1alpha1.ClusterConnectionModeAgentless,
 			Agentless: &corev1alpha1.ClusterAgentlessModeSpec{
@@ -115,8 +114,8 @@ func TestConnector_AgentlessWithoutBlockIsProbeFailed(t *testing.T) {
 
 func TestConnector_AgentModeIsUnsupported(t *testing.T) {
 	cl := &corev1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "c1", Namespace: "ns"},
-		Spec:       corev1alpha1.ClusterSpec{ConnectionMode: corev1alpha1.ClusterConnectionModeAgent},
+		Name: "c1", Namespace: "ns",
+		Spec: corev1alpha1.ClusterSpec{ConnectionMode: corev1alpha1.ClusterConnectionModeAgent},
 	}
 	c := NewConnector(&rest.Config{}, Registry{}, nil)
 

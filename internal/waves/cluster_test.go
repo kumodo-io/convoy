@@ -27,7 +27,7 @@ import (
 
 func clusterRel(namespace, name string, wave int, strategy corev1alpha1.ReleaseWaveStrategy, timeout *metav1.Duration) *corev1alpha1.Release {
 	return &corev1alpha1.Release{
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: name},
+		Namespace: namespace, Name: name,
 		Spec: corev1alpha1.ReleaseSpec{
 			SyncPolicy: corev1alpha1.ReleaseSyncPolicySpec{
 				WaveStrategy: corev1alpha1.ReleaseWaveStrategySpec{Strategy: strategy, Wave: wave, Timeout: timeout},

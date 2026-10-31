@@ -24,9 +24,7 @@ package v1alpha1
 import (
 	unsafe "unsafe"
 
-	authv1alpha1 "github.com/kumodo-io/convoy/api/auth/v1alpha1"
 	source "github.com/kumodo-io/convoy/api/source"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -306,13 +304,7 @@ func Convert_source_GitRepository_To_v1alpha1_GitRepository(in *source.GitReposi
 }
 
 func autoConvert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(in *GitRepositoryAuthSpec, out *source.GitRepositoryAuthSpec, s conversion.Scope) error {
-	out.Type = source.GitRepositoryAuthType(in.Type)
-	out.SSHKey = (*authv1alpha1.SSHKeyAuthSpec)(unsafe.Pointer(in.SSHKey))
-	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.GithubApp = (*authv1alpha1.GithubAppAuthSpec)(unsafe.Pointer(in.GithubApp))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
-	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
+	*out = *(*source.GitRepositoryAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -322,13 +314,7 @@ func Convert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(in *
 }
 
 func autoConvert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec(in *source.GitRepositoryAuthSpec, out *GitRepositoryAuthSpec, s conversion.Scope) error {
-	out.Type = GitRepositoryAuthType(in.Type)
-	out.SSHKey = (*authv1alpha1.SSHKeyAuthSpec)(unsafe.Pointer(in.SSHKey))
-	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.GithubApp = (*authv1alpha1.GithubAppAuthSpec)(unsafe.Pointer(in.GithubApp))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
-	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
+	*out = *(*GitRepositoryAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -360,15 +346,7 @@ func Convert_source_GitRepositoryList_To_v1alpha1_GitRepositoryList(in *source.G
 }
 
 func autoConvert_v1alpha1_GitRepositorySpec_To_source_GitRepositorySpec(in *GitRepositorySpec, out *source.GitRepositorySpec, s conversion.Scope) error {
-	out.URL = in.URL
-	if err := Convert_v1alpha1_GitRepositoryAuthSpec_To_source_GitRepositoryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	out.MinSyncInterval = in.MinSyncInterval
-	out.IncludePaths = *(*[]string)(unsafe.Pointer(&in.IncludePaths))
-	out.IgnorePaths = *(*[]string)(unsafe.Pointer(&in.IgnorePaths))
-	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
+	*out = *(*source.GitRepositorySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -378,15 +356,7 @@ func Convert_v1alpha1_GitRepositorySpec_To_source_GitRepositorySpec(in *GitRepos
 }
 
 func autoConvert_source_GitRepositorySpec_To_v1alpha1_GitRepositorySpec(in *source.GitRepositorySpec, out *GitRepositorySpec, s conversion.Scope) error {
-	out.URL = in.URL
-	if err := Convert_source_GitRepositoryAuthSpec_To_v1alpha1_GitRepositoryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	out.MinSyncInterval = in.MinSyncInterval
-	out.IncludePaths = *(*[]string)(unsafe.Pointer(&in.IncludePaths))
-	out.IgnorePaths = *(*[]string)(unsafe.Pointer(&in.IgnorePaths))
-	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
+	*out = *(*GitRepositorySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -396,11 +366,7 @@ func Convert_source_GitRepositorySpec_To_v1alpha1_GitRepositorySpec(in *source.G
 }
 
 func autoConvert_v1alpha1_GitRepositoryStatus_To_source_GitRepositoryStatus(in *GitRepositoryStatus, out *source.GitRepositoryStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.LastSuccessfulProbeAt = (*v1.Time)(unsafe.Pointer(in.LastSuccessfulProbeAt))
-	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]source.WebhookStatus)(unsafe.Pointer(&in.Webhooks))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*source.GitRepositoryStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -410,11 +376,7 @@ func Convert_v1alpha1_GitRepositoryStatus_To_source_GitRepositoryStatus(in *GitR
 }
 
 func autoConvert_source_GitRepositoryStatus_To_v1alpha1_GitRepositoryStatus(in *source.GitRepositoryStatus, out *GitRepositoryStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.LastSuccessfulProbeAt = (*v1.Time)(unsafe.Pointer(in.LastSuccessfulProbeAt))
-	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]WebhookStatus)(unsafe.Pointer(&in.Webhooks))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*GitRepositoryStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -424,8 +386,7 @@ func Convert_source_GitRepositoryStatus_To_v1alpha1_GitRepositoryStatus(in *sour
 }
 
 func autoConvert_v1alpha1_GitRepositoryWebhookFilterSpec_To_source_GitRepositoryWebhookFilterSpec(in *GitRepositoryWebhookFilterSpec, out *source.GitRepositoryWebhookFilterSpec, s conversion.Scope) error {
-	out.Refs = *(*[]string)(unsafe.Pointer(&in.Refs))
-	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	*out = *(*source.GitRepositoryWebhookFilterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -435,8 +396,7 @@ func Convert_v1alpha1_GitRepositoryWebhookFilterSpec_To_source_GitRepositoryWebh
 }
 
 func autoConvert_source_GitRepositoryWebhookFilterSpec_To_v1alpha1_GitRepositoryWebhookFilterSpec(in *source.GitRepositoryWebhookFilterSpec, out *GitRepositoryWebhookFilterSpec, s conversion.Scope) error {
-	out.Refs = *(*[]string)(unsafe.Pointer(&in.Refs))
-	out.Paths = *(*[]string)(unsafe.Pointer(&in.Paths))
+	*out = *(*GitRepositoryWebhookFilterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -446,11 +406,7 @@ func Convert_source_GitRepositoryWebhookFilterSpec_To_v1alpha1_GitRepositoryWebh
 }
 
 func autoConvert_v1alpha1_GitRepositoryWebhookSpec_To_source_GitRepositoryWebhookSpec(in *GitRepositoryWebhookSpec, out *source.GitRepositoryWebhookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Provider = in.Provider
-	out.SecretRef = in.SecretRef
-	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
-	out.Filters = (*source.GitRepositoryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	*out = *(*source.GitRepositoryWebhookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -460,11 +416,7 @@ func Convert_v1alpha1_GitRepositoryWebhookSpec_To_source_GitRepositoryWebhookSpe
 }
 
 func autoConvert_source_GitRepositoryWebhookSpec_To_v1alpha1_GitRepositoryWebhookSpec(in *source.GitRepositoryWebhookSpec, out *GitRepositoryWebhookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Provider = in.Provider
-	out.SecretRef = in.SecretRef
-	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
-	out.Filters = (*GitRepositoryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	*out = *(*GitRepositoryWebhookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -508,11 +460,7 @@ func Convert_source_HelmRegistry_To_v1alpha1_HelmRegistry(in *source.HelmRegistr
 }
 
 func autoConvert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(in *HelmRegistryAuthSpec, out *source.HelmRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = source.HelmRegistryAuthType(in.Type)
-	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
-	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
+	*out = *(*source.HelmRegistryAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -522,11 +470,7 @@ func Convert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(in *He
 }
 
 func autoConvert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(in *source.HelmRegistryAuthSpec, out *HelmRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = HelmRegistryAuthType(in.Type)
-	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
-	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
+	*out = *(*HelmRegistryAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -558,13 +502,7 @@ func Convert_source_HelmRegistryList_To_v1alpha1_HelmRegistryList(in *source.Hel
 }
 
 func autoConvert_v1alpha1_HelmRegistrySpec_To_source_HelmRegistrySpec(in *HelmRegistrySpec, out *source.HelmRegistrySpec, s conversion.Scope) error {
-	out.URL = in.URL
-	if err := Convert_v1alpha1_HelmRegistryAuthSpec_To_source_HelmRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	out.MinSyncInterval = in.MinSyncInterval
-	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
+	*out = *(*source.HelmRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -574,13 +512,7 @@ func Convert_v1alpha1_HelmRegistrySpec_To_source_HelmRegistrySpec(in *HelmRegist
 }
 
 func autoConvert_source_HelmRegistrySpec_To_v1alpha1_HelmRegistrySpec(in *source.HelmRegistrySpec, out *HelmRegistrySpec, s conversion.Scope) error {
-	out.URL = in.URL
-	if err := Convert_source_HelmRegistryAuthSpec_To_v1alpha1_HelmRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	out.MinSyncInterval = in.MinSyncInterval
-	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
+	*out = *(*HelmRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -590,11 +522,7 @@ func Convert_source_HelmRegistrySpec_To_v1alpha1_HelmRegistrySpec(in *source.Hel
 }
 
 func autoConvert_v1alpha1_HelmRegistryStatus_To_source_HelmRegistryStatus(in *HelmRegistryStatus, out *source.HelmRegistryStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.LastSuccessfulProbeAt = (*v1.Time)(unsafe.Pointer(in.LastSuccessfulProbeAt))
-	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]source.WebhookStatus)(unsafe.Pointer(&in.Webhooks))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*source.HelmRegistryStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -604,11 +532,7 @@ func Convert_v1alpha1_HelmRegistryStatus_To_source_HelmRegistryStatus(in *HelmRe
 }
 
 func autoConvert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus(in *source.HelmRegistryStatus, out *HelmRegistryStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.LastSuccessfulProbeAt = (*v1.Time)(unsafe.Pointer(in.LastSuccessfulProbeAt))
-	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]WebhookStatus)(unsafe.Pointer(&in.Webhooks))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*HelmRegistryStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -618,7 +542,7 @@ func Convert_source_HelmRegistryStatus_To_v1alpha1_HelmRegistryStatus(in *source
 }
 
 func autoConvert_v1alpha1_HelmRegistryWebhookFilterSpec_To_source_HelmRegistryWebhookFilterSpec(in *HelmRegistryWebhookFilterSpec, out *source.HelmRegistryWebhookFilterSpec, s conversion.Scope) error {
-	out.Charts = *(*[]string)(unsafe.Pointer(&in.Charts))
+	*out = *(*source.HelmRegistryWebhookFilterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -628,7 +552,7 @@ func Convert_v1alpha1_HelmRegistryWebhookFilterSpec_To_source_HelmRegistryWebhoo
 }
 
 func autoConvert_source_HelmRegistryWebhookFilterSpec_To_v1alpha1_HelmRegistryWebhookFilterSpec(in *source.HelmRegistryWebhookFilterSpec, out *HelmRegistryWebhookFilterSpec, s conversion.Scope) error {
-	out.Charts = *(*[]string)(unsafe.Pointer(&in.Charts))
+	*out = *(*HelmRegistryWebhookFilterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -638,11 +562,7 @@ func Convert_source_HelmRegistryWebhookFilterSpec_To_v1alpha1_HelmRegistryWebhoo
 }
 
 func autoConvert_v1alpha1_HelmRegistryWebhookSpec_To_source_HelmRegistryWebhookSpec(in *HelmRegistryWebhookSpec, out *source.HelmRegistryWebhookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Provider = in.Provider
-	out.SecretRef = in.SecretRef
-	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
-	out.Filters = (*source.HelmRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	*out = *(*source.HelmRegistryWebhookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -652,11 +572,7 @@ func Convert_v1alpha1_HelmRegistryWebhookSpec_To_source_HelmRegistryWebhookSpec(
 }
 
 func autoConvert_source_HelmRegistryWebhookSpec_To_v1alpha1_HelmRegistryWebhookSpec(in *source.HelmRegistryWebhookSpec, out *HelmRegistryWebhookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Provider = in.Provider
-	out.SecretRef = in.SecretRef
-	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
-	out.Filters = (*HelmRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	*out = *(*HelmRegistryWebhookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -666,9 +582,7 @@ func Convert_source_HelmRegistryWebhookSpec_To_v1alpha1_HelmRegistryWebhookSpec(
 }
 
 func autoConvert_v1alpha1_LastRejectionStatus_To_source_LastRejectionStatus(in *LastRejectionStatus, out *source.LastRejectionStatus, s conversion.Scope) error {
-	out.RejectedAt = (*v1.Time)(unsafe.Pointer(in.RejectedAt))
-	out.Reason = in.Reason
-	out.Message = in.Message
+	*out = *(*source.LastRejectionStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -678,9 +592,7 @@ func Convert_v1alpha1_LastRejectionStatus_To_source_LastRejectionStatus(in *Last
 }
 
 func autoConvert_source_LastRejectionStatus_To_v1alpha1_LastRejectionStatus(in *source.LastRejectionStatus, out *LastRejectionStatus, s conversion.Scope) error {
-	out.RejectedAt = (*v1.Time)(unsafe.Pointer(in.RejectedAt))
-	out.Reason = in.Reason
-	out.Message = in.Message
+	*out = *(*LastRejectionStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -724,12 +636,7 @@ func Convert_source_OCIRegistry_To_v1alpha1_OCIRegistry(in *source.OCIRegistry, 
 }
 
 func autoConvert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(in *OCIRegistryAuthSpec, out *source.OCIRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = source.OCIRegistryAuthType(in.Type)
-	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.DockerConfig = (*authv1alpha1.DockerConfigAuthSpec)(unsafe.Pointer(in.DockerConfig))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
-	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
+	*out = *(*source.OCIRegistryAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -739,12 +646,7 @@ func Convert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(in *OCIR
 }
 
 func autoConvert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(in *source.OCIRegistryAuthSpec, out *OCIRegistryAuthSpec, s conversion.Scope) error {
-	out.Type = OCIRegistryAuthType(in.Type)
-	out.Basic = (*authv1alpha1.BasicAuthSpec)(unsafe.Pointer(in.Basic))
-	out.Token = (*authv1alpha1.TokenAuthSpec)(unsafe.Pointer(in.Token))
-	out.DockerConfig = (*authv1alpha1.DockerConfigAuthSpec)(unsafe.Pointer(in.DockerConfig))
-	out.OIDC = (*authv1alpha1.OIDAuthSpec)(unsafe.Pointer(in.OIDC))
-	out.CloudIdentity = (*authv1alpha1.CloudIdentitySpec)(unsafe.Pointer(in.CloudIdentity))
+	*out = *(*OCIRegistryAuthSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -776,14 +678,7 @@ func Convert_source_OCIRegistryList_To_v1alpha1_OCIRegistryList(in *source.OCIRe
 }
 
 func autoConvert_v1alpha1_OCIRegistrySpec_To_source_OCIRegistrySpec(in *OCIRegistrySpec, out *source.OCIRegistrySpec, s conversion.Scope) error {
-	out.URL = in.URL
-	if err := Convert_v1alpha1_OCIRegistryAuthSpec_To_source_OCIRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	out.MinSyncInterval = in.MinSyncInterval
-	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
-	out.DefaultContentType = source.ContentType(in.DefaultContentType)
+	*out = *(*source.OCIRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -793,14 +688,7 @@ func Convert_v1alpha1_OCIRegistrySpec_To_source_OCIRegistrySpec(in *OCIRegistryS
 }
 
 func autoConvert_source_OCIRegistrySpec_To_v1alpha1_OCIRegistrySpec(in *source.OCIRegistrySpec, out *OCIRegistrySpec, s conversion.Scope) error {
-	out.URL = in.URL
-	if err := Convert_source_OCIRegistryAuthSpec_To_v1alpha1_OCIRegistryAuthSpec(&in.Auth, &out.Auth, s); err != nil {
-		return err
-	}
-	out.Interval = in.Interval
-	out.MinSyncInterval = in.MinSyncInterval
-	out.TLS = (*authv1alpha1.TLSSpec)(unsafe.Pointer(in.TLS))
-	out.DefaultContentType = ContentType(in.DefaultContentType)
+	*out = *(*OCIRegistrySpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -810,11 +698,7 @@ func Convert_source_OCIRegistrySpec_To_v1alpha1_OCIRegistrySpec(in *source.OCIRe
 }
 
 func autoConvert_v1alpha1_OCIRegistryStatus_To_source_OCIRegistryStatus(in *OCIRegistryStatus, out *source.OCIRegistryStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.LastSuccessfulProbeAt = (*v1.Time)(unsafe.Pointer(in.LastSuccessfulProbeAt))
-	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]source.WebhookStatus)(unsafe.Pointer(&in.Webhooks))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*source.OCIRegistryStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -824,11 +708,7 @@ func Convert_v1alpha1_OCIRegistryStatus_To_source_OCIRegistryStatus(in *OCIRegis
 }
 
 func autoConvert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in *source.OCIRegistryStatus, out *OCIRegistryStatus, s conversion.Scope) error {
-	out.ObservedGeneration = in.ObservedGeneration
-	out.LastSuccessfulProbeAt = (*v1.Time)(unsafe.Pointer(in.LastSuccessfulProbeAt))
-	out.ReleaseCount = in.ReleaseCount
-	out.Webhooks = *(*[]WebhookStatus)(unsafe.Pointer(&in.Webhooks))
-	out.Conditions = *(*[]v1.Condition)(unsafe.Pointer(&in.Conditions))
+	*out = *(*OCIRegistryStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -838,8 +718,7 @@ func Convert_source_OCIRegistryStatus_To_v1alpha1_OCIRegistryStatus(in *source.O
 }
 
 func autoConvert_v1alpha1_OCIRegistryWebhookFilterSpec_To_source_OCIRegistryWebhookFilterSpec(in *OCIRegistryWebhookFilterSpec, out *source.OCIRegistryWebhookFilterSpec, s conversion.Scope) error {
-	out.Repositories = *(*[]string)(unsafe.Pointer(&in.Repositories))
-	out.Tags = *(*[]string)(unsafe.Pointer(&in.Tags))
+	*out = *(*source.OCIRegistryWebhookFilterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -849,8 +728,7 @@ func Convert_v1alpha1_OCIRegistryWebhookFilterSpec_To_source_OCIRegistryWebhookF
 }
 
 func autoConvert_source_OCIRegistryWebhookFilterSpec_To_v1alpha1_OCIRegistryWebhookFilterSpec(in *source.OCIRegistryWebhookFilterSpec, out *OCIRegistryWebhookFilterSpec, s conversion.Scope) error {
-	out.Repositories = *(*[]string)(unsafe.Pointer(&in.Repositories))
-	out.Tags = *(*[]string)(unsafe.Pointer(&in.Tags))
+	*out = *(*OCIRegistryWebhookFilterSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -860,11 +738,7 @@ func Convert_source_OCIRegistryWebhookFilterSpec_To_v1alpha1_OCIRegistryWebhookF
 }
 
 func autoConvert_v1alpha1_OCIRegistryWebhookSpec_To_source_OCIRegistryWebhookSpec(in *OCIRegistryWebhookSpec, out *source.OCIRegistryWebhookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Provider = in.Provider
-	out.SecretRef = in.SecretRef
-	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
-	out.Filters = (*source.OCIRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	*out = *(*source.OCIRegistryWebhookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -874,11 +748,7 @@ func Convert_v1alpha1_OCIRegistryWebhookSpec_To_source_OCIRegistryWebhookSpec(in
 }
 
 func autoConvert_source_OCIRegistryWebhookSpec_To_v1alpha1_OCIRegistryWebhookSpec(in *source.OCIRegistryWebhookSpec, out *OCIRegistryWebhookSpec, s conversion.Scope) error {
-	out.Name = in.Name
-	out.Provider = in.Provider
-	out.SecretRef = in.SecretRef
-	out.Events = *(*[]string)(unsafe.Pointer(&in.Events))
-	out.Filters = (*OCIRegistryWebhookFilterSpec)(unsafe.Pointer(in.Filters))
+	*out = *(*OCIRegistryWebhookSpec)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -888,15 +758,7 @@ func Convert_source_OCIRegistryWebhookSpec_To_v1alpha1_OCIRegistryWebhookSpec(in
 }
 
 func autoConvert_v1alpha1_WebhookStatus_To_source_WebhookStatus(in *WebhookStatus, out *source.WebhookStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.URL = in.URL
-	out.LastReceived = (*v1.Time)(unsafe.Pointer(in.LastReceived))
-	out.LastTriggered = (*v1.Time)(unsafe.Pointer(in.LastTriggered))
-	out.ReceivedCount = in.ReceivedCount
-	out.TriggersCount = in.TriggersCount
-	out.RejectedCount = in.RejectedCount
-	out.FilteredCount = in.FilteredCount
-	out.LastRejection = (*source.LastRejectionStatus)(unsafe.Pointer(in.LastRejection))
+	*out = *(*source.WebhookStatus)(unsafe.Pointer(in))
 	return nil
 }
 
@@ -906,15 +768,7 @@ func Convert_v1alpha1_WebhookStatus_To_source_WebhookStatus(in *WebhookStatus, o
 }
 
 func autoConvert_source_WebhookStatus_To_v1alpha1_WebhookStatus(in *source.WebhookStatus, out *WebhookStatus, s conversion.Scope) error {
-	out.Name = in.Name
-	out.URL = in.URL
-	out.LastReceived = (*v1.Time)(unsafe.Pointer(in.LastReceived))
-	out.LastTriggered = (*v1.Time)(unsafe.Pointer(in.LastTriggered))
-	out.ReceivedCount = in.ReceivedCount
-	out.TriggersCount = in.TriggersCount
-	out.RejectedCount = in.RejectedCount
-	out.FilteredCount = in.FilteredCount
-	out.LastRejection = (*LastRejectionStatus)(unsafe.Pointer(in.LastRejection))
+	*out = *(*WebhookStatus)(unsafe.Pointer(in))
 	return nil
 }
 
