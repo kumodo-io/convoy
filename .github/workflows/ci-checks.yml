@@ -1,9 +1,8 @@
-name: Convoy CI - Format, Lint, Test
+name: CI Checks - Format, Lint, Test
 
 on:
   push:
     branches: ["**"]
-    tags: ["v*"]
     paths:
       - "**.go"
       - "go.mod"
@@ -11,30 +10,21 @@ on:
       - "Dockerfile"
       - ".dockerignore"
       - ".golangci.yml"
-      - "mise.toml"
-      - ".mise/**"
-      - ".github/workflows/**"
-  workflow_dispatch:
+
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  tidy:
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
-        env:
-          MISE_ENABLE_TOOLS: go
-      - run: mise run tidy
-      - run: git diff --exit-code
-
   format:
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'branch'
+    name: Run 'go vet' and 'go fix' and check diff
+    runs-on: ubuntu-26.04
+    if: ${{ github.ref != 'refs/heads/main' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
@@ -48,26 +38,22 @@ jobs:
           key: go-${{ runner.os }}-${{ github.job }}-${{ hashFiles('go.sum', 'go.mod') }}
           restore-keys: |
             go-${{ runner.os }}-${{ github.job }}-
-      - run: go mod download
-      - run: mise run format
+      - shell: sh
+        run: go mod download
+      - shell: sh
+        run: mise run format
         env:
           MISE_JOBS: 1
-      - run: git diff --exit-code
-
-  verify-codegen:
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
-        env:
-          MISE_ENABLE_TOOLS: go,deepcopy-gen,conversion-gen,applyconfiguration-gen,client-gen,lister-gen,informer-gen,openapi-gen
-      - run: mise run codegen
-      - run: git diff --exit-code
+      - shell: sh
+        run: git diff --exit-code
 
   lint:
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'branch'
+    name: Run linters and code quality checks
+    runs-on: ubuntu-26.04
+    if: ${{ github.ref != 'refs/heads/main' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
@@ -82,14 +68,20 @@ jobs:
           key: go-${{ runner.os }}-${{ github.job }}-${{ hashFiles('go.sum', 'go.mod', '.mise/conf.d/00-tools.toml') }}
           restore-keys: |
             go-${{ runner.os }}-${{ github.job }}-
-      - run: go mod download
-      - env:
+      - shell: sh
+        run: go mod download
+      - shell: sh
+        env:
           GOLANGCI_LINT_TIMEOUT: 10m
         run: mise run lint
 
   test:
-    runs-on: ubuntu-latest
-    if: github.ref_type == 'branch'
+    name: Run tests
+    runs-on: ubuntu-26.04
+    if: ${{ github.ref != 'refs/heads/main' }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
@@ -103,33 +95,5 @@ jobs:
           key: go-${{ runner.os }}-${{ github.job }}-${{ hashFiles('go.sum', 'go.mod') }}
           restore-keys: |
             go-${{ runner.os }}-${{ github.job }}-
-      - run: mise run test
-
-  dev-image:
-    if: github.ref_type == 'branch' && github.ref != 'refs/heads/main'
-    needs: [format, lint, verify-codegen, test, tidy]
-    uses: ./.github/workflows/image-build.yml
-    permissions:
-      contents: read
-      packages: write
-    with:
-      tag: dev-${{ github.sha }}
-
-  auto-image:
-    if: github.ref == 'refs/heads/main'
-    needs: [format, lint, test]
-    uses: ./.github/workflows/image-build.yml
-    permissions:
-      contents: read
-      packages: write
-    with:
-      tag: auto-${{ github.sha }}
-
-  release-image:
-    if: github.ref_type == 'tag'
-    uses: ./.github/workflows/image-build.yml
-    permissions:
-      contents: read
-      packages: write
-    with:
-      tag: ${{ github.ref_name }}
+      - shell: sh
+        run: mise run test

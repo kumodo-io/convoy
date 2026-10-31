@@ -61,6 +61,10 @@ run = [
     'docker build --target observer -t {{ env.OBSERVER_IMAGE }} .',
 ]
 
+[tasks.actionlint]
+description = "Run linter for workflows"
+run = 'jactionlint -c .github/jactionlint.yaml'
+
 [tasks.codegen]
 description = "Run code generators"
 run = [

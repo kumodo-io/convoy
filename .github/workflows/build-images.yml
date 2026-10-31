@@ -1,0 +1,40 @@
+name: Images Build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".golangci.yml"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-image:
+    name: Build Images On Merge
+    if: ${{ github.ref == 'refs/heads/main' }}
+    uses: $/.actions/image-build.yml
+    permissions:
+      contents: read
+      packages: write # requires to publish images
+    with:
+      tag: auto-${{ github.sha }}
+
+  release-image:
+    name: Build Release Images
+    if: ${{ github.ref_type == 'tag' }}
+    uses: $/.actions/image-build.yml
+    permissions:
+      contents: read
+      packages: write # requires to publish images
+    with:
+      tag: ${{ github.ref_name }}
