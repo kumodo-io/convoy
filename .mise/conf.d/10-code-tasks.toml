@@ -64,17 +64,17 @@ run = [
 [tasks.codegen]
 description = "Run code generators"
 run = [
-	'''deepcopy-gen \
+	'''go tool deepcopy-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-file zz_generated.deepcopy.go \
 		{{ env.API_PACKAGES }}''',
 
-	'''conversion-gen \
+	'''go tool conversion-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-file zz_generated.conversion.go \
 		{{ env.API_PACKAGES }}''',
 
-	'''applyconfiguration-gen \
+	'''go tool applyconfiguration-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--external-applyconfigurations "{{ env.EXTERNAL_APPLYCONFIGS }}" \
 		--output-dir api/generated/applyconfiguration \
@@ -84,7 +84,7 @@ run = [
 		{{ env.MODULE }}/api/extensions/v1alpha1 \
 		{{ env.MODULE }}/api/auth/v1alpha1''',
 
-	'''client-gen \
+	'''go tool client-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-dir api/generated/clientset \
 		--output-pkg {{ env.MODULE }}/api/generated/clientset \
@@ -95,7 +95,7 @@ run = [
 		--input source/v1alpha1 \
 		--input extensions/v1alpha1''',
 
-	'''lister-gen \
+	'''go tool lister-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-dir api/generated/listers \
 		--output-pkg {{ env.MODULE }}/api/generated/listers \
@@ -103,7 +103,7 @@ run = [
 		{{ env.MODULE }}/api/source/v1alpha1 \
 		{{ env.MODULE }}/api/extensions/v1alpha1''',
 
-	'''informer-gen \
+	'''go tool informer-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-dir api/generated/informers \
 		--output-pkg {{ env.MODULE }}/api/generated/informers \
@@ -113,7 +113,7 @@ run = [
 		{{ env.MODULE }}/api/source/v1alpha1 \
 		{{ env.MODULE }}/api/extensions/v1alpha1''',
 
-	'''openapi-gen \
+	'''go tool openapi-gen \
 		--go-header-file {{ env.BOILERPLATE }} \
 		--output-dir api/generated/openapi \
 		--output-pkg {{ env.MODULE }}/api/generated/openapi \
