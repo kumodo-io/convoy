@@ -6,7 +6,7 @@ require (
 	github.com/evanphx/json-patch v5.9.11+incompatible
 	github.com/go-git/go-billy/v5 v5.9.2
 	github.com/go-git/go-git/v5 v5.19.3
-	github.com/google/cel-go v0.29.2
+	github.com/google/cel-go v0.30.0
 	github.com/spf13/cobra v1.10.2
 	gocloud.dev v0.46.0
 	golang.org/x/crypto v0.56.0
