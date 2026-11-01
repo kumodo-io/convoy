@@ -15,7 +15,7 @@ const (
 
 	// ConvoySyncStrategyAnnotation is set on the rendered resource(s) to
 	// define the strategy used to resolve the order and resource(s) readiness.
-	// If not set then it's treated as "waitForApply"
+	// If not set, or set to an unknown value, it is treated as "waitForApplied".
 	ConvoySyncStrategyAnnotation = "convoy.kumodo.io/sync-strategy"
 
 	// ConvoySyncTimeoutAnnotation is set on the rendered resource(s) to
