@@ -98,12 +98,12 @@ type Options struct {
 	// Cluster: each replica caches only the objects for the shards it owns, so
 	// per-replica memory scales with replica count rather than total object count.
 	// Default off (full cache — behaviourally identical to before). Requires the
-	// shard label on those objects. See docs/architecture/05-shard-scoped-caches.md.
+	// shard label on those objects. See https://convoy.kumodo.io/documentation/architecture/shard-scoped-caches/.
 	ShardScopedCache bool
 	// RenderStoreURL is the gocloud blob URL of the durable render store (e.g.
 	// "s3://bucket", "gs://bucket", "file:///var/lib/convoy/renders"). Empty
 	// disables persistence: the controller renders and applies as before, without
-	// a durable render history. See docs/architecture/03-persistent-storage.md.
+	// a durable render history. See https://convoy.kumodo.io/documentation/architecture/render-storage/.
 	RenderStoreURL string
 	// ReplicaID is this replica's unique shard-lease holder identity. Empty
 	// resolves from $POD_NAME, then the hostname.

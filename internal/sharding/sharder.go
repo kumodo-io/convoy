@@ -29,7 +29,7 @@ import (
 )
 
 // ShardLabel is the object label carrying an object's shard, so replicas can
-// watch only the shards they own (see docs/architecture/05-shard-scoped-caches.md).
+// watch only the shards they own (see https://convoy.kumodo.io/documentation/architecture/shard-scoped-caches/).
 // The value is the decimal shard index; it is a pure function of the object's
 // shard key, written by whoever writes the object.
 const ShardLabel = "convoy.kumodo.io/shard"

@@ -18,7 +18,7 @@ limitations under the License.
 // per-Release kinds (Release, ReleaseInventory, Cluster). Each replica caches only
 // the objects for the shards it currently owns, so per-replica memory scales with
 // the fleet's replica count rather than the total object count. See
-// docs/architecture/05-shard-scoped-caches.md.
+// https://convoy.kumodo.io/documentation/architecture/shard-scoped-caches/.
 //
 // The mechanism: one filtered SharedInformerFactory per kind whose LIST/WATCH
 // carries a `convoy.kumodo.io/shard in (owned…)` label selector. When shard

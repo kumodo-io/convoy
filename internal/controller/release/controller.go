@@ -1074,7 +1074,7 @@ func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, err
 // still gates). On failure it returns a terminal Unappliable outcome (nil err ⇒
 // re-checked on the poll interval, not hot-retried): a permanent cause waits for a
 // spec fix; a transient one (a webhook briefly down) recovers on the next poll, or
-// the user can /sync --force. See docs/architecture/06-progressive-rollout.md.
+// the user can /sync --force. See https://convoy.kumodo.io/documentation/architecture/rollout-state-machine/.
 func (c *Controller) dryRunGate(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
 	if st.force {
 		return reconcileOutcome{}, false
@@ -1507,7 +1507,7 @@ type rolloutPlan struct {
 // This is the single source of truth for every HEALTH-driven transition. The ONE other
 // place a rollout transition is decided is waveHealthGate (an intermediate-wave timeout,
 // which is only observable while applying, so it can't be decided here pre-apply) — if
-// you change transition logic, check there too. See docs/architecture/06-progressive-rollout.md.
+// you change transition logic, check there too. See https://convoy.kumodo.io/documentation/architecture/rollout-state-machine/.
 func (c *Controller) planRollout(ctx context.Context, st *reconcileState) rolloutPlan {
 	rel := st.rel
 	R := st.attempt.RenderRef

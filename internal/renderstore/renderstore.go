@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package renderstore layers convoy's render/history semantics onto a
 // blobstore.BlobStore. It implements the durable, self-contained render history
-// designed in docs/architecture/03-persistent-storage.md:
+// designed in https://convoy.kumodo.io/documentation/architecture/render-storage/:
 //
 //	<namespace>/<name>/blobs/<renderRef>                  immutable, content-addressed render
 //	<namespace>/<name>/history/<sortable-ts>-<renderRef>.json  ordered deploy log
