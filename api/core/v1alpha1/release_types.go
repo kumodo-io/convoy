@@ -231,15 +231,19 @@ const (
 	ResourceWaveStateCompleted ResourceWaveState = "Completed"
 
 	// ResourceWaveStateInProgress is the state of a resource wave that is in progress.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStateInProgress ResourceWaveState = "InProgress"
 
 	// ResourceWaveStateFailed is the state of a resource wave that has failed.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStateFailed ResourceWaveState = "Failed"
 
 	// ResourceWaveStatePending is the state of a resource wave that is pending.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStatePending ResourceWaveState = "Pending"
 
 	// ResourceWaveStateTimedOut is the state of a resource wave that has timed out.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStateTimedOut ResourceWaveState = "TimedOut"
 )
 
