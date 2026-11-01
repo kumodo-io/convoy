@@ -51,4 +51,3 @@ spec:
     deadline: 20s
   failurePolicy:
     rollback: OnReleaseFailure
-    deadline: 30s
