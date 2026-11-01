@@ -1,15 +1,7 @@
 name: CI Checks - Format, Lint, Test
 
 on:
-  push:
-    branches: ["**"]
-    paths:
-      - "**.go"
-      - "go.mod"
-      - "go.sum"
-      - "Dockerfile"
-      - ".dockerignore"
-      - ".golangci.yml"
+  pull_request:
 
 permissions: {}
 
@@ -18,10 +10,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    uses: $/.github/workflows/resolve-paths.yml
+    permissions:
+      pull-requests: read # requires to list PR files
+
   format:
     name: Run 'go vet' and 'go fix' and check diff
+    needs: [changes]
+    if: ${{ needs.changes.outputs.require-ci-checks == 'true' }}
     runs-on: ubuntu-26.04
-    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -49,8 +49,9 @@ jobs:
 
   lint:
     name: Run linters and code quality checks
+    needs: [changes]
+    if: ${{ needs.changes.outputs.require-ci-checks == 'true' }}
     runs-on: ubuntu-26.04
-    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     timeout-minutes: 15
     permissions:
       contents: read
@@ -77,8 +78,9 @@ jobs:
 
   test:
     name: Run tests
+    needs: [changes]
+    if: ${{ needs.changes.outputs.require-ci-checks == 'true' }}
     runs-on: ubuntu-26.04
-    if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release-please--') }}
     timeout-minutes: 15
     permissions:
       contents: read

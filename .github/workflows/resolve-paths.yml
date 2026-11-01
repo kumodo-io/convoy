@@ -1,0 +1,49 @@
+# This workflow's purpose is to explore and output what paths
+# contain changes. This is needed to remove path filtering on
+# the workflows, because combined with branch protection rules
+# it prevents required checks from running on some PRs and 
+# therefore blocks such PRs from merging.
+name: Resolve changes
+on:
+  workflow_call:
+    outputs:
+      require-ci-checks:
+        description: Go sources, modules or build files changed
+        value: ${{ jobs.changes.outputs.require-ci-checks }}
+      require-sanity-checks:
+        description: API types or modules changed
+        value: ${{ jobs.changes.outputs.require-sanity-checks }}
+      require-actionlint:
+        description: Workflows or actions changed
+        value: ${{ jobs.changes.outputs.require-actionlint }}
+
+permissions: {}
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read # requires to list PR files
+    outputs:
+      require-ci-checks: ${{ steps.filter.outputs.require-ci-checks }}
+      require-sanity-checks: ${{ steps.filter.outputs.require-sanity-checks }}
+      require-actionlint: ${{ steps.filter.outputs.require-actionlint }}
+    steps:
+      - id: filter
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_FILES_URL: repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files
+        run: |
+          files=$(gh api --paginate "$PR_FILES_URL" --jq '.[].filename')
+          ci=false sanity=false actionlint=false
+          grep -qE '\.go$|^go\.(mod|sum)$|^Dockerfile$|^\.dockerignore$|^\.golangci\.yml$' <<<"$files" && ci=true
+          grep -qE '^api/|^go\.(mod|sum)$' <<<"$files" && sanity=true
+          grep -qE '^\.github/' <<<"$files" && actionlint=true
+          {
+            echo "require-ci-checks=$ci"
+            echo "require-sanity-checks=$sanity"
+            echo "require-actionlint=$actionlint"
+          } >> "$GITHUB_OUTPUT"

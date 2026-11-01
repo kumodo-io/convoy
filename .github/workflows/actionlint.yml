@@ -1,10 +1,7 @@
 name: Actions Lint
 
 on:
-  push:
-    branches: ["**"]
-    paths:
-      - ".github/workflows/**"
+  pull_request:
 
 permissions: {}
 
@@ -13,9 +10,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changes
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    uses: $/.github/workflows/resolve-paths.yml
+    permissions:
+      pull-requests: read # requires to list PR files
+
   actionlint:
     name: Run actions linter
-    if: ${{ !startsWith(github.ref, 'refs/heads/release-please--') }}
+    needs: [changes]
+    if: ${{ needs.changes.outputs.require-actionlint == 'true' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
