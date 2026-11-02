@@ -7,7 +7,9 @@
       "include-v-in-tag": true,
       "include-v-in-release-name": true,
       "extra-files": [
-        { "type": "generic", "path": "deploy/kustomization/default/kustomization.yaml"}
+        { "type": "generic", "path": "deploy/kustomization/default/kustomization.yaml"},
+        { "type": "yaml", "path": "deploy/chart/convoy/Chart.yaml", "jsonpath": "$.version" },
+        { "type": "yaml", "path": "deploy/chart/convoy/Chart.yaml", "jsonpath": "$.appVersion" }
       ]
     }
   },
