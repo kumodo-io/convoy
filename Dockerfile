@@ -5,7 +5,10 @@
 # prebuilt binary, `make`, or Go toolchain on the host required. Used by CI and
 # `make kind-deploy`.
 
-FROM golang:1.27-bookworm AS base
+# Build stages run on the build host and cross-compile, so a multi-platform
+# build needs no emulation: the runtime stages only copy the binary.
+FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS base
+ARG TARGETOS TARGETARCH
 WORKDIR /src
 
 # Download modules in a separate layer so source edits don't re-fetch deps.
@@ -19,15 +22,15 @@ COPY . .
 # the controller-manager and vice versa.
 FROM base AS build-apiserver
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -o /apiserver ./cmd/convoy-apiserver
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /apiserver ./cmd/convoy-apiserver
 
 FROM base AS build-controller-manager
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -o /controller-manager ./cmd/convoy-controller-manager
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /controller-manager ./cmd/convoy-controller-manager
 
 FROM base AS build-observer
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -o /observer ./cmd/convoy-observer
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /observer ./cmd/convoy-observer
 
 # Runtime images. debian-slim (not distroless) so Tilt's restart wrapper — which
 # needs basic coreutils (touch/chmod) — still works if these are used for the
