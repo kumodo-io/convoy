@@ -1,0 +1,19 @@
+# The apiserver signs its own certificate at start and the aggregator skips
+# verification. Use it for local clusters only: any pod that can take over the
+# convoy-apiserver Service endpoint can serve the convoy API.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-apiserver
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --cert-dir=/tmp/certs
+  - target:
+      kind: APIService
+    patch: |-
+      - op: add
+        path: /spec/insecureSkipTLSVerify
+        value: true
