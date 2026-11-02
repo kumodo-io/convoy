@@ -58,7 +58,7 @@ type apiStore struct {
 
 // NewAPIStore returns a Store backed by ReleaseInventory objects. releaseLister
 // lets it copy each Release's shard label onto its inventory (the RI shards with
-// its Release; see docs/architecture/05-shard-scoped-caches.md).
+// its Release; see https://convoy.kumodo.io/documentation/architecture/shard-scoped-caches/).
 func NewAPIStore(client clientset.Interface, lister corelisters.ReleaseInventoryLister, releaseLister corelisters.ReleaseLister) Store {
 	return &apiStore{client: client, lister: lister, releaseLister: releaseLister}
 }

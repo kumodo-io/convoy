@@ -15,7 +15,7 @@ const (
 
 	// ConvoySyncStrategyAnnotation is set on the rendered resource(s) to
 	// define the strategy used to resolve the order and resource(s) readiness.
-	// If not set then it's treated as "waitForApply"
+	// If not set, or set to an unknown value, it is treated as "waitForApplied".
 	ConvoySyncStrategyAnnotation = "convoy.kumodo.io/sync-strategy"
 
 	// ConvoySyncTimeoutAnnotation is set on the rendered resource(s) to
@@ -231,15 +231,19 @@ const (
 	ResourceWaveStateCompleted ResourceWaveState = "Completed"
 
 	// ResourceWaveStateInProgress is the state of a resource wave that is in progress.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStateInProgress ResourceWaveState = "InProgress"
 
 	// ResourceWaveStateFailed is the state of a resource wave that has failed.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStateFailed ResourceWaveState = "Failed"
 
 	// ResourceWaveStatePending is the state of a resource wave that is pending.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStatePending ResourceWaveState = "Pending"
 
 	// ResourceWaveStateTimedOut is the state of a resource wave that has timed out.
+	// Reserved: the controller does not write this state yet. It writes only Completed.
 	ResourceWaveStateTimedOut ResourceWaveState = "TimedOut"
 )
 

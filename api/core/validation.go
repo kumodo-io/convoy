@@ -330,7 +330,7 @@ func knownRollbackPolicy(p RollbackPolicy) bool {
 // verdict is the only thing that fails a rollout, and a resource escalates to Degraded
 // only once that deadline elapses — without it a failing rollout would wait forever and
 // the policy could never act, so an enabled-looking policy that can never fire is a
-// configuration error, not a silent no-op. See docs/architecture/06-progressive-rollout.md.
+// configuration error, not a silent no-op. See https://convoy.kumodo.io/documentation/architecture/rollout-state-machine/.
 func validateFailurePolicy(spec *ReleaseSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	fp := spec.FailurePolicy

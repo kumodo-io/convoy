@@ -29,7 +29,7 @@ const (
 	// cluster. It is the only condition the Release controller owns; the observer
 	// (or agent-manager, in agent mode) owns the separate InSync and Healthy
 	// conditions. There is intentionally no composite "Ready" condition — each
-	// signal has a single writer (see docs/architecture/00-overview.md).
+	// signal has a single writer (see https://convoy.kumodo.io/documentation/architecture/status-ownership/).
 	conditionApplied = "Applied"
 
 	// conditionHealthy is the observer-owned condition the controller READS (never

@@ -74,7 +74,7 @@ type ExtraConfig struct {
 	// subresource proxies to.
 	ObserverURL string
 	// Shards is the fleet-wide shard count used to stamp the shard label on
-	// user-written objects (see docs/architecture/05-shard-scoped-caches.md).
+	// user-written objects (see https://convoy.kumodo.io/documentation/architecture/shard-scoped-caches/).
 	Shards int
 }
 

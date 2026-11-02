@@ -38,7 +38,7 @@ import (
 // Degraded) and the /health view; it is deliberately NOT render-reset. The rollout gate
 // no longer depends on it — the release controller owns the rollout deadline (measured
 // from status.rollout.startedAt), so each render gets a fresh deadline by construction
-// with no cross-writer race. See docs/architecture/06-progressive-rollout.md.
+// with no cross-writer race. See https://convoy.kumodo.io/documentation/architecture/rollout-state-machine/.
 func priorAndAnchors(inv *corev1alpha1.ReleaseInventory) (map[string]corev1alpha1.ResourceState, map[string]time.Time) {
 	prior := make(map[string]corev1alpha1.ResourceState, len(inv.Inventory))
 	anchors := make(map[string]time.Time, len(inv.Inventory))

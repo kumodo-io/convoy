@@ -96,7 +96,7 @@ type Options struct {
 	ShardScopedCache bool
 	// RenderStoreURL is the gocloud blob URL of the durable render store (must match
 	// the controller-manager's). Empty disables the store-backed read features
-	// (/history and historical /diff). See docs/architecture/03-persistent-storage.md.
+	// (/history and historical /diff). See https://convoy.kumodo.io/documentation/architecture/render-storage/.
 	RenderStoreURL string
 	// ReplicaID is this replica's shard-lease holder identity. Empty resolves
 	// from $POD_NAME, then the hostname.

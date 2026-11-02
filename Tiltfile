@@ -2,10 +2,10 @@
 #
 # Tilt dev loop for the convoy aggregated API server against a kind cluster.
 #
-#   make kind-up     # create the kind cluster (once)
-#   tilt up          # build, deploy, and live-reload on code changes
-#   tilt down        # remove the workloads (the kind cluster stays)
-#   make kind-down   # delete the kind cluster
+#   mise run kind-convoy-up     # create the kind cluster (once)
+#   mise run tilt-up            # build, deploy, and live-reload on code changes
+#   mise run tilt-down          # remove the workloads (the kind cluster stays)
+#   mise run kind-convoy-down   # delete the kind cluster
 #
 # On a code change Tilt recompiles the binary, syncs it into the running
 # apiserver container, and restarts the process in place — etcd data and the

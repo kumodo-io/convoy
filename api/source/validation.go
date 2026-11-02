@@ -263,7 +263,7 @@ func validateOCIRegistrySpec(spec *OCIRegistrySpec, fldPath *field.Path) field.E
 	}
 	switch spec.DefaultContentType {
 	case ContentTypeHelm, ContentTypeManifests, ContentTypeKustomize:
-		// empty is allowed; the controller defaults it
+		// A known content type is valid. An empty value is not: the controller does not default it.
 	default:
 		allErrs = append(allErrs, field.NotSupported(fldPath.Child("defaultContentType"), spec.DefaultContentType, []string{
 			string(ContentTypeHelm),

@@ -4472,7 +4472,7 @@ func schema_convoy_api_core_v1alpha1_ResourceWaveStatus(ref common.ReferenceCall
 					},
 					"state": {
 						SchemaProps: spec.SchemaProps{
-							Description: "State is the state of the wave.\n\nPossible enum values:\n - `\"Completed\"` is the state of a resource wave that has been completed.\n - `\"Failed\"` is the state of a resource wave that has failed.\n - `\"InProgress\"` is the state of a resource wave that is in progress.\n - `\"Pending\"` is the state of a resource wave that is pending.\n - `\"TimedOut\"` is the state of a resource wave that has timed out.",
+							Description: "State is the state of the wave.\n\nPossible enum values:\n - `\"Completed\"` is the state of a resource wave that has been completed.\n - `\"Failed\"` is the state of a resource wave that has failed. Reserved: the controller does not write this state yet. It writes only Completed.\n - `\"InProgress\"` is the state of a resource wave that is in progress. Reserved: the controller does not write this state yet. It writes only Completed.\n - `\"Pending\"` is the state of a resource wave that is pending. Reserved: the controller does not write this state yet. It writes only Completed.\n - `\"TimedOut\"` is the state of a resource wave that has timed out. Reserved: the controller does not write this state yet. It writes only Completed.",
 							Type:        []string{"string"},
 							Format:      "",
 							Enum:        []interface{}{"Completed", "Failed", "InProgress", "Pending", "TimedOut"},

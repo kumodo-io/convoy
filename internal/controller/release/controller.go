@@ -1074,7 +1074,7 @@ func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, err
 // still gates). On failure it returns a terminal Unappliable outcome (nil err ⇒
 // re-checked on the poll interval, not hot-retried): a permanent cause waits for a
 // spec fix; a transient one (a webhook briefly down) recovers on the next poll, or
-// the user can /sync --force. See docs/architecture/06-progressive-rollout.md.
+// the user can /sync --force. See https://convoy.kumodo.io/documentation/architecture/rollout-state-machine/.
 func (c *Controller) dryRunGate(ctx context.Context, st *reconcileState) (reconcileOutcome, bool) {
 	if st.force {
 		return reconcileOutcome{}, false
@@ -1384,13 +1384,6 @@ func gitRefString(ref *corev1alpha1.ReleaseGitRepositoryRefSpec) string {
 	}
 }
 
-// pinStatus projects the Release's pin intent (top-level .pin, set by the /pin
-// subresource) into the observed .status.pin. Intent is derived by comparing the
-// pinned render against the last successful render: a match is a freeze, anything
-// else a rollback (rollback is storage-gated and not yet producible). RenderInputs
-// snapshots the inputs of the pinned render, taken from status.lastSuccessful —
-// while a pin holds the controller never applies, so lastSuccessful is the pinned
-// render.
 // renderVerdict is the observer's verdict on a render, read from the per-resource
 // health the observer persists on the ReleaseInventory. It is the sole input to the
 // rollout gate: the gate acts only on positive evidence (Healthy or Degraded) and
@@ -1507,7 +1500,7 @@ type rolloutPlan struct {
 // This is the single source of truth for every HEALTH-driven transition. The ONE other
 // place a rollout transition is decided is waveHealthGate (an intermediate-wave timeout,
 // which is only observable while applying, so it can't be decided here pre-apply) — if
-// you change transition logic, check there too. See docs/architecture/06-progressive-rollout.md.
+// you change transition logic, check there too. See https://convoy.kumodo.io/documentation/architecture/rollout-state-machine/.
 func (c *Controller) planRollout(ctx context.Context, st *reconcileState) rolloutPlan {
 	rel := st.rel
 	R := st.attempt.RenderRef
@@ -1710,6 +1703,12 @@ func rolloutCondition(rollout *corev1alpha1.RolloutStatus, generation int64, now
 	return cond
 }
 
+// pinStatus projects the Release's pin intent (top-level .pin, set by the /pin
+// subresource) into the observed .status.pin. Intent compares the pinned render with
+// status.lastSuccessful as it was before this reconcile: a match is a freeze, anything
+// else a rollback. A rollback pin applies the stored render (it needs a render store),
+// so the reconcile that applies it still reports rollback and the next one reports
+// freeze. RenderInputs snapshots the inputs of status.lastSuccessful.
 func pinStatus(rel *corev1alpha1.Release) *corev1alpha1.ReleasePinStatus {
 	if rel.Pin == nil {
 		return nil // unpinned
@@ -1792,7 +1791,7 @@ func (c *Controller) persistRender(ctx context.Context, namespace, name, renderR
 // several quick reconciles of one deploy (status.lastSuccessful lags in the informer
 // cache, so we can't rely on it — the store is read-after-write consistent and is
 // the source of truth), and a rollback (re-applying a render already in history).
-// The rollback itself remains auditable via status.pin (pinnedAt/pinnedBy).
+// The rollback itself remains auditable via .pin (pinnedAt, pinnedBy) and status.pin.intent.
 //
 // Best-effort: the render blob is already persisted (the rollback target is safe),
 // so a failed append is logged rather than failing an otherwise-successful deploy
