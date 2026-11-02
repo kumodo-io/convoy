@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.0](https://github.com/kumodo-io/convoy/compare/v0.9.0...v0.10.0) (2026-11-02)
+
+
+### Features
+
+* deploy chart ([#100](https://github.com/kumodo-io/convoy/issues/100)) ([6c235db](https://github.com/kumodo-io/convoy/commit/6c235dbe609c5bbd4ec4325c778941c92da49f06))
+* deploy kustomization ([#99](https://github.com/kumodo-io/convoy/issues/99)) ([472cfd5](https://github.com/kumodo-io/convoy/commit/472cfd5c5f7f8fc33af40457df7d030fbe576c5a))
+* plugin release ([#101](https://github.com/kumodo-io/convoy/issues/101)) ([cb78ed5](https://github.com/kumodo-io/convoy/commit/cb78ed5518352095791aa223d52554a647d7007e))
+
+
+### Miscellaneous
+
+* docs followup ([#97](https://github.com/kumodo-io/convoy/issues/97)) ([c212ebc](https://github.com/kumodo-io/convoy/commit/c212ebc1b1e989e1f3e6e7a5296f78fda00c042f))
+
 ## [0.9.0](https://github.com/kumodo-io/convoy/compare/v0.8.1...v0.9.0) (2026-10-31)
 
 
