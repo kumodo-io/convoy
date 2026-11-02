@@ -33,3 +33,4 @@ go.work.sum
 
 bin
 deploy/kustomization/.check.*
+dist/
