@@ -1,0 +1,36 @@
+# Requires cert-manager with cainjector. The serving certificate is signed by a
+# dedicated CA, so a renewal of the leaf does not change the APIService caBundle.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - certificates.yaml
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-apiserver
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --tls-cert-file=/etc/convoy/tls/tls.crt
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --tls-private-key-file=/etc/convoy/tls/tls.key
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: serving-cert
+          mountPath: /etc/convoy/tls
+          readOnly: true
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: serving-cert
+          secret:
+            secretName: convoy-apiserver-tls
+  - target:
+      kind: APIService
+    patch: |-
+      - op: add
+        path: /metadata/annotations
+        value:
+          cert-manager.io/inject-ca-from: convoy-system/convoy-apiserver-tls

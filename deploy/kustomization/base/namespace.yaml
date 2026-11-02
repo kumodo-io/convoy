@@ -1,0 +1,6 @@
+# The namespace is fixed: the namespace transformer does not rewrite the
+# --observer-url args, so a namespace overlay breaks /preview and /diff.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: convoy-system

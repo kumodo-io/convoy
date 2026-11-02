@@ -143,3 +143,7 @@ run = [
 		k8s.io/api/scheduling/v1alpha3 \
 		k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1''',
 ]
+
+[tasks.deploy-check]
+description = "Build and validate deploy kustomizations"
+run = 'hack/check-kustomization.sh'

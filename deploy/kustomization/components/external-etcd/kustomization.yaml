@@ -1,0 +1,43 @@
+# Points the apiserver at an existing etcd over mutual TLS. Create both objects
+# in convoy-system before the apply:
+#   ConfigMap convoy-etcd, key "servers": comma-separated client URLs.
+#   Secret convoy-etcd-client, keys ca.crt, tls.crt, tls.key.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-apiserver
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --etcd-servers=$(ETCD_SERVERS)
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --etcd-cafile=/etc/convoy/etcd/ca.crt
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --etcd-certfile=/etc/convoy/etcd/tls.crt
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --etcd-keyfile=/etc/convoy/etcd/tls.key
+      - op: add
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: ETCD_SERVERS
+            valueFrom:
+              configMapKeyRef:
+                name: convoy-etcd
+                key: servers
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value:
+          name: etcd-client
+          mountPath: /etc/convoy/etcd
+          readOnly: true
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value:
+          name: etcd-client
+          secret:
+            secretName: convoy-etcd-client

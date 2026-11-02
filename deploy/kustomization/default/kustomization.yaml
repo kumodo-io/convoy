@@ -1,0 +1,17 @@
+# Local and trial installs: bundled etcd and a self-signed apiserver certificate.
+# For production, replace tls-insecure with tls-cert-manager.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+components:
+  - ../components/etcd
+  - ../components/tls-insecure
+  - ../components/cluster-admin-apply
+images:
+  - name: ghcr.io/kumodo-io/convoy/convoy-apiserver
+    newTag: v0.9.0 # x-release-please-version
+  - name: ghcr.io/kumodo-io/convoy/convoy-controller-manager
+    newTag: v0.9.0 # x-release-please-version
+  - name: ghcr.io/kumodo-io/convoy/convoy-observer
+    newTag: v0.9.0 # x-release-please-version

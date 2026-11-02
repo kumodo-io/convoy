@@ -1,0 +1,51 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: convoy-selfsigned
+  namespace: convoy-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: convoy-ca
+  namespace: convoy-system
+spec:
+  isCA: true
+  commonName: convoy-ca
+  secretName: convoy-ca
+  duration: 87600h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    kind: Issuer
+    name: convoy-selfsigned
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: convoy-ca
+  namespace: convoy-system
+spec:
+  ca:
+    secretName: convoy-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: convoy-apiserver-tls
+  namespace: convoy-system
+spec:
+  secretName: convoy-apiserver-tls
+  dnsNames:
+    - convoy-apiserver.convoy-system.svc
+    - convoy-apiserver.convoy-system.svc.cluster.local
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    kind: Issuer
+    name: convoy-ca

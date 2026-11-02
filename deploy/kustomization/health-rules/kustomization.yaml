@@ -1,0 +1,9 @@
+# GlobalHealthRuleSet is served by the convoy apiserver, so apply this only
+# after the three convoy APIServices report Available.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: convoy
+resources:
+  - health-rules.yaml

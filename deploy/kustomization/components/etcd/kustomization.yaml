@@ -1,0 +1,14 @@
+# Single-member etcd for the convoy apiserver storage. It has no peer TLS and no
+# backups; use external-etcd when convoy objects must survive a lost volume.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - etcd.yaml
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-apiserver
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --etcd-servers=http://convoy-etcd.convoy-system.svc:2379

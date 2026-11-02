@@ -1,0 +1,42 @@
+# The TLS components set how the aggregator verifies the serving certificate.
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.core.convoy.kumodo.io
+spec:
+  group: core.convoy.kumodo.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: convoy-apiserver
+    namespace: convoy-system
+    port: 443
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.source.convoy.kumodo.io
+spec:
+  group: source.convoy.kumodo.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: convoy-apiserver
+    namespace: convoy-system
+    port: 443
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.extensions.convoy.kumodo.io
+spec:
+  group: extensions.convoy.kumodo.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: convoy-apiserver
+    namespace: convoy-system
+    port: 443
