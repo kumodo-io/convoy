@@ -1,0 +1,118 @@
+suite: components
+templates:
+  - apiserver.yaml
+  - controller-manager.yaml
+  - observer.yaml
+release:
+  namespace: convoy
+tests:
+  - it: sets one shard count on every component
+    set:
+      shards: 8
+    documentSelector:
+      path: kind
+      value: Deployment
+      matchMany: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --shards=8
+  - it: points the apiserver at the observer in the release namespace
+    template: apiserver.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --observer-url=http://convoy-observer.convoy.svc:8080
+  - it: defaults the image tag to the app version
+    template: controller-manager.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/kumodo-io/convoy/convoy-controller-manager:v0.9.0
+  - it: overrides the image registry and tag
+    template: observer.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      image.registry: registry.local
+      image.tag: dev
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.local/convoy-observer:dev
+  - it: runs the pods as non-root with a read-only root filesystem
+    documentSelector:
+      path: kind
+      value: Deployment
+      matchMany: true
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+  - it: sets replicas and workers
+    template: controller-manager.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      controllerManager.replicas: 3
+      controllerManager.workers: 5
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --workers=5
+  - it: appends extra args
+    template: observer.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      observer.extraArgs: [--lease-duration=1m]
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --lease-duration=1m
+  - it: disables the render store by default
+    documentSelector:
+      path: kind
+      value: Deployment
+    template: controller-manager.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --render-store-url=s3://convoy
+      - notExists:
+          path: spec.template.spec.containers[0].envFrom
+  - it: shares the render store between controller manager and observer
+    set:
+      renderStore.url: s3://convoy?region=eu-west-1
+      renderStore.existingSecret: creds
+    documentSelector:
+      path: kind
+      value: Deployment
+      matchMany: true
+    templates:
+      - controller-manager.yaml
+      - observer.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --render-store-url=s3://convoy?region=eu-west-1
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: creds

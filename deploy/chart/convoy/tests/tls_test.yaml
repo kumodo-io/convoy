@@ -1,0 +1,129 @@
+suite: tls
+templates:
+  - apiserver.yaml
+  - apiservices.yaml
+  - certificates.yaml
+release:
+  namespace: convoy
+tests:
+  - it: skips verification by default
+    template: apiservices.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: spec.insecureSkipTLSVerify
+          value: true
+      - notExists:
+          path: metadata.annotations
+  - it: writes the self-signed certificate to the tmp volume by default
+    template: apiserver.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --cert-dir=/tmp/certs
+  - it: creates no certificates by default
+    template: certificates.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: injects the CA from cert-manager
+    template: apiservices.yaml
+    set:
+      tls.insecure: false
+    asserts:
+      - notExists:
+          path: spec.insecureSkipTLSVerify
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+          value: convoy/convoy-apiserver-tls
+  - it: creates a CA chain and a serving certificate
+    template: certificates.yaml
+    set:
+      tls.insecure: false
+    asserts:
+      - hasDocuments:
+          count: 4
+      - contains:
+          path: spec.dnsNames
+          content: convoy-apiserver.convoy.svc
+        documentSelector:
+          path: metadata.name
+          value: convoy-apiserver-tls
+      - equal:
+          path: spec.issuerRef.name
+          value: convoy-ca
+        documentSelector:
+          path: metadata.name
+          value: convoy-apiserver-tls
+  - it: uses a provided issuer instead of the self-signed CA
+    template: certificates.yaml
+    set:
+      tls.insecure: false
+      tls.certManager.issuerRef:
+        name: corp-ca
+        kind: ClusterIssuer
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.issuerRef
+          value:
+            name: corp-ca
+            kind: ClusterIssuer
+  - it: serves the certificate from the secret
+    template: apiserver.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      tls.insecure: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --tls-cert-file=/etc/convoy/tls/tls.crt
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --cert-dir=/tmp/certs
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: serving-cert
+            secret:
+              secretName: convoy-apiserver-tls
+  - it: uses an existing secret and CA bundle
+    set:
+      tls.insecure: false
+      tls.certManager.enabled: false
+      tls.existingSecret: my-tls
+      tls.caBundle: Y2E=
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: certificates.yaml
+      - equal:
+          path: spec.caBundle
+          value: Y2E=
+        template: apiservices.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: serving-cert
+            secret:
+              secretName: my-tls
+        template: apiserver.yaml
+        documentSelector:
+          path: kind
+          value: Deployment
+  - it: fails without a CA bundle for an existing secret
+    template: apiserver.yaml
+    set:
+      tls.insecure: false
+      tls.certManager.enabled: false
+      tls.existingSecret: my-tls
+    asserts:
+      - failedTemplate:
+          errorPattern: tls.existingSecret and tls.caBundle are required

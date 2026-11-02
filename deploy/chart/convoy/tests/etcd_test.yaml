@@ -1,0 +1,86 @@
+suite: etcd
+templates:
+  - apiserver.yaml
+  - etcd.yaml
+release:
+  namespace: convoy
+tests:
+  - it: bundles a persistent etcd by default
+    template: etcd.yaml
+    asserts:
+      - isKind:
+          of: StatefulSet
+        documentSelector:
+          path: kind
+          value: StatefulSet
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.resources.requests.storage
+          value: 1Gi
+        documentSelector:
+          path: kind
+          value: StatefulSet
+      - notExists:
+          path: spec.volumeClaimTemplates[0].spec.storageClassName
+        documentSelector:
+          path: kind
+          value: StatefulSet
+  - it: sets the storage class
+    template: etcd.yaml
+    documentSelector:
+      path: kind
+      value: StatefulSet
+    set:
+      etcd.persistence.storageClass: fast
+    asserts:
+      - equal:
+          path: spec.volumeClaimTemplates[0].spec.storageClassName
+          value: fast
+  - it: points the apiserver at the bundled etcd
+    template: apiserver.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --etcd-servers=http://convoy-etcd.convoy.svc:2379
+  - it: uses external etcd over mutual TLS
+    set:
+      etcd.enabled: false
+      etcd.external.servers: [https://e0:2379, https://e1:2379]
+      etcd.external.clientSecret: etcd-client
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: etcd.yaml
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --etcd-servers=https://e0:2379,https://e1:2379
+        template: apiserver.yaml
+        documentSelector:
+          path: kind
+          value: Deployment
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --etcd-cafile=/etc/convoy/etcd/ca.crt
+        template: apiserver.yaml
+        documentSelector:
+          path: kind
+          value: Deployment
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: etcd-client
+            secret:
+              secretName: etcd-client
+        template: apiserver.yaml
+        documentSelector:
+          path: kind
+          value: Deployment
+  - it: fails without external servers
+    template: apiserver.yaml
+    set:
+      etcd.enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: etcd.external.servers and etcd.external.clientSecret are required

@@ -1,0 +1,14 @@
+suite: notes
+templates:
+  - NOTES.txt
+tests:
+  - it: warns about insecure TLS
+    asserts:
+      - matchRegexRaw:
+          pattern: "WARNING: tls.insecure is true"
+  - it: does not warn with verified TLS
+    set:
+      tls.insecure: false
+    asserts:
+      - notMatchRegexRaw:
+          pattern: "WARNING"
