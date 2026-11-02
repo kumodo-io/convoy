@@ -27,7 +27,7 @@ jobs:
   chart:
     name: Publish chart to GHCR
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write # requires to publish the chart
@@ -65,7 +65,7 @@ jobs:
   plugin:
     name: Attach kubectl-convoy archives
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: write # requires to upload assets to the draft release
     steps:
