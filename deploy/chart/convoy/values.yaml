@@ -89,10 +89,11 @@ etcd:
     servers: []
     clientSecret: ""
 
-# Durable render store for /history and historical /diff, shared by the
-# controller manager and the observer. Empty disables it.
+# Durable render store for /history, historical /diff, pins and automatic
+# rollback, shared by the controller manager and the observer.
 renderStore:
-  # gocloud blob URL, for example s3://bucket?region=eu-west-1.
+  enabled: false
+  # Required when enabled. gocloud blob URL, for example s3://bucket?region=eu-west-1.
   url: ""
   # Secret with provider credentials, loaded as env vars.
   existingSecret: ""

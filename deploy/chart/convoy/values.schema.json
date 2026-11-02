@@ -253,6 +253,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
         "url": {
           "type": "string"
         },

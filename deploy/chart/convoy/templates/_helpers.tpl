@@ -57,8 +57,8 @@ capabilities:
 {{- fail "etcd.external.servers and etcd.external.clientSecret are required when etcd.enabled is false" -}}
 {{- end -}}
 {{- end -}}
-{{- if and .Values.renderStore.existingSecret (not .Values.renderStore.url) -}}
-{{- fail "renderStore.url is required when renderStore.existingSecret is set" -}}
+{{- if and .Values.renderStore.enabled (not .Values.renderStore.url) -}}
+{{- fail "renderStore.url is required when renderStore.enabled is true" -}}
 {{- end -}}
 {{- end -}}
 
@@ -123,8 +123,8 @@ spec:
             {{- if eq .component "observer" }}
             - --serve-addr=:8080
             {{- end }}
-            {{- with $root.Values.renderStore.url }}
-            - --render-store-url={{ . }}
+            {{- if $root.Values.renderStore.enabled }}
+            - --render-store-url={{ $root.Values.renderStore.url }}
             {{- end }}
             {{- range $v.extraArgs }}
             - {{ . }}
@@ -141,10 +141,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          {{- with $root.Values.renderStore.existingSecret }}
+          {{- if and $root.Values.renderStore.enabled $root.Values.renderStore.existingSecret }}
           envFrom:
             - secretRef:
-                name: {{ . }}
+                name: {{ $root.Values.renderStore.existingSecret }}
           {{- end }}
           {{- if eq .component "observer" }}
           ports:

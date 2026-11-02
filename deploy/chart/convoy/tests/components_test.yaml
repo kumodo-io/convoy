@@ -98,6 +98,7 @@ tests:
           path: spec.template.spec.containers[0].envFrom
   - it: shares the render store between controller manager and observer
     set:
+      renderStore.enabled: true
       renderStore.url: s3://convoy?region=eu-west-1
       renderStore.existingSecret: creds
     documentSelector:
@@ -116,3 +117,24 @@ tests:
           content:
             secretRef:
               name: creds
+  - it: ignores the render store settings when disabled
+    template: controller-manager.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    set:
+      renderStore.url: s3://convoy
+      renderStore.existingSecret: creds
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --render-store-url=s3://convoy
+      - notExists:
+          path: spec.template.spec.containers[0].envFrom
+  - it: fails without a URL for an enabled render store
+    template: apiserver.yaml
+    set:
+      renderStore.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: renderStore.url is required when renderStore.enabled is true

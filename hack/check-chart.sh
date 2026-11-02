@@ -25,7 +25,7 @@ render existing-secret --set tls.insecure=false --set tls.certManager.enabled=fa
 render external-etcd --set etcd.enabled=false \
   --set 'etcd.external.servers={https://etcd-0:2379,https://etcd-1:2379}' \
   --set etcd.external.clientSecret=etcd-client
-render render-store --set renderStore.url=s3://convoy --set renderStore.existingSecret=creds
+render render-store --set renderStore.enabled=true --set renderStore.url=s3://convoy --set renderStore.existingSecret=creds
 render no-cluster-admin --set rbac.clusterAdminApply=false --set healthRules.enabled=false
 render other-namespace --namespace convoy
 
