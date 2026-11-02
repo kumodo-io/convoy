@@ -6,7 +6,9 @@
       "include-component-in-tag": false,
       "include-v-in-tag": true,
       "include-v-in-release-name": true,
-      "extra-files": ["deploy/kustomization/default/kustomization.yaml"]
+      "extra-files": [
+        { "type": "generic", "path": "deploy/kustomization/default/kustomization.yaml"}
+      ]
     }
   },
   "pull-request-header": ":robot: Release ready",
