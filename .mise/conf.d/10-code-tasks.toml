@@ -151,3 +151,11 @@ run = 'hack/check-kustomization.sh'
 [tasks.chart-check]
 description = "Lint, unit-test and validate the convoy chart"
 run = 'hack/check-chart.sh'
+
+[tasks.package-plugin]
+description = "Build kubectl-convoy release archives"
+usage = '''
+arg "<version>" help="Version to stamp, for example v0.10.0"
+arg "[outdir]" default="dist" help="Directory for the archives"
+'''
+run = 'hack/package-plugin.sh {{ usage.version }} {{ usage.outdir }}'
