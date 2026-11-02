@@ -147,3 +147,7 @@ run = [
 [tasks.deploy-check]
 description = "Build and validate deploy kustomizations"
 run = 'hack/check-kustomization.sh'
+
+[tasks.chart-check]
+description = "Lint, unit-test and validate the convoy chart"
+run = 'hack/check-chart.sh'

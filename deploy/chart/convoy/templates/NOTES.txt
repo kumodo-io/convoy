@@ -1,0 +1,16 @@
+convoy {{ .Chart.AppVersion }} is installed in namespace {{ .Release.Namespace }}.
+
+Wait for the convoy API:
+
+  kubectl wait --for=condition=Available --timeout=120s \
+    apiservice/v1alpha1.core.convoy.kumodo.io \
+    apiservice/v1alpha1.source.convoy.kumodo.io \
+    apiservice/v1alpha1.extensions.convoy.kumodo.io
+{{- if .Values.tls.insecure }}
+
+WARNING: tls.insecure is true. The kube-apiserver does not verify the convoy
+apiserver certificate, so a pod that takes over the convoy-apiserver Service
+endpoint can serve the convoy API. Use it only on local clusters. To verify
+the certificate, set tls.insecure=false (requires cert-manager, or set
+tls.existingSecret and tls.caBundle).
+{{- end }}

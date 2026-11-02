@@ -1,0 +1,40 @@
+suite: rbac
+templates:
+  - cluster-admin-apply.yaml
+  - apiserver.yaml
+release:
+  namespace: convoy
+tests:
+  - it: binds cluster-admin for in-cluster targets by default
+    template: cluster-admin-apply.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: roleRef.name
+          value: cluster-admin
+      - equal:
+          path: subjects[0].namespace
+          value: convoy
+  - it: omits the cluster-admin bindings when disabled
+    template: cluster-admin-apply.yaml
+    set:
+      rbac.clusterAdminApply: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: gives the apiserver no write access to the host cluster
+    template: apiserver.yaml
+    documentSelector:
+      path: kind
+      value: ClusterRole
+    asserts:
+      - notContains:
+          path: rules
+          content:
+            apiGroups: ["*"]
+            resources: ["*"]
+            verbs: ["*"]
+      - equal:
+          path: rules[*].verbs
+          value: [get, list, watch]

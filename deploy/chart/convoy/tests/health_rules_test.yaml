@@ -1,0 +1,34 @@
+suite: health rules
+templates:
+  - health-rules.yaml
+release:
+  namespace: convoy
+tests:
+  - it: applies the rules in a post-install and post-upgrade hook
+    documentSelector:
+      path: kind
+      value: Job
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: post-install,post-upgrade
+      - contains:
+          path: spec.template.spec.initContainers[0].args
+          content: apiservice/v1alpha1.extensions.convoy.kumodo.io
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 65532
+  - it: ships the default rule set
+    documentSelector:
+      path: kind
+      value: ConfigMap
+    asserts:
+      - matchRegex:
+          path: data["health-rules.yaml"]
+          pattern: "kind: GlobalHealthRuleSet"
+  - it: is disabled on request
+    set:
+      healthRules.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

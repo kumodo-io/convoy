@@ -1,0 +1,50 @@
+name: Chart Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish chart to GHCR
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write # requires to publish the chart
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        env:
+          MISE_ENABLE_TOOLS: helm,yq
+      # release-please bumps Chart.yaml in the release PR; a mismatch means the
+      # tag points at a commit without that bump.
+      - name: Verify chart version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          chart="$(yq '.version' deploy/chart/convoy/Chart.yaml)"
+          app="$(yq '.appVersion' deploy/chart/convoy/Chart.yaml)"
+          if [[ "$chart" != "${TAG#v}" || "$app" != "${TAG#v}" ]]; then
+            echo "::error::Chart.yaml version=$chart appVersion=$app does not match tag $TAG"
+            exit 1
+          fi
+      - name: Package chart
+        shell: sh
+        run: helm package deploy/chart/convoy --destination dist
+      - name: Push chart
+        shell: sh
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          echo "$GHCR_TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
+          helm push dist/convoy-*.tgz "oci://ghcr.io/$OWNER/charts"

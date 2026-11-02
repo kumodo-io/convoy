@@ -1,0 +1,68 @@
+{{- if and (not .Values.tls.insecure) .Values.tls.certManager.enabled }}
+{{- $issuer := .Values.tls.certManager.issuerRef }}
+{{- if not $issuer }}
+{{- $issuer = dict "kind" "Issuer" "name" "convoy-ca" }}
+# A dedicated CA signs the serving certificate, so a renewal of the leaf does
+# not change the APIService caBundle.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: convoy-selfsigned
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "apiserver") | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: convoy-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "apiserver") | nindent 4 }}
+spec:
+  isCA: true
+  commonName: convoy-ca
+  secretName: convoy-ca
+  duration: 87600h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    kind: Issuer
+    name: convoy-selfsigned
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: convoy-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "apiserver") | nindent 4 }}
+spec:
+  ca:
+    secretName: convoy-ca
+---
+{{- end }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: convoy-apiserver-tls
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "apiserver") | nindent 4 }}
+spec:
+  secretName: convoy-apiserver-tls
+  duration: {{ .Values.tls.certManager.duration }}
+  renewBefore: {{ .Values.tls.certManager.renewBefore }}
+  dnsNames:
+    - convoy-apiserver.{{ .Release.Namespace }}.svc
+    - convoy-apiserver.{{ .Release.Namespace }}.svc.cluster.local
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    {{- toYaml $issuer | nindent 4 }}
+{{- end }}

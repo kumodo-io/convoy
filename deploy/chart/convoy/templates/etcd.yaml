@@ -1,0 +1,83 @@
+{{- if .Values.etcd.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: convoy-etcd
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "etcd") | nindent 4 }}
+spec:
+  serviceName: convoy-etcd
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "convoy.selectorLabels" "etcd" | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "convoy.componentLabels" (dict "root" . "component" "etcd") | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: etcd
+          image: {{ .Values.etcd.image.repository }}:{{ .Values.etcd.image.tag }}
+          command:
+            - etcd
+            # A subdirectory, because etcd requires 0700 on its data dir and the volume root is group-owned.
+            - --data-dir=/var/lib/etcd/data
+            - --listen-client-urls=http://0.0.0.0:2379
+            - --advertise-client-urls=http://convoy-etcd.{{ .Release.Namespace }}.svc:2379
+          ports:
+            - name: client
+              containerPort: 2379
+          readinessProbe:
+            exec:
+              command: ["etcdctl", "endpoint", "health"]
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          {{- with .Values.etcd.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/etcd
+      {{- include "convoy.scheduling" .Values.etcd | nindent 6 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.etcd.persistence.size }}
+        {{- with .Values.etcd.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: convoy-etcd
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "etcd") | nindent 4 }}
+spec:
+  selector:
+    {{- include "convoy.selectorLabels" "etcd" | nindent 4 }}
+  ports:
+    - name: client
+      port: 2379
+      targetPort: client
+{{- end }}
