@@ -1,0 +1,84 @@
+# Default health rules shipped out-of-box. A Release opts into them by setting
+# spec.healthAssessment.globalRuleSetSelector to match the label below. Expressions
+# use has() guards so objects mid-creation (no status yet) evaluate cleanly.
+apiVersion: extensions.convoy.kumodo.io/v1alpha1
+kind: GlobalHealthRuleSet
+metadata:
+  name: convoy-defaults
+  labels:
+    convoy.kumodo.io/default: "true"
+spec:
+  rules:
+    - apiVersion: apps/v1
+      resources: [deployments]
+      # Healthy only when the ROLLOUT is complete, not merely "min replicas available".
+      # availableReplicas alone can't tell an OLD available pod from a NEW one, so during
+      # a rolling update's surge window (old pod still available, observedGeneration
+      # already bumped) a bad render would read as healthy and the rollout would wrongly
+      # succeed. Require: the new ReplicaSet fully scaled (updatedReplicas == spec), no
+      # old/surge replicas remaining (replicas == updatedReplicas), and all of the NEW
+      # replicas available — the kubectl-rollout-status condition.
+      ruleExpression: >-
+        has(object.status) && has(object.status.observedGeneration) &&
+        object.status.observedGeneration == object.metadata.generation &&
+        (object.spec.replicas == 0 ||
+         (has(object.status.updatedReplicas) && object.status.updatedReplicas == object.spec.replicas &&
+          has(object.status.replicas) && object.status.replicas == object.status.updatedReplicas &&
+          has(object.status.availableReplicas) && object.status.availableReplicas == object.status.updatedReplicas))
+      messageExpression: >-
+        (has(object.status.availableReplicas) ? string(object.status.availableReplicas) : '0') +
+        '/' + string(object.spec.replicas) + ' available, ' +
+        (has(object.status.updatedReplicas) ? string(object.status.updatedReplicas) : '0') + ' updated'
+    - apiVersion: apps/v1
+      resources: [statefulsets]
+      # As with Deployments, require the rollout complete: all replicas ready AND all at
+      # the updated revision (updatedReplicas == spec), so a partially-rolled bad update
+      # doesn't read healthy off the still-running old pods.
+      ruleExpression: >-
+        has(object.status) && has(object.status.observedGeneration) &&
+        object.status.observedGeneration == object.metadata.generation &&
+        (object.spec.replicas == 0 ||
+         (has(object.status.readyReplicas) && object.status.readyReplicas == object.spec.replicas &&
+          has(object.status.updatedReplicas) && object.status.updatedReplicas == object.spec.replicas))
+      messageExpression: >-
+        (has(object.status.readyReplicas) ? string(object.status.readyReplicas) : '0') +
+        '/' + string(object.spec.replicas) + ' ready, ' +
+        (has(object.status.updatedReplicas) ? string(object.status.updatedReplicas) : '0') + ' updated'
+    - apiVersion: apps/v1
+      resources: [daemonsets]
+      # Require the rollout complete: every desired pod ready AND updated to the new
+      # pod template (updatedNumberScheduled == desiredNumberScheduled), so a rolling
+      # DaemonSet update to a bad image doesn't read healthy off the not-yet-updated nodes.
+      ruleExpression: >-
+        has(object.status) &&
+        object.status.observedGeneration == object.metadata.generation &&
+        has(object.status.numberReady) && has(object.status.desiredNumberScheduled) &&
+        object.status.numberReady == object.status.desiredNumberScheduled &&
+        has(object.status.updatedNumberScheduled) &&
+        object.status.updatedNumberScheduled == object.status.desiredNumberScheduled
+      messageExpression: >-
+        (has(object.status.numberReady) ? string(object.status.numberReady) : '0') +
+        '/' + string(object.status.desiredNumberScheduled) + ' ready, ' +
+        (has(object.status.updatedNumberScheduled) ? string(object.status.updatedNumberScheduled) : '0') + ' updated'
+    - apiVersion: v1
+      resources: [pods]
+      ruleExpression: >-
+        has(object.status) && has(object.status.phase) &&
+        (object.status.phase == 'Running' || object.status.phase == 'Succeeded')
+      messageExpression: "has(object.status.phase) ? 'phase: ' + object.status.phase : 'no phase'"
+    - apiVersion: batch/v1
+      resources: [jobs]
+      ruleExpression: >-
+        has(object.status) && has(object.status.conditions) &&
+        object.status.conditions.exists(c, c.type == 'Complete' && c.status == 'True')
+      messageExpression: "'job not complete'"
+    - apiVersion: v1
+      resources: [persistentvolumeclaims]
+      ruleExpression: "has(object.status) && has(object.status.phase) && object.status.phase == 'Bound'"
+      messageExpression: "has(object.status.phase) ? 'phase: ' + object.status.phase : 'no phase'"
+    - apiVersion: v1
+      resources: [persistentvolumes]
+      ruleExpression: >-
+        has(object.status) && has(object.status.phase) &&
+        (object.status.phase == 'Bound' || object.status.phase == 'Available')
+      messageExpression: "has(object.status.phase) ? 'phase: ' + object.status.phase : 'no phase'"

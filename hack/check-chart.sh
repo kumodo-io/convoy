@@ -28,3 +28,7 @@ render external-etcd --set etcd.enabled=false \
 render render-store --set renderStore.url=s3://convoy --set renderStore.existingSecret=creds
 render no-cluster-admin --set rbac.clusterAdminApply=false --set healthRules.enabled=false
 render other-namespace --namespace convoy
+
+# The chart cannot read files outside its directory, so it keeps a copy.
+diff -u "$chart/../../kustomization/health-rules/health-rules.yaml" "$chart/files/health-rules.yaml" ||
+  { echo "chart health rules differ from deploy/kustomization/health-rules" >&2; exit 1; }

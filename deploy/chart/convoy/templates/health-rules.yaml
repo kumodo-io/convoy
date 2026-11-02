@@ -1,0 +1,128 @@
+{{- if .Values.healthRules.enabled }}
+{{- $apiservices := list "core" "source" "extensions" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: convoy-health-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "health-rules") | nindent 4 }}
+data:
+  health-rules.yaml: |
+    {{- .Files.Get "files/health-rules.yaml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: convoy-health-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "health-rules") | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: convoy-health-rules
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "health-rules") | nindent 4 }}
+rules:
+  - apiGroups: ["apiregistration.k8s.io"]
+    resources: ["apiservices"]
+    resourceNames:
+      {{- range $apiservices }}
+      - v1alpha1.{{ . }}.convoy.kumodo.io
+      {{- end }}
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions.convoy.kumodo.io"]
+    resources: ["globalhealthrulesets"]
+    verbs: ["get", "create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: convoy-health-rules
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "health-rules") | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: convoy-health-rules
+subjects:
+  - kind: ServiceAccount
+    name: convoy-health-rules
+    namespace: {{ .Release.Namespace }}
+---
+# GlobalHealthRuleSet is served by the convoy apiserver, so it cannot be a
+# regular chart object: the kind does not exist until the APIService is Available.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: convoy-health-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" . "component" "health-rules") | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "convoy.componentLabels" (dict "root" . "component" "health-rules") | nindent 8 }}
+    spec:
+      serviceAccountName: convoy-health-rules
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "convoy.podSecurityContext" . | nindent 8 }}
+      initContainers:
+        - name: wait
+          image: {{ .Values.healthRules.image.repository }}:{{ .Values.healthRules.image.tag }}
+          args:
+            - wait
+            - --for=condition=Available
+            - --timeout={{ .Values.healthRules.timeout }}
+            {{- range $apiservices }}
+            - apiservice/v1alpha1.{{ . }}.convoy.kumodo.io
+            {{- end }}
+          env:
+            # kubectl keeps its discovery cache under $HOME/.kube.
+            - name: HOME
+              value: /tmp
+          securityContext:
+            {{- include "convoy.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: apply
+          image: {{ .Values.healthRules.image.repository }}:{{ .Values.healthRules.image.tag }}
+          args:
+            - apply
+            - --server-side
+            - --field-manager=convoy-chart
+            - -f
+            - /rules/health-rules.yaml
+          env:
+            # kubectl keeps its discovery cache under $HOME/.kube.
+            - name: HOME
+              value: /tmp
+          securityContext:
+            {{- include "convoy.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: rules
+              mountPath: /rules
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: rules
+          configMap:
+            name: convoy-health-rules
+        - name: tmp
+          emptyDir: {}
+{{- end }}
