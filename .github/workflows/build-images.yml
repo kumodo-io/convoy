@@ -3,7 +3,6 @@ name: Images Build
 on:
   push:
     branches: ["**"]
-    tags: ["v*"]
     paths:
       - "**.go"
       - "go.mod"
@@ -28,13 +27,3 @@ jobs:
       packages: write # requires to publish images
     with:
       tag: auto-${{ github.sha }}
-
-  release-image:
-    name: Build Release Images
-    if: ${{ github.ref_type == 'tag' }}
-    uses: $/.github/workflows/image-build.yml
-    permissions:
-      contents: read
-      packages: write # requires to publish images
-    with:
-      tag: ${{ github.ref_name }}

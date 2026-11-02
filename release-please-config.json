@@ -13,6 +13,8 @@
       ]
     }
   },
+  "draft": true,
+  "force-tag-creation": true,
   "pull-request-header": ":robot: Release ready",
   "changelog-sections": [
     { "type": "feat", "section": "Features", "hidden": false },

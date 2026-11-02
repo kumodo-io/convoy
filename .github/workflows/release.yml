@@ -1,0 +1,119 @@
+# release-please creates the release as a draft and pushes the tag at once
+# (force-tag-creation). Published releases are immutable, so every artifact is
+# built and attached while the release is a draft, and the release is published
+# only when all of them exist.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  images:
+    name: Build Release Images
+    uses: $/.github/workflows/image-build.yml
+    permissions:
+      contents: read
+      packages: write # requires to publish images
+    with:
+      tag: ${{ github.ref_name }}
+
+  chart:
+    name: Publish chart to GHCR
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write # requires to publish the chart
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        env:
+          MISE_ENABLE_TOOLS: helm,yq
+      # release-please bumps Chart.yaml in the release PR; a mismatch means the
+      # tag points at a commit without that bump.
+      - name: Verify chart version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          chart="$(yq '.version' deploy/chart/convoy/Chart.yaml)"
+          app="$(yq '.appVersion' deploy/chart/convoy/Chart.yaml)"
+          if [[ "$chart" != "${TAG#v}" || "$app" != "${TAG#v}" ]]; then
+            echo "::error::Chart.yaml version=$chart appVersion=$app does not match tag $TAG"
+            exit 1
+          fi
+      - name: Package chart
+        shell: sh
+        run: helm package deploy/chart/convoy --destination dist
+      - name: Push chart
+        shell: sh
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          echo "$GHCR_TOKEN" | helm registry login ghcr.io --username "$ACTOR" --password-stdin
+          helm push dist/convoy-*.tgz "oci://ghcr.io/$OWNER/charts"
+
+  plugin:
+    name: Attach kubectl-convoy archives
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: write # requires to upload assets to the draft release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        env:
+          MISE_ENABLE_TOOLS: go
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ github.job }}-${{ hashFiles('go.sum', 'go.mod') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ github.job }}-
+      - name: Package plugin
+        shell: sh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: mise run package-plugin "$TAG" dist
+      # The tag can arrive before release-please has created the draft.
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          for _ in 1 2 3 4 5 6; do
+            gh release view "$TAG" >/dev/null 2>&1 && break
+            sleep 10
+          done
+          if [[ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" != "true" ]]; then
+            echo "::error::release $TAG is not a draft; assets of a published release are immutable"
+            exit 1
+          fi
+          gh release upload "$TAG" dist/* --clobber
+
+  publish:
+    name: Publish release
+    needs: [images, chart, plugin]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: write # requires to publish the draft release
+    steps:
+      - shell: sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false
