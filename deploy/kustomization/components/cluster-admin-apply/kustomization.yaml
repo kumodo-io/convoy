@@ -1,0 +1,8 @@
+# Release targets of kind in-cluster apply as the controller and observer
+# ServiceAccounts. The observer needs the same rights, because a dry-run apply
+# for drift detection is authorized like a real apply. Leave this component out
+# when all Clusters connect through a kubeconfig, or bind a narrower role instead.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - bindings.yaml

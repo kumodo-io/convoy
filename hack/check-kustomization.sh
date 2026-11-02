@@ -42,4 +42,4 @@ validate default "$root/default"
 validate health-rules "$root/health-rules"
 combine bundled-etcd-insecure etcd tls-insecure
 combine bundled-etcd-cert-manager etcd tls-cert-manager
-combine external-etcd-full external-etcd tls-cert-manager render-store-s3 cluster-admin-apply
+combine external-etcd-full external-etcd tls-cert-manager render-store cluster-admin-apply

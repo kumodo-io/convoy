@@ -1,0 +1,30 @@
+# Enables the durable render store for /history and historical /diff. Both the
+# controller (writer) and the observer (reader) must use the same store, so a
+# per-process mem:// URL does not work here. Create in convoy-system:
+#   ConfigMap convoy-render-store, key "url": gocloud blob URL (s3://, gs://, azblob://).
+#   Secret convoy-render-store (optional): provider credentials as env vars,
+#   for example AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: Deployment
+      name: convoy-(controller-manager|observer)
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --render-store-url=$(RENDER_STORE_URL)
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: RENDER_STORE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: convoy-render-store
+              key: url
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom
+        value:
+          - secretRef:
+              name: convoy-render-store
+              optional: true
