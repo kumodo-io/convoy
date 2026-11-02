@@ -44,7 +44,7 @@ func NewCommand() *cobra.Command {
 	root.PersistentFlags().StringVar(&f.Context, "context", "", "the kubeconfig context to use")
 	root.PersistentFlags().StringVarP(&f.Namespace, "namespace", "n", "", "namespace of the release (defaults to the context's namespace)")
 
-	root.AddCommand(release.Command(f))
+	root.AddCommand(release.Command(f), newVersionCmd())
 	return root
 }
 
