@@ -46,7 +46,7 @@ jobs:
           grep -qE '\.go$|^go\.(mod|sum)$|^Dockerfile$|^\.dockerignore$|^\.golangci\.yml$' <<<"$files" && ci=true
           grep -qE '^api/|^go\.(mod|sum)$' <<<"$files" && sanity=true
           grep -qE '^\.github/' <<<"$files" && actionlint=true
-          grep -qE '^deploy/|^hack/check-kustomization\.sh$' <<<"$files" && deploy=true
+          grep -qE '^deploy/|^hack/check-(kustomization|chart)\.sh$' <<<"$files" && deploy=true
           {
             echo "require-ci-checks=$ci"
             echo "require-sanity-checks=$sanity"
