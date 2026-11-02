@@ -10,8 +10,8 @@ components:
   - ../components/cluster-admin-apply
 images:
   - name: ghcr.io/kumodo-io/convoy/convoy-apiserver
-    newTag: v0.10.0 # x-release-please-version
+    newTag: v0.11.0 # x-release-please-version
   - name: ghcr.io/kumodo-io/convoy/convoy-controller-manager
-    newTag: v0.10.0 # x-release-please-version
+    newTag: v0.11.0 # x-release-please-version
   - name: ghcr.io/kumodo-io/convoy/convoy-observer
-    newTag: v0.10.0 # x-release-please-version
+    newTag: v0.11.0 # x-release-please-version
