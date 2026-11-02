@@ -1,0 +1,113 @@
+image:
+  registry: ghcr.io/kumodo-io/convoy
+  # Defaults to v<appVersion>.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Fleet-wide shard count. The apiserver, controller manager and observer must
+# use the same value, so the chart sets it on all three.
+shards: 32
+
+apiserver:
+  replicas: 1
+  extraArgs: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+controllerManager:
+  replicas: 1
+  workers: 2
+  resync: 2m
+  extraArgs: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+observer:
+  replicas: 1
+  workers: 2
+  resync: 2m
+  extraArgs: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+tls:
+  # The apiserver signs its own certificate and the aggregator skips
+  # verification. Set to false for any cluster that is not local.
+  insecure: true
+  # Used when insecure is false. Requires cert-manager with cainjector.
+  certManager:
+    enabled: true
+    # Empty creates a self-signed CA in the release namespace.
+    issuerRef: {}
+    duration: 2160h
+    renewBefore: 360h
+  # Used when insecure is false and certManager.enabled is false: a Secret with
+  # tls.crt and tls.key for convoy-apiserver.<namespace>.svc, and the
+  # base64-encoded PEM CA that signed it.
+  existingSecret: ""
+  caBundle: ""
+
+etcd:
+  # Bundled single-member etcd. It has no peer TLS and no backups.
+  enabled: true
+  image:
+    repository: registry.k8s.io/etcd
+    tag: 3.5.16-0
+  persistence:
+    size: 1Gi
+    # Empty uses the cluster default StorageClass.
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Used when enabled is false. clientSecret holds ca.crt, tls.crt and tls.key.
+  external:
+    servers: []
+    clientSecret: ""
+
+# Durable render store for /history and historical /diff, shared by the
+# controller manager and the observer. Empty disables it.
+renderStore:
+  # gocloud blob URL, for example s3://bucket?region=eu-west-1.
+  url: ""
+  # Secret with provider credentials, loaded as env vars.
+  existingSecret: ""
+
+rbac:
+  # Binds cluster-admin to the controller manager and observer, which Release
+  # targets of kind in-cluster need. Disable it when all Clusters connect
+  # through a kubeconfig.
+  clusterAdminApply: true
+
+# Applies the default GlobalHealthRuleSet after install and upgrade, when the
+# convoy API is served.
+healthRules:
+  enabled: true
+  image:
+    repository: registry.k8s.io/kubectl
+    tag: v1.34.3
+  timeout: 300s
