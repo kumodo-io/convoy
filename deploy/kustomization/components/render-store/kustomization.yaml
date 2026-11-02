@@ -1,9 +1,24 @@
 # Enables the durable render store for /history and historical /diff. Both the
 # controller (writer) and the observer (reader) must use the same store, so a
-# per-process mem:// URL does not work here. Create in convoy-system:
-#   ConfigMap convoy-render-store, key "url": gocloud blob URL (s3://, gs://, azblob://).
-#   Secret convoy-render-store (optional): provider credentials as env vars,
-#   for example AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.
+# per-process mem:// URL does not work here.
+#
+# The component does not contain the store settings. Generate them in your
+# overlay, because a generated name changes with its content and a change then
+# restarts the pods:
+#
+#   configMapGenerator:
+#     - name: convoy-render-store
+#       namespace: convoy-system
+#       literals:
+#         - url=s3://my-bucket?region=eu-west-1
+#   # Optional: provider credentials, loaded as env vars.
+#   secretGenerator:
+#     - name: convoy-render-store
+#       namespace: convoy-system
+#       envs:
+#         - render-store.env
+#
+# Without the ConfigMap, both pods stay in CreateContainerConfigError.
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 patches:
