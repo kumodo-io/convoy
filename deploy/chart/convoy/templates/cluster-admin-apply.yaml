@@ -1,0 +1,21 @@
+{{- if .Values.rbac.clusterAdminApply }}
+{{- range $component := list "controller-manager" "observer" }}
+---
+# Release targets of kind in-cluster apply as this ServiceAccount. The observer
+# needs the same rights, because a drift dry-run is authorized like a real apply.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: convoy-{{ $component }}-apply
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" $ "component" $component) | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: convoy-{{ $component }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}

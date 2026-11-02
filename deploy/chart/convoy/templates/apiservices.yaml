@@ -1,0 +1,27 @@
+{{- range $group := list "core" "source" "extensions" }}
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.{{ $group }}.convoy.kumodo.io
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" $ "component" "apiserver") | nindent 4 }}
+  {{- if and (not $.Values.tls.insecure) $.Values.tls.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ $.Release.Namespace }}/convoy-apiserver-tls
+  {{- end }}
+spec:
+  group: {{ $group }}.convoy.kumodo.io
+  version: v1alpha1
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  {{- if $.Values.tls.insecure }}
+  insecureSkipTLSVerify: true
+  {{- else if not $.Values.tls.certManager.enabled }}
+  caBundle: {{ $.Values.tls.caBundle }}
+  {{- end }}
+  service:
+    name: convoy-apiserver
+    namespace: {{ $.Release.Namespace }}
+    port: 443
+{{- end }}

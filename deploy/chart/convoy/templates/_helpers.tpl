@@ -61,3 +61,107 @@ capabilities:
 {{- fail "renderStore.url is required when renderStore.existingSecret is set" -}}
 {{- end -}}
 {{- end -}}
+
+{{/* Takes a component values block. */}}
+{{- define "convoy.scheduling" -}}
+{{- with .nodeSelector }}
+nodeSelector:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .tolerations }}
+tolerations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .affinity }}
+affinity:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{/* Takes a dict with "root", "component" and "values"; renders the controller manager or observer Deployment. */}}
+{{- define "convoy.managerDeployment" -}}
+{{- $root := .root -}}
+{{- $v := .values -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: convoy-{{ .component }}
+  namespace: {{ $root.Release.Namespace }}
+  labels:
+    {{- include "convoy.componentLabels" (dict "root" $root "component" .component) | nindent 4 }}
+spec:
+  replicas: {{ $v.replicas }}
+  selector:
+    matchLabels:
+      {{- include "convoy.selectorLabels" .component | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "convoy.componentLabels" (dict "root" $root "component" .component) | nindent 8 }}
+      {{- with $v.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: convoy-{{ .component }}
+      {{- with $root.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "convoy.podSecurityContext" $root | nindent 8 }}
+      containers:
+        - name: {{ .component }}
+          image: {{ include "convoy.image" (dict "root" $root "component" .component) }}
+          imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+          args:
+            - --shards={{ $root.Values.shards }}
+            - --workers={{ $v.workers }}
+            - --resync={{ $v.resync }}
+            # Each replica caches only its owned shards, so memory scales with replica count.
+            - --shard-scoped-cache
+            {{- if eq .component "observer" }}
+            - --serve-addr=:8080
+            {{- end }}
+            {{- with $root.Values.renderStore.url }}
+            - --render-store-url={{ . }}
+            {{- end }}
+            {{- range $v.extraArgs }}
+            - {{ . }}
+            {{- end }}
+          env:
+            # Helm and git clients keep their caches under $HOME.
+            - name: HOME
+              value: /tmp
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          {{- with $root.Values.renderStore.existingSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
+          {{- if eq .component "observer" }}
+          ports:
+            - name: http
+              containerPort: 8080
+          {{- end }}
+          {{- with $v.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- include "convoy.containerSecurityContext" $root | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- include "convoy.scheduling" $v | nindent 6 }}
+{{- end -}}
