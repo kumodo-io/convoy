@@ -1,0 +1,34 @@
+name: Deploy Checks - Kustomize Build
+
+on:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changes
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
+    uses: $/.github/workflows/resolve-paths.yml
+    permissions:
+      pull-requests: read # requires to list PR files
+
+  kustomize:
+    name: Build and validate kustomizations
+    needs: [changes]
+    if: ${{ needs.changes.outputs.require-deploy-checks == 'true' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        env:
+          MISE_ENABLE_TOOLS: kustomize,kubeconform
+      - shell: sh
+        run: mise run deploy-check

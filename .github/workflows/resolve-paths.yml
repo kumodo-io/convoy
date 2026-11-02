@@ -16,6 +16,9 @@ on:
       require-actionlint:
         description: Workflows or actions changed
         value: ${{ jobs.changes.outputs.require-actionlint }}
+      require-deploy-checks:
+        description: Deploy manifests or their check changed
+        value: ${{ jobs.changes.outputs.require-deploy-checks }}
 
 permissions: {}
 
@@ -30,6 +33,7 @@ jobs:
       require-ci-checks: ${{ steps.filter.outputs.require-ci-checks }}
       require-sanity-checks: ${{ steps.filter.outputs.require-sanity-checks }}
       require-actionlint: ${{ steps.filter.outputs.require-actionlint }}
+      require-deploy-checks: ${{ steps.filter.outputs.require-deploy-checks }}
     steps:
       - id: filter
         shell: bash
@@ -38,12 +42,14 @@ jobs:
           PR_FILES_URL: repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files
         run: |
           files=$(gh api --paginate "$PR_FILES_URL" --jq '.[].filename')
-          ci=false sanity=false actionlint=false
+          ci=false sanity=false actionlint=false deploy=false
           grep -qE '\.go$|^go\.(mod|sum)$|^Dockerfile$|^\.dockerignore$|^\.golangci\.yml$' <<<"$files" && ci=true
           grep -qE '^api/|^go\.(mod|sum)$' <<<"$files" && sanity=true
           grep -qE '^\.github/' <<<"$files" && actionlint=true
+          grep -qE '^deploy/|^hack/check-kustomization\.sh$' <<<"$files" && deploy=true
           {
             echo "require-ci-checks=$ci"
             echo "require-sanity-checks=$sanity"
             echo "require-actionlint=$actionlint"
+            echo "require-deploy-checks=$deploy"
           } >> "$GITHUB_OUTPUT"
