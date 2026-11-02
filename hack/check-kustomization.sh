@@ -34,8 +34,29 @@ combine() {
     for c in "$@"; do
       echo "  - ../../components/$c"
     done
+    if [[ " $* " == *" render-store "* ]]; then
+      # Mirrors the user overlay documented in components/render-store.
+      echo "configMapGenerator:"
+      echo "  - name: convoy-render-store"
+      echo "    namespace: convoy-system"
+      echo "    literals:"
+      echo "      - url=s3://convoy-renders?region=us-east-1"
+    fi
   } >"$tmp/$name/kustomization.yaml"
   validate "$name" "$tmp/$name"
+}
+
+# A generated ConfigMap gets a hash suffix; the env reference must follow it,
+# or a URL change does not roll the pods.
+check_render_store_ref() {
+  local out="$tmp/$1.yaml" generated
+  generated="$(yq 'select(.kind == "ConfigMap" and .metadata.name == "convoy-render-store-*") | .metadata.name' "$out")"
+  for d in convoy-controller-manager convoy-observer; do
+    yq -e "select(.kind == \"Deployment\" and .metadata.name == \"$d\")
+      | .spec.template.spec.containers[0].env[] | select(.name == \"RENDER_STORE_URL\")
+      | .valueFrom.configMapKeyRef.name == \"$generated\"" "$out" >/dev/null ||
+      { echo "$d does not reference ConfigMap $generated" >&2; exit 1; }
+  done
 }
 
 validate default "$root/default"
@@ -43,3 +64,4 @@ validate health-rules "$root/health-rules"
 combine bundled-etcd-insecure etcd tls-insecure
 combine bundled-etcd-cert-manager etcd tls-cert-manager
 combine external-etcd-full external-etcd tls-cert-manager render-store cluster-admin-apply
+check_render_store_ref external-etcd-full
