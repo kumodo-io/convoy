@@ -1,4 +1,4 @@
-# MinIO (S3) render store overlay: deploys an in-cluster MinIO + bucket, and points
+# SeaweedFS (S3) render store overlay: deploys an in-cluster SeaweedFS + bucket, and points
 # both the controller (writer) and observer (reader) at it via the gocloud s3blob
 # driver. Durable and shared across pods (unlike file://); exercises the real S3
 # code path and the store-backed read features end to end.
@@ -6,22 +6,22 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../base
-  - minio.yaml
+  - seaweedfs.yaml
 patches:
   - target:
       kind: Deployment
       name: convoy-controller-manager
-    patch: &minioStore |-
+    patch: &s3Store |-
       - op: add
         path: /spec/template/spec/containers/0/args/-
-        value: --render-store-url=s3://convoy-renders?endpoint=http://minio:9000&region=us-east-1&use_path_style=true&disable_https=true&hostname_immutable=true
+        value: --render-store-url=s3://convoy-renders?endpoint=http://seaweedfs:8333&region=us-east-1&use_path_style=true&disable_https=true&hostname_immutable=true
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:
           name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:
-              name: convoy-minio
+              name: convoy-seaweedfs
               key: AWS_ACCESS_KEY_ID
       - op: add
         path: /spec/template/spec/containers/0/env/-
@@ -29,9 +29,9 @@ patches:
           name: AWS_SECRET_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: convoy-minio
+              name: convoy-seaweedfs
               key: AWS_SECRET_ACCESS_KEY
   - target:
       kind: Deployment
       name: convoy-observer
-    patch: *minioStore
+    patch: *s3Store

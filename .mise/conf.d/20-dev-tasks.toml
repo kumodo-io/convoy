@@ -36,7 +36,7 @@ description = "Run Tilt environment with convoy in-mem storage"
 interactive = true
 usage = '''
 flag "--storage <storage>" {
-    choices "none" "file" "minio"
+    choices "none" "file" "seaweedfs"
     default "none"
     help "Storage backend to use"
 }
@@ -87,7 +87,7 @@ depends = ["kind-convoy-up", "kind-managed-up", "kind-managed-kubeconfig"]
 interactive = true
 usage = '''
 flag "--storage <storage>" {
-    choices "none" "file" "minio"
+    choices "none" "file" "seaweedfs"
     default "none"
     help "Storage backend to use"
 }
