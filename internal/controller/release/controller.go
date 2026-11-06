@@ -1555,9 +1555,13 @@ func (c *Controller) planRollout(ctx context.Context, st *reconcileState) rollou
 	}
 }
 
+// rollbackUnavailable names why a rollback the policy selects cannot run: the last-healthy
+// render lives only in the render store.
+const rollbackUnavailable = "rollback not possible: no render store configured"
+
 // rollbackEligible reports whether a release-level health failure should roll back: any
 // policy other than Never rolls back a release failure, provided a last-healthy target
-// exists (the render store is checked at apply time).
+// exists. Callers check the render store, which holds that target.
 func rollbackEligible(rel *corev1alpha1.Release) bool {
 	return rel.Spec.FailurePolicy.Rollback != corev1alpha1.RollbackPolicyNever &&
 		rel.Status.LastHealthy != nil

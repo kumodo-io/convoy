@@ -59,6 +59,9 @@ const (
 	// conditionReasonRolledBack is the Applied-condition reason after a failed render
 	// was rolled back to the last-healthy render (the cluster now runs last-healthy).
 	conditionReasonRolledBack = "RolledBack"
+	// conditionReasonRollbackFailed is the Applied-condition reason while a selected
+	// rollback cannot load or apply the last-healthy render (the failed render still runs).
+	conditionReasonRollbackFailed = "RollbackFailed"
 	// Axis B (Release-within-cluster ordering): the Release is holding for
 	// predecessor Releases on the same cluster to clear their bar, or has given up
 	// on a bounded (waitForHealthyWithTimeout) wait.
