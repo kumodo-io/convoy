@@ -51,6 +51,7 @@ const (
 	namespaceKey   = "namespace"
 	w0File         = "w0.yaml"
 	w1File         = "w1.yaml"
+	gateCM         = "gate"
 	dummyRevision  = "abc123"
 	dummyURL       = "https://example.com/repo.git"
 	dummyCluster   = "target"
@@ -438,6 +439,12 @@ func degradedRef(name string) inventory.Ref {
 	return r
 }
 
+func degradedAt(name, renderRef string) inventory.Ref {
+	r := degradedRef(name)
+	r.AssessedRenderRef = renderRef
+	return r
+}
+
 // threeWaveCoordinator renders wave 0 "w0", wave 1 "w1", and wave 2 "w2" where
 // wave 2 declares the given strategy annotation block (indented 4 spaces).
 func threeWaveCoordinator(wave2Ann string) *fakeCoordinator {
@@ -463,11 +470,12 @@ func threeWaveRelease() *corev1alpha1.Release {
 // healthy even though wave 0 is degraded.
 func TestSyncHandler_GateChecksOnlyImmediatelyPrecedingWave(t *testing.T) {
 	rel := threeWaveRelease()
+	coord := threeWaveCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n")
+	render := renderRefFor(t, rel, coord)
 	deployer := &fakeDeployer{}
-	c, _ := newTestController(t, rel, reachableCluster(),
-		threeWaveCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	c, _ := newTestController(t, rel, reachableCluster(), coord, deployer)
 	// Observer state: wave 0 degraded, wave 1 healthy.
-	putInv(t, c, degradedRef("w0"), healthyRef("w1"))
+	putInv(t, c, degradedAt("w0", render), healthyAt("w1", render))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -485,11 +493,12 @@ func TestSyncHandler_GateChecksOnlyImmediatelyPrecedingWave(t *testing.T) {
 // is healthy.
 func TestSyncHandler_GateHoldsOnDegradedImmediatelyPrecedingWave(t *testing.T) {
 	rel := threeWaveRelease()
+	coord := threeWaveCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n")
+	render := renderRefFor(t, rel, coord)
 	deployer := &fakeDeployer{}
-	c, client := newTestController(t, rel, reachableCluster(),
-		threeWaveCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
 	// Wave 0 healthy, wave 1 (the wave immediately before the gated wave 2) degraded.
-	putInv(t, c, healthyRef("w0"), degradedRef("w1"))
+	putInv(t, c, healthyAt("w0", render), degradedAt("w1", render))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -512,7 +521,7 @@ func TestSyncHandler_HoldsAtHealthGate(t *testing.T) {
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
 	}
-	if len(deployer.waveCalls) != 1 || deployer.waveCalls[0][0].GetName() != "gate" {
+	if len(deployer.waveCalls) != 1 || deployer.waveCalls[0][0].GetName() != gateCM {
 		t.Fatalf("waveCalls = %v, want just [gate]", waveCallNames(deployer))
 	}
 	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaitingForWaveHealth {
@@ -522,7 +531,7 @@ func TestSyncHandler_HoldsAtHealthGate(t *testing.T) {
 	// though the rollout is holding at the gate (not only on full success), so the
 	// observer can assess it and a partial rollout has a prune record.
 	inv := getInv(t, c)
-	if len(inv) != 1 || inv[0].Name != "gate" {
+	if len(inv) != 1 || inv[0].Name != gateCM {
 		t.Errorf("inventory = %+v, want [gate] recorded despite the hold", inv)
 	}
 }
@@ -535,12 +544,13 @@ func TestSyncHandler_AdvancesWhenPredecessorHealthy(t *testing.T) {
 		{Number: 0, Applied: new(true), StartedAt: &firstApply, CompletedAt: &firstApply},
 	}
 	coord := gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n")
-	rel.Status.LastAttempted = &corev1alpha1.ReleaseAttemptedRenderStatus{RenderRef: renderRefFor(t, rel, coord)}
+	render := renderRefFor(t, rel, coord)
+	rel.Status.LastAttempted = &corev1alpha1.ReleaseAttemptedRenderStatus{RenderRef: render}
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
 	// The observer marked wave 0's resource ("gate") Healthy on the ReleaseInventory;
 	// the gate rolls that up to advance wave 1.
-	putInv(t, c, healthyRef("gate"))
+	putInv(t, c, healthyAt(gateCM, render))
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)
@@ -554,6 +564,32 @@ func TestSyncHandler_AdvancesWhenPredecessorHealthy(t *testing.T) {
 			if w.StartedAt == nil || !w.StartedAt.Equal(&firstApply) || w.CompletedAt == nil || !w.CompletedAt.Equal(&firstApply) {
 				t.Errorf("wave 0 timestamps = started %v completed %v, want both %v (preserved)", w.StartedAt, w.CompletedAt, firstApply)
 			}
+		}
+	}
+}
+
+// TestSyncHandler_GateIgnoresHealthOfEarlierRender is the KB-8 regression: right after
+// a new render applies, wave 0 still carries the health of the previous render.
+func TestSyncHandler_GateIgnoresHealthOfEarlierRender(t *testing.T) {
+	rel := gatedRelease()
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(),
+		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	putInv(t, c, healthyAt(gateCM, "sha256:previous"))
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if len(deployer.waveCalls) != 1 || deployer.waveCalls[0][0].GetName() != gateCM {
+		t.Fatalf("waveCalls = %v, want just [gate]", waveCallNames(deployer))
+	}
+	got := statusUpdate(client.Actions())
+	if s, r := readyReason(got); s != metav1.ConditionFalse || r != conditionReasonWaitingForWaveHealth {
+		t.Errorf("condition = %v/%s, want False/WaitingForWaveHealth", s, r)
+	}
+	for _, w := range got.Status.Waves {
+		if w.Number == 0 && w.Healthy != nil {
+			t.Errorf("wave 0 healthy = %v, want unknown until assessed for this render", *w.Healthy)
 		}
 	}
 }
