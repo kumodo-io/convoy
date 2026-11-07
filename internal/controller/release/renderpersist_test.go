@@ -440,6 +440,39 @@ func TestSyncHandler_LastHealthySetWhenRenderHealthy(t *testing.T) {
 	})
 }
 
+// TestSyncHandler_LastHealthyKeptWhenRenderNotApplied is the KB-11 regression: a
+// Healthy verdict (always so without healthAssessment) must not advance lastHealthy
+// to a render that was never applied, or a rollback targets a render not in the store.
+func TestSyncHandler_LastHealthyKeptWhenRenderNotApplied(t *testing.T) {
+	const priorRef = "sha256:prior-applied"
+	for _, tc := range []struct {
+		name     string
+		rel      *corev1alpha1.Release
+		deployer *fakeDeployer
+	}{
+		{name: "dry-run rejects the render", rel: manifestsRelease(), deployer: &fakeDeployer{dryRunErr: errors.New("field is immutable")}},
+		{name: "manual mode waits for sync", rel: manualRelease(), deployer: &fakeDeployer{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.rel.Status.LastSuccessful = &corev1alpha1.ReleaseAttemptedRenderStatus{RenderRef: priorRef}
+			tc.rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: priorRef}
+			c, client := newTestController(t, tc.rel, reachableCluster(), readyCoordinator(), tc.deployer)
+			setHealth(c, true)
+
+			if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+				t.Fatalf("syncHandler: %v", err)
+			}
+			if tc.deployer.called {
+				t.Fatal("the render was applied")
+			}
+			got := statusUpdate(client.Actions())
+			if got == nil || got.Status.LastHealthy == nil || got.Status.LastHealthy.RenderRef != priorRef {
+				t.Errorf("lastHealthy = %+v, want %s", got.Status.LastHealthy, priorRef)
+			}
+		})
+	}
+}
+
 // failingBlobStore fails every write, to exercise the persist-then-apply guard.
 type failingBlobStore struct{}
 
