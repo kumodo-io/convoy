@@ -760,6 +760,17 @@ type reconcileState struct {
 	objects []*unstructured.Unstructured
 }
 
+// withheld reports whether manual sync mode withholds the apply in this reconcile.
+func (st *reconcileState) withheld() bool {
+	return st.manual && !st.pending
+}
+
+// rollbackLanded reports whether the last-healthy render is the last one applied.
+func rollbackLanded(rel *corev1alpha1.Release) bool {
+	ls, lh := rel.Status.LastSuccessful, rel.Status.LastHealthy
+	return ls != nil && lh != nil && ls.RenderRef == lh.RenderRef
+}
+
 // newReconcileState seeds the per-reconcile state (attempt timestamp, mode, pending
 // /sync) before any stage runs.
 func (c *Controller) newReconcileState(rel *corev1alpha1.Release) *reconcileState {
@@ -833,6 +844,13 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 	if st.rel.Pin == nil {
 		plan = c.planRollout(ctx, st)
 	}
+	// The gates apply to a rollback too: it changes the cluster like any other apply.
+	if out, done, err := c.stageGates(st, plan); done {
+		if out.rollout == nil {
+			out.rollout = plan.rollout
+		}
+		return out, err
+	}
 	if plan.action == actionApplyLastHealthy {
 		// Apply last-healthy (RolledBack hold). On a transient load/deploy error, HOLD —
 		// never fall through to re-apply the failed source render (which would flip the
@@ -842,15 +860,12 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 		if err != nil {
 			out, err = st.fail(conditionReasonRollbackFailed, "rollback: "+err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 			out.rollout = plan.rollout
+			return out, err
 		}
-		return out, err
-	}
-
-	if out, done, err := c.stageGates(st); done {
-		if out.rollout == nil {
-			out.rollout = plan.rollout
+		if st.manual && st.pending {
+			out.handledSyncAt = st.requestedAt
 		}
-		return out, err
+		return out, nil
 	}
 	out, err := c.stageSync(ctx, st)
 	// The rollout state was decided pre-apply by planRollout; the wave gate is the one
@@ -1021,7 +1036,7 @@ func (c *Controller) resolvePinnedRender(ctx context.Context, st *reconcileState
 // stageGates evaluates the pre-apply holds — freeze pin, manual-mode sync gate, and
 // the Axis-B cluster-wave gate — that withhold the apply without failing. It halts
 // the pipeline when any hold (or a bounded-wait failure) applies.
-func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, error) {
+func (c *Controller) stageGates(st *reconcileState, plan rolloutPlan) (reconcileOutcome, bool, error) {
 	rel := st.rel
 
 	// The pin has already been resolved in stageRender: st.attempt.RenderRef is the
@@ -1029,12 +1044,24 @@ func (c *Controller) stageGates(st *reconcileState) (reconcileOutcome, bool, err
 	// loaded from the store), so no freeze-withhold is needed here — a valid pin
 	// applies its render idempotently, holding the cluster at it.
 
+	// Manual-mode sync gate for a rollback. A rollback that has not landed answers the
+	// /sync that applied the failed render, so it applies without a new /sync (also on
+	// a retry after RollbackFailed). Once it landed, re-applying it needs a /sync.
+	if st.withheld() && plan.action == actionApplyLastHealthy && rollbackLanded(rel) {
+		return stop(reconcileOutcome{
+			ready:   true,
+			reason:  conditionReasonRolledBack,
+			message: plan.rollout.Message,
+			attempt: st.attempt,
+		}, nil)
+	}
+
 	// Manual-mode sync gate. In manual mode (syncPolicy.automatic=false) apply only
 	// when an explicit /sync is pending. Otherwise observe without applying: report
 	// in-sync when the current render already matches the last applied one, else
 	// WaitingForSync (out of sync, or never synced). A spec change or resync alone
 	// never auto-applies in manual mode.
-	if st.manual && !st.pending {
+	if st.withheld() && plan.action == actionApplySource {
 		if ls := rel.Status.LastSuccessful; ls != nil && ls.RenderRef == st.attempt.RenderRef {
 			return stop(reconcileOutcome{
 				ready:   true,
@@ -1478,6 +1505,7 @@ type rolloutPlan struct {
 // chosen render. The transition table (one row fires):
 //
 //	no failurePolicy                          → (nil, applySource)      [untracked]
+//	forced | first rollout | spec changed, manual mode without /sync → prior, applySource (held)
 //	forced | first rollout | spec changed     → Progressing{R} fresh, applySource
 //	Progressing{R} + verdict Healthy          → Succeeded{R}, applySource
 //	Progressing{R} + verdict Failed + rollback→ RolledBack{R}, applyLastHealthy (needs a render store)
@@ -1486,7 +1514,7 @@ type rolloutPlan struct {
 //	Succeeded{R}                              → Succeeded{R}, applySource   [sticky]
 //	Failed{R} + verdict Healthy               → Succeeded{R} (self-heal), applySource
 //	Failed{R} otherwise                       → Failed{R}, applySource      [one-shot]
-//	RolledBack{R}                             → RolledBack{R}, applyLastHealthy [sticky]
+//	RolledBack{R}                             → RolledBack{R}, applyLastHealthy [sticky; manual mode re-applies a landed rollback only on /sync]
 //	RolledBack{R} without a render store      → Failed{R}, applySource
 //
 // Because a spec change / first deploy always yields Progressing (never a verdict-driven
@@ -1510,6 +1538,10 @@ func (c *Controller) planRollout(ctx context.Context, st *reconcileState) rollou
 	// Fresh rollout — forced re-drive, first-ever, or a spec change to a new render:
 	// start Progressing with a fresh clock. One step; verdict is evaluated next reconcile.
 	if st.force || prior == nil || prior.RenderRef != R {
+		// Manual mode applies R only on a /sync, so the rollout and its deadline start then.
+		if st.withheld() {
+			return rolloutPlan{rollout: prior, action: actionApplySource}
+		}
 		return rolloutPlan{
 			rollout: &corev1alpha1.RolloutStatus{State: corev1alpha1.RolloutStateProgressing, RenderRef: R, StartedAt: c.now()},
 			action:  actionApplySource,
@@ -1609,6 +1641,9 @@ func (c *Controller) waveHealthGate(ctx context.Context, st *reconcileState, wav
 				out, err := c.applyLastHealthy(ctx, st, rb)
 				if err == nil {
 					out.waves = waveStatuses
+					if st.manual && st.pending {
+						out.handledSyncAt = st.requestedAt
+					}
 					return out
 				}
 				klog.ErrorS(err, "rollback after wave failure", "release", st.rel.Name)

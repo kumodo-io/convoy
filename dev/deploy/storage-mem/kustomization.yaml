@@ -4,7 +4,7 @@
 #
 # NOTE: mem:// is per-process, so the observer's store is a SEPARATE empty store
 # from the controller's — /history and historical /diff will be empty in this
-# mode. Use storage-file or storage-minio (a shared store) to exercise the read
+# mode. Use storage-file or storage-seaweedfs (a shared store) to exercise the read
 # features across components.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

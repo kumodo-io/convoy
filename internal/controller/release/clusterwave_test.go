@@ -146,6 +146,38 @@ func TestClusterWave_NoPredecessorsProceeds(t *testing.T) {
 	}
 }
 
+// TestClusterWave_HoldsRollback: a rollback applies like any other render, so it waits
+// for the predecessors on the cluster too (KB-4).
+func TestClusterWave_HoldsRollback(t *testing.T) {
+	rel := clusterWaveRelease(1, corev1alpha1.ReleaseWaveStrategyWaitForHealthy, nil)
+	withFailurePolicy(rel, corev1alpha1.RollbackPolicyOnReleaseFailure)
+	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
+	rel.Status.Rollout = &corev1alpha1.RolloutStatus{
+		State: corev1alpha1.RolloutStateRolledBack, RenderRef: renderRefOf(t, rel), StartedAt: pastStart, Message: "rb",
+	}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	seedLastHealthy(t, c, lhCMName)
+	setVerdict(c, renderVerdictPending)
+	c.releasesForCluster = func(string, string) ([]*corev1alpha1.Release, error) {
+		return []*corev1alpha1.Release{predecessor("db", 0, metav1.ConditionTrue, metav1.ConditionFalse, metav1.Now())}, nil
+	}
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if deployer.called {
+		t.Errorf("rolled back while holding for cluster wave; deployed %v", deployer.got)
+	}
+	got := statusUpdate(client.Actions())
+	if got.Status.Rollout == nil || got.Status.Rollout.State != corev1alpha1.RolloutStateRolledBack {
+		t.Errorf("rollout = %+v, want RolledBack", got.Status.Rollout)
+	}
+	if s, r := readyReason(got); s != metav1.ConditionFalse || r != conditionReasonWaitingForClusterWave {
+		t.Errorf("Applied = %s/%s, want False/WaitingForClusterWave", s, r)
+	}
+}
+
 func TestClusterWaveSignalChanged(t *testing.T) {
 	base := predecessor("db", 0, metav1.ConditionFalse, metav1.ConditionFalse, metav1.Now())
 

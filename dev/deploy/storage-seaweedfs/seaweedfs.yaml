@@ -1,0 +1,117 @@
+# Dev-only SeaweedFS (S3-compatible) object store for the render backend. Single
+# replica, ephemeral emptyDir data, hardcoded dev credentials — NOT a production
+# posture. The controller reaches it at http://seaweedfs:8333 via the gocloud s3blob
+# driver (path-style, plain HTTP).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: convoy-seaweedfs
+  namespace: convoy-system
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: convoyseaweedfs
+  AWS_SECRET_ACCESS_KEY: convoyseaweedfs123
+  # The S3 gateway reads its identities from this file; it must match the keys above.
+  s3.json: |
+    {
+      "identities": [
+        {
+          "name": "convoy",
+          "credentials": [{"accessKey": "convoyseaweedfs", "secretKey": "convoyseaweedfs123"}],
+          "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs
+  namespace: convoy-system
+  labels:
+    app: seaweedfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seaweedfs
+  template:
+    metadata:
+      labels:
+        app: seaweedfs
+    spec:
+      containers:
+        - name: seaweedfs
+          image: chrislusf/seaweedfs:4.48
+          args: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json"]
+          ports:
+            - name: s3
+              containerPort: 8333
+            - name: master
+              containerPort: 9333
+            - name: master-grpc
+              containerPort: 19333
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: s3-config
+              mountPath: /etc/seaweedfs
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 8333
+            initialDelaySeconds: 3
+            periodSeconds: 5
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: s3-config
+          secret:
+            secretName: convoy-seaweedfs
+            items:
+              - key: s3.json
+                path: s3.json
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seaweedfs
+  namespace: convoy-system
+spec:
+  selector:
+    app: seaweedfs
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: 8333
+    - name: master
+      port: 9333
+      targetPort: 9333
+    - name: master-grpc
+      port: 19333
+      targetPort: 19333
+---
+# Creates the render bucket once SeaweedFS is reachable. Idempotent (skips an
+# existing bucket), so it is safe to re-run on redeploy.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seaweedfs-mkbucket
+  namespace: convoy-system
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mkbucket
+          image: chrislusf/seaweedfs:4.48
+          command:
+            - sh
+            - -c
+            - |
+              until echo "s3.bucket.list" | weed shell -master=seaweedfs:9333 >/tmp/buckets 2>&1; do
+                echo "waiting for seaweedfs..."; sleep 2;
+              done
+              grep -q convoy-renders /tmp/buckets || echo "s3.bucket.create -name convoy-renders" | weed shell -master=seaweedfs:9333
+              echo "s3.bucket.list" | weed shell -master=seaweedfs:9333
