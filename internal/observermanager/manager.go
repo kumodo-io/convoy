@@ -23,6 +23,7 @@ package observermanager
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -332,7 +333,18 @@ func resolveReplicaID(configured string) string {
 // resolveAdvertiseURL returns the configured advertise URL, or builds one from
 // $POD_IP and the serveAddr port. It returns "" when neither is known.
 func resolveAdvertiseURL(configured, serveAddr string) string {
-	return ""
+	if configured != "" {
+		return configured
+	}
+	podIP := os.Getenv("POD_IP")
+	if podIP == "" {
+		return ""
+	}
+	_, port, err := net.SplitHostPort(serveAddr)
+	if err != nil || port == "" {
+		return ""
+	}
+	return "http://" + net.JoinHostPort(podIP, port)
 }
 
 // resolveLeaseNamespace returns the configured lease namespace, or falls back to

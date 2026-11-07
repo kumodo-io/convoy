@@ -67,6 +67,32 @@ subjects:
     name: convoy-apiserver
     namespace: convoy-system
 ---
+# Reads the observer's sharding leases to send each Release's /preview, /diff,
+# /health and /history to the observer replica that owns it.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: convoy-apiserver-observer-leases
+  namespace: convoy-system
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: convoy-apiserver-observer-leases
+  namespace: convoy-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: convoy-apiserver-observer-leases
+subjects:
+  - kind: ServiceAccount
+    name: convoy-apiserver
+    namespace: convoy-system
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -100,6 +126,12 @@ spec:
             - --secure-port=8443
             - --observer-url=http://convoy-observer.convoy-system.svc:8080
             - --shards=32
+          env:
+            # The observer's sharding leases live in this namespace.
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           ports:
             - name: https
               containerPort: 8443

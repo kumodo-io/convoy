@@ -241,7 +241,9 @@ func (c *Coordinator) renewMemberLease(ctx context.Context) error {
 
 	lease, err := leases.Get(ctx, name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		_, cerr := leases.Create(ctx, c.newLease(name, roleMember, c.cfg.ReplicaID, now), metav1.CreateOptions{})
+		lease := c.newLease(name, roleMember, c.cfg.ReplicaID, now)
+		c.advertise(lease)
+		_, cerr := leases.Create(ctx, lease, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(cerr) {
 			return nil // created concurrently; next tick renews it
 		}
@@ -252,8 +254,21 @@ func (c *Coordinator) renewMemberLease(ctx context.Context) error {
 	}
 	lease.Spec.HolderIdentity = new(c.cfg.ReplicaID)
 	lease.Spec.RenewTime = &now
+	c.advertise(lease)
 	_, err = leases.Update(ctx, lease, metav1.UpdateOptions{})
 	return err
+}
+
+// advertise sets this replica's address on its member lease, or removes a stale one.
+func (c *Coordinator) advertise(lease *coordinationv1.Lease) {
+	if c.cfg.Address == "" {
+		delete(lease.Annotations, AddressAnnotation)
+		return
+	}
+	if lease.Annotations == nil {
+		lease.Annotations = make(map[string]string, 1)
+	}
+	lease.Annotations[AddressAnnotation] = c.cfg.Address
 }
 
 // liveMembers returns the sorted, deduplicated holder identities of member
@@ -414,11 +429,19 @@ func (c *Coordinator) deleteLease(ctx context.Context, name string) {
 }
 
 func (c *Coordinator) memberLeaseName() string {
-	return fmt.Sprintf("%s-member-%s", c.cfg.Component, c.cfg.ReplicaID)
+	return memberLeaseName(c.cfg.Component, c.cfg.ReplicaID)
 }
 
 func (c *Coordinator) shardLeaseName(shard int) string {
-	return fmt.Sprintf("%s-shard-%d", c.cfg.Component, shard)
+	return shardLeaseName(c.cfg.Component, shard)
+}
+
+func memberLeaseName(component, replicaID string) string {
+	return fmt.Sprintf("%s-member-%s", component, replicaID)
+}
+
+func shardLeaseName(component string, shard int) string {
+	return fmt.Sprintf("%s-shard-%d", component, shard)
 }
 
 // ComponentSelector selects the leases of a sharded component.
@@ -429,7 +452,22 @@ func ComponentSelector(component string) string {
 // OwnerAddress returns the address advertised by the replica that holds shard,
 // or "" when the shard has no live holder or the holder advertises no address.
 func OwnerAddress(leases coordinationlisters.LeaseNamespaceLister, component string, shard int, now time.Time) string {
-	return ""
+	lease, err := leases.Get(shardLeaseName(component, shard))
+	if err != nil {
+		return ""
+	}
+	holder := deref(lease.Spec.HolderIdentity)
+	if holder == freeHolder || lease.Spec.RenewTime == nil || lease.Spec.LeaseDurationSeconds == nil {
+		return ""
+	}
+	if now.Sub(lease.Spec.RenewTime.Time) > time.Duration(*lease.Spec.LeaseDurationSeconds)*time.Second {
+		return ""
+	}
+	member, err := leases.Get(memberLeaseName(component, holder))
+	if err != nil {
+		return ""
+	}
+	return member.Annotations[AddressAnnotation]
 }
 
 func indexOf(sorted []string, v string) int {

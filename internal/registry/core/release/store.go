@@ -36,6 +36,7 @@ import (
 	"github.com/kumodo-io/convoy/api/core"
 	"github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/registry"
+	"github.com/kumodo-io/convoy/internal/sharding"
 )
 
 // Storage bundles the Release REST and its subresource RESTs. Grouping them in a
@@ -406,14 +407,19 @@ func (r *observerProxyREST) NewConnectOptions() (runtime.Object, bool, string) {
 	return nil, false, ""
 }
 
-// Connect proxies the GET to the observer, streaming its response back to the
-// client. It does not touch etcd — the observer renders/diffs on demand.
+// Connect proxies the GET to the observer replica that owns the Release's shard,
+// streaming its response back to the client. It does not touch etcd beyond
+// reading the Release — the observer renders/diffs on demand.
 func (r *observerProxyREST) Connect(ctx context.Context, name string, _ runtime.Object, responder rest.Responder) (http.Handler, error) {
 	if r.observerURL == "" {
 		return nil, apierrors.NewServiceUnavailable(fmt.Sprintf("%s is not configured (no observer URL)", r.subresource))
 	}
+	base, err := r.observerFor(ctx, name)
+	if err != nil {
+		return nil, err
+	}
 	namespace := genericapirequest.NamespaceValue(ctx)
-	target := fmt.Sprintf("%s/%s/%s/%s", strings.TrimRight(r.observerURL, "/"), r.subresource, namespace, name)
+	target := fmt.Sprintf("%s/%s/%s/%s", strings.TrimRight(base, "/"), r.subresource, namespace, name)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		// Forward the client's query string (e.g. /diff?render=<ref> for a
@@ -434,6 +440,11 @@ func (r *observerProxyREST) Connect(ctx context.Context, name string, _ runtime.
 		}
 		defer func() { _ = resp.Body.Close() }()
 
+		if resp.StatusCode >= http.StatusBadRequest {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, maxObserverErrorBytes))
+			responder.Error(observerError(resp.StatusCode, body))
+			return
+		}
 		for key, values := range resp.Header {
 			for _, v := range values {
 				w.Header().Add(key, v)
@@ -442,4 +453,55 @@ func (r *observerProxyREST) Connect(ctx context.Context, name string, _ runtime.
 		w.WriteHeader(resp.StatusCode)
 		_, _ = io.Copy(w, resp.Body)
 	}), nil
+}
+
+// observerFor returns the base URL of the observer replica that owns the
+// Release's shard: with a shard-scoped cache, any other replica answers 404.
+func (r *observerProxyREST) observerFor(ctx context.Context, name string) (string, error) {
+	if r.releases == nil {
+		return r.observerURL, nil
+	}
+	obj, err := r.releases.Get(ctx, name, &metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	if r.resolve == nil {
+		return r.observerURL, nil
+	}
+	rel, ok := obj.(*core.Release)
+	if !ok {
+		return "", fmt.Errorf("unexpected object %T", obj)
+	}
+	shard, ok := rel.Labels[sharding.ShardLabel]
+	if !ok {
+		return r.observerURL, nil
+	}
+	if url := r.resolve(shard); url != "" {
+		return url, nil
+	}
+	return r.observerURL, nil
+}
+
+// maxObserverErrorBytes caps how much of an observer error body becomes the
+// API error message.
+const maxObserverErrorBytes = 64 << 10
+
+// observerError turns an observer error response into an API status, so the
+// client sees the observer's message instead of a generic one for the code.
+func observerError(code int, body []byte) error {
+	var reason metav1.StatusReason
+	switch code {
+	case http.StatusNotFound:
+		reason = metav1.StatusReasonNotFound
+	case http.StatusServiceUnavailable:
+		reason = metav1.StatusReasonServiceUnavailable
+	case http.StatusInternalServerError:
+		reason = metav1.StatusReasonInternalError
+	}
+	return &apierrors.StatusError{ErrStatus: metav1.Status{
+		Status:  metav1.StatusFailure,
+		Code:    int32(code), //nolint:gosec // an HTTP status code fits in int32
+		Reason:  reason,
+		Message: strings.TrimSpace(string(body)),
+	}}
 }

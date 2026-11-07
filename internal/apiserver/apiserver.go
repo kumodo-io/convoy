@@ -76,6 +76,9 @@ type ExtraConfig struct {
 	// Shards is the fleet-wide shard count used to stamp the shard label on
 	// user-written objects (see https://convoy.kumodo.io/documentation/architecture/shard-scoped-caches/).
 	Shards int
+	// ObserverRoute sends the observer subresources to the replica that owns the
+	// Release's shard. Nil sends them all to ObserverURL.
+	ObserverRoute *observerRoute
 }
 
 // Config wraps the generic recommended config plus convoy extras.
@@ -126,7 +129,15 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	releaseStorage, err := releasestorage.NewREST(Scheme, optsGetter, c.ExtraConfig.ObserverURL, nil, c.ExtraConfig.Shards)
+	var resolve releasestorage.ObserverResolver
+	if route := c.ExtraConfig.ObserverRoute; route != nil {
+		resolve = route.resolve
+		genericServer.AddPostStartHookOrDie("convoy-observer-route", func(ctx genericapiserver.PostStartHookContext) error {
+			route.start(ctx)
+			return nil
+		})
+	}
+	releaseStorage, err := releasestorage.NewREST(Scheme, optsGetter, c.ExtraConfig.ObserverURL, resolve, c.ExtraConfig.Shards)
 	if err != nil {
 		return nil, err
 	}
