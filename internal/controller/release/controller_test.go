@@ -534,9 +534,10 @@ func TestSyncHandler_AdvancesWhenPredecessorHealthy(t *testing.T) {
 	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{
 		{Number: 0, Applied: new(true), StartedAt: &firstApply, CompletedAt: &firstApply},
 	}
+	coord := gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n")
+	rel.Status.LastAttempted = &corev1alpha1.ReleaseAttemptedRenderStatus{RenderRef: renderRefFor(t, rel, coord)}
 	deployer := &fakeDeployer{}
-	c, client := newTestController(t, rel, reachableCluster(),
-		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthy\"\n"), deployer)
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
 	// The observer marked wave 0's resource ("gate") Healthy on the ReleaseInventory;
 	// the gate rolls that up to advance wave 1.
 	putInv(t, c, healthyRef("gate"))
@@ -562,9 +563,10 @@ func TestSyncHandler_HealthGateTimesOut(t *testing.T) {
 	// Wave 0 applied an hour ago, still not healthy → bounded wait (1ms) has expired.
 	past := metav1.NewTime(time.Date(2026, 6, 25, 11, 0, 0, 0, time.UTC))
 	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{{Number: 0, Applied: new(true), StartedAt: &past}}
+	coord := gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1ms\"\n")
+	rel.Status.LastAttempted = &corev1alpha1.ReleaseAttemptedRenderStatus{RenderRef: renderRefFor(t, rel, coord)}
 	deployer := &fakeDeployer{}
-	c, client := newTestController(t, rel, reachableCluster(),
-		gatedCoordinator("    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1ms\"\n"), deployer)
+	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
 		t.Fatalf("syncHandler: %v", err)

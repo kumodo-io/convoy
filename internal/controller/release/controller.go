@@ -1163,10 +1163,14 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// the rollout progresses.
 	waveGroups := waves.Group(objects)
 	// Prior status.waves carries a wave's original StartedAt/CompletedAt across
-	// reconciles (the controller's own progress timestamps).
+	// reconciles (the controller's own progress timestamps). It is written together
+	// with status.lastAttempted, so it belongs to that render: a new render starts its
+	// waves afresh, or a bounded gate would count from an earlier render's apply.
 	prior := map[int64]corev1alpha1.ResourceWaveStatus{}
-	for i := range rel.Status.Waves {
-		prior[rel.Status.Waves[i].Number] = rel.Status.Waves[i]
+	if la := rel.Status.LastAttempted; la != nil && la.RenderRef == attempt.RenderRef {
+		for i := range rel.Status.Waves {
+			prior[rel.Status.Waves[i].Number] = rel.Status.Waves[i]
+		}
 	}
 	// Per-resource health the observer persisted on the ReleaseInventory, keyed by
 	// identity, used to roll up per-wave health for the gate. A release with no
@@ -1235,7 +1239,7 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 
 		// Preserve the wave's original StartedAt/CompletedAt across reconciles: the
 		// wave applies once and is re-applied idempotently each reconcile, so its
-		// timestamps must reflect that first apply, not the current pass. (StartedAt
+		// timestamps must reflect this render's first apply, not the current pass. (StartedAt
 		// also anchors a successor wave's bounded health wait.)
 		startedAt, completedAt := &now, &now
 		if p, ok := prior[int64(w.Number)]; ok {
@@ -1624,12 +1628,14 @@ func succeededRollout(renderRef string, startedAt metav1.Time) *corev1alpha1.Rol
 // immediately-preceding wave is not yet healthy: a bounded wait that has elapsed is a
 // wave failure (rolled back when the policy selects it, else Failed under a
 // failurePolicy, else the terminal WaveFailed), and otherwise a hold that requeues.
+// Once the render has fully applied, it only holds: the bound is for the rollout, and
+// a later regression is the health assessment's to report.
 // This is the one apply-time rollout decision (a wave timeout is only observable while
 // applying); it overrides the pre-apply planRollout when it fires.
 func (c *Controller) waveHealthGate(ctx context.Context, st *reconcileState, waveGroups []waves.Wave, i int, prior map[int64]corev1alpha1.ResourceWaveStatus, waveStatuses []corev1alpha1.ResourceWaveStatus) reconcileOutcome {
 	w, prev := waveGroups[i], waveGroups[i-1]
 	prevStarted := prior[int64(prev.Number)].StartedAt
-	if w.Bounded && prevStarted != nil && st.now.Sub(prevStarted.Time) > w.Timeout {
+	if w.Bounded && prevStarted != nil && st.now.Sub(prevStarted.Time) > w.Timeout && !renderCompleted(st) {
 		msg := fmt.Sprintf("sync wave %d: preceding wave %d not healthy within %s", w.Number, prev.Number, w.Timeout)
 		startedAt := priorRolloutStartedAt(st.rel, st.attempt.RenderRef, st.now)
 		// A wave failure rolls back only under OnWaveFailure (⊋ release failures).
@@ -1666,6 +1672,12 @@ func (c *Controller) waveHealthGate(ctx context.Context, st *reconcileState, wav
 		attempt: st.attempt,
 		waves:   waveStatuses,
 	}
+}
+
+// renderCompleted reports whether the current render has applied fully at least once.
+func renderCompleted(st *reconcileState) bool {
+	ls := st.rel.Status.LastSuccessful
+	return ls != nil && ls.RenderRef == st.attempt.RenderRef
 }
 
 // priorRolloutStartedAt returns the persisted rollout's startedAt when it is for

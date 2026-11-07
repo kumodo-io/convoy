@@ -566,7 +566,8 @@ func TestRollout_TransientSourceFailureKeepsRolledBack(t *testing.T) {
 
 // waveTimeoutRelease is a health-gated two-wave Release with a last-healthy target whose
 // wave 0 was applied 2s ago (past its 1s timeout) and never became healthy, so wave 1 fails.
-func waveTimeoutRelease(rollback corev1alpha1.RollbackPolicy) (*corev1alpha1.Release, *fakeCoordinator) {
+func waveTimeoutRelease(t *testing.T, rollback corev1alpha1.RollbackPolicy) (*corev1alpha1.Release, *fakeCoordinator) {
+	t.Helper()
 	early := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w0\n  annotations:\n    convoy.kumodo.io/sync-wave: \"0\"\n    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1s\"\n"
 	late := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: w1\n  annotations:\n    convoy.kumodo.io/sync-wave: \"1\"\n    convoy.kumodo.io/sync-strategy: \"waitForHealthyWithTimeout\"\n    convoy.kumodo.io/sync-timeout: \"1s\"\n"
 	coord := &fakeCoordinator{result: fetch.Result{
@@ -580,13 +581,14 @@ func waveTimeoutRelease(rollback corev1alpha1.RollbackPolicy) (*corev1alpha1.Rel
 	rel.Status.LastHealthy = &corev1alpha1.LastHealthy{RenderRef: lastHealthyRef}
 	started := metav1.NewTime(time.Date(2026, 6, 25, 11, 59, 58, 0, time.UTC))
 	rel.Status.Waves = []corev1alpha1.ResourceWaveStatus{{Number: 0, StartedAt: &started}}
+	rel.Status.LastAttempted = &corev1alpha1.ReleaseAttemptedRenderStatus{RenderRef: renderRefFor(t, rel, coord)}
 	return rel, coord
 }
 
 // TestRollout_OnReleaseFailureIgnoresWaveFailure: a wave failure under OnReleaseFailure
 // does NOT roll back — it stays Failed.
 func TestRollout_OnReleaseFailureIgnoresWaveFailure(t *testing.T) {
-	rel, coord := waveTimeoutRelease(corev1alpha1.RollbackPolicyOnReleaseFailure)
+	rel, coord := waveTimeoutRelease(t, corev1alpha1.RollbackPolicyOnReleaseFailure)
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
 	c.renderStore = renderstore.New(blobstore.NewMemory())
@@ -603,7 +605,7 @@ func TestRollout_OnReleaseFailureIgnoresWaveFailure(t *testing.T) {
 // TestRollout_OnWaveFailureRollsBackOnWaveFailure: a wave failure under OnWaveFailure
 // rolls back to last-healthy.
 func TestRollout_OnWaveFailureRollsBackOnWaveFailure(t *testing.T) {
-	rel, coord := waveTimeoutRelease(corev1alpha1.RollbackPolicyOnWaveFailure)
+	rel, coord := waveTimeoutRelease(t, corev1alpha1.RollbackPolicyOnWaveFailure)
 	deployer := &fakeDeployer{}
 	c, client := newTestController(t, rel, reachableCluster(), coord, deployer)
 	seedLastHealthy(t, c, lhCMName)
@@ -623,7 +625,7 @@ func TestRollout_OnWaveFailureRollsBackOnWaveFailure(t *testing.T) {
 // TestRollout_OnWaveFailureWithoutRenderStoreReportsFailed: a wave failure under
 // OnWaveFailure without a render store rests at Failed and names the missing store (KB-1).
 func TestRollout_OnWaveFailureWithoutRenderStoreReportsFailed(t *testing.T) {
-	rel, coord := waveTimeoutRelease(corev1alpha1.RollbackPolicyOnWaveFailure)
+	rel, coord := waveTimeoutRelease(t, corev1alpha1.RollbackPolicyOnWaveFailure)
 	c, client := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
 
 	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
