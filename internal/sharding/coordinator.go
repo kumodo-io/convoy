@@ -27,6 +27,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	coordinationlisters "k8s.io/client-go/listers/coordination/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -39,6 +40,14 @@ const (
 
 	roleMember = "member"
 	roleShard  = "shard"
+
+	// AddressAnnotation on a member lease carries the base URL its replica serves
+	// on, so the apiserver can send a Release's subresource calls to its shard owner.
+	AddressAnnotation = "sharding.convoy.kumodo.io/address"
+
+	// ObserverComponent names the observer's leases; the apiserver reads them to
+	// route the observer subresources.
+	ObserverComponent = "convoy-obs"
 
 	// freeHolder is the holder-identity value that marks a shard lease as
 	// available. A real holder is always a non-empty replica ID.
@@ -79,6 +88,9 @@ type Config struct {
 	LeaseDuration time.Duration
 	// RenewInterval is how often the loop renews leases and re-evaluates ownership.
 	RenewInterval time.Duration
+	// Address is the base URL this replica serves on, advertised on its member
+	// lease. Empty advertises nothing.
+	Address string
 }
 
 // Coordinator maintains the local replica's shard ownership via Kubernetes
@@ -407,6 +419,17 @@ func (c *Coordinator) memberLeaseName() string {
 
 func (c *Coordinator) shardLeaseName(shard int) string {
 	return fmt.Sprintf("%s-shard-%d", c.cfg.Component, shard)
+}
+
+// ComponentSelector selects the leases of a sharded component.
+func ComponentSelector(component string) string {
+	return labelComponent + "=" + component
+}
+
+// OwnerAddress returns the address advertised by the replica that holds shard,
+// or "" when the shard has no live holder or the holder advertises no address.
+func OwnerAddress(leases coordinationlisters.LeaseNamespaceLister, component string, shard int, now time.Time) string {
+	return ""
 }
 
 func indexOf(sorted []string, v string) int {

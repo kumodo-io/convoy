@@ -72,10 +72,15 @@ func (s *Storage) Map() map[string]rest.Storage {
 	}
 }
 
+// ObserverResolver returns the base URL of the observer replica that owns a
+// shard, or "" when it is unknown.
+type ObserverResolver func(shard string) string
+
 // NewREST returns the Release RESTStorage and its subresources. observerURL is
 // the base URL of the observer the /preview subresource proxies to (empty
-// disables /preview: it returns ServiceUnavailable).
-func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, observerURL string, shards int) (*Storage, error) {
+// disables /preview: it returns ServiceUnavailable). resolve, when set, sends
+// each call to the observer replica that owns the Release's shard instead.
+func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, observerURL string, resolve ObserverResolver, shards int) (*Storage, error) {
 	strategy := NewStrategy(scheme, shards)
 
 	store := &genericregistry.Store{
@@ -125,10 +130,10 @@ func NewREST(scheme *runtime.Scheme, optsGetter generic.RESTOptionsGetter, obser
 		Sync:      &SyncREST{store: store},
 		Mutations: &MutationsREST{store: &mutationsStore},
 		Lifecycle: &LifecycleREST{store: &lifecycleStore},
-		Preview:   &observerProxyREST{observerURL: observerURL, subresource: "preview"},
-		Diff:      &observerProxyREST{observerURL: observerURL, subresource: "diff"},
-		Health:    &observerProxyREST{observerURL: observerURL, subresource: "health"},
-		History:   &observerProxyREST{observerURL: observerURL, subresource: "history"},
+		Preview:   &observerProxyREST{observerURL: observerURL, subresource: "preview", releases: store, resolve: resolve},
+		Diff:      &observerProxyREST{observerURL: observerURL, subresource: "diff", releases: store, resolve: resolve},
+		Health:    &observerProxyREST{observerURL: observerURL, subresource: "health", releases: store, resolve: resolve},
+		History:   &observerProxyREST{observerURL: observerURL, subresource: "history", releases: store, resolve: resolve},
 	}, nil
 }
 
@@ -376,6 +381,10 @@ type observerProxyREST struct {
 	observerURL string
 	// subresource is the observer path segment ("preview" or "diff").
 	subresource string
+	// releases reads the Release for its shard label.
+	releases rest.Getter
+	// resolve finds the observer replica that owns a shard; nil uses observerURL.
+	resolve ObserverResolver
 }
 
 var (

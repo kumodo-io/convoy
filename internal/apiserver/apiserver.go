@@ -126,7 +126,7 @@ func (c completedConfig) New() (*ConvoyServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	releaseStorage, err := releasestorage.NewREST(Scheme, optsGetter, c.ExtraConfig.ObserverURL, c.ExtraConfig.Shards)
+	releaseStorage, err := releasestorage.NewREST(Scheme, optsGetter, c.ExtraConfig.ObserverURL, nil, c.ExtraConfig.Shards)
 	if err != nil {
 		return nil, err
 	}

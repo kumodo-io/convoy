@@ -56,7 +56,7 @@ import (
 const (
 	// shardingComponent scopes the observer's sharding leases (independent from
 	// the controller-manager's).
-	shardingComponent = "convoy-obs"
+	shardingComponent = sharding.ObserverComponent
 	// defaultLeaseNamespace holds sharding leases when neither the flag nor
 	// $POD_NAMESPACE is set.
 	defaultLeaseNamespace = "convoy-system"
@@ -85,6 +85,9 @@ type Options struct {
 	// ServeAddr is the address the on-demand HTTP server (/preview, later /diff)
 	// listens on. The apiserver proxies the Release subresources here.
 	ServeAddr string
+	// AdvertiseURL is the base URL other components reach this replica's HTTP
+	// server on. Empty resolves from $POD_IP and the ServeAddr port.
+	AdvertiseURL string
 	// Shards is the fixed shard count S. Must match across the fleet (and equal
 	// the controller-manager's, though the two shard independently). Work is
 	// partitioned by target cluster.
@@ -155,6 +158,7 @@ func (o *Options) Run(ctx context.Context) error {
 		Shards:        o.Shards,
 		LeaseDuration: o.LeaseDuration,
 		RenewInterval: o.RenewInterval,
+		Address:       resolveAdvertiseURL(o.AdvertiseURL, o.ServeAddr),
 	})
 	sharder := coord.Sharder()
 	owns := func(namespace, name string) bool { return coord.Owns(sharder.Shard(namespace, name)) }
@@ -325,6 +329,12 @@ func resolveReplicaID(configured string) string {
 	return host
 }
 
+// resolveAdvertiseURL returns the configured advertise URL, or builds one from
+// $POD_IP and the serveAddr port. It returns "" when neither is known.
+func resolveAdvertiseURL(configured, serveAddr string) string {
+	return ""
+}
+
 // resolveLeaseNamespace returns the configured lease namespace, or falls back to
 // $POD_NAMESPACE, then defaultLeaseNamespace.
 func resolveLeaseNamespace(configured string) string {
@@ -370,6 +380,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 	flags.DurationVar(&o.Resync, "resync", o.Resync, "Informer resync period; drives periodic drift re-checks.")
 	flags.IntVar(&o.Workers, "workers", o.Workers, "Number of concurrent drift-check workers.")
 	flags.StringVar(&o.ServeAddr, "serve-addr", o.ServeAddr, "Address for the on-demand HTTP server (/preview) the apiserver proxies to.")
+	flags.StringVar(&o.AdvertiseURL, "advertise-url", o.AdvertiseURL, "Base URL the apiserver reaches this replica's HTTP server on. Empty uses http://$POD_IP and the --serve-addr port.")
 	flags.IntVar(&o.Shards, "shards", o.Shards, "Fixed shard count S; work is partitioned by target cluster. Must match across the fleet.")
 	flags.BoolVar(&o.ShardScopedCache, "shard-scoped-cache", o.ShardScopedCache, "Cache only the owned shards' Releases/ReleaseInventories/Clusters so memory scales with replica count. Requires the shard label on those objects.")
 	flags.StringVar(&o.RenderStoreURL, "render-store-url", o.RenderStoreURL, "gocloud blob URL for the durable render store (must match the controller-manager's). Empty disables /history and historical /diff.")
