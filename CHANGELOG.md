@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.1](https://github.com/kumodo-io/convoy/compare/v0.11.0...v0.11.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* kb-4 manual sync rollout ([#107](https://github.com/kumodo-io/convoy/issues/107)) ([306cd3a](https://github.com/kumodo-io/convoy/commit/306cd3af85d668f6675176af83884ea0c3d827f1))
+* rollback without store ([#105](https://github.com/kumodo-io/convoy/issues/105)) ([98ea110](https://github.com/kumodo-io/convoy/commit/98ea110052bce536013355a91cb808d287df5fdf))
+
 ## [0.11.0](https://github.com/kumodo-io/convoy/compare/v0.10.0...v0.11.0) (2026-11-02)
 
 
