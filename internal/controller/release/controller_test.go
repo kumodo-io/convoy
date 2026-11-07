@@ -1162,6 +1162,23 @@ func TestSyncHandler_ManualModeAppliesOnSyncRequest(t *testing.T) {
 	}
 }
 
+// TestSyncHandler_AutomaticModeMarksSyncHandled: a /sync handled in automatic mode
+// must not stay pending, or a later switch to manual mode applies without a /sync.
+func TestSyncHandler_AutomaticModeMarksSyncHandled(t *testing.T) {
+	rel := manifestsRelease()
+	rel.Annotations = map[string]string{
+		corev1alpha1.SyncRequestedAtAnnotation: manualSyncAt.UTC().Format(time.RFC3339Nano),
+	}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), &fakeDeployer{})
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if h := statusUpdate(client.Actions()).Status.LastHandledSyncAt; h == nil || !h.Equal(&manualSyncAt) {
+		t.Errorf("LastHandledSyncAt = %v, want %s", h, manualSyncAt)
+	}
+}
+
 func TestSyncHandler_ManualModeHoldsAfterHandled(t *testing.T) {
 	rel := manualRelease()
 	requestedAt := metav1.NewTime(time.Date(2026, 6, 25, 11, 59, 0, 0, time.UTC))
