@@ -572,7 +572,8 @@ func minDuration(a, b time.Duration) time.Duration {
 
 // requestSync triggers a reconcile of the Release by POSTing its /sync
 // subresource — the same channel the drift loop, CLI, and users use. Here it tells
-// the release controller a sync wave became healthy so it advances the gate.
+// the release controller a sync wave became healthy so it advances the gate. It is
+// a wake-up only (?wake=true): in manual mode it must not count as a user /sync.
 func (c *HealthController) requestSync(ctx context.Context, rel *corev1alpha1.Release) error {
 	return c.client.CoreV1alpha1().RESTClient().
 		Post().
@@ -580,6 +581,7 @@ func (c *HealthController) requestSync(ctx context.Context, rel *corev1alpha1.Re
 		Resource("releases").
 		Name(rel.Name).
 		SubResource("sync").
+		Param("wake", "true").
 		Do(ctx).
 		Error()
 }

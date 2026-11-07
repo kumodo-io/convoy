@@ -59,27 +59,30 @@ func TestProcessNextItem_RetriesOnError(t *testing.T) {
 
 func TestShouldEnqueueOnUpdate(t *testing.T) {
 	const reconcileAnnotation = "convoy.kumodo.io/sync-requested-at"
+	const wakeAnnotation = "convoy.kumodo.io/reconcile-requested-at"
 	obj := func(gen int64, rv string, annotations map[string]string) *metav1.PartialObjectMetadata {
 		return &metav1.PartialObjectMetadata{Generation: gen, ResourceVersion: rv, Annotations: annotations}
 	}
 	stamp := map[string]string{reconcileAnnotation: "2026-07-06T00:00:00Z"}
+	wake := map[string]string{wakeAnnotation: "2026-07-06T00:00:00Z"}
 	cases := []struct {
-		name       string
-		annotation string // reconcile-request annotation the controller watches ("" = none)
-		old, new   *metav1.PartialObjectMetadata
-		want       bool
+		name        string
+		annotations []string // reconcile-request annotations the controller watches
+		old, new    *metav1.PartialObjectMetadata
+		want        bool
 	}{
-		{"resync (identical RV)", "", obj(1, "100", nil), obj(1, "100", nil), true},
-		{"spec change (generation bumped)", "", obj(1, "100", nil), obj(2, "101", nil), true},
-		{"status-only (gen same, RV changed)", "", obj(1, "100", nil), obj(1, "101", nil), false},
-		{"reconcile-request stamped (watched)", reconcileAnnotation, obj(1, "100", nil), obj(1, "101", stamp), true},
-		{"unrelated annotation change (watched)", reconcileAnnotation, obj(1, "100", nil), obj(1, "101", map[string]string{"other": "x"}), false},
-		{"reconcile-request stamped (not watched)", "", obj(1, "100", nil), obj(1, "101", stamp), false},
+		{"resync (identical RV)", nil, obj(1, "100", nil), obj(1, "100", nil), true},
+		{"spec change (generation bumped)", nil, obj(1, "100", nil), obj(2, "101", nil), true},
+		{"status-only (gen same, RV changed)", nil, obj(1, "100", nil), obj(1, "101", nil), false},
+		{"reconcile-request stamped (watched)", []string{reconcileAnnotation}, obj(1, "100", nil), obj(1, "101", stamp), true},
+		{"unrelated annotation change (watched)", []string{reconcileAnnotation}, obj(1, "100", nil), obj(1, "101", map[string]string{"other": "x"}), false},
+		{"reconcile-request stamped (not watched)", nil, obj(1, "100", nil), obj(1, "101", stamp), false},
+		{"second watched annotation stamped", []string{reconcileAnnotation, wakeAnnotation}, obj(1, "100", stamp), obj(1, "101", map[string]string{reconcileAnnotation: stamp[reconcileAnnotation], wakeAnnotation: wake[wakeAnnotation]}), true},
 	}
 	for _, c := range cases {
 		var opts []Option
-		if c.annotation != "" {
-			opts = append(opts, WithReconcileRequestAnnotation(c.annotation))
+		if len(c.annotations) > 0 {
+			opts = append(opts, WithReconcileRequestAnnotation(c.annotations...))
 		}
 		ctrl := NewController("test", func(context.Context, string) error { return nil }, opts...)
 		if got := ctrl.shouldEnqueueOnUpdate(c.old, c.new); got != c.want {

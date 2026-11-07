@@ -172,7 +172,7 @@ func NewController(
 	}
 	c.verdictFn = c.verdict
 	c.Controller = base.NewController("release", c.syncHandler,
-		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation),
+		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation, corev1alpha1.ReconcileRequestedAtAnnotation),
 		// Shard by the Release's target cluster: keep only Releases whose cluster
 		// this replica owns. The syncHandler re-checks (ownership may shift while
 		// queued); this only trims the queue.
