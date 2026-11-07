@@ -2,8 +2,8 @@ apiVersion: v2
 name: convoy
 description: Convoy aggregated API server, controller manager and observer.
 type: application
-version: 0.11.0
-appVersion: 0.11.0
+version: 0.11.1
+appVersion: 0.11.1
 home: https://github.com/kumodo-io/convoy
 sources:
   - https://github.com/kumodo-io/convoy
