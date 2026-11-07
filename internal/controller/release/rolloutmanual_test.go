@@ -30,17 +30,9 @@ const supersededRef = "sha256:superseded"
 
 var manualSyncAt = metav1.NewTime(time.Date(2026, 6, 25, 11, 59, 0, 0, time.UTC))
 
-// renderRefOf discovers the render ref rel produces, by running one reconcile of a
-// copy without a failurePolicy against a throwaway controller.
 func renderRefOf(t *testing.T, rel *corev1alpha1.Release) string {
 	t.Helper()
-	probe := rel.DeepCopy()
-	probe.Spec.FailurePolicy = nil
-	pc, pclient := newTestController(t, probe, reachableCluster(), readyCoordinator(), &fakeDeployer{})
-	if err := pc.syncHandler(context.Background(), "ns/r1"); err != nil {
-		t.Fatalf("probe syncHandler: %v", err)
-	}
-	return statusUpdate(pclient.Actions()).Status.LastAttempted.RenderRef
+	return renderRefFor(t, rel, readyCoordinator())
 }
 
 func requestSync(rel *corev1alpha1.Release, at metav1.Time) {
@@ -212,7 +204,7 @@ func TestManualRollout_RolledBackSyncIsHandled(t *testing.T) {
 // TestManualRollout_WaveRollbackHandlesSync: a wave-failure rollback during a /sync
 // records the request as handled (KB-4).
 func TestManualRollout_WaveRollbackHandlesSync(t *testing.T) {
-	rel, coord := waveTimeoutRelease(corev1alpha1.RollbackPolicyOnWaveFailure)
+	rel, coord := waveTimeoutRelease(t, corev1alpha1.RollbackPolicyOnWaveFailure)
 	rel.Spec.SyncPolicy.Automatic = false
 	requestSync(rel, manualSyncAt)
 	c, client := newTestController(t, rel, reachableCluster(), coord, &fakeDeployer{})
