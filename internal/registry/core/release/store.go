@@ -337,12 +337,18 @@ func (r *SyncREST) ConnectMethods() []string { return []string{http.MethodPost} 
 // NewConnectOptions declares no options for /sync.
 func (r *SyncREST) NewConnectOptions() (runtime.Object, bool, string) { return nil, false, "" }
 
-// Connect stamps the reconcile-request annotation on the Release. With ?force=true
+// Connect stamps the sync-request annotation on the Release. With ?force=true
 // it additionally stamps the force-request annotation: the controller then bypasses
 // the pre-apply dry-run and clears a held Failed/RolledBack rollout, re-driving the
-// render.
+// render. With ?wake=true it stamps only the reconcile-request annotation, so the
+// observer can wake the controller without a manual-mode apply.
 func (r *SyncREST) Connect(ctx context.Context, name string, _ runtime.Object, responder rest.Responder) (http.Handler, error) {
 	return http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		wake, force := boolParam(req, "wake"), boolParam(req, "force")
+		if wake && force {
+			responder.Error(apierrors.NewBadRequest("wake and force cannot be combined"))
+			return
+		}
 		obj, err := r.store.Get(ctx, name, &metav1.GetOptions{})
 		if err != nil {
 			responder.Error(err)
@@ -350,10 +356,14 @@ func (r *SyncREST) Connect(ctx context.Context, name string, _ runtime.Object, r
 		}
 		rel := obj.(*core.Release).DeepCopy()
 		now := metav1.Now().UTC().Format(time.RFC3339Nano)
-		// The normal annotation always wakes the controller (as today).
-		metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, now)
-		if forceParam(req) {
+		switch {
+		case wake:
+			metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.ReconcileRequestedAtAnnotation, now)
+		case force:
+			metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, now)
 			metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.SyncForceRequestedAtAnnotation, now)
+		default:
+			metav1.SetMetaDataAnnotation(&rel.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, now)
 		}
 
 		updated, _, err := r.store.Update(ctx, name, rest.DefaultUpdatedObjectInfo(rel),
@@ -366,9 +376,9 @@ func (r *SyncREST) Connect(ctx context.Context, name string, _ runtime.Object, r
 	}), nil
 }
 
-// forceParam reports whether the request asks for a forced sync (?force=true).
-func forceParam(req *http.Request) bool {
-	v := req.URL.Query().Get("force")
+// boolParam reports whether the request sets the query parameter key to true.
+func boolParam(req *http.Request, key string) bool {
+	v := req.URL.Query().Get(key)
 	return v == "true" || v == "1"
 }
 

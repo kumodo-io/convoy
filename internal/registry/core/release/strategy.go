@@ -255,7 +255,8 @@ func NewMutationsStrategy(strategy Strategy) MutationsStrategy {
 }
 
 // PrepareForUpdate preserves everything except Mutations and stamps the
-// reconcile-request annotation.
+// reconcile-request annotation. It only wakes the controller: in manual mode a
+// mutation change waits for a /sync, like a spec change.
 func (MutationsStrategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
 	newRelease := obj.(*core.Release)
 	oldRelease := old.(*core.Release)
@@ -265,7 +266,7 @@ func (MutationsStrategy) PrepareForUpdate(_ context.Context, obj, old runtime.Ob
 	newRelease.Lifecycle = oldRelease.Lifecycle
 	newRelease.Generation = oldRelease.Generation
 
-	metav1.SetMetaDataAnnotation(&newRelease.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
+	metav1.SetMetaDataAnnotation(&newRelease.ObjectMeta, v1alpha1.ReconcileRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
 }
 
 // ValidateUpdate validates the mutation pipeline.
@@ -300,7 +301,7 @@ func NewLifecycleStrategy(strategy Strategy) LifecycleStrategy {
 }
 
 // PrepareForUpdate preserves everything except Lifecycle and stamps the
-// reconcile-request annotation.
+// reconcile-request annotation, which only wakes the controller.
 func (LifecycleStrategy) PrepareForUpdate(_ context.Context, obj, old runtime.Object) {
 	newRelease := obj.(*core.Release)
 	oldRelease := old.(*core.Release)
@@ -310,7 +311,7 @@ func (LifecycleStrategy) PrepareForUpdate(_ context.Context, obj, old runtime.Ob
 	newRelease.Mutations = oldRelease.Mutations
 	newRelease.Generation = oldRelease.Generation
 
-	metav1.SetMetaDataAnnotation(&newRelease.ObjectMeta, v1alpha1.SyncRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
+	metav1.SetMetaDataAnnotation(&newRelease.ObjectMeta, v1alpha1.ReconcileRequestedAtAnnotation, metav1.Now().UTC().Format(time.RFC3339Nano))
 }
 
 // ValidateUpdate validates the lifecycle hooks.

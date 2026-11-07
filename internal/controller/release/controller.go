@@ -172,7 +172,7 @@ func NewController(
 	}
 	c.verdictFn = c.verdict
 	c.Controller = base.NewController("release", c.syncHandler,
-		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation),
+		base.WithReconcileRequestAnnotation(corev1alpha1.SyncRequestedAtAnnotation, corev1alpha1.ReconcileRequestedAtAnnotation),
 		// Shard by the Release's target cluster: keep only Releases whose cluster
 		// this replica owns. The syncHandler re-checks (ownership may shift while
 		// queued); this only trims the queue.
@@ -862,7 +862,7 @@ func (c *Controller) reconcile(ctx context.Context, rel *corev1alpha1.Release) (
 			out.rollout = plan.rollout
 			return out, err
 		}
-		if st.manual && st.pending {
+		if st.pending {
 			out.handledSyncAt = st.requestedAt
 		}
 		return out, nil
@@ -1116,7 +1116,7 @@ func (c *Controller) dryRunGate(ctx context.Context, st *reconcileState) (reconc
 func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconcileOutcome, error) {
 	rel, now, cluster, objects := st.rel, st.now, st.cluster, st.objects
 	art := st.art
-	manual, pending, requestedAt := st.manual, st.pending, st.requestedAt
+	pending, requestedAt := st.pending, st.requestedAt
 	fail := st.fail
 	// attempt is threaded by value here and updated on the success path; the fail
 	// helper stamps st.attempt, which equals this copy on every non-success path.
@@ -1307,10 +1307,10 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 		attempt: attempt,
 		waves:   waveStatuses,
 	}
-	// In manual mode, record which /sync request this apply satisfied so it isn't
-	// re-applied on the next reconcile; a failed apply above returns early, leaving
-	// the request pending to retry.
-	if manual && pending {
+	// Record which /sync request this apply satisfied so it isn't re-applied on the
+	// next reconcile; a failed apply above returns early, leaving the request pending
+	// to retry. Also in automatic mode, or a switch to manual applies an old request.
+	if pending {
 		outcome.handledSyncAt = requestedAt
 	}
 	return outcome, nil
@@ -1651,7 +1651,7 @@ func (c *Controller) waveHealthGate(ctx context.Context, st *reconcileState, wav
 				out, err := c.applyLastHealthy(ctx, st, rb)
 				if err == nil {
 					out.waves = waveStatuses
-					if st.manual && st.pending {
+					if st.pending {
 						out.handledSyncAt = st.requestedAt
 					}
 					return out

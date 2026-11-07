@@ -44,10 +44,10 @@ type Controller struct {
 	queue     workqueue.TypedRateLimitingInterface[string]
 	synced    []cache.InformerSynced
 	reconcile ReconcileFunc
-	// reconcileRequestAnnotation, when non-empty, is an annotation key whose value
-	// change forces an enqueue on update (e.g. a /sync reconcile-request stamp).
-	// Empty means only resync + spec changes enqueue.
-	reconcileRequestAnnotation string
+	// reconcileRequestAnnotations are annotation keys whose value change forces an
+	// enqueue on update (e.g. a /sync reconcile-request stamp). None means only
+	// resync + spec changes enqueue.
+	reconcileRequestAnnotations []string
 	// enqueueFilter, when non-nil, drops informer add/update events whose object
 	// this replica does not own (a sharding optimization). It is not applied to
 	// deletes or to EnqueueKeys/EnqueueAfter; correctness still rests on the
@@ -58,12 +58,12 @@ type Controller struct {
 // Option configures a Controller.
 type Option func(*Controller)
 
-// WithReconcileRequestAnnotation makes updates that change the given annotation
-// key enqueue the object. Used so an out-of-process reconcile request (a /sync
-// subresource stamping the annotation) promptly wakes the controller, without
-// broadly enqueuing on every unrelated annotation edit.
-func WithReconcileRequestAnnotation(key string) Option {
-	return func(c *Controller) { c.reconcileRequestAnnotation = key }
+// WithReconcileRequestAnnotation makes updates that change any of the given
+// annotation keys enqueue the object. Used so an out-of-process reconcile request
+// (a /sync subresource stamping the annotation) promptly wakes the controller,
+// without broadly enqueuing on every unrelated annotation edit.
+func WithReconcileRequestAnnotation(keys ...string) Option {
+	return func(c *Controller) { c.reconcileRequestAnnotations = keys }
 }
 
 // WithEnqueueFilter installs a predicate that keeps only informer add/update
@@ -171,9 +171,10 @@ func (c *Controller) shouldEnqueueOnUpdate(oldObj, newObj any) bool {
 	if oldMeta.GetGeneration() != newMeta.GetGeneration() {
 		return true // spec change
 	}
-	if k := c.reconcileRequestAnnotation; k != "" &&
-		oldMeta.GetAnnotations()[k] != newMeta.GetAnnotations()[k] {
-		return true // reconcile requested (e.g. /sync stamp)
+	for _, k := range c.reconcileRequestAnnotations {
+		if oldMeta.GetAnnotations()[k] != newMeta.GetAnnotations()[k] {
+			return true // reconcile requested (e.g. /sync stamp)
+		}
 	}
 	return false
 }
