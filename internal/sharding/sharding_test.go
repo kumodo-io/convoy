@@ -26,6 +26,8 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	coordinationlisters "k8s.io/client-go/listers/coordination/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 const testLeaseNamespace = "convoy-system"
@@ -276,5 +278,114 @@ func TestSharder_ShardLabelValue(t *testing.T) {
 	}
 	if ShardLabel != "convoy.kumodo.io/shard" {
 		t.Fatalf("ShardLabel = %q", ShardLabel)
+	}
+}
+
+func TestCoordinator_MemberLeaseCarriesAddress(t *testing.T) {
+	const addr = "http://10.0.0.1:8080"
+	client := fake.NewSimpleClientset()
+	clk := &testClock{t: time.Unix(1_700_000_000, 0)}
+	ctx := context.Background()
+	c := newTestCoordinator(client, clk, "r1", 4)
+	c.cfg.Address = addr
+	leases := client.CoordinationV1().Leases(testLeaseNamespace)
+
+	c.tick(ctx)
+	lease, err := leases.Get(ctx, c.memberLeaseName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("member lease: %v", err)
+	}
+	if got := lease.Annotations[AddressAnnotation]; got != addr {
+		t.Fatalf("address on create = %q, want %q", got, addr)
+	}
+
+	lease.Annotations = nil
+	if _, err := leases.Update(ctx, lease, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("clearing annotations: %v", err)
+	}
+	clk.advance(10 * time.Second)
+	c.tick(ctx)
+	lease, err = leases.Get(ctx, c.memberLeaseName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("member lease: %v", err)
+	}
+	if got := lease.Annotations[AddressAnnotation]; got != addr {
+		t.Fatalf("address on renew = %q, want %q", got, addr)
+	}
+}
+
+// leaseLister snapshots the client's leases into a lister, as an informer would.
+func leaseLister(t *testing.T, client *fake.Clientset) coordinationlisters.LeaseNamespaceLister {
+	t.Helper()
+	list, err := client.CoordinationV1().Leases(testLeaseNamespace).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("listing leases: %v", err)
+	}
+	indexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
+	for i := range list.Items {
+		if err := indexer.Add(&list.Items[i]); err != nil {
+			t.Fatalf("indexing lease: %v", err)
+		}
+	}
+	return coordinationlisters.NewLeaseLister(indexer).Leases(testLeaseNamespace)
+}
+
+func TestOwnerAddress_ReturnsTheHoldersAddress(t *testing.T) {
+	const shards = 8
+	client := fake.NewSimpleClientset()
+	clk := &testClock{t: time.Unix(1_700_000_000, 0)}
+	c1 := newTestCoordinator(client, clk, "r1", shards)
+	c1.cfg.Address = "http://r1:8080"
+	c2 := newTestCoordinator(client, clk, "r2", shards)
+	c2.cfg.Address = "http://r2:8080"
+	converge(context.Background(), c1, c2)
+
+	leases := leaseLister(t, client)
+	for i := range shards {
+		want := c2.cfg.Address
+		if c1.Owns(i) {
+			want = c1.cfg.Address
+		}
+		if got := OwnerAddress(leases, "test", i, clk.now()); got != want {
+			t.Errorf("OwnerAddress(shard %d) = %q, want %q", i, got, want)
+		}
+	}
+}
+
+func TestOwnerAddress_NoLiveAdvertisingHolder(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(ctx context.Context, client *fake.Clientset, clk *testClock, c *Coordinator)
+	}{
+		{name: "no shard lease", setup: func(ctx context.Context, client *fake.Clientset, _ *testClock, c *Coordinator) {
+			_ = client.CoordinationV1().Leases(testLeaseNamespace).Delete(ctx, c.shardLeaseName(0), metav1.DeleteOptions{})
+		}},
+		{name: "free shard lease", setup: func(ctx context.Context, _ *fake.Clientset, _ *testClock, c *Coordinator) {
+			c.release(ctx, 0)
+		}},
+		{name: "expired shard lease", setup: func(_ context.Context, _ *fake.Clientset, clk *testClock, _ *Coordinator) {
+			clk.advance(time.Minute)
+		}},
+		{name: "no member lease", setup: func(ctx context.Context, client *fake.Clientset, _ *testClock, c *Coordinator) {
+			_ = client.CoordinationV1().Leases(testLeaseNamespace).Delete(ctx, c.memberLeaseName(), metav1.DeleteOptions{})
+		}},
+		{name: "no address", setup: func(ctx context.Context, _ *fake.Clientset, _ *testClock, c *Coordinator) {
+			c.cfg.Address = ""
+			c.tick(ctx)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			client := fake.NewSimpleClientset()
+			clk := &testClock{t: time.Unix(1_700_000_000, 0)}
+			c := newTestCoordinator(client, clk, "r1", 1)
+			c.cfg.Address = "http://r1:8080"
+			c.tick(ctx)
+			tc.setup(ctx, client, clk, c)
+
+			if got := OwnerAddress(leaseLister(t, client), "test", 0, clk.now()); got != "" {
+				t.Errorf("OwnerAddress = %q, want none", got)
+			}
+		})
 	}
 }

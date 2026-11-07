@@ -38,3 +38,18 @@ tests:
       - equal:
           path: rules[*].verbs
           value: [get, list, watch]
+  - it: lets the apiserver read only the leases in its namespace
+    template: apiserver.yaml
+    documentSelector:
+      path: kind
+      value: Role
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: convoy
+      - equal:
+          path: rules
+          value:
+            - apiGroups: [coordination.k8s.io]
+              resources: [leases]
+              verbs: [get, list, watch]

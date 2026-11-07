@@ -43,7 +43,7 @@ const dummyClusterRef = "prod-eu"
 func newStorage(t *testing.T) (*genericregistry.Store, *releasestorage.StatusREST, *releasestorage.PinREST, *releasestorage.SyncREST, *etcd3testing.EtcdTestServer) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("releases"))
 
-	storage, err := releasestorage.NewREST(scheme, restOptions, "", 4)
+	storage, err := releasestorage.NewREST(scheme, restOptions, "", nil, 4)
 	if err != nil {
 		server.Terminate(t)
 		t.Fatalf("unexpected error from NewREST: %v", err)
@@ -343,7 +343,7 @@ func TestSyncStampsAnnotation(t *testing.T) {
 func TestMutationsSubresource(t *testing.T) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("releases"))
 	defer server.Terminate(t)
-	storage, err := releasestorage.NewREST(scheme, restOptions, "", 4)
+	storage, err := releasestorage.NewREST(scheme, restOptions, "", nil, 4)
 	if err != nil {
 		t.Fatalf("NewREST: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestMutationsSubresource(t *testing.T) {
 func TestLifecycleSubresource(t *testing.T) {
 	scheme, restOptions, server := registrytest.NewEtcdStorage(t, coreinstall.Install, corev1alpha1.SchemeGroupVersion, core.Resource("releases"))
 	defer server.Terminate(t)
-	storage, err := releasestorage.NewREST(scheme, restOptions, "", 4)
+	storage, err := releasestorage.NewREST(scheme, restOptions, "", nil, 4)
 	if err != nil {
 		t.Fatalf("NewREST: %v", err)
 	}

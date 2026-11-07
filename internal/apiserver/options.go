@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -48,6 +49,9 @@ type Options struct {
 	// Shards is the fleet-wide shard count used to stamp the shard label on
 	// user-written objects. Must match the controllers' --shards.
 	Shards int
+	// ObserverLeaseNamespace is where the observer's sharding leases live. Empty
+	// resolves from $POD_NAMESPACE, then "convoy-system".
+	ObserverLeaseNamespace string
 }
 
 // defaultObserverURL is the in-cluster Service DNS for the observer's HTTP server.
@@ -55,6 +59,9 @@ const defaultObserverURL = "http://convoy-observer.convoy-system.svc:8080"
 
 // defaultShards is the default shard count; must match the controllers' default.
 const defaultShards = 32
+
+// defaultObserverLeaseNamespace matches the observer's default lease namespace.
+const defaultObserverLeaseNamespace = "convoy-system"
 
 // NewOptions returns Options with sane defaults.
 func NewOptions() *Options {
@@ -126,10 +133,29 @@ func (o *Options) Config() (*Config, error) {
 		return nil, err
 	}
 
+	extra := ExtraConfig{ObserverURL: o.ObserverURL, Shards: o.Shards}
+	if serverConfig.ClientConfig != nil {
+		route, err := newObserverRoute(serverConfig.ClientConfig, o.observerLeaseNamespace())
+		if err != nil {
+			return nil, fmt.Errorf("building the observer route: %w", err)
+		}
+		extra.ObserverRoute = route
+	}
+
 	return &Config{
 		GenericConfig: serverConfig,
-		ExtraConfig:   ExtraConfig{ObserverURL: o.ObserverURL, Shards: o.Shards},
+		ExtraConfig:   extra,
 	}, nil
+}
+
+func (o *Options) observerLeaseNamespace() string {
+	if o.ObserverLeaseNamespace != "" {
+		return o.ObserverLeaseNamespace
+	}
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns
+	}
+	return defaultObserverLeaseNamespace
 }
 
 // Run builds and runs the convoy API server until ctx is done.
@@ -168,6 +194,7 @@ func NewCommand(ctx context.Context) *cobra.Command {
 
 	o.RecommendedOptions.AddFlags(cmd.Flags())
 	cmd.Flags().StringVar(&o.ObserverURL, "observer-url", o.ObserverURL, "Base URL of the observer that /preview and /diff proxy to.")
+	cmd.Flags().StringVar(&o.ObserverLeaseNamespace, "observer-lease-namespace", o.ObserverLeaseNamespace, "Namespace of the observer's sharding leases, used to send each Release's /preview, /diff, /health and /history to the observer replica that owns it. Empty uses $POD_NAMESPACE, then \"convoy-system\".")
 	cmd.Flags().IntVar(&o.Shards, "shards", o.Shards, "Fleet-wide shard count used to stamp the shard label. Must match the controllers' --shards.")
 
 	return cmd

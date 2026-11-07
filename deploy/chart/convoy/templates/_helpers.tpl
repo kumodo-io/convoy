@@ -141,6 +141,13 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            {{- if eq .component "observer" }}
+            # Advertised on the member lease, so the apiserver reaches the shard owner.
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- end }}
           {{- if and $root.Values.renderStore.enabled $root.Values.renderStore.existingSecret }}
           envFrom:
             - secretRef:
