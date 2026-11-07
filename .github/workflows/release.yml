@@ -31,11 +31,11 @@ jobs:
     permissions:
       contents: read
       packages: write # requires to publish the chart
+    env:
+      MISE_ENABLE_TOOLS: helm,yq
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
-        env:
-          MISE_ENABLE_TOOLS: helm,yq
       # release-please bumps Chart.yaml in the release PR; a mismatch means the
       # tag points at a commit without that bump.
       - name: Verify chart version
@@ -68,11 +68,11 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write # requires to upload assets to the draft release
+    env:
+      MISE_ENABLE_TOOLS: go
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
-        env:
-          MISE_ENABLE_TOOLS: go
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
