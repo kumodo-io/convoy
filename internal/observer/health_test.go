@@ -20,15 +20,20 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	clienttesting "k8s.io/client-go/testing"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	clientset "github.com/kumodo-io/convoy/api/generated/clientset/versioned"
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
 	informers "github.com/kumodo-io/convoy/api/generated/informers/externalversions"
 	"github.com/kumodo-io/convoy/internal/healthresult"
@@ -310,5 +315,33 @@ func TestHealth_ProgressingWhenNoWorse(t *testing.T) {
 	cond := healthCondition(client.Actions())
 	if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != reasonProgressing {
 		t.Errorf("Healthy = %+v, want False/Progressing", cond)
+	}
+}
+
+// TestRequestSync_IsWakeOnly: the observer's request wakes the controller but is not
+// a user /sync, so in manual mode it does not apply (KB-9).
+func TestRequestSync_IsWakeOnly(t *testing.T) {
+	var got *http.Request
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("{}"))
+	}))
+	t.Cleanup(srv.Close)
+	cs, err := clientset.NewForConfig(&rest.Config{Host: srv.URL})
+	if err != nil {
+		t.Fatalf("clientset: %v", err)
+	}
+	c := &HealthController{client: cs}
+
+	rel := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "r1"}}
+	if err := c.requestSync(context.Background(), rel); err != nil {
+		t.Fatalf("requestSync: %v", err)
+	}
+	if got == nil || got.Method != http.MethodPost || !strings.HasSuffix(got.URL.Path, "/namespaces/ns/releases/r1/sync") {
+		t.Fatalf("request = %v, want POST .../releases/r1/sync", got)
+	}
+	if w := got.URL.Query().Get("wake"); w != "true" {
+		t.Errorf("wake = %q, want true", w)
 	}
 }

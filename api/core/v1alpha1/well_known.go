@@ -16,11 +16,16 @@ limitations under the License.
 
 package v1alpha1
 
-// SyncRequestedAtAnnotation is stamped (with an RFC3339 timestamp) by the
-// /sync subresource to request an immediate reconcile. The controller enqueues
-// on changes to this annotation and, in manual mode (syncPolicy.automatic=false),
-// applies when its value is newer than status.lastHandledSyncAt.
+// SyncRequestedAtAnnotation is stamped (with an RFC3339 timestamp) by a user
+// /sync request and by /pin. The controller enqueues on changes to this annotation
+// and, in manual mode (syncPolicy.automatic=false), applies when its value is newer
+// than status.lastHandledSyncAt.
 const SyncRequestedAtAnnotation = "convoy.kumodo.io/sync-requested-at"
+
+// ReconcileRequestedAtAnnotation is stamped (with an RFC3339 timestamp) by writes
+// that only wake the controller: /mutations, /lifecycle and /sync?wake=true (the
+// observer). In manual mode it never counts as a request to apply.
+const ReconcileRequestedAtAnnotation = "convoy.kumodo.io/reconcile-requested-at"
 
 // SyncForceRequestedAtAnnotation is stamped (with an RFC3339 timestamp) by the
 // /sync subresource for a forced sync (/sync?force=true). When its value is newer

@@ -1191,6 +1191,27 @@ func TestSyncHandler_ManualModeHoldsAfterHandled(t *testing.T) {
 	}
 }
 
+// TestSyncHandler_ManualModeWakeDoesNotApply: a wake-up (/mutations, /lifecycle, the
+// observer) reconciles but is not a request to apply (KB-9).
+func TestSyncHandler_ManualModeWakeDoesNotApply(t *testing.T) {
+	rel := manualRelease()
+	rel.Annotations = map[string]string{
+		corev1alpha1.ReconcileRequestedAtAnnotation: manualSyncAt.UTC().Format(time.RFC3339Nano),
+	}
+	deployer := &fakeDeployer{}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if deployer.called {
+		t.Error("applied on a wake-up without a /sync in manual mode")
+	}
+	if s, r := readyReason(statusUpdate(client.Actions())); s != metav1.ConditionFalse || r != conditionReasonWaitingForSync {
+		t.Errorf("Applied = %s/%s, want False/WaitingForSync", s, r)
+	}
+}
+
 func TestSyncHandler_UnsupportedContentIsTerminal(t *testing.T) {
 	rel := manifestsRelease()
 	rel.Spec.Content.Type = corev1alpha1.ReleaseContentTypeHelm

@@ -338,6 +338,46 @@ func TestSyncStampsAnnotation(t *testing.T) {
 	}
 }
 
+func postSync(t *testing.T, target string) *captureResponder {
+	t.Helper()
+	storage, _, _, syncStorage, server := newStorage(t)
+	t.Cleanup(func() { server.Terminate(t) })
+	ctx := genericapirequest.WithNamespace(genericapirequest.NewContext(), metav1.NamespaceDefault)
+	if _, err := storage.Create(ctx, validNewRelease(metav1.NamespaceDefault), rest.ValidateAllObjectFunc, &metav1.CreateOptions{}); err != nil {
+		t.Fatalf("creating release: %v", err)
+	}
+	responder := &captureResponder{}
+	handler, err := syncStorage.Connect(ctx, "foo", nil, responder)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, target, nil))
+	return responder
+}
+
+// TestSyncWakeStampsOnlyWakeAnnotation: the observer's wake-up must not count as a
+// user /sync in manual mode (KB-9).
+func TestSyncWakeStampsOnlyWakeAnnotation(t *testing.T) {
+	responder := postSync(t, "/?wake=true")
+	if responder.err != nil {
+		t.Fatalf("/sync?wake=true: %v", responder.err)
+	}
+	rel := responder.obj.(*core.Release)
+	if _, ok := rel.Annotations[corev1alpha1.ReconcileRequestedAtAnnotation]; !ok {
+		t.Errorf("expected %s annotation stamped by /sync?wake=true", corev1alpha1.ReconcileRequestedAtAnnotation)
+	}
+	if _, ok := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]; ok {
+		t.Errorf("/sync?wake=true stamped %s", corev1alpha1.SyncRequestedAtAnnotation)
+	}
+}
+
+func TestSyncWakeRejectsForce(t *testing.T) {
+	responder := postSync(t, "/?wake=true&force=true")
+	if !apierrors.IsBadRequest(responder.err) {
+		t.Errorf("err = %v, want BadRequest", responder.err)
+	}
+}
+
 // TestMutationsSubresource verifies /mutations replaces the pipeline, stamps the
 // reconcile annotation, and rejects an invalid mutation.
 func TestMutationsSubresource(t *testing.T) {
@@ -380,8 +420,11 @@ func TestMutationsSubresource(t *testing.T) {
 	if len(rel.Mutations) != 1 || rel.Mutations[0].Type != core.MutationTypeJsonPatch {
 		t.Errorf("mutations = %+v, want one jsonPatch", rel.Mutations)
 	}
-	if _, ok := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]; !ok {
-		t.Errorf("expected %s annotation stamped by /mutations", corev1alpha1.SyncRequestedAtAnnotation)
+	if _, ok := rel.Annotations[corev1alpha1.ReconcileRequestedAtAnnotation]; !ok {
+		t.Errorf("expected %s annotation stamped by /mutations", corev1alpha1.ReconcileRequestedAtAnnotation)
+	}
+	if _, ok := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]; ok {
+		t.Errorf("/mutations stamped %s; in manual mode that applies without a /sync (KB-9)", corev1alpha1.SyncRequestedAtAnnotation)
 	}
 
 	// Invalid mutation (jsonPatch with no patches) is rejected.
@@ -431,8 +474,11 @@ func TestLifecycleSubresource(t *testing.T) {
 	if rel.Lifecycle == nil || len(rel.Lifecycle.PreSync) != 1 || rel.Lifecycle.PreSync[0].Name != "migrate" {
 		t.Errorf("lifecycle = %+v, want one preSync hook 'migrate'", rel.Lifecycle)
 	}
-	if _, ok := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]; !ok {
-		t.Errorf("expected %s annotation stamped by /lifecycle", corev1alpha1.SyncRequestedAtAnnotation)
+	if _, ok := rel.Annotations[corev1alpha1.ReconcileRequestedAtAnnotation]; !ok {
+		t.Errorf("expected %s annotation stamped by /lifecycle", corev1alpha1.ReconcileRequestedAtAnnotation)
+	}
+	if _, ok := rel.Annotations[corev1alpha1.SyncRequestedAtAnnotation]; ok {
+		t.Errorf("/lifecycle stamped %s; in manual mode that applies without a /sync (KB-9)", corev1alpha1.SyncRequestedAtAnnotation)
 	}
 
 	// Invalid hook (Job type with no jobTemplate) is rejected.
