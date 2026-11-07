@@ -239,11 +239,14 @@ func (c *Controller) syncHandler(ctx context.Context, key string) error {
 	}
 	newStatus.Waves = outcome.waves
 	newStatus.ResolvedRetentionPolicy = c.resolvedRetentionStatus(ctx, rel)
-	// lastHealthy advances whenever the current render is confirmed Healthy — every
-	// resource assessed Healthy for THIS render (AssessedRenderRef == render). This is
-	// deadline-independent, so any startedAt serves; it accrues independent of
-	// failurePolicy (a rollback target before the policy is enabled).
-	healthy := c.verdictFn(ctx, rel, outcome.attempt.RenderRef, c.now()) == renderVerdictHealthy
+	// lastHealthy advances whenever the current render is applied and confirmed Healthy —
+	// every resource assessed Healthy for THIS render (AssessedRenderRef == render). The
+	// applied check matters without healthAssessment, where the verdict is always Healthy:
+	// a dry-run-rejected or a held render is not in the store, so it is no rollback target
+	// (KB-11). This is deadline-independent, so any startedAt serves; it accrues
+	// independent of failurePolicy (a rollback target before the policy is enabled).
+	applied := newStatus.LastSuccessful != nil && newStatus.LastSuccessful.RenderRef == outcome.attempt.RenderRef
+	healthy := applied && c.verdictFn(ctx, rel, outcome.attempt.RenderRef, c.now()) == renderVerdictHealthy
 	newStatus.LastHealthy = lastHealthy(rel, outcome.attempt.RenderRef, healthy)
 	// A forced sync (/sync?force) re-drives a held render; record which force request
 	// was handled so it is one-shot.
