@@ -78,6 +78,7 @@ func renderManifests(spec *corev1alpha1.ReleaseContentManifestsSpec, art artifac
 			objs = append(objs, docs...)
 		}
 	}
+	setNamespace(objs, spec.TargetNamespace)
 	return objs, nil
 }
 
