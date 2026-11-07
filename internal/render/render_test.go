@@ -20,6 +20,8 @@ import (
 	"errors"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	"github.com/kumodo-io/convoy/internal/artifact"
 )
@@ -99,5 +101,91 @@ func TestRender_NoFilesAtPath(t *testing.T) {
 	}
 	if errors.Is(err, ErrUnsupported) {
 		t.Errorf("err = %v, want a non-Unsupported error", err)
+	}
+}
+
+const namespaceMix = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plain
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinned
+  namespace: other
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: reader
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: gizmos.example.com
+spec:
+  group: example.com
+  scope: Cluster
+  names: {kind: Gizmo, plural: gizmos}
+---
+apiVersion: example.com/v1
+kind: Gizmo
+metadata:
+  name: w
+---
+apiVersion: example.com/v1
+kind: Gadget
+metadata:
+  name: g
+`
+
+func namespaceOf(t *testing.T, objs []*unstructured.Unstructured, kind, name string) string {
+	t.Helper()
+	for _, o := range objs {
+		if o.GetKind() == kind && o.GetName() == name {
+			return o.GetNamespace()
+		}
+	}
+	t.Fatalf("no %s %q in the render", kind, name)
+	return ""
+}
+
+// TestRender_ManifestsTargetNamespace is the KB-10 regression: targetNamespace must
+// reach namespaced objects that have no namespace, or they go to "default".
+func TestRender_ManifestsTargetNamespace(t *testing.T) {
+	content := manifestsContent(dummyFile)
+	content.Manifests.TargetNamespace = nsProd
+	objs, err := Render(content, artifact.Artifact{Files: map[string][]byte{dummyFile: []byte(namespaceMix)}}, nil)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	for _, tc := range []struct{ kind, name, want string }{
+		{configMapKind, "plain", nsProd},
+		{configMapKind, "pinned", "other"},
+		{"Namespace", "team", ""},
+		{"ClusterRole", "reader", ""},
+		{"CustomResourceDefinition", "gizmos.example.com", ""},
+		{"Gizmo", "w", ""},
+		{"Gadget", "g", nsProd},
+	} {
+		if got := namespaceOf(t, objs, tc.kind, tc.name); got != tc.want {
+			t.Errorf("%s %s namespace = %q, want %q", tc.kind, tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestRender_ManifestsWithoutTargetNamespace(t *testing.T) {
+	objs, err := Render(manifestsContent(dummyFile), artifact.Artifact{Files: map[string][]byte{dummyFile: []byte(namespaceMix)}}, nil)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if got := namespaceOf(t, objs, configMapKind, "plain"); got != "" {
+		t.Errorf("namespace = %q, want empty: without targetNamespace the render must not change", got)
 	}
 }
