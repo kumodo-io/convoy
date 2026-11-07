@@ -37,9 +37,9 @@ import (
 
 // renderHelm loads the Helm chart at spec.Path inside the artifact and renders
 // it in-process with default values — no install, no kube client, no external
-// binary. Only vendored dependencies are supported. Namespace injection onto
-// rendered objects (for resources that omit one) is left to the deployer, which
-// has the cluster's RESTMapper to tell namespaced from cluster-scoped kinds.
+// binary. Only vendored dependencies are supported. Objects that omit a namespace
+// get releaseNamespace (see setNamespace); without it they keep none, and the
+// deployer applies them to "default".
 func renderHelm(spec *corev1alpha1.ReleaseContentHelmSpec, art artifact.Artifact, valueLayers [][]byte) ([]*unstructured.Unstructured, error) {
 	switch spec.DependencyMode {
 	case "", corev1alpha1.ReleaseHelmDependencyModeVendored:
@@ -130,6 +130,7 @@ func renderHelm(spec *corev1alpha1.ReleaseContentHelmSpec, art artifact.Artifact
 			objs = append(objs, d)
 		}
 	}
+	setNamespace(objs, spec.ReleaseNamespace)
 	return objs, nil
 }
 

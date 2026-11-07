@@ -87,6 +87,22 @@ func TestRenderHelm_HonorsReleaseNameAndNamespace(t *testing.T) {
 	}
 }
 
+// TestRenderHelm_SetsReleaseNamespaceOnObjectsWithout: a chart template that does not
+// write .Release.Namespace still belongs in releaseNamespace (KB-10).
+func TestRenderHelm_SetsReleaseNamespaceOnObjectsWithout(t *testing.T) {
+	art := demoChart()
+	art.Files["charts/demo/templates/svc.yaml"] = []byte("apiVersion: v1\nkind: Service\nmetadata:\n  name: {{ .Release.Name }}-svc\n")
+	objs, err := renderHelm(&corev1alpha1.ReleaseContentHelmSpec{Path: dummyChartPath, ReleaseNamespace: nsProd}, art, nil)
+	if err != nil {
+		t.Fatalf("renderHelm: %v", err)
+	}
+	for _, o := range objs {
+		if o.GetNamespace() != nsProd {
+			t.Errorf("%s %s namespace = %q, want %q", o.GetKind(), o.GetName(), o.GetNamespace(), nsProd)
+		}
+	}
+}
+
 func TestRenderHelm_ResolveDependencyModeUnsupported(t *testing.T) {
 	spec := &corev1alpha1.ReleaseContentHelmSpec{
 		Path:           dummyChartPath,
