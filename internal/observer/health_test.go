@@ -334,7 +334,7 @@ func TestRequestSync_IsWakeOnly(t *testing.T) {
 	}
 	c := &HealthController{client: cs}
 
-	rel := &corev1alpha1.Release{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "r1"}}
+	rel := &corev1alpha1.Release{Namespace: "ns", Name: "r1"}
 	if err := c.requestSync(context.Background(), rel); err != nil {
 		t.Fatalf("requestSync: %v", err)
 	}
