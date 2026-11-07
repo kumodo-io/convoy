@@ -1179,9 +1179,13 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	if err != nil {
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 	}
+	// Health assessed for an earlier render counts as not assessed: right after a new
+	// render applies, a wave still carries the previous render's health.
 	stateByID := make(map[string]*corev1alpha1.ResourceState, len(invRefs))
 	for _, r := range invRefs {
-		stateByID[r.ID()] = r.State
+		if r.AssessedRenderRef == attempt.RenderRef {
+			stateByID[r.ID()] = r.State
+		}
 	}
 	noHealthBar := rel.Spec.HealthAssessment == nil
 
