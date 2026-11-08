@@ -115,10 +115,6 @@ func (d *connectorDeployer) Prune(ctx context.Context, cluster *corev1alpha1.Clu
 	return nil
 }
 
-func (d *connectorDeployer) Blockers(_ context.Context, _ *corev1alpha1.Cluster, _ inventory.Ref, _ []inventory.Ref) ([]string, error) {
-	return nil, nil
-}
-
 // clients connects to the target cluster and builds a dynamic client + RESTMapper.
 func (d *connectorDeployer) clients(ctx context.Context, cluster *corev1alpha1.Cluster) (dynamic.Interface, meta.RESTMapper, error) {
 	return d.connector.DynamicClients(ctx, cluster)
