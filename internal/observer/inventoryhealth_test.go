@@ -84,7 +84,7 @@ func TestWriteInventoryHealth(t *testing.T) {
 		deploymentEntry(depName, corev1alpha1.ResourceStateDegraded, "not ready", first),
 		deploymentEntry("cache", corev1alpha1.ResourceStateHealthy, "", time.Time{}),
 	}
-	if err := c.writeInventoryHealth(ctx, rel, entries); err != nil {
+	if err := c.writeInventoryHealth(ctx, rel, "", entries); err != nil {
 		t.Fatalf("writeInventoryHealth: %v", err)
 	}
 
@@ -135,7 +135,7 @@ func TestWriteInventoryHealth_NoEntriesStillApplies(t *testing.T) {
 		Name: "r1", Namespace: "ns",
 		Inventory: []corev1alpha1.ResourceInventoryItem{{Kind: kindConfigMap, Namespace: "ns", Name: "dropped", State: &healthy}},
 	})
-	if err := c.writeInventoryHealth(context.Background(), &corev1alpha1.Release{Name: "r1", Namespace: "ns"}, nil); err != nil {
+	if err := c.writeInventoryHealth(context.Background(), &corev1alpha1.Release{Name: "r1", Namespace: "ns"}, "", nil); err != nil {
 		t.Fatalf("writeInventoryHealth: %v", err)
 	}
 	for _, a := range client.Actions() {

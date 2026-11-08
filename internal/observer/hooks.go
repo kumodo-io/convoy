@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
@@ -135,7 +136,7 @@ func (c *HealthController) pollHooks(ctx context.Context, rel *corev1alpha1.Rele
 		}
 	}
 
-	if err := c.writeHookStatus(ctx, rel, mergeHookEntries(inv.Hooks, fresh)); err != nil {
+	if err := c.writeHookStatus(ctx, rel, inv.UID, mergeHookEntries(inv.Hooks, fresh)); err != nil {
 		return nil, err
 	}
 	return &hookPollResult{
@@ -226,7 +227,7 @@ func hookTimedOut(item corev1alpha1.ReleaseLifecycleHookItem, now time.Time) boo
 // creation stay the controller's. A non-terminal hook is written without
 // finishedAt, which clears any stale value from a prior run (SSA drops owned
 // fields absent from the apply).
-func (c *HealthController) writeHookStatus(ctx context.Context, rel *corev1alpha1.Release, entries []hookStatusEntry) error {
+func (c *HealthController) writeHookStatus(ctx context.Context, rel *corev1alpha1.Release, _ types.UID, entries []hookStatusEntry) error {
 	if len(entries) == 0 {
 		return nil
 	}

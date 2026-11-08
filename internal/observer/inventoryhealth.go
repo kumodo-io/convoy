@@ -18,10 +18,12 @@ package observer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	corev1alpha1ac "github.com/kumodo-io/convoy/api/generated/applyconfiguration/core/v1alpha1"
@@ -61,6 +63,16 @@ func priorAndAnchors(inv *corev1alpha1.ReleaseInventory) (map[string]corev1alpha
 // under its own manager, so the two co-own each entry without clobbering.
 const inventoryHealthFieldManager = "convoy-health-inventory"
 
+// errInventoryGone reports a write the API server refused because the inventory
+// read at the start of the pass was deleted, or deleted and created again.
+var errInventoryGone = errors.New("release inventory was deleted or replaced")
+
+// uidRejected reports an apply refused on its UID precondition: Conflict when no
+// object has the UID, Invalid on metadata.uid when another object took the name.
+func uidRejected(_ error) bool {
+	return false
+}
+
 // writeInventoryHealth persists the assessed per-resource health onto the
 // ReleaseInventory via Server-Side Apply under the health field manager. Each
 // entry carries its identity key plus the health fields; wave/uid are left to the
@@ -68,7 +80,7 @@ const inventoryHealthFieldManager = "convoy-health-inventory"
 // any prior anchor this manager owned. An entry left out loses this manager's
 // fields, so SSA removes it once the controller has dropped it too; for that
 // reason an empty set is still written.
-func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1alpha1.Release, entries []healthEntry) error {
+func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1alpha1.Release, _ types.UID, entries []healthEntry) error {
 	ac := corev1alpha1ac.ReleaseInventory(rel.Name, rel.Namespace)
 	for _, e := range entries {
 		item := corev1alpha1ac.ResourceInventoryItem().

@@ -397,7 +397,7 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 		}
 	}
 
-	if err := c.writeInventoryHealth(ctx, rel, entries); err != nil {
+	if err := c.writeInventoryHealth(ctx, rel, inv.UID, entries); err != nil {
 		return nil, err
 	}
 	return &assessment{
