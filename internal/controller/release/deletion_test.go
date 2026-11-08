@@ -25,6 +25,7 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
+	"github.com/kumodo-io/convoy/internal/inventory"
 )
 
 // deletingRelease is a Release mid-deletion (finalizer + deletionTimestamp set),
@@ -76,6 +77,43 @@ func TestFinalize_PrunesWorkloadsAndRemovesFinalizer(t *testing.T) {
 	upd := releaseUpdate(client.Actions())
 	if upd == nil || hasReleaseFinalizer(upd.Finalizers) {
 		t.Errorf("finalizer not removed after cleanup: %+v", upd)
+	}
+}
+
+// TestFinalize_HonorsPruneProtection is the KB-12 regression: deleting a Release
+// deleted its CRDs and Namespaces although the prune policy protects them.
+func TestFinalize_HonorsPruneProtection(t *testing.T) {
+	crd := inventory.Ref{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "gizmos.example.com"}
+	ns := inventory.Ref{Version: "v1", Kind: "Namespace", Name: "team-a"}
+	for _, tc := range []struct {
+		name   string
+		policy corev1alpha1.PruneSpec
+		want   []string
+	}{
+		{name: "protected by default", want: []string{"cm"}},
+		{name: "opted in", policy: corev1alpha1.PruneSpec{IncludeCRDs: true, IncludeNamespaces: true}, want: []string{"cm", crd.Name, ns.Name}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rel := deletingRelease(false, false)
+			rel.Spec.SyncPolicy.Prune = tc.policy
+			deployer := &fakeDeployer{}
+			c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+			putInv(t, c, cmRef("cm"), crd, ns)
+
+			if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+				t.Fatalf("syncHandler: %v", err)
+			}
+			got := make([]string, 0, len(deployer.pruned))
+			for _, r := range deployer.pruned {
+				got = append(got, r.Name)
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("pruned = %v, want %v", got, tc.want)
+			}
+			if upd := releaseUpdate(client.Actions()); upd == nil || hasReleaseFinalizer(upd.Finalizers) {
+				t.Errorf("finalizer not removed: %+v", upd)
+			}
+		})
 	}
 }
 
