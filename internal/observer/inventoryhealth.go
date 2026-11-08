@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"time"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -69,8 +70,34 @@ var errInventoryGone = errors.New("release inventory was deleted or replaced")
 
 // uidRejected reports an apply refused on its UID precondition: Conflict when no
 // object has the UID, Invalid on metadata.uid when another object took the name.
-func uidRejected(_ error) bool {
+func uidRejected(err error) bool {
+	if apierrors.IsConflict(err) {
+		return true
+	}
+	var status apierrors.APIStatus
+	if !apierrors.IsInvalid(err) || !errors.As(err, &status) || status.Status().Details == nil {
+		return false
+	}
+	for _, cause := range status.Status().Details.Causes {
+		if cause.Field == "metadata.uid" {
+			return true
+		}
+	}
 	return false
+}
+
+// applyInventory applies ac only to the inventory with uid: the observer does not
+// own the ReleaseInventory, so a write must never create one the controller deleted.
+func (c *HealthController) applyInventory(ctx context.Context, namespace string, uid types.UID, ac *corev1alpha1ac.ReleaseInventoryApplyConfiguration, manager string) error {
+	if uid != "" {
+		ac.WithUID(uid)
+	}
+	_, err := c.client.CoreV1alpha1().ReleaseInventories(namespace).
+		Apply(ctx, ac, metav1.ApplyOptions{FieldManager: manager, Force: true})
+	if uidRejected(err) {
+		return errInventoryGone
+	}
+	return err
 }
 
 // writeInventoryHealth persists the assessed per-resource health onto the
@@ -80,7 +107,7 @@ func uidRejected(_ error) bool {
 // any prior anchor this manager owned. An entry left out loses this manager's
 // fields, so SSA removes it once the controller has dropped it too; for that
 // reason an empty set is still written.
-func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1alpha1.Release, _ types.UID, entries []healthEntry) error {
+func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1alpha1.Release, uid types.UID, entries []healthEntry) error {
 	ac := corev1alpha1ac.ReleaseInventory(rel.Name, rel.Namespace)
 	for _, e := range entries {
 		item := corev1alpha1ac.ResourceInventoryItem().
@@ -103,8 +130,7 @@ func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1
 		}
 		ac.WithInventory(item)
 	}
-	if _, err := c.client.CoreV1alpha1().ReleaseInventories(rel.Namespace).
-		Apply(ctx, ac, metav1.ApplyOptions{FieldManager: inventoryHealthFieldManager, Force: true}); err != nil {
+	if err := c.applyInventory(ctx, rel.Namespace, uid, ac, inventoryHealthFieldManager); err != nil {
 		return fmt.Errorf("applying inventory health for %s/%s: %w", rel.Namespace, rel.Name, err)
 	}
 	return nil

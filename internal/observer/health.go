@@ -18,6 +18,7 @@ package observer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -176,7 +177,12 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 		}
 	default:
 		a, recErr := c.assessFn(ctx, rel)
-		if recErr != nil {
+		switch {
+		case errors.Is(recErr, errInventoryGone):
+			// The Release is going away or its inventory was replaced: a later pass reads the new state.
+			klog.V(4).InfoS("health not written, inventory gone", "release", key)
+			notSettled = append(notSettled, inventoryGoneTarget)
+		case recErr != nil:
 			// Couldn't assess (cluster unreachable, invalid rules): report
 			// Healthy=Unknown and re-check later, preserving the persisted anchors.
 			klog.V(4).InfoS("health undetermined", "release", key, "reason", recErr.Error())
@@ -184,7 +190,7 @@ func (c *HealthController) syncHandler(ctx context.Context, key string) error {
 				toWireSummary(rel.Status.HealthSummary)); err != nil {
 				return err
 			}
-		} else {
+		default:
 			// assess persisted per-resource health onto the ReleaseInventory (the
 			// controller rolls it up for the sync-wave gate). Publish the aggregate
 			// Healthy condition + summary on the Release.
@@ -488,6 +494,10 @@ const progressBackoffJitter = 0.2
 // re-checking fast while the current render is not yet reflected on the cluster
 // (health Pending), so the transition out of Pending is noticed promptly.
 const renderPendingTarget = "render-pending"
+
+// inventoryGoneTarget keeps the re-check fast after a write found the inventory
+// deleted or replaced, so the next pass reads the new state soon.
+const inventoryGoneTarget = "inventory-gone"
 
 // progressBackoffLevels is the staircase re-check cadence for a not-yet-settled
 // release (any resource Progressing/Unknown, or any lifecycle hook still Running).

@@ -227,7 +227,7 @@ func hookTimedOut(item corev1alpha1.ReleaseLifecycleHookItem, now time.Time) boo
 // creation stay the controller's. A non-terminal hook is written without
 // finishedAt, which clears any stale value from a prior run (SSA drops owned
 // fields absent from the apply).
-func (c *HealthController) writeHookStatus(ctx context.Context, rel *corev1alpha1.Release, _ types.UID, entries []hookStatusEntry) error {
+func (c *HealthController) writeHookStatus(ctx context.Context, rel *corev1alpha1.Release, uid types.UID, entries []hookStatusEntry) error {
 	if len(entries) == 0 {
 		return nil
 	}
@@ -245,8 +245,7 @@ func (c *HealthController) writeHookStatus(ctx context.Context, rel *corev1alpha
 		}
 		ac.WithHooks(item)
 	}
-	if _, err := c.client.CoreV1alpha1().ReleaseInventories(rel.Namespace).
-		Apply(ctx, ac, metav1.ApplyOptions{FieldManager: hookStatusFieldManager, Force: true}); err != nil {
+	if err := c.applyInventory(ctx, rel.Namespace, uid, ac, hookStatusFieldManager); err != nil {
 		return fmt.Errorf("applying hook status for %s/%s: %w", rel.Namespace, rel.Name, err)
 	}
 	return nil
