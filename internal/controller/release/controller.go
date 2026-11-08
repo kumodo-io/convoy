@@ -395,7 +395,7 @@ func ownedStatusApplyConfig(rel *corev1alpha1.Release, s corev1alpha1.ReleaseSta
 	// clobber the observer's values back to a stale copy on each reconcile. conditions
 	// is a listType=map keyed by type, so asserting only ours leaves the others
 	// untouched; omitting LifecycleSucceeded when absent relinquishes it (no hooks).
-	for _, condType := range []string{conditionApplied, conditionLifecycleSucceeded, conditionRolloutSucceeded} {
+	for _, condType := range []string{conditionApplied, conditionLifecycleSucceeded, conditionRolloutSucceeded, conditionDeleted} {
 		cond := apimeta.FindStatusCondition(s.Conditions, condType)
 		if cond == nil {
 			continue
@@ -543,6 +543,10 @@ const deleteRenderRefNone = "N/A"
 // observer's /sync poke on hook completion is the primary wake.
 const finalizeHoldRequeue = 10 * time.Second
 
+// deletionBlockedRequeue re-checks a Namespace or CRD that blocks the deletion. The
+// target cluster sends no events, and each check lists every namespaced type.
+const deletionBlockedRequeue = 30 * time.Second
+
 // deleteRenderRef is the arming identity for a Release's delete-phase hooks. Deletion
 // happens once and has no render, so the last attempted render is a stable key (a
 // sentinel when the Release never rendered), giving arm-once semantics per deletion.
@@ -592,8 +596,16 @@ func (c *Controller) finalize(ctx context.Context, key string, rel *corev1alpha1
 	}
 
 	if prune {
-		if err := c.pruneRefs(ctx, cluster, rel); err != nil {
+		blocked, err := c.pruneRefs(ctx, cluster, rel)
+		if err != nil {
 			return fmt.Errorf("finalizing %s/%s: %w", rel.Namespace, rel.Name, err)
+		}
+		if blocked != "" {
+			if err := c.applyDeletionBlocked(ctx, rel, blocked); err != nil {
+				return err
+			}
+			c.EnqueueAfter(key, deletionBlockedRequeue)
+			return nil
 		}
 	}
 
@@ -665,16 +677,41 @@ func (c *Controller) clusterForFinalize(rel *corev1alpha1.Release) (*corev1alpha
 }
 
 // pruneRefs deletes the Release's inventoried resources from the (resolved,
-// reachable) target cluster. NotFound resources are ignored by the deployer.
-func (c *Controller) pruneRefs(ctx context.Context, cluster *corev1alpha1.Cluster, rel *corev1alpha1.Release) error {
+// reachable) target cluster, keeping the CRDs and Namespaces the prune policy
+// protects (KB-12). NotFound resources are ignored by the deployer. It returns why
+// a Namespace or CRD that objects outside the inventory block was not deleted.
+func (c *Controller) pruneRefs(ctx context.Context, cluster *corev1alpha1.Cluster, rel *corev1alpha1.Release) (string, error) {
 	refs, ok, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if !ok || len(refs) == 0 {
-		return nil // never applied, or already pruned
+		return "", nil // never applied, or already pruned
 	}
-	return c.deployer.Prune(ctx, cluster, refs)
+	// Clone: protectedFilter filters in place, and a store may return its own slice.
+	_, blocked, err := c.pruneGuarded(ctx, cluster, protectedFilter(slices.Clone(refs), rel.Spec.SyncPolicy.Prune), refs)
+	return blocked, err
+}
+
+// applyDeletionBlocked reports why the Release waits for deletion. It applies the
+// whole owned status: an apply that leaves out a field this manager owns removes it.
+func (c *Controller) applyDeletionBlocked(ctx context.Context, rel *corev1alpha1.Release, message string) error {
+	status := *rel.Status.DeepCopy()
+	apimeta.SetStatusCondition(&status.Conditions, metav1.Condition{
+		Type: conditionDeleted, Status: metav1.ConditionFalse, Reason: conditionReasonDeletionBlocked,
+		Message: message, ObservedGeneration: rel.Generation,
+	})
+	if !statusChanged(rel, status) {
+		return nil
+	}
+	ac, err := ownedStatusApplyConfig(rel, status)
+	if err != nil {
+		return fmt.Errorf("building status apply: %w", err)
+	}
+	if _, err := c.client.CoreV1alpha1().Releases(rel.Namespace).ApplyStatus(ctx, ac, metav1.ApplyOptions{FieldManager: statusFieldManager, Force: true}); err != nil {
+		return fmt.Errorf("applying status: %w", err)
+	}
+	return nil
 }
 
 // syncRequeueAfter returns the per-Release drift re-check interval, or 0 when
@@ -1271,7 +1308,8 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// Steady-state prune: apply succeeded, so anything this Release managed last
 	// time but no longer renders is an orphan. Only reached on the success path,
 	// so we never prune from a failed/partial render.
-	if err := c.prune(ctx, cluster, rel.Namespace, rel.Name, applied, rel.Spec.SyncPolicy.Prune); err != nil {
+	kept, pruneNote, err := c.prune(ctx, cluster, rel.Namespace, rel.Name, applied, rel.Spec.SyncPolicy.Prune)
+	if err != nil {
 		return fail(conditionReasonPruneFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 	}
 	// Persist the exact managed set durably (survives a controller restart, so the
@@ -1279,7 +1317,7 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 	// (unioned) snapshots as it applies; this final write, reached only on the full
 	// success path after prune, replaces them with the precise current set — so any
 	// previous-generation entries that were carried through the rollout are dropped.
-	if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, applied); err != nil {
+	if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, withKept(applied, kept, attempt.RenderRef)); err != nil {
 		return fail(conditionReasonDeployFailed, err.Error(), corev1alpha1.ReleaseRenderAttemptStageSyncing, err)
 	}
 
@@ -1306,7 +1344,7 @@ func (c *Controller) stageSync(ctx context.Context, st *reconcileState) (reconci
 		ready:   true,
 		applied: true,
 		reason:  conditionReasonApplied,
-		message: fmt.Sprintf("applied %d object(s) from revision %s", len(applied), art.Revision),
+		message: joinNote(fmt.Sprintf("applied %d object(s) from revision %s", len(applied), art.Revision), pruneNote),
 		attempt: attempt,
 		waves:   waveStatuses,
 	}
@@ -1731,10 +1769,11 @@ func (c *Controller) applyLastHealthy(ctx context.Context, st *reconcileState, r
 	for k := range applied {
 		applied[k].RenderRef = lhRef
 	}
-	if err := c.prune(ctx, st.cluster, rel.Namespace, rel.Name, applied, rel.Spec.SyncPolicy.Prune); err != nil {
+	kept, pruneNote, err := c.prune(ctx, st.cluster, rel.Namespace, rel.Name, applied, rel.Spec.SyncPolicy.Prune)
+	if err != nil {
 		return reconcileOutcome{}, fmt.Errorf("pruning after last-healthy apply: %w", err)
 	}
-	if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, applied); err != nil {
+	if err := c.inventory.Put(ctx, rel.Namespace, rel.Name, withKept(applied, kept, lhRef)); err != nil {
 		return reconcileOutcome{}, fmt.Errorf("recording inventory: %w", err)
 	}
 	klog.InfoS("holding release on last-healthy render", "release", rel.Name, "failed", failedRef, "running", lhRef)
@@ -1746,7 +1785,7 @@ func (c *Controller) applyLastHealthy(ctx context.Context, st *reconcileState, r
 		ready:   true,
 		applied: true,
 		reason:  conditionReasonRolledBack,
-		message: rollout.Message,
+		message: joinNote(rollout.Message, pruneNote),
 		attempt: st.attempt,
 		rollout: rollout,
 	}, nil
@@ -1966,19 +2005,21 @@ func renderSummary(src corev1alpha1.ResolvedSource) string {
 // apply, honoring the prune policy. On prune failure the inventory is left
 // unchanged so the orphans are retried on the next reconcile. When pruning is
 // disabled the orphans are simply untracked (the caller advances the inventory).
-func (c *Controller) prune(ctx context.Context, cluster *corev1alpha1.Cluster, namespace, name string, applied []inventory.Ref, policy corev1alpha1.PruneSpec) error {
+// It returns the Namespaces and CRDs it kept because of blockers, and why.
+func (c *Controller) prune(ctx context.Context, cluster *corev1alpha1.Cluster, namespace, name string, applied []inventory.Ref, policy corev1alpha1.PruneSpec) ([]inventory.Ref, string, error) {
 	if !policy.Orphaned {
-		return nil
+		return nil, "", nil
 	}
 	old, ok, err := c.inventory.Get(ctx, namespace, name)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 	if !ok {
-		return nil // nothing tracked yet (first apply)
+		return nil, "", nil // nothing tracked yet (first apply)
 	}
-	orphans := protectedFilter(inventory.Diff(old, applied), policy)
-	return c.deployer.Prune(ctx, cluster, orphans)
+	orphans := inventory.Diff(old, applied)
+	// Only orphans may go with a Namespace or CRD; objects the render still applies block it.
+	return c.pruneGuarded(ctx, cluster, protectedFilter(slices.Clone(orphans), policy), orphans)
 }
 
 // protectedFilter drops high-blast-radius kinds (CRDs, Namespaces) from the

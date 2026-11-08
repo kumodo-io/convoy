@@ -53,6 +53,10 @@ type Deployer interface {
 	DryRun(ctx context.Context, cluster *corev1alpha1.Cluster, objects []*unstructured.Unstructured) error
 	// Prune deletes the given resources (ignoring already-absent ones).
 	Prune(ctx context.Context, cluster *corev1alpha1.Cluster, refs []inventory.Ref) error
+	// Blockers describes the objects that a delete of target (a Namespace or a CRD)
+	// would also delete but that are not in managed. A type it cannot list is a
+	// blocker too, so an empty result means the delete destroys nothing else.
+	Blockers(ctx context.Context, cluster *corev1alpha1.Cluster, target inventory.Ref, managed []inventory.Ref) ([]string, error)
 }
 
 // connectorDeployer connects via the shared connector and server-side-applies.

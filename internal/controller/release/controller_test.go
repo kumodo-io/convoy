@@ -69,6 +69,10 @@ type fakeDeployer struct {
 	pruneErr     error
 	dryRunCalled bool
 	dryRunErr    error
+	// blockers maps a protected target name to what blocks its delete.
+	blockers       map[string][]string
+	blockersCalled []inventory.Ref
+	managedSeen    []inventory.Ref
 }
 
 func (d *fakeDeployer) DryRun(_ context.Context, _ *corev1alpha1.Cluster, _ []*unstructured.Unstructured) error {
@@ -87,8 +91,14 @@ func (d *fakeDeployer) Deploy(_ context.Context, _ *corev1alpha1.Cluster, object
 }
 
 func (d *fakeDeployer) Prune(_ context.Context, _ *corev1alpha1.Cluster, refs []inventory.Ref) error {
-	d.pruned = refs
+	d.pruned = append(d.pruned, refs...)
 	return d.pruneErr
+}
+
+func (d *fakeDeployer) Blockers(_ context.Context, _ *corev1alpha1.Cluster, target inventory.Ref, managed []inventory.Ref) ([]string, error) {
+	d.blockersCalled = append(d.blockersCalled, target)
+	d.managedSeen = managed
+	return d.blockers[target.Name], nil
 }
 
 func refsOf(objs []*unstructured.Unstructured) []inventory.Ref {
