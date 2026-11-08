@@ -65,11 +65,10 @@ const inventoryHealthFieldManager = "convoy-health-inventory"
 // ReleaseInventory via Server-Side Apply under the health field manager. Each
 // entry carries its identity key plus the health fields; wave/uid are left to the
 // controller. A firstUnhealthy of zero (a Healthy object) is omitted, which clears
-// any prior anchor this manager owned. An empty set writes nothing.
+// any prior anchor this manager owned. An entry left out loses this manager's
+// fields, so SSA removes it once the controller has dropped it too; for that
+// reason an empty set is still written.
 func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1alpha1.Release, entries []healthEntry) error {
-	if len(entries) == 0 {
-		return nil
-	}
 	ac := corev1alpha1ac.ReleaseInventory(rel.Name, rel.Namespace)
 	for _, e := range entries {
 		item := corev1alpha1ac.ResourceInventoryItem().
@@ -97,6 +96,18 @@ func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1
 		return fmt.Errorf("applying inventory health for %s/%s: %w", rel.Namespace, rel.Name, err)
 	}
 	return nil
+}
+
+// controllerItems returns the entries the release controller still lists. Only the
+// controller writes version, so an entry without one is left over from a health write.
+func controllerItems(items []corev1alpha1.ResourceInventoryItem) []corev1alpha1.ResourceInventoryItem {
+	out := make([]corev1alpha1.ResourceInventoryItem, 0, len(items))
+	for i := range items {
+		if items[i].Version != "" {
+			out = append(out, items[i])
+		}
+	}
+	return out
 }
 
 // resultFromInventory builds the /health payload from a ReleaseInventory's

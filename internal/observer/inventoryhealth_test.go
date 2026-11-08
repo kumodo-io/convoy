@@ -24,6 +24,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	clienttesting "k8s.io/client-go/testing"
 
 	corev1alpha1 "github.com/kumodo-io/convoy/api/core/v1alpha1"
 	fakeclient "github.com/kumodo-io/convoy/api/generated/clientset/versioned/fake"
@@ -111,6 +113,37 @@ func TestWriteInventoryHealth(t *testing.T) {
 	if cache := byName["cache"]; cache.FirstUnhealthy != nil {
 		t.Errorf("cache firstUnhealthy = %v, want nil (healthy)", cache.FirstUnhealthy)
 	}
+}
+
+// TestControllerItems is the KB-13 regression: an entry the controller dropped
+// stayed in the inventory, because the health writer still owned its fields.
+func TestControllerItems(t *testing.T) {
+	healthy := corev1alpha1.ResourceStateHealthy
+	items := []corev1alpha1.ResourceInventoryItem{
+		{Group: groupApps, Version: "v1", Kind: deploymentKind, Namespace: "ns", Name: depName, State: &healthy},
+		{Kind: kindConfigMap, Namespace: "ns", Name: "dropped", State: &healthy},
+	}
+	got := controllerItems(items)
+	if len(got) != 1 || got[0].Name != depName {
+		t.Errorf("controllerItems = %+v, want only %s", got, depName)
+	}
+}
+
+func TestWriteInventoryHealth_NoEntriesStillApplies(t *testing.T) {
+	healthy := corev1alpha1.ResourceStateHealthy
+	c, client := inventoryHealthController(t, &corev1alpha1.ReleaseInventory{
+		Name: "r1", Namespace: "ns",
+		Inventory: []corev1alpha1.ResourceInventoryItem{{Kind: kindConfigMap, Namespace: "ns", Name: "dropped", State: &healthy}},
+	})
+	if err := c.writeInventoryHealth(context.Background(), &corev1alpha1.Release{Name: "r1", Namespace: "ns"}, nil); err != nil {
+		t.Fatalf("writeInventoryHealth: %v", err)
+	}
+	for _, a := range client.Actions() {
+		if p, ok := a.(clienttesting.PatchAction); ok && p.GetPatchType() == types.ApplyPatchType {
+			return
+		}
+	}
+	t.Errorf("no apply sent, want one that releases the dropped entry")
 }
 
 // TestPriorAndAnchors reads back the persisted prior states + progress anchors

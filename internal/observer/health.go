@@ -366,13 +366,14 @@ func (c *HealthController) assess(ctx context.Context, rel *corev1alpha1.Release
 	// progress clock isn't reset.
 	prior, anchors := priorAndAnchors(inv)
 
-	result := &healthresult.Result{Objects: make([]healthresult.ObjectHealth, 0, len(inv.Inventory))}
-	entries := make([]healthEntry, 0, len(inv.Inventory))
-	for i := range inv.Inventory {
-		entry := c.assessItem(ctx, evaluator, dyn, mapper, inv.Inventory[i], anchors, deadline, now)
+	items := controllerItems(inv.Inventory)
+	result := &healthresult.Result{Objects: make([]healthresult.ObjectHealth, 0, len(items))}
+	entries := make([]healthEntry, 0, len(items))
+	for i := range items {
+		entry := c.assessItem(ctx, evaluator, dyn, mapper, items[i], anchors, deadline, now)
 		// Tag the assessment with the render the resource was actually applied under
 		// (controller-owned), NOT the render the controller is currently attempting.
-		entry.renderRef = inv.Inventory[i].RenderRef
+		entry.renderRef = items[i].RenderRef
 		entries = append(entries, entry)
 		result.Objects = append(result.Objects, healthresult.ObjectHealth{
 			Group:     entry.ref.gvk.Group,
