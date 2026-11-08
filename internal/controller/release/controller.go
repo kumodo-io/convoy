@@ -665,7 +665,8 @@ func (c *Controller) clusterForFinalize(rel *corev1alpha1.Release) (*corev1alpha
 }
 
 // pruneRefs deletes the Release's inventoried resources from the (resolved,
-// reachable) target cluster. NotFound resources are ignored by the deployer.
+// reachable) target cluster, keeping the CRDs and Namespaces the prune policy
+// protects (KB-12). NotFound resources are ignored by the deployer.
 func (c *Controller) pruneRefs(ctx context.Context, cluster *corev1alpha1.Cluster, rel *corev1alpha1.Release) error {
 	refs, ok, err := c.inventory.Get(ctx, rel.Namespace, rel.Name)
 	if err != nil {
@@ -674,7 +675,8 @@ func (c *Controller) pruneRefs(ctx context.Context, cluster *corev1alpha1.Cluste
 	if !ok || len(refs) == 0 {
 		return nil // never applied, or already pruned
 	}
-	return c.deployer.Prune(ctx, cluster, refs)
+	// Clone: protectedFilter filters in place, and a store may return its own slice.
+	return c.deployer.Prune(ctx, cluster, protectedFilter(slices.Clone(refs), rel.Spec.SyncPolicy.Prune))
 }
 
 // syncRequeueAfter returns the per-Release drift re-check interval, or 0 when
