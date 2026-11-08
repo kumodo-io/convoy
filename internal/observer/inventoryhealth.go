@@ -99,6 +99,12 @@ func (c *HealthController) writeInventoryHealth(ctx context.Context, rel *corev1
 	return nil
 }
 
+// controllerItems returns the entries the release controller still lists. Only the
+// controller writes version, so an entry without one is left over from a health write.
+func controllerItems(items []corev1alpha1.ResourceInventoryItem) []corev1alpha1.ResourceInventoryItem {
+	return items
+}
+
 // resultFromInventory builds the /health payload from a ReleaseInventory's
 // persisted entries, or nil if there are none.
 func resultFromInventory(inv *corev1alpha1.ReleaseInventory) *healthresult.Result {
