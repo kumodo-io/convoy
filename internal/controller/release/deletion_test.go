@@ -19,8 +19,10 @@ package release
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clienttesting "k8s.io/client-go/testing"
 
@@ -84,7 +86,7 @@ func TestFinalize_PrunesWorkloadsAndRemovesFinalizer(t *testing.T) {
 // deleted its CRDs and Namespaces although the prune policy protects them.
 func TestFinalize_HonorsPruneProtection(t *testing.T) {
 	crd := inventory.Ref{Group: CustomResourceDefinitionGroup, Version: "v1", Kind: CustomResourceDefinitionKind, Name: "gizmos.example.com"}
-	ns := inventory.Ref{Version: "v1", Kind: "Namespace", Name: "team-a"}
+	ns := teamANS
 	for _, tc := range []struct {
 		name   string
 		policy corev1alpha1.PruneSpec
@@ -114,6 +116,36 @@ func TestFinalize_HonorsPruneProtection(t *testing.T) {
 				t.Errorf("finalizer not removed: %+v", upd)
 			}
 		})
+	}
+}
+
+func TestFinalize_BlockedProtectedKindKeepsFinalizer(t *testing.T) {
+	rel := deletingRelease(false, false)
+	rel.Spec.SyncPolicy.Prune.IncludeNamespaces = true
+	deployer := &fakeDeployer{blockers: map[string][]string{teamA: {"ConfigMap team-a/foreign"}}}
+	c, client := newTestController(t, rel, reachableCluster(), readyCoordinator(), deployer)
+	putInv(t, c, cmRef("cm"), teamANS)
+
+	if err := c.syncHandler(context.Background(), "ns/r1"); err != nil {
+		t.Fatalf("syncHandler: %v", err)
+	}
+	if got := refNames(deployer.pruned); !slices.Equal(got, []string{"cm"}) {
+		t.Errorf("pruned = %v, want [cm]", got)
+	}
+	if got := refNames(deployer.managedSeen); !slices.Equal(got, []string{"cm", teamA}) {
+		t.Errorf("managed = %v, want the whole inventory", got)
+	}
+	if upd := releaseUpdate(client.Actions()); upd != nil {
+		t.Errorf("finalizer removed while the namespace is blocked: %+v", upd.Finalizers)
+	}
+	got := statusUpdate(client.Actions())
+	if got == nil {
+		t.Fatal("no status write")
+	}
+	cond := apimeta.FindStatusCondition(got.Status.Conditions, conditionDeleted)
+	if cond == nil || cond.Status != metav1.ConditionFalse || cond.Reason != conditionReasonDeletionBlocked ||
+		!strings.Contains(cond.Message, "ConfigMap team-a/foreign") {
+		t.Errorf("Deleted = %+v, want False/DeletionBlocked naming the blocker", cond)
 	}
 }
 
