@@ -426,10 +426,12 @@ func (c *HealthController) assessItem(ctx context.Context, evaluator *health.Eva
 	if it.Wave != nil {
 		wave = *it.Wave
 	}
+	// A resource it cannot read is Unknown, which keeps the stored anchor as DeriveState does.
+	anchor := anchors[ref.identityID()]
 
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
-		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("cannot resolve resource for %s: %v", gvk, err)}
+		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("cannot resolve resource for %s: %v", gvk, err), firstUnhealthy: anchor}
 	}
 	resource := mapping.Resource.Resource
 
@@ -440,14 +442,14 @@ func (c *HealthController) assessItem(ctx context.Context, evaluator *health.Eva
 
 	live, err := resourceClient(dyn, mapping, it.Namespace).Get(ctx, it.Name, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: "resource not found in cluster"}
+		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: "resource not found in cluster", firstUnhealthy: anchor}
 	}
 	if err != nil {
-		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("reading live resource: %v", err)}
+		return healthEntry{ref: ref, wave: wave, state: corev1alpha1.ResourceStateUnknown, message: fmt.Sprintf("reading live resource: %v", err), firstUnhealthy: anchor}
 	}
 
 	assessed := evaluator.Assess(live, []string{resource})
-	state, anchor := health.DeriveState(assessed.Passed, assessed.Err, anchors[ref.identityID()], deadline, now)
+	state, anchor := health.DeriveState(assessed.Passed, assessed.Err, anchor, deadline, now)
 	message := assessed.Message
 	if assessed.Err != nil {
 		message = assessed.Err.Error()
