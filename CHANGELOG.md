@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.11.1](https://github.com/kumodo-io/convoy/compare/v0.11.0...v0.11.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* kb-10 target namespace ([#113](https://github.com/kumodo-io/convoy/issues/113)) ([992ddb7](https://github.com/kumodo-io/convoy/commit/992ddb7fb4cd921467f4b502b85aa2447b27170f))
+* kb-11 last healthy applied ([#114](https://github.com/kumodo-io/convoy/issues/114)) ([00a0065](https://github.com/kumodo-io/convoy/commit/00a0065a07c489985605584facaacbf62ca2dc96))
+* kb-12 delete protected kinds ([#115](https://github.com/kumodo-io/convoy/issues/115)) ([f91d325](https://github.com/kumodo-io/convoy/commit/f91d325ab3d835a36888a70b9fab3d807377aa46))
+* kb-13 health only entries ([#116](https://github.com/kumodo-io/convoy/issues/116)) ([3b25e22](https://github.com/kumodo-io/convoy/commit/3b25e22604f4ad2eb872512f21f6d99b5760705e))
+* kb-14 keep anchor on unknown ([#118](https://github.com/kumodo-io/convoy/issues/118)) ([4ae0a15](https://github.com/kumodo-io/convoy/commit/4ae0a15fe60f3f1a2de1a83b9ef71da8d49c1ce9))
+* kb-4 manual sync rollout ([#107](https://github.com/kumodo-io/convoy/issues/107)) ([306cd3a](https://github.com/kumodo-io/convoy/commit/306cd3af85d668f6675176af83884ea0c3d827f1))
+* kb-5 observer shard routing ([#108](https://github.com/kumodo-io/convoy/issues/108)) ([38945e7](https://github.com/kumodo-io/convoy/commit/38945e786692bbadf04c14b0797bb34091c81887))
+* kb-7 bound the wave timeout to the current render ([#109](https://github.com/kumodo-io/convoy/issues/109)) ([37b911f](https://github.com/kumodo-io/convoy/commit/37b911fbeb7c53d130ff4e95f50fb2659858660f))
+* kb-8 gate waves on health of the current render ([#111](https://github.com/kumodo-io/convoy/issues/111)) ([1b4f2eb](https://github.com/kumodo-io/convoy/commit/1b4f2ebac09668ecd4a47215e7ebec728ba53ae5))
+* kb-9 manual sync wake ([#112](https://github.com/kumodo-io/convoy/issues/112)) ([b8d6e0c](https://github.com/kumodo-io/convoy/commit/b8d6e0c3700af435df0c778ecb6741da9fbdeea8))
+* observer inventory uid ([#117](https://github.com/kumodo-io/convoy/issues/117)) ([d4f4117](https://github.com/kumodo-io/convoy/commit/d4f4117b8db1767710c70d59d88929e3ad3bdc35))
+* rollback without store ([#105](https://github.com/kumodo-io/convoy/issues/105)) ([98ea110](https://github.com/kumodo-io/convoy/commit/98ea110052bce536013355a91cb808d287df5fdf))
+
 ## [0.11.0](https://github.com/kumodo-io/convoy/compare/v0.10.0...v0.11.0) (2026-11-02)
 
 
