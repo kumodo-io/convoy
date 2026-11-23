@@ -10,7 +10,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	gocloud.dev v0.46.0
 	golang.org/x/crypto v0.56.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.25.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	google.golang.org/grpc v1.82.1
 	helm.sh/helm/v3 v3.21.2
